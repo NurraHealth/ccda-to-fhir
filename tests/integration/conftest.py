@@ -8,16 +8,19 @@ from typing import Any
 
 import pytest
 
-from ccda_to_fhir.convert import convert_document
+# NOTE: Conversion tests are skipped until converter is implemented
+# from ccda_to_fhir.convert import convert_document
 
-# Skip all integration tests until the new converter is implemented
+# Skip conversion integration tests until the new converter is implemented
+# Validation integration tests can run independently
 SKIP_REASON = "Integration tests skipped until C-CDA Pydantic -> FHIR Pydantic pipeline is implemented"
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    """Skip all tests in this directory."""
+    """Skip conversion tests (but allow validation tests)."""
     for item in items:
-        if "/integration/" in str(item.fspath):
+        # Only skip conversion tests, not validation tests
+        if "/integration/" in str(item.fspath) and "conversion" in str(item.fspath):
             item.add_marker(pytest.mark.skip(reason=SKIP_REASON))
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -65,10 +68,10 @@ def wrap_in_ccda_document(
 </ClinicalDocument>"""
 
 
-@pytest.fixture
-def converter() -> type:
-    """Provide the convert_document function for integration tests."""
-    return convert_document
+# @pytest.fixture
+# def converter() -> type:
+#     """Provide the convert_document function for integration tests."""
+#     return convert_document
 
 
 @pytest.fixture
