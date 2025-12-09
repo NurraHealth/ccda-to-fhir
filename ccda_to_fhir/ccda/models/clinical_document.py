@@ -8,7 +8,7 @@ Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-USRealmHea
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from .author import Author
 from .datatypes import AD, CE, CS, ED, II, IVL_TS, ON, PN, TEL, TS, CDAModel
@@ -419,6 +419,137 @@ class ClinicalDocument(CDAModel):
 
     # Document body (structured or non-XML)
     component: Component | None = None
+
+    @model_validator(mode='after')
+    def validate_us_realm_header(self) -> 'ClinicalDocument':
+        """Validate US Realm Header (2.16.840.1.113883.10.20.22.1.1).
+
+        Reference: docs/ccda/clinical-document.md
+
+        Conformance requirements from C-CDA R2.1:
+        1. SHALL contain exactly one [1..1] realmCode with code="US"
+        2. SHALL contain exactly one [1..1] typeId
+           - root SHALL be "2.16.840.1.113883.1.3"
+           - extension SHALL be "POCD_HD000040"
+        3. SHALL contain at least one [1..*] templateId
+        4. SHALL contain exactly one [1..1] id
+        5. SHALL contain exactly one [1..1] code
+        6. SHALL contain exactly one [1..1] effectiveTime
+        7. SHALL contain exactly one [1..1] confidentialityCode
+        8. SHALL contain at least one [1..*] recordTarget
+        9. SHALL contain at least one [1..*] author
+        10. SHALL contain exactly one [1..1] custodian
+
+        Raises:
+            ValueError: If any SHALL requirement is violated
+        """
+        # Only validate if this document claims to be a US Realm document
+        # Check for US Realm Header template ID
+        has_us_realm = False
+        if self.template_id:
+            for tid in self.template_id:
+                if tid.root == "2.16.840.1.113883.10.20.22.1.1":
+                    has_us_realm = True
+                    break
+
+        if not has_us_realm:
+            return self
+
+        # 1. SHALL contain exactly one realmCode with code="US"
+        if not self.realm_code or len(self.realm_code) == 0:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                "SHALL contain exactly one [1..1] realmCode"
+            )
+        if len(self.realm_code) > 1:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                f"SHALL contain exactly one [1..1] realmCode, found {len(self.realm_code)}"
+            )
+        if self.realm_code[0].code != "US":
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                f"realmCode SHALL be 'US', found '{self.realm_code[0].code}'"
+            )
+
+        # 2. SHALL contain exactly one typeId
+        if not self.type_id:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                "SHALL contain exactly one [1..1] typeId"
+            )
+
+        # 2a. typeId root SHALL be "2.16.840.1.113883.1.3"
+        if self.type_id.root != "2.16.840.1.113883.1.3":
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                f"typeId root SHALL be '2.16.840.1.113883.1.3', found '{self.type_id.root}'"
+            )
+
+        # 2b. typeId extension SHALL be "POCD_HD000040"
+        if self.type_id.extension != "POCD_HD000040":
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                f"typeId extension SHALL be 'POCD_HD000040', found '{self.type_id.extension}'"
+            )
+
+        # 3. SHALL contain at least one templateId
+        if not self.template_id or len(self.template_id) == 0:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                "SHALL contain at least one [1..*] templateId"
+            )
+
+        # 4. SHALL contain exactly one id
+        if not self.id:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                "SHALL contain exactly one [1..1] id"
+            )
+
+        # 5. SHALL contain exactly one code
+        if not self.code:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                "SHALL contain exactly one [1..1] code"
+            )
+
+        # 6. SHALL contain exactly one effectiveTime
+        if not self.effective_time:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                "SHALL contain exactly one [1..1] effectiveTime"
+            )
+
+        # 7. SHALL contain exactly one confidentialityCode
+        if not self.confidentiality_code:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                "SHALL contain exactly one [1..1] confidentialityCode"
+            )
+
+        # 8. SHALL contain at least one recordTarget
+        if not self.record_target or len(self.record_target) == 0:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                "SHALL contain at least one [1..*] recordTarget"
+            )
+
+        # 9. SHALL contain at least one author
+        if not self.author or len(self.author) == 0:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                "SHALL contain at least one [1..*] author"
+            )
+
+        # 10. SHALL contain exactly one custodian
+        if not self.custodian:
+            raise ValueError(
+                "US Realm Header (2.16.840.1.113883.10.20.22.1.1): "
+                "SHALL contain exactly one [1..1] custodian"
+            )
+
+        return self
 
 
 # Rebuild models with forward references

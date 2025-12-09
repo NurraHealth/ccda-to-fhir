@@ -27,21 +27,36 @@ from .author import (
 
 # Clinical document (root element)
 from .clinical_document import (
+    AssignedCustodian,
     Authenticator,
     Authorization,
     ClinicalDocument,
     ComponentOf,
     Consent,
     Custodian,
+    CustodianOrganization,
     DataEnterer,
     DocumentationOf,
+    DocumentParticipant,
     EncompassingEncounter,
+    EncounterParticipant,
+    HealthCareFacility,
     Informant,
     InformationRecipient,
+    InformationRecipientPerson,
+    InFulfillmentOf,
+    IntendedRecipient,
     LegalAuthenticator,
+    Location,
+    Order,
     ParentDocument,
+    Place,
     RelatedDocument,
+    RelatedEntity,
+    RelatedPerson,
+    ResponsibleParty,
     ServiceEvent,
+    ServiceEventPerformer,
 )
 
 # Data types (HL7 V3 building blocks)
@@ -227,21 +242,36 @@ __all__ = [
     "SectionComponent",
     "StructuredBody",
     # Clinical document
+    "AssignedCustodian",
     "Authenticator",
     "Authorization",
     "ClinicalDocument",
     "ComponentOf",
     "Consent",
     "Custodian",
+    "CustodianOrganization",
     "DataEnterer",
     "DocumentationOf",
+    "DocumentParticipant",
     "EncompassingEncounter",
+    "EncounterParticipant",
+    "HealthCareFacility",
     "Informant",
     "InformationRecipient",
+    "InformationRecipientPerson",
+    "InFulfillmentOf",
+    "IntendedRecipient",
     "LegalAuthenticator",
+    "Location",
+    "Order",
     "ParentDocument",
+    "Place",
     "RelatedDocument",
+    "RelatedEntity",
+    "RelatedPerson",
+    "ResponsibleParty",
     "ServiceEvent",
+    "ServiceEventPerformer",
     # Observation
     "EntryRelationship",
     "Observation",
@@ -281,3 +311,4 @@ __all__ = [
 EntryRelationship.model_rebuild()
 Entry.model_rebuild()
 OrganizerComponent.model_rebuild()
+ClinicalDocument.model_rebuild()

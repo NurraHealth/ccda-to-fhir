@@ -245,8 +245,12 @@ class TestNestedStructures:
         <act classCode="ACT" moodCode="EVN" xmlns="urn:hl7-org:v3"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <templateId root="2.16.840.1.113883.10.20.22.4.3"/>
+            <id root="36e3e930-7b14-11db-9fe1-0800200c9a66"/>
             <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
             <statusCode code="active"/>
+            <effectiveTime>
+                <low value="20100301"/>
+            </effectiveTime>
             <entryRelationship typeCode="SUBJ">
                 <observation classCode="OBS" moodCode="EVN">
                     <templateId root="2.16.840.1.113883.10.20.22.4.4"/>
@@ -327,8 +331,10 @@ class TestListAggregation:
         <organizer classCode="CLUSTER" moodCode="EVN" xmlns="urn:hl7-org:v3"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <templateId root="2.16.840.1.113883.10.20.22.4.26"/>
+            <id root="c6f88320-67ad-11db-bd13-0800200c9a66"/>
             <code code="46680005" codeSystem="2.16.840.1.113883.6.96"/>
             <statusCode code="completed"/>
+            <effectiveTime value="20231201120000"/>
             <component>
                 <observation classCode="OBS" moodCode="EVN">
                     <code code="8867-4" codeSystem="2.16.840.1.113883.6.1"/>

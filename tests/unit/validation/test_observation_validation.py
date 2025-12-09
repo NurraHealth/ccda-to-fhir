@@ -377,3 +377,218 @@ class TestSmokingStatusObservationValidation:
         """
         with pytest.raises((ValueError, MalformedXMLError), match="value SHALL have xsi:type of CD or CE"):
             parse_ccda_fragment(xml, Observation)
+
+
+class TestSocialHistoryObservationValidation:
+    """Tests for Social History Observation conformance validation."""
+
+    def test_valid_social_history_observation(self) -> None:
+        """Valid Social History Observation should pass all checks."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.38"/>
+            <id root="a1b2c3d4-e5f6-7890-abcd-ef1234567890"/>
+            <code code="160476009" codeSystem="2.16.840.1.113883.6.96"
+                  displayName="Social history"/>
+            <statusCode code="completed"/>
+            <effectiveTime value="20231201"/>
+            <value xsi:type="CD" code="445281000124101" codeSystem="2.16.840.1.113883.6.96"
+                   displayName="Nutrition impairment"/>
+        </observation>
+        """
+        obs = parse_ccda_fragment(xml, Observation)
+        assert obs is not None
+        assert obs.status_code.code == "completed"
+
+    def test_social_history_observation_missing_code(self) -> None:
+        """Social History Observation without code should fail validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.38"/>
+            <id root="a1b2c3d4-e5f6-7890-abcd-ef1234567890"/>
+            <statusCode code="completed"/>
+            <effectiveTime value="20231201"/>
+        </observation>
+        """
+        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
+            parse_ccda_fragment(xml, Observation)
+
+    def test_social_history_observation_missing_status_code(self) -> None:
+        """Social History Observation without statusCode should fail validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.38"/>
+            <id root="a1b2c3d4-e5f6-7890-abcd-ef1234567890"/>
+            <code code="160476009" codeSystem="2.16.840.1.113883.6.96"/>
+            <effectiveTime value="20231201"/>
+        </observation>
+        """
+        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+            parse_ccda_fragment(xml, Observation)
+
+    def test_social_history_observation_wrong_status_code(self) -> None:
+        """Social History Observation with wrong statusCode should fail validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.38"/>
+            <id root="a1b2c3d4-e5f6-7890-abcd-ef1234567890"/>
+            <code code="160476009" codeSystem="2.16.840.1.113883.6.96"/>
+            <statusCode code="active"/>
+            <effectiveTime value="20231201"/>
+        </observation>
+        """
+        with pytest.raises((ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"):
+            parse_ccda_fragment(xml, Observation)
+
+    def test_social_history_observation_missing_effective_time(self) -> None:
+        """Social History Observation without effectiveTime should fail validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.38"/>
+            <id root="a1b2c3d4-e5f6-7890-abcd-ef1234567890"/>
+            <code code="160476009" codeSystem="2.16.840.1.113883.6.96"/>
+            <statusCode code="completed"/>
+        </observation>
+        """
+        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"):
+            parse_ccda_fragment(xml, Observation)
+
+    def test_non_social_history_observation_skips_validation(self) -> None:
+        """Observation without Social History template should skip validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="1.2.3.4.5"/>
+            <code code="160476009" codeSystem="2.16.840.1.113883.6.96"/>
+        </observation>
+        """
+        obs = parse_ccda_fragment(xml, Observation)
+        assert obs is not None
+
+
+class TestFamilyHistoryObservationValidation:
+    """Tests for Family History Observation conformance validation."""
+
+    def test_valid_family_history_observation(self) -> None:
+        """Valid Family History Observation should pass all checks."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.46"/>
+            <id root="f1e2d3c4-b5a6-9876-fedc-ba9876543210"/>
+            <code code="55607006" codeSystem="2.16.840.1.113883.6.96"
+                  displayName="Problem">
+                <translation code="75323-6" codeSystem="2.16.840.1.113883.6.1"
+                             displayName="Condition"/>
+            </code>
+            <statusCode code="completed"/>
+            <effectiveTime value="1967"/>
+            <value xsi:type="CD" code="22298006" codeSystem="2.16.840.1.113883.6.96"
+                   displayName="Myocardial infarction"/>
+        </observation>
+        """
+        obs = parse_ccda_fragment(xml, Observation)
+        assert obs is not None
+        assert obs.status_code.code == "completed"
+        assert obs.value.code == "22298006"
+
+    def test_family_history_observation_missing_id(self) -> None:
+        """Family History Observation without id should fail validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.46"/>
+            <code code="55607006" codeSystem="2.16.840.1.113883.6.96"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="22298006" codeSystem="2.16.840.1.113883.6.96"/>
+        </observation>
+        """
+        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*id"):
+            parse_ccda_fragment(xml, Observation)
+
+    def test_family_history_observation_missing_code(self) -> None:
+        """Family History Observation without code should fail validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.46"/>
+            <id root="f1e2d3c4-b5a6-9876-fedc-ba9876543210"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="22298006" codeSystem="2.16.840.1.113883.6.96"/>
+        </observation>
+        """
+        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
+            parse_ccda_fragment(xml, Observation)
+
+    def test_family_history_observation_missing_status_code(self) -> None:
+        """Family History Observation without statusCode should fail validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.46"/>
+            <id root="f1e2d3c4-b5a6-9876-fedc-ba9876543210"/>
+            <code code="55607006" codeSystem="2.16.840.1.113883.6.96"/>
+            <value xsi:type="CD" code="22298006" codeSystem="2.16.840.1.113883.6.96"/>
+        </observation>
+        """
+        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+            parse_ccda_fragment(xml, Observation)
+
+    def test_family_history_observation_wrong_status_code(self) -> None:
+        """Family History Observation with wrong statusCode should fail validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.46"/>
+            <id root="f1e2d3c4-b5a6-9876-fedc-ba9876543210"/>
+            <code code="55607006" codeSystem="2.16.840.1.113883.6.96"/>
+            <statusCode code="active"/>
+            <value xsi:type="CD" code="22298006" codeSystem="2.16.840.1.113883.6.96"/>
+        </observation>
+        """
+        with pytest.raises((ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"):
+            parse_ccda_fragment(xml, Observation)
+
+    def test_family_history_observation_missing_value(self) -> None:
+        """Family History Observation without value should fail validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.46"/>
+            <id root="f1e2d3c4-b5a6-9876-fedc-ba9876543210"/>
+            <code code="55607006" codeSystem="2.16.840.1.113883.6.96"/>
+            <statusCode code="completed"/>
+        </observation>
+        """
+        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*value"):
+            parse_ccda_fragment(xml, Observation)
+
+    def test_non_family_history_observation_skips_validation(self) -> None:
+        """Observation without Family History template should skip validation."""
+        xml = """
+        <observation xmlns="urn:hl7-org:v3"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     classCode="OBS" moodCode="EVN">
+            <templateId root="1.2.3.4.5"/>
+            <code code="55607006" codeSystem="2.16.840.1.113883.6.96"/>
+        </observation>
+        """
+        obs = parse_ccda_fragment(xml, Observation)
+        assert obs is not None

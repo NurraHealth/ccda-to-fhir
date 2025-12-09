@@ -599,3 +599,92 @@ class Observation(CDAModel):
             )
 
         return self
+
+    @model_validator(mode='after')
+    def validate_social_history_observation(self) -> 'Observation':
+        """Validate Social History Observation (2.16.840.1.113883.10.20.22.4.38).
+
+        Conformance requirements from C-CDA R2.1:
+        1. SHALL contain exactly one [1..1] code
+        2. SHALL contain exactly one [1..1] statusCode (code="completed")
+        3. SHALL contain exactly one [1..1] effectiveTime
+
+        Raises:
+            ValueError: If any SHALL requirement is violated
+        """
+        if not self._has_template("2.16.840.1.113883.10.20.22.4.38"):
+            return self
+
+        if not self.code:
+            raise ValueError(
+                "Social History Observation (2.16.840.1.113883.10.20.22.4.38): "
+                "SHALL contain exactly one [1..1] code"
+            )
+
+        if not self.status_code:
+            raise ValueError(
+                "Social History Observation (2.16.840.1.113883.10.20.22.4.38): "
+                "SHALL contain exactly one [1..1] statusCode"
+            )
+
+        if self.status_code.code != "completed":
+            raise ValueError(
+                "Social History Observation (2.16.840.1.113883.10.20.22.4.38): "
+                f"statusCode SHALL be 'completed', found '{self.status_code.code}'"
+            )
+
+        if not self.effective_time:
+            raise ValueError(
+                "Social History Observation (2.16.840.1.113883.10.20.22.4.38): "
+                "SHALL contain exactly one [1..1] effectiveTime"
+            )
+
+        return self
+
+    @model_validator(mode='after')
+    def validate_family_history_observation(self) -> 'Observation':
+        """Validate Family History Observation (2.16.840.1.113883.10.20.22.4.46).
+
+        Conformance requirements from C-CDA R2.1:
+        1. SHALL contain at least one [1..*] id
+        2. SHALL contain exactly one [1..1] code
+        3. SHALL contain exactly one [1..1] statusCode (code="completed")
+        4. SHALL contain exactly one [1..1] value
+
+        Raises:
+            ValueError: If any SHALL requirement is violated
+        """
+        if not self._has_template("2.16.840.1.113883.10.20.22.4.46"):
+            return self
+
+        if not self.id or len(self.id) == 0:
+            raise ValueError(
+                "Family History Observation (2.16.840.1.113883.10.20.22.4.46): "
+                "SHALL contain at least one [1..*] id"
+            )
+
+        if not self.code:
+            raise ValueError(
+                "Family History Observation (2.16.840.1.113883.10.20.22.4.46): "
+                "SHALL contain exactly one [1..1] code"
+            )
+
+        if not self.status_code:
+            raise ValueError(
+                "Family History Observation (2.16.840.1.113883.10.20.22.4.46): "
+                "SHALL contain exactly one [1..1] statusCode"
+            )
+
+        if self.status_code.code != "completed":
+            raise ValueError(
+                "Family History Observation (2.16.840.1.113883.10.20.22.4.46): "
+                f"statusCode SHALL be 'completed', found '{self.status_code.code}'"
+            )
+
+        if not self.value:
+            raise ValueError(
+                "Family History Observation (2.16.840.1.113883.10.20.22.4.46): "
+                "SHALL contain exactly one [1..1] value"
+            )
+
+        return self

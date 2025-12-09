@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from .author import Author
 from .datatypes import CD, CE, CS, ED, II, IVL_TS, CDAModel
@@ -128,3 +128,63 @@ class Procedure(CDAModel):
 
     # SDTC extension for category
     sdtc_category: list[CE] | None = Field(default=None, alias="sdtc:category")
+
+    def _has_template(self, template_id: str, extension: str | None = None) -> bool:
+        """Check if this procedure has a specific template ID.
+
+        Args:
+            template_id: The template ID root to check for
+            extension: Optional template extension to match
+
+        Returns:
+            True if template ID is present, False otherwise
+        """
+        if not self.template_id:
+            return False
+
+        for tid in self.template_id:
+            if tid.root == template_id:
+                if extension is None or tid.extension == extension:
+                    return True
+        return False
+
+    @model_validator(mode='after')
+    def validate_procedure_activity(self) -> 'Procedure':
+        """Validate Procedure Activity Procedure template (2.16.840.1.113883.10.20.22.4.14).
+
+        Reference: docs/ccda/activity-procedure.md
+
+        Conformance requirements from C-CDA R2.1/R5.0:
+        1. SHALL contain at least one [1..*] id
+        2. SHALL contain exactly one [1..1] code
+        3. SHALL contain exactly one [1..1] statusCode
+
+        Raises:
+            ValueError: If any SHALL requirement is violated
+        """
+        # Only validate if this is a Procedure Activity Procedure
+        if not self._has_template("2.16.840.1.113883.10.20.22.4.14"):
+            return self
+
+        # 1. SHALL contain at least one id
+        if not self.id or len(self.id) == 0:
+            raise ValueError(
+                "Procedure Activity Procedure (2.16.840.1.113883.10.20.22.4.14): "
+                "SHALL contain at least one [1..*] id"
+            )
+
+        # 2. SHALL contain exactly one code
+        if not self.code:
+            raise ValueError(
+                "Procedure Activity Procedure (2.16.840.1.113883.10.20.22.4.14): "
+                "SHALL contain exactly one [1..1] code"
+            )
+
+        # 3. SHALL contain exactly one statusCode
+        if not self.status_code:
+            raise ValueError(
+                "Procedure Activity Procedure (2.16.840.1.113883.10.20.22.4.14): "
+                "SHALL contain exactly one [1..1] statusCode"
+            )
+
+        return self

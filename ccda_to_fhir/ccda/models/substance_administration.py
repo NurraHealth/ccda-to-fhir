@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from .author import Author
 from .datatypes import (
@@ -257,3 +257,176 @@ class SubstanceAdministration(CDAModel):
 
     # References
     reference: list[Reference] | None = None
+
+    def _has_template(self, template_id: str, extension: str | None = None) -> bool:
+        """Check if this substance administration has a specific template ID.
+
+        Args:
+            template_id: The template ID root to check for
+            extension: Optional template extension to match
+
+        Returns:
+            True if template ID is present, False otherwise
+        """
+        if not self.template_id:
+            return False
+
+        for tid in self.template_id:
+            if tid.root == template_id:
+                if extension is None or tid.extension == extension:
+                    return True
+        return False
+
+    @model_validator(mode='after')
+    def validate_medication_activity(self) -> 'SubstanceAdministration':
+        """Validate Medication Activity template (2.16.840.1.113883.10.20.22.4.16).
+
+        Reference: docs/ccda/activity-medication.md
+
+        Conformance requirements from C-CDA R2.1:
+        1. SHALL contain at least one [1..*] id
+        2. SHALL contain exactly one [1..1] statusCode
+        3. SHALL contain at least one [1..*] effectiveTime
+        4. SHALL contain exactly one [1..1] doseQuantity
+        5. SHALL contain exactly one [1..1] consumable
+        6. consumable SHALL contain exactly one manufacturedProduct
+        7. manufacturedProduct SHALL contain exactly one manufacturedMaterial
+        8. manufacturedMaterial SHALL contain exactly one code
+
+        Raises:
+            ValueError: If any SHALL requirement is violated
+        """
+        # Only validate if this is a Medication Activity
+        if not self._has_template("2.16.840.1.113883.10.20.22.4.16"):
+            return self
+
+        # 1. SHALL contain at least one id
+        if not self.id or len(self.id) == 0:
+            raise ValueError(
+                "Medication Activity (2.16.840.1.113883.10.20.22.4.16): "
+                "SHALL contain at least one [1..*] id"
+            )
+
+        # 2. SHALL contain exactly one statusCode
+        if not self.status_code:
+            raise ValueError(
+                "Medication Activity (2.16.840.1.113883.10.20.22.4.16): "
+                "SHALL contain exactly one [1..1] statusCode"
+            )
+
+        # 3. SHALL contain at least one effectiveTime
+        if not self.effective_time or len(self.effective_time) == 0:
+            raise ValueError(
+                "Medication Activity (2.16.840.1.113883.10.20.22.4.16): "
+                "SHALL contain at least one [1..*] effectiveTime"
+            )
+
+        # 4. SHALL contain exactly one doseQuantity
+        if not self.dose_quantity:
+            raise ValueError(
+                "Medication Activity (2.16.840.1.113883.10.20.22.4.16): "
+                "SHALL contain exactly one [1..1] doseQuantity"
+            )
+
+        # 5. SHALL contain exactly one consumable
+        if not self.consumable:
+            raise ValueError(
+                "Medication Activity (2.16.840.1.113883.10.20.22.4.16): "
+                "SHALL contain exactly one [1..1] consumable"
+            )
+
+        # 6. consumable SHALL contain exactly one manufacturedProduct
+        if not self.consumable.manufactured_product:
+            raise ValueError(
+                "Medication Activity (2.16.840.1.113883.10.20.22.4.16): "
+                "consumable SHALL contain exactly one [1..1] manufacturedProduct"
+            )
+
+        # 7. manufacturedProduct SHALL contain exactly one manufacturedMaterial
+        if not self.consumable.manufactured_product.manufactured_material:
+            raise ValueError(
+                "Medication Activity (2.16.840.1.113883.10.20.22.4.16): "
+                "manufacturedProduct SHALL contain exactly one [1..1] manufacturedMaterial"
+            )
+
+        # 8. manufacturedMaterial SHALL contain exactly one code
+        if not self.consumable.manufactured_product.manufactured_material.code:
+            raise ValueError(
+                "Medication Activity (2.16.840.1.113883.10.20.22.4.16): "
+                "manufacturedMaterial SHALL contain exactly one [1..1] code"
+            )
+
+        return self
+
+    @model_validator(mode='after')
+    def validate_immunization_activity(self) -> 'SubstanceAdministration':
+        """Validate Immunization Activity template (2.16.840.1.113883.10.20.22.4.52).
+
+        Reference: docs/ccda/activity-immunization.md
+
+        Conformance requirements from C-CDA R2.1:
+        1. SHALL contain at least one [1..*] id
+        2. SHALL contain exactly one [1..1] statusCode
+        3. SHALL contain exactly one [1..1] effectiveTime
+        4. SHALL contain exactly one [1..1] consumable
+        5. consumable SHALL contain exactly one manufacturedProduct
+        6. manufacturedProduct SHALL contain exactly one manufacturedMaterial
+        7. manufacturedMaterial SHALL contain exactly one code
+
+        Raises:
+            ValueError: If any SHALL requirement is violated
+        """
+        # Only validate if this is an Immunization Activity
+        if not self._has_template("2.16.840.1.113883.10.20.22.4.52"):
+            return self
+
+        # 1. SHALL contain at least one id
+        if not self.id or len(self.id) == 0:
+            raise ValueError(
+                "Immunization Activity (2.16.840.1.113883.10.20.22.4.52): "
+                "SHALL contain at least one [1..*] id"
+            )
+
+        # 2. SHALL contain exactly one statusCode
+        if not self.status_code:
+            raise ValueError(
+                "Immunization Activity (2.16.840.1.113883.10.20.22.4.52): "
+                "SHALL contain exactly one [1..1] statusCode"
+            )
+
+        # 3. SHALL contain exactly one effectiveTime
+        if not self.effective_time or len(self.effective_time) == 0:
+            raise ValueError(
+                "Immunization Activity (2.16.840.1.113883.10.20.22.4.52): "
+                "SHALL contain at least one [1..*] effectiveTime"
+            )
+
+        # 4. SHALL contain exactly one consumable
+        if not self.consumable:
+            raise ValueError(
+                "Immunization Activity (2.16.840.1.113883.10.20.22.4.52): "
+                "SHALL contain exactly one [1..1] consumable"
+            )
+
+        # 5. consumable SHALL contain exactly one manufacturedProduct
+        if not self.consumable.manufactured_product:
+            raise ValueError(
+                "Immunization Activity (2.16.840.1.113883.10.20.22.4.52): "
+                "consumable SHALL contain exactly one [1..1] manufacturedProduct"
+            )
+
+        # 6. manufacturedProduct SHALL contain exactly one manufacturedMaterial
+        if not self.consumable.manufactured_product.manufactured_material:
+            raise ValueError(
+                "Immunization Activity (2.16.840.1.113883.10.20.22.4.52): "
+                "manufacturedProduct SHALL contain exactly one [1..1] manufacturedMaterial"
+            )
+
+        # 7. manufacturedMaterial SHALL contain exactly one code
+        if not self.consumable.manufactured_product.manufactured_material.code:
+            raise ValueError(
+                "Immunization Activity (2.16.840.1.113883.10.20.22.4.52): "
+                "manufacturedMaterial SHALL contain exactly one [1..1] code"
+            )
+
+        return self
