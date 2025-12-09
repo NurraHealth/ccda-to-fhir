@@ -1,0 +1,71 @@
+{
+  "resourceType": "Immunization",
+  "status": "completed",
+  "identifier": [
+    {
+      "system": "urn:ietf:rfc:3986",
+      "value": "urn:uuid:e6f1ba43-c0ed-4b9b-9f12-f435d8ad8f92"
+    }
+  ],
+  "vaccineCode": {
+    "coding": [
+      {
+        "system": "http://hl7.org/fhir/sid/cvx",
+        "code": "88",
+        "display": "Influenza virus vaccine"
+      },
+      {
+        "system": "http://hl7.org/fhir/sid/ndc",
+        "code": "49281-0422-50",
+        "display": "Influenza vaccine"
+      }
+    ],
+    "text": "Influenza virus vaccine"
+  },
+  "doseQuantity": {
+    "unit": "ug",
+    "value": 60,
+    "system": "http://unitsofmeasure.org",
+    "code": "ug"
+  },
+  "lotNumber": "1",
+  "recorded": "2010-08-15",
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "195967001",
+          "display": "asthma"
+        }
+      ]
+    }
+  ],
+  "manufacturer": {
+    "display": "Health LS - Immuno Inc."
+  },
+  "site": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "700022004",
+        "display": "Muscle and/or tendon structure of upper limb"
+      }
+    ]
+  },
+  "route": {
+    "coding": [
+      {
+        "system": "http://ncithesaurus-stage.nci.nih.gov",
+        "code": "C28161",
+        "display": "Intramuscular Route of Administration"
+      }
+    ]
+  },
+  "protocolApplied": [
+    {
+      "doseNumberPositiveInt": 1
+    }
+  ],
+  "occurrenceDateTime": "2010-08-15"
+}

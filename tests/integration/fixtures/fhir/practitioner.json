@@ -1,0 +1,46 @@
+{
+  "resourceType": "Practitioner",
+  "identifier": [
+    {
+      "system": "http://hl7.org/fhir/sid/us-npi",
+      "value": "99999999"
+    }
+  ],
+  "name": [
+    {
+      "prefix": ["Dr."],
+      "given": ["Henry"],
+      "family": "Seven",
+      "suffix": ["MD"]
+    }
+  ],
+  "telecom": [
+    {
+      "system": "phone",
+      "value": "555-555-1002",
+      "use": "work"
+    }
+  ],
+  "address": [
+    {
+      "use": "work",
+      "line": ["1002 Healthcare Drive"],
+      "city": "Portland",
+      "state": "OR",
+      "postalCode": "97005"
+    }
+  ],
+  "qualification": [
+    {
+      "code": {
+        "coding": [
+          {
+            "system": "http://nucc.org/provider-taxonomy",
+            "code": "207Q00000X",
+            "display": "Family Medicine"
+          }
+        ]
+      }
+    }
+  ]
+}

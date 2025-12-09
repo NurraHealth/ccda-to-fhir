@@ -1,0 +1,160 @@
+{
+  "resourceType": "Observation",
+  "identifier": [
+    {
+      "value": "21688133041015158234",
+      "system": "urn:oid:2.16.840.1.113883.3.42.126.100001.19"
+    }
+  ],
+  "status": "final",
+  "category": [
+    {
+      "text": "vital-signs",
+      "coding": [
+        {
+          "code": "vital-signs",
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "display": "Vital Signs"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "text": "Vital Signs Panel",
+    "coding": [
+      {
+        "code": "85353-1",
+        "system": "http://loinc.org",
+        "display": "Vital signs, weight, height, head circumference, oxygen saturation and BMI panel"
+      }
+    ]
+  },
+  "effectiveDateTime": "2014-05-20T19:36:05-06:00",
+  "hasMember": [
+    {
+      "reference": "#heartRate"
+    },
+    {
+      "reference": "#systolicBP"
+    },
+    {
+      "reference": "#diastolicBP"
+    }
+  ],
+  "contained": [
+    {
+      "resourceType": "Observation",
+      "id": "heartRate",
+      "identifier": [
+        {
+          "system": "urn:oid:2.16.840.1.113883.3.42.126.100001.19",
+          "value": "216881330410151584"
+        }
+      ],
+      "status": "final",
+      "category": [
+        {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+              "code": "vital-signs",
+              "display": "Vital Signs"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "8867-4",
+            "display": "HEART RATE"
+          }
+        ]
+      },
+      "effectiveDateTime": "2014-05-20T19:36:05-06:00",
+      "valueQuantity": {
+        "value": 80,
+        "unit": "/min",
+        "system": "http://unitsofmeasure.org",
+        "code": "/min"
+      }
+    },
+    {
+      "resourceType": "Observation",
+      "id": "systolicBP",
+      "identifier": [
+        {
+          "system": "urn:oid:2.16.840.1.113883.3.42.126.100001.19",
+          "value": "216881330410151585"
+        }
+      ],
+      "status": "final",
+      "category": [
+        {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+              "code": "vital-signs",
+              "display": "Vital Signs"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "8480-6",
+            "display": "SYSTOLIC BLOOD PRESSURE"
+          }
+        ]
+      },
+      "effectiveDateTime": "2014-05-20T19:36:05-06:00",
+      "valueQuantity": {
+        "value": 120,
+        "unit": "mm[Hg]",
+        "system": "http://unitsofmeasure.org",
+        "code": "mm[Hg]"
+      }
+    },
+    {
+      "resourceType": "Observation",
+      "id": "diastolicBP",
+      "identifier": [
+        {
+          "system": "urn:oid:2.16.840.1.113883.3.42.126.100001.19",
+          "value": "216881330410151586"
+        }
+      ],
+      "status": "final",
+      "category": [
+        {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+              "code": "vital-signs",
+              "display": "Vital Signs"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "8462-4",
+            "display": "DIASTOLIC BLOOD PRESSURE"
+          }
+        ]
+      },
+      "effectiveDateTime": "2014-05-20T19:36:05-06:00",
+      "valueQuantity": {
+        "value": 80,
+        "unit": "mm[Hg]",
+        "system": "http://unitsofmeasure.org",
+        "code": "mm[Hg]"
+      }
+    }
+  ]
+}

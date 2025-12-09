@@ -1,0 +1,175 @@
+{
+  "resourceType": "Patient",
+  "identifier": [
+    {
+      "system": "urn:uuid:068f3166-5721-4d69-94ed-8278ff035b8a",
+      "value": "urn:ietf:rfc:3986"
+    }
+  ],
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/patient-religion",
+      "valueCodeableConcept": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ReligiousAffiliation",
+            "code": "1013",
+            "display": "Christian (non-Catholic, non-specific)"
+          }
+        ]
+      }
+    },
+    {
+      "url": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity",
+      "extension": [
+        {
+          "url": "ombCategory",
+          "valueCoding": {
+            "system": "urn:oid:2.16.840.1.113883.6.238",
+            "code": "2135-2",
+            "display": "Hispanic or Latino"
+          }
+        },
+        {
+          "url": "text",
+          "valueString": "Hispanic or Latino, Spanish Basque"
+        },
+        {
+          "url": "detailed",
+          "valueCoding": {
+            "system": "urn:oid:2.16.840.1.113883.6.238",
+            "code": "20146-9",
+            "display": "Spanish Basque"
+          }
+        }
+      ]
+    },
+    {
+      "url": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race",
+      "extension": [
+        {
+          "url": "ombCategory",
+          "valueCoding": {
+            "system": "urn:oid:2.16.840.1.113883.6.238",
+            "code": "2106-3",
+            "display": "White"
+          }
+        },
+        {
+          "url": "text",
+          "valueString": "White, European"
+        },
+        {
+          "url": "detailed",
+          "valueCoding": {
+            "system": "urn:oid:2.16.840.1.113883.6.238",
+            "code": "2108-9",
+            "display": "European"
+          }
+        }
+      ]
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/patient-birthPlace",
+      "valueAddress": {
+        "line": ["4444 Birth Street"],
+        "city": "Beaverton",
+        "state": "OR",
+        "postalCode": "97867"
+      }
+    }
+  ],
+  "name": [
+    {
+      "text": "Myra Jones",
+      "use": "usual",
+      "family": "Jones",
+      "given": ["Myra"]
+    }
+  ],
+  "telecom": [
+    {
+      "system": "phone",
+      "value": "+1(565)867-5309",
+      "use": "mobile"
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1947-05-01",
+  "deceasedBoolean": false,
+  "address": [
+    {
+      "use": "home",
+      "text": "1357 Amber Drive Beaverton OR 97006",
+      "line": ["1357 Amber Drive"],
+      "city": "Beaverton",
+      "state": "OR",
+      "postalCode": "97006"
+    }
+  ],
+  "maritalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "M",
+        "display": "Married"
+      }
+    ]
+  },
+  "contact": [
+    {
+      "relationship": [
+        {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+              "code": "GUARD",
+              "display": "Guardian"
+            }
+          ]
+        },
+        {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+              "code": "FTH",
+              "display": "father"
+            }
+          ]
+        }
+      ],
+      "name": {
+        "family": "Betterhalf",
+        "given": ["Boris", "Bo"]
+      },
+      "telecom": [
+        {
+          "system": "phone",
+          "value": "+1(555)555-2008",
+          "use": "mobile"
+        }
+      ],
+      "address": {
+        "use": "home",
+        "line": ["123 main street"],
+        "city": "Beaverton",
+        "state": "OR",
+        "postalCode": "97867"
+      }
+    }
+  ],
+  "communication": [
+    {
+      "language": {
+        "coding": [
+          {
+            "system": "urn:ietf:bcp:47",
+            "code": "en",
+            "display": "English"
+          }
+        ]
+      },
+      "preferred": true
+    }
+  ]
+}
