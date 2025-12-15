@@ -4,9 +4,9 @@ This document provides general guidance for mapping between C-CDA (Consolidated 
 
 ## Mapping Direction
 
-This library supports bidirectional mapping:
-- **C-CDA → FHIR**: Converting clinical documents to FHIR resources
-- **FHIR → C-CDA**: Converting FHIR resources to clinical documents
+This library currently supports unidirectional mapping:
+- **C-CDA → FHIR**: Converting clinical documents to FHIR resources ✅ **Implemented**
+- **FHIR → C-CDA**: Converting FHIR resources to clinical documents 🚧 **Planned**
 
 ## Core Data Type Mappings
 
