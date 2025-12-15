@@ -1,0 +1,943 @@
+"""Constants for C-CDA to FHIR conversion.
+
+This module contains all magic strings used throughout the conversion process,
+organized by category for maintainability and clarity.
+"""
+
+from __future__ import annotations
+
+
+# =============================================================================
+# C-CDA Template IDs
+# =============================================================================
+
+class TemplateIds:
+    """C-CDA Template Identifiers."""
+
+    # Problem templates
+    PROBLEM_CONCERN_ACT = "2.16.840.1.113883.10.20.22.4.3"
+    PROBLEM_OBSERVATION = "2.16.840.1.113883.10.20.22.4.4"
+    PROBLEM_STATUS_OBSERVATION = "2.16.840.1.113883.10.20.22.4.6"
+    DATE_OF_DIAGNOSIS_ACT = "2.16.840.1.113883.10.20.22.4.502"
+
+    # Allergy templates
+    ALLERGY_CONCERN_ACT = "2.16.840.1.113883.10.20.22.4.30"
+    ALLERGY_INTOLERANCE_OBSERVATION = "2.16.840.1.113883.10.20.22.4.7"
+    ALLERGY_STATUS_OBSERVATION = "2.16.840.1.113883.10.20.22.4.28"
+
+    # Common observation templates
+    SEVERITY_OBSERVATION = "2.16.840.1.113883.10.20.22.4.8"
+    REACTION_OBSERVATION = "2.16.840.1.113883.10.20.22.4.9"
+    AGE_OBSERVATION = "2.16.840.1.113883.10.20.22.4.31"
+    CRITICALITY_OBSERVATION = "2.16.840.1.113883.10.20.22.4.145"
+    COMMENT_ACTIVITY = "2.16.840.1.113883.10.20.22.4.64"
+
+    # Author template
+    AUTHOR_PARTICIPATION = "2.16.840.1.113883.10.20.22.4.119"
+
+    # Medication templates
+    MEDICATION_ACTIVITY = "2.16.840.1.113883.10.20.22.4.16"
+    MEDICATION_INFORMATION = "2.16.840.1.113883.10.20.22.4.23"
+    INDICATION_OBSERVATION = "2.16.840.1.113883.10.20.22.4.19"
+    INSTRUCTION_ACT = "2.16.840.1.113883.10.20.22.4.20"
+    MEDICATION_SUPPLY_ORDER = "2.16.840.1.113883.10.20.22.4.17"
+
+    # Immunization templates
+    IMMUNIZATION_ACTIVITY = "2.16.840.1.113883.10.20.22.4.52"
+    IMMUNIZATION_MEDICATION_INFORMATION = "2.16.840.1.113883.10.20.22.4.54"
+    IMMUNIZATION_REFUSAL_REASON = "2.16.840.1.113883.10.20.22.4.53"
+
+    # Observation templates
+    VITAL_SIGNS_ORGANIZER = "2.16.840.1.113883.10.20.22.4.26"
+    VITAL_SIGN_OBSERVATION = "2.16.840.1.113883.10.20.22.4.27"
+    RESULT_ORGANIZER = "2.16.840.1.113883.10.20.22.4.1"
+    RESULT_OBSERVATION = "2.16.840.1.113883.10.20.22.4.2"
+    SMOKING_STATUS_OBSERVATION = "2.16.840.1.113883.10.20.22.4.78"
+    SOCIAL_HISTORY_OBSERVATION = "2.16.840.1.113883.10.20.22.4.38"
+
+    # Procedure templates
+    PROCEDURE_ACTIVITY_PROCEDURE = "2.16.840.1.113883.10.20.22.4.14"
+    PROCEDURE_ACTIVITY_ACT = "2.16.840.1.113883.10.20.22.4.12"
+    PROCEDURE_ACTIVITY_OBSERVATION = "2.16.840.1.113883.10.20.22.4.13"
+
+    # Encounter templates
+    ENCOUNTER_ACTIVITY = "2.16.840.1.113883.10.20.22.4.49"
+    ENCOUNTER_DIAGNOSIS = "2.16.840.1.113883.10.20.22.4.80"
+
+    # Note templates
+    NOTE_ACTIVITY = "2.16.840.1.113883.10.20.22.4.202"
+
+    # Section templates
+    PROBLEM_SECTION = "2.16.840.1.113883.10.20.22.2.5.1"
+    ALLERGY_SECTION = "2.16.840.1.113883.10.20.22.2.6.1"
+    MEDICATIONS_SECTION = "2.16.840.1.113883.10.20.22.2.1.1"
+    IMMUNIZATIONS_SECTION = "2.16.840.1.113883.10.20.22.2.2.2.1"
+    VITAL_SIGNS_SECTION = "2.16.840.1.113883.10.20.22.2.4.1"
+    RESULTS_SECTION = "2.16.840.1.113883.10.20.22.2.3.1"
+    SOCIAL_HISTORY_SECTION = "2.16.840.1.113883.10.20.22.2.17"
+    PROCEDURES_SECTION = "2.16.840.1.113883.10.20.22.2.7.1"
+    ENCOUNTERS_SECTION = "2.16.840.1.113883.10.20.22.2.22.1"
+    NOTES_SECTION = "2.16.840.1.113883.10.20.22.2.65"
+
+
+# =============================================================================
+# C-CDA OIDs
+# =============================================================================
+
+class CodeSystemOIDs:
+    """C-CDA OID identifiers for code systems and identifiers."""
+
+    # Identifier systems
+    SSN = "2.16.840.1.113883.4.1"  # US Social Security Number
+    NPI = "2.16.840.1.113883.4.6"  # US National Provider Identifier
+
+    # Race and Ethnicity
+    CDC_RACE_ETHNICITY = "2.16.840.1.113883.6.238"
+
+    # Provider specialty/taxonomy
+    NUCC_PROVIDER_TAXONOMY = "2.16.840.1.113883.6.101"  # NUCC Healthcare Provider Taxonomy
+
+
+# =============================================================================
+# C-CDA Codes
+# =============================================================================
+
+class CCDACodes:
+    """C-CDA code values."""
+
+    # Act codes
+    CONCERN = "CONC"
+    ASSERTION = "ASSERTION"
+
+    # Observation codes (LOINC)
+    STATUS = "33999-4"  # Status code
+    CRITICALITY = "82606-5"  # Allergy or intolerance criticality
+    AGE_AT_ONSET = "445518008"  # SNOMED code for age at onset
+
+    # Severity code
+    SEVERITY = "SEV"
+
+    # Section codes (LOINC)
+    PROBLEM_LIST = "11450-4"
+    ALLERGIES_SECTION = "48765-2"
+    MEDICATIONS_SECTION_CODE = "10160-0"  # History of medication use
+
+
+# =============================================================================
+# C-CDA Type Codes
+# =============================================================================
+
+class TypeCodes:
+    """C-CDA typeCode values for relationships."""
+
+    SUBJECT = "SUBJ"  # Subject of the act
+    REFERENCE = "REFR"  # Refers to
+    MANIFESTATION = "MFST"  # Manifestation of
+    CONSUMABLE = "CSM"  # Consumable (for allergen participant)
+    REASON = "RSON"  # Reason for (indication)
+    SUPPORT = "SPRT"  # Supporting observation (evidence)
+    RSON = "RSON"  # Alternative name for REASON
+    MFST = "MFST"  # Alternative name for MANIFESTATION
+    SPRT = "SPRT"  # Alternative name for SUPPORT
+
+
+# =============================================================================
+# HL7 V2 and V3 Codes
+# =============================================================================
+
+class V2IdentifierTypes:
+    """HL7 V2 Table 0203 - Identifier Type codes."""
+
+    SOCIAL_SECURITY = "SS"
+    MEDICAL_RECORD = "MR"
+    NATIONAL_PROVIDER_ID = "NPI"
+
+
+class V2ParticipationFunctionCodes:
+    """HL7 V2 Table 0443 - Provider Role codes."""
+
+    ADMITTING_PROVIDER = "AD"
+    ADMINISTERING_PROVIDER = "AP"
+    ATTENDING_PROVIDER = "AT"
+    CONSULTING_PROVIDER = "CP"
+    PRIMARY_CARE_PROVIDER = "PP"
+    REFERRING_PROVIDER = "RP"
+    TREATING_PROVIDER = "RT"
+
+
+class V3RoleCodes:
+    """HL7 V3 RoleCode values."""
+
+    GUARDIAN = "GUARD"
+
+
+class V3NameUseCodes:
+    """HL7 V3 EntityNameUse codes."""
+
+    LEGAL = "L"
+    OFFICIAL_RECORD = "OR"
+    LICENSE = "C"
+    PSEUDONYM = "P"
+    ANONYMOUS = "A"
+    ASSIGNED = "ASGN"
+
+
+class V3TelecomUseCodes:
+    """HL7 V3 TelecomAddressUse codes."""
+
+    PRIMARY_HOME = "HP"
+    HOME = "H"
+    WORK = "WP"
+    MOBILE = "MC"
+    TEMP = "TMP"
+    BAD = "BAD"
+
+
+class V3AddressUseCodes:
+    """HL7 V3 PostalAddressUse codes."""
+
+    HOME = "H"
+    PRIMARY_HOME = "HP"
+    VACATION_HOME = "HV"
+    WORK = "WP"
+    DIRECT = "DIR"
+    PUBLIC = "PUB"
+    TEMP = "TMP"
+    BAD = "BAD"
+
+
+class V3AdministrativeGenderCodes:
+    """HL7 V3 AdministrativeGender codes."""
+
+    MALE = "M"
+    FEMALE = "F"
+    UNDIFFERENTIATED = "UN"
+    UNKNOWN = "UNK"
+
+
+# =============================================================================
+# CDC Race and Ethnicity Codes
+# =============================================================================
+
+class CDCRaceCodes:
+    """CDC Race codes (OMB categories)."""
+
+    # OMB Categories (main 5 categories)
+    AMERICAN_INDIAN_OR_ALASKA_NATIVE = "1002-5"
+    ASIAN = "2028-9"
+    BLACK_OR_AFRICAN_AMERICAN = "2054-5"
+    NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER = "2076-8"
+    WHITE = "2106-3"
+
+
+class CDCEthnicityCodes:
+    """CDC Ethnicity codes (OMB categories)."""
+
+    # OMB Categories (2 main categories)
+    HISPANIC_OR_LATINO = "2135-2"
+    NOT_HISPANIC_OR_LATINO = "2186-5"
+
+
+# =============================================================================
+# SNOMED CT Codes
+# =============================================================================
+
+class SnomedCodes:
+    """SNOMED CT codes for clinical concepts."""
+
+    # Clinical status codes
+    ACTIVE = "55561003"
+    INACTIVE = "73425007"
+    RESOLVED = "413322009"
+    REMISSION = "277022003"
+    RECURRENCE_255227004 = "255227004"
+    RECURRENCE_246455001 = "246455001"  # Alternate recurrence code
+
+    # Severity codes
+    MILD = "255604002"
+    MODERATE = "6736007"
+    SEVERE = "24484000"
+
+    # Allergy type codes
+    ALLERGY_TO_SUBSTANCE = "419199007"
+    DRUG_ALLERGY = "416098002"
+    FOOD_ALLERGY = "414285001"
+    ENVIRONMENTAL_ALLERGY = "426232007"
+    PROPENSITY_TO_DRUG_REACTIONS = "419511003"
+    DRUG_INTOLERANCE = "59037007"
+    FOOD_INTOLERANCE = "235719002"
+    PROPENSITY_TO_ADVERSE_REACTIONS = "420134006"
+    PROPENSITY_TO_FOOD_REACTIONS = "418471000"
+
+
+# =============================================================================
+# HL7 V3 Criticality Codes
+# =============================================================================
+
+class CriticalityCodes:
+    """HL7 V3 Criticality observation codes."""
+
+    LOW = "CRITL"
+    HIGH = "CRITH"
+    UNABLE_TO_ASSESS = "CRITU"
+
+
+# =============================================================================
+# FHIR Systems (URLs)
+# =============================================================================
+
+class FHIRSystems:
+    """FHIR terminology system URLs."""
+
+    # Condition
+    CONDITION_CLINICAL = "http://terminology.hl7.org/CodeSystem/condition-clinical"
+    CONDITION_VERIFICATION = "http://terminology.hl7.org/CodeSystem/condition-ver-status"
+    CONDITION_CATEGORY = "http://terminology.hl7.org/CodeSystem/condition-category"
+
+    # AllergyIntolerance
+    ALLERGY_CLINICAL = "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+    ALLERGY_VERIFICATION = "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification"
+
+    # Observation
+    OBSERVATION_CATEGORY = "http://terminology.hl7.org/CodeSystem/observation-category"
+
+    # DiagnosticReport
+    V2_0074 = "http://terminology.hl7.org/CodeSystem/v2-0074"  # Diagnostic service section ID
+
+    # HL7 V2 and V3 systems
+    V2_IDENTIFIER_TYPE = "http://terminology.hl7.org/CodeSystem/v2-0203"
+    V2_PARTICIPATION_FUNCTION = "http://terminology.hl7.org/CodeSystem/v2-0443"
+    V3_ACT_CODE = "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+    V3_ROLE_CODE = "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
+    V3_PARTICIPATION_TYPE = "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
+    V3_LANGUAGE_ABILITY_MODE = "http://terminology.hl7.org/CodeSystem/v3-LanguageAbilityMode"
+    V3_LANGUAGE_ABILITY_PROFICIENCY = "http://terminology.hl7.org/CodeSystem/v3-LanguageAbilityProficiency"
+
+    # Language
+    BCP_47 = "urn:ietf:bcp:47"
+
+    # CDC Race and Ethnicity
+    CDC_RACE_ETHNICITY = "urn:oid:2.16.840.1.113883.6.238"
+
+    # FHIR extensions
+    ALLERGY_ABATEMENT_EXTENSION = "http://hl7.org/fhir/StructureDefinition/allergyintolerance-abatement"
+    CONDITION_ASSERTED_DATE = "http://hl7.org/fhir/StructureDefinition/condition-assertedDate"
+    DATA_ABSENT_REASON = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+    PATIENT_RELIGION = "http://hl7.org/fhir/StructureDefinition/patient-religion"
+    PATIENT_PROFICIENCY = "http://hl7.org/fhir/StructureDefinition/patient-proficiency"
+    PATIENT_BIRTHPLACE = "http://hl7.org/fhir/StructureDefinition/patient-birthPlace"
+    PATIENT_BIRTH_TIME = "http://hl7.org/fhir/StructureDefinition/patient-birthTime"
+
+    # US Core extensions
+    US_CORE_RACE = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
+    US_CORE_ETHNICITY = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
+
+    # Units
+    UCUM = "http://unitsofmeasure.org"
+
+    # Medications
+    RXNORM = "http://www.nlm.nih.gov/research/umls/rxnorm"
+    NDC = "http://hl7.org/fhir/sid/ndc"
+    NCI_THESAURUS = "http://ncithesaurus-stage.nci.nih.gov"
+
+    # Identifiers
+    US_NPI = "http://hl7.org/fhir/sid/us-npi"  # US National Provider Identifier
+    US_SSN = "http://hl7.org/fhir/sid/us-ssn"  # US Social Security Number
+
+    # Provider taxonomy
+    NUCC_PROVIDER_TAXONOMY = "http://nucc.org/provider-taxonomy"  # NUCC Healthcare Provider Taxonomy
+    NUCC_TAXONOMY = NUCC_PROVIDER_TAXONOMY  # Alias for convenience
+
+    # Provenance
+    PROVENANCE_PARTICIPANT_TYPE = "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+    PROVENANCE_ACTIVITY_TYPE = "http://terminology.hl7.org/CodeSystem/v3-DataOperation"
+
+
+# =============================================================================
+# FHIR Codes
+# =============================================================================
+
+class FHIRCodes:
+    """FHIR code values."""
+
+    # Condition clinical status
+    class ConditionClinical:
+        ACTIVE = "active"
+        INACTIVE = "inactive"
+        RESOLVED = "resolved"
+        REMISSION = "remission"
+        RECURRENCE = "recurrence"
+
+    # Condition verification status
+    class ConditionVerification:
+        CONFIRMED = "confirmed"
+        REFUTED = "refuted"
+
+    # Condition category
+    class ConditionCategory:
+        PROBLEM_LIST_ITEM = "problem-list-item"
+        ENCOUNTER_DIAGNOSIS = "encounter-diagnosis"
+
+    # AllergyIntolerance clinical status
+    class AllergyClinical:
+        ACTIVE = "active"
+        INACTIVE = "inactive"
+        RESOLVED = "resolved"
+
+    # AllergyIntolerance verification status
+    class AllergyVerification:
+        CONFIRMED = "confirmed"
+        REFUTED = "refuted"
+
+    # AllergyIntolerance type
+    class AllergyType:
+        ALLERGY = "allergy"
+        INTOLERANCE = "intolerance"
+
+    # AllergyIntolerance category
+    class AllergyCategory:
+        MEDICATION = "medication"
+        FOOD = "food"
+        ENVIRONMENT = "environment"
+
+    # AllergyIntolerance criticality
+    class AllergyCriticality:
+        LOW = "low"
+        HIGH = "high"
+        UNABLE_TO_ASSESS = "unable-to-assess"
+
+    # Reaction severity
+    class ReactionSeverity:
+        MILD = "mild"
+        MODERATE = "moderate"
+        SEVERE = "severe"
+
+    # MedicationRequest status
+    class MedicationRequestStatus:
+        ACTIVE = "active"
+        ON_HOLD = "on-hold"
+        CANCELLED = "cancelled"
+        COMPLETED = "completed"
+        STOPPED = "stopped"
+        DRAFT = "draft"
+        UNKNOWN = "unknown"
+
+    # MedicationRequest intent
+    class MedicationRequestIntent:
+        PROPOSAL = "proposal"
+        PLAN = "plan"
+        ORDER = "order"
+        ORIGINAL_ORDER = "original-order"
+        REFLEX_ORDER = "reflex-order"
+        FILLER_ORDER = "filler-order"
+        INSTANCE_ORDER = "instance-order"
+        OPTION = "option"
+
+    # Immunization status
+    class Immunization:
+        STATUS_COMPLETED = "completed"
+        STATUS_NOT_DONE = "not-done"
+        STATUS_ENTERED_IN_ERROR = "entered-in-error"
+
+    # Observation status
+    class ObservationStatus:
+        REGISTERED = "registered"
+        PRELIMINARY = "preliminary"
+        FINAL = "final"
+        AMENDED = "amended"
+        CORRECTED = "corrected"
+        CANCELLED = "cancelled"
+        ENTERED_IN_ERROR = "entered-in-error"
+        UNKNOWN = "unknown"
+
+    # Procedure status
+    class ProcedureStatus:
+        PREPARATION = "preparation"
+        IN_PROGRESS = "in-progress"
+        NOT_DONE = "not-done"
+        ON_HOLD = "on-hold"
+        STOPPED = "stopped"
+        COMPLETED = "completed"
+        ENTERED_IN_ERROR = "entered-in-error"
+        UNKNOWN = "unknown"
+
+    # Encounter status
+    class EncounterStatus:
+        PLANNED = "planned"
+        ARRIVED = "arrived"
+        TRIAGED = "triaged"
+        IN_PROGRESS = "in-progress"
+        ONLEAVE = "onleave"
+        FINISHED = "finished"
+        CANCELLED = "cancelled"
+        ENTERED_IN_ERROR = "entered-in-error"
+        UNKNOWN = "unknown"
+
+    # Encounter class (v3 ActCode)
+    class EncounterClass:
+        AMBULATORY = "AMB"  # Ambulatory
+        EMERGENCY = "EMER"  # Emergency
+        FIELD = "FLD"  # Field
+        HOME_HEALTH = "HH"  # Home health
+        INPATIENT = "IMP"  # Inpatient encounter
+        INPATIENT_ACUTE = "ACUTE"  # Inpatient acute
+        INPATIENT_NON_ACUTE = "NONAC"  # Inpatient non-acute
+        OBSERVATION = "OBSENC"  # Observation encounter
+        PREOPERATIVE = "PRENC"  # Pre-admission
+        SHORT_STAY = "SS"  # Short stay
+        VIRTUAL = "VR"  # Virtual
+
+    # DocumentReference status
+    class DocumentReferenceStatus:
+        CURRENT = "current"
+        SUPERSEDED = "superseded"
+        ENTERED_IN_ERROR = "entered-in-error"
+
+    # Composition status
+    class CompositionStatus:
+        PRELIMINARY = "preliminary"
+        FINAL = "final"
+        AMENDED = "amended"
+        ENTERED_IN_ERROR = "entered-in-error"
+
+    # Observation category
+    class ObservationCategory:
+        VITAL_SIGNS = "vital-signs"
+        LABORATORY = "laboratory"
+        SOCIAL_HISTORY = "social-history"
+        EXAM = "exam"
+        IMAGING = "imaging"
+        PROCEDURE = "procedure"
+        SURVEY = "survey"
+        THERAPY = "therapy"
+        ACTIVITY = "activity"
+
+    # DiagnosticReport status
+    class DiagnosticReportStatus:
+        REGISTERED = "registered"
+        PARTIAL = "partial"
+        PRELIMINARY = "preliminary"
+        FINAL = "final"
+        AMENDED = "amended"
+        CORRECTED = "corrected"
+        APPENDED = "appended"
+        CANCELLED = "cancelled"
+        ENTERED_IN_ERROR = "entered-in-error"
+        UNKNOWN = "unknown"
+
+    # DiagnosticReport category (v2-0074)
+    class DiagnosticReportCategory:
+        LAB = "LAB"  # Laboratory
+        RAD = "RAD"  # Radiology
+        PATH = "PATH"  # Pathology
+        CARD = "CARD"  # Cardiology
+        GEN = "GEN"  # Genetics
+
+    # Resource types (for consistent resource type strings)
+    class ResourceTypes:
+        IMMUNIZATION = "Immunization"
+        PATIENT = "Patient"
+        CONDITION = "Condition"
+        ALLERGY_INTOLERANCE = "AllergyIntolerance"
+        MEDICATION_REQUEST = "MedicationRequest"
+        OBSERVATION = "Observation"
+        DIAGNOSTIC_REPORT = "DiagnosticReport"
+        DEVICE = "Device"
+        PROCEDURE = "Procedure"
+        ENCOUNTER = "Encounter"
+        PRACTITIONER = "Practitioner"
+        PRACTITIONER_ROLE = "PractitionerRole"
+        ORGANIZATION = "Organization"
+        DOCUMENT_REFERENCE = "DocumentReference"
+        COMPOSITION = "Composition"
+        LOCATION = "Location"
+        PROVENANCE = "Provenance"
+
+    # Patient gender
+    class PatientGender:
+        MALE = "male"
+        FEMALE = "female"
+        OTHER = "other"
+        UNKNOWN = "unknown"
+
+    # HumanName use
+    class NameUse:
+        USUAL = "usual"
+        OFFICIAL = "official"
+        OLD = "old"
+        NICKNAME = "nickname"
+        ANONYMOUS = "anonymous"
+
+    # ContactPoint use
+    class ContactPointUse:
+        HOME = "home"
+        WORK = "work"
+        MOBILE = "mobile"
+        TEMP = "temp"
+        OLD = "old"
+
+    # ContactPoint system
+    class ContactPointSystem:
+        PHONE = "phone"
+        EMAIL = "email"
+        FAX = "fax"
+        URL = "url"
+
+    # Address use
+    class AddressUse:
+        HOME = "home"
+        WORK = "work"
+        TEMP = "temp"
+        OLD = "old"
+
+    # Address type
+    class AddressType:
+        PHYSICAL = "physical"
+        POSTAL = "postal"
+
+    # Provenance agent type
+    class ProvenanceAgent:
+        AUTHOR = "author"
+        PERFORMER = "performer"
+        INFORMANT = "informant"
+        ENTERER = "enterer"
+        ATTESTER = "attester"
+        CUSTODIAN = "custodian"
+
+    # Provenance activity type
+    class ProvenanceActivity:
+        CREATE = "CREATE"
+        UPDATE = "UPDATE"
+
+    # Data absent reason
+    UNKNOWN = "unknown"
+
+
+# =============================================================================
+# Age Units
+# =============================================================================
+
+class AgeUnits:
+    """Age unit codes for C-CDA and FHIR."""
+
+    # C-CDA units
+    YEARS_CCDA = "a"
+    MONTHS_CCDA = "mo"
+    DAYS_CCDA = "d"
+
+    # FHIR units
+    YEAR = "year"
+    MONTH = "month"
+    DAY = "day"
+
+
+# =============================================================================
+# Status Code Mappings
+# =============================================================================
+
+# Map C-CDA concern act statusCode to FHIR clinicalStatus
+CONCERN_STATUS_TO_CLINICAL_STATUS = {
+    "active": FHIRCodes.ConditionClinical.ACTIVE,
+    "completed": FHIRCodes.ConditionClinical.RESOLVED,  # or inactive if no abatement
+    "suspended": FHIRCodes.ConditionClinical.INACTIVE,
+    "aborted": FHIRCodes.ConditionClinical.INACTIVE,
+}
+
+# Map SNOMED problem status to FHIR clinicalStatus
+SNOMED_PROBLEM_STATUS_TO_FHIR = {
+    SnomedCodes.ACTIVE: FHIRCodes.ConditionClinical.ACTIVE,
+    SnomedCodes.INACTIVE: FHIRCodes.ConditionClinical.INACTIVE,
+    SnomedCodes.RESOLVED: FHIRCodes.ConditionClinical.RESOLVED,
+    SnomedCodes.REMISSION: FHIRCodes.ConditionClinical.REMISSION,
+    SnomedCodes.RECURRENCE_255227004: FHIRCodes.ConditionClinical.RECURRENCE,
+    SnomedCodes.RECURRENCE_246455001: FHIRCodes.ConditionClinical.RECURRENCE,
+}
+
+# Map SNOMED allergy status to FHIR clinicalStatus
+SNOMED_ALLERGY_STATUS_TO_FHIR = {
+    SnomedCodes.ACTIVE: FHIRCodes.AllergyClinical.ACTIVE,
+    SnomedCodes.INACTIVE: FHIRCodes.AllergyClinical.INACTIVE,
+    SnomedCodes.RESOLVED: FHIRCodes.AllergyClinical.RESOLVED,
+}
+
+# Map SNOMED severity codes to FHIR severity
+SNOMED_SEVERITY_TO_FHIR = {
+    SnomedCodes.MILD: FHIRCodes.ReactionSeverity.MILD,
+    SnomedCodes.MODERATE: FHIRCodes.ReactionSeverity.MODERATE,
+    SnomedCodes.SEVERE: FHIRCodes.ReactionSeverity.SEVERE,
+}
+
+# Map HL7 criticality codes to FHIR criticality
+CRITICALITY_CODE_TO_FHIR = {
+    CriticalityCodes.LOW: FHIRCodes.AllergyCriticality.LOW,
+    CriticalityCodes.HIGH: FHIRCodes.AllergyCriticality.HIGH,
+    CriticalityCodes.UNABLE_TO_ASSESS: FHIRCodes.AllergyCriticality.UNABLE_TO_ASSESS,
+}
+
+# Map C-CDA age units to FHIR
+AGE_UNIT_MAP = {
+    AgeUnits.YEARS_CCDA: (AgeUnits.YEAR, AgeUnits.YEARS_CCDA),
+    AgeUnits.MONTHS_CCDA: (AgeUnits.MONTH, AgeUnits.MONTHS_CCDA),
+    AgeUnits.DAYS_CCDA: (AgeUnits.DAY, AgeUnits.DAYS_CCDA),
+}
+
+# Map SNOMED allergy type codes to FHIR type and category
+ALLERGY_TYPE_CATEGORY_MAP = {
+    # (type, category)
+    SnomedCodes.ALLERGY_TO_SUBSTANCE: (FHIRCodes.AllergyType.ALLERGY, None),
+    SnomedCodes.DRUG_ALLERGY: (FHIRCodes.AllergyType.ALLERGY, FHIRCodes.AllergyCategory.MEDICATION),
+    SnomedCodes.FOOD_ALLERGY: (FHIRCodes.AllergyType.ALLERGY, FHIRCodes.AllergyCategory.FOOD),
+    SnomedCodes.ENVIRONMENTAL_ALLERGY: (FHIRCodes.AllergyType.ALLERGY, FHIRCodes.AllergyCategory.ENVIRONMENT),
+    SnomedCodes.PROPENSITY_TO_DRUG_REACTIONS: (FHIRCodes.AllergyType.ALLERGY, FHIRCodes.AllergyCategory.MEDICATION),
+    SnomedCodes.DRUG_INTOLERANCE: (FHIRCodes.AllergyType.INTOLERANCE, FHIRCodes.AllergyCategory.MEDICATION),
+    SnomedCodes.FOOD_INTOLERANCE: (FHIRCodes.AllergyType.INTOLERANCE, FHIRCodes.AllergyCategory.FOOD),
+    SnomedCodes.PROPENSITY_TO_ADVERSE_REACTIONS: (None, None),
+    SnomedCodes.PROPENSITY_TO_FOOD_REACTIONS: (FHIRCodes.AllergyType.ALLERGY, FHIRCodes.AllergyCategory.FOOD),
+}
+
+# Map section LOINC codes to FHIR Condition category
+SECTION_CODE_TO_CONDITION_CATEGORY = {
+    CCDACodes.PROBLEM_LIST: FHIRCodes.ConditionCategory.PROBLEM_LIST_ITEM,
+    "10160-0": FHIRCodes.ConditionCategory.PROBLEM_LIST_ITEM,  # History of medication use
+    "11348-0": FHIRCodes.ConditionCategory.ENCOUNTER_DIAGNOSIS,  # History of past illness
+    "29545-1": FHIRCodes.ConditionCategory.ENCOUNTER_DIAGNOSIS,  # Physical findings
+    "46240-8": FHIRCodes.ConditionCategory.ENCOUNTER_DIAGNOSIS,  # History of Hospitalizations
+}
+
+# Map problem type SNOMED codes to FHIR Condition category
+PROBLEM_TYPE_TO_CONDITION_CATEGORY = {
+    "55607006": FHIRCodes.ConditionCategory.PROBLEM_LIST_ITEM,  # Problem
+    "404684003": FHIRCodes.ConditionCategory.PROBLEM_LIST_ITEM,  # Finding
+    "282291009": FHIRCodes.ConditionCategory.ENCOUNTER_DIAGNOSIS,  # Diagnosis
+    "64572001": FHIRCodes.ConditionCategory.PROBLEM_LIST_ITEM,  # Condition
+    "248536006": FHIRCodes.ConditionCategory.PROBLEM_LIST_ITEM,  # Symptom
+    "418799008": FHIRCodes.ConditionCategory.PROBLEM_LIST_ITEM,  # Complaint
+}
+
+# =============================================================================
+# Patient Mappings
+# =============================================================================
+
+# Map C-CDA name use codes to FHIR
+NAME_USE_MAP = {
+    V3NameUseCodes.LEGAL: FHIRCodes.NameUse.USUAL,
+    V3NameUseCodes.OFFICIAL_RECORD: FHIRCodes.NameUse.OFFICIAL,
+    V3NameUseCodes.LICENSE: FHIRCodes.NameUse.OLD,
+    V3NameUseCodes.PSEUDONYM: FHIRCodes.NameUse.NICKNAME,
+    V3NameUseCodes.ANONYMOUS: FHIRCodes.NameUse.ANONYMOUS,
+    V3NameUseCodes.ASSIGNED: FHIRCodes.NameUse.USUAL,
+}
+
+# Map C-CDA telecom use codes to FHIR
+TELECOM_USE_MAP = {
+    V3TelecomUseCodes.PRIMARY_HOME: FHIRCodes.ContactPointUse.HOME,
+    V3TelecomUseCodes.HOME: FHIRCodes.ContactPointUse.HOME,
+    V3TelecomUseCodes.WORK: FHIRCodes.ContactPointUse.WORK,
+    V3TelecomUseCodes.MOBILE: FHIRCodes.ContactPointUse.MOBILE,
+    V3TelecomUseCodes.TEMP: FHIRCodes.ContactPointUse.TEMP,
+    V3TelecomUseCodes.BAD: FHIRCodes.ContactPointUse.OLD,
+}
+
+# Map C-CDA address use codes to FHIR
+ADDRESS_USE_MAP = {
+    V3AddressUseCodes.HOME: FHIRCodes.AddressUse.HOME,
+    V3AddressUseCodes.PRIMARY_HOME: FHIRCodes.AddressUse.HOME,
+    V3AddressUseCodes.VACATION_HOME: FHIRCodes.AddressUse.HOME,
+    V3AddressUseCodes.WORK: FHIRCodes.AddressUse.WORK,
+    V3AddressUseCodes.DIRECT: FHIRCodes.AddressUse.WORK,
+    V3AddressUseCodes.PUBLIC: FHIRCodes.AddressUse.WORK,
+    V3AddressUseCodes.TEMP: FHIRCodes.AddressUse.TEMP,
+    V3AddressUseCodes.BAD: FHIRCodes.AddressUse.OLD,
+}
+
+# Map C-CDA administrative gender to FHIR
+ADMINISTRATIVE_GENDER_MAP = {
+    V3AdministrativeGenderCodes.MALE: FHIRCodes.PatientGender.MALE,
+    V3AdministrativeGenderCodes.FEMALE: FHIRCodes.PatientGender.FEMALE,
+    V3AdministrativeGenderCodes.UNDIFFERENTIATED: FHIRCodes.PatientGender.OTHER,
+    V3AdministrativeGenderCodes.UNKNOWN: FHIRCodes.PatientGender.UNKNOWN,
+}
+
+# OMB race category codes (for US Core race extension)
+OMB_RACE_CATEGORIES = {
+    CDCRaceCodes.AMERICAN_INDIAN_OR_ALASKA_NATIVE,
+    CDCRaceCodes.ASIAN,
+    CDCRaceCodes.BLACK_OR_AFRICAN_AMERICAN,
+    CDCRaceCodes.NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER,
+    CDCRaceCodes.WHITE,
+}
+
+# OMB ethnicity category codes (for US Core ethnicity extension)
+OMB_ETHNICITY_CATEGORIES = {
+    CDCEthnicityCodes.HISPANIC_OR_LATINO,
+    CDCEthnicityCodes.NOT_HISPANIC_OR_LATINO,
+}
+
+# =============================================================================
+# Medication Mappings
+# =============================================================================
+
+# Map C-CDA medication statusCode to FHIR MedicationRequest status
+MEDICATION_STATUS_TO_FHIR = {
+    "active": FHIRCodes.MedicationRequestStatus.ACTIVE,
+    "completed": FHIRCodes.MedicationRequestStatus.COMPLETED,
+    "aborted": FHIRCodes.MedicationRequestStatus.STOPPED,
+    "cancelled": FHIRCodes.MedicationRequestStatus.CANCELLED,
+    "suspended": FHIRCodes.MedicationRequestStatus.ON_HOLD,
+    "held": FHIRCodes.MedicationRequestStatus.ON_HOLD,
+    "new": FHIRCodes.MedicationRequestStatus.DRAFT,
+}
+
+# Map C-CDA medication moodCode to FHIR MedicationRequest intent
+MEDICATION_MOOD_TO_INTENT = {
+    "INT": FHIRCodes.MedicationRequestIntent.PLAN,  # Intent
+    "RQO": FHIRCodes.MedicationRequestIntent.ORDER,  # Request
+    "PRMS": FHIRCodes.MedicationRequestIntent.PROPOSAL,  # Promise
+    "PRP": FHIRCodes.MedicationRequestIntent.PROPOSAL,  # Proposal
+    "EVN": FHIRCodes.MedicationRequestIntent.ORDER,  # Event (treat as order)
+}
+
+# Map UCUM time units to FHIR UnitsOfTime
+# FHIR UnitsOfTime: s | min | h | d | wk | mo | a
+UCUM_TO_FHIR_UNITS_OF_TIME = {
+    "s": "s",
+    "sec": "s",
+    "second": "s",
+    "seconds": "s",
+    "min": "min",
+    "minute": "min",
+    "minutes": "min",
+    "h": "h",
+    "hour": "h",
+    "hours": "h",
+    "d": "d",
+    "day": "d",
+    "days": "d",
+    "wk": "wk",
+    "week": "wk",
+    "weeks": "wk",
+    "mo": "mo",
+    "month": "mo",
+    "months": "mo",
+    "a": "a",
+    "year": "a",
+    "years": "a",
+}
+
+# Map EIVL_TS event codes to FHIR Timing.repeat.when
+# Reference: http://hl7.org/fhir/valueset-event-timing.html
+EIVL_EVENT_TO_FHIR_WHEN = {
+    # Meal-related
+    "AC": "AC",      # before meal (from lat. ante cibus)
+    "ACM": "ACM",    # before breakfast (from lat. ante cibus matutinus)
+    "ACD": "ACD",    # before lunch (from lat. ante cibus diurnus)
+    "ACV": "ACV",    # before dinner (from lat. ante cibus vespertinus)
+    "PC": "PC",      # after meal (from lat. post cibus)
+    "PCM": "PCM",    # after breakfast (from lat. post cibus matutinus)
+    "PCD": "PCD",    # after lunch (from lat. post cibus diurnus)
+    "PCV": "PCV",    # after dinner (from lat. post cibus vespertinus)
+    # Sleep-related
+    "HS": "HS",      # before sleep (from lat. hora somni)
+    "WAKE": "WAKE",  # upon waking
+    # Daily events
+    "CM": "CM",      # in the morning
+    "CD": "CD",      # in the afternoon
+    "CV": "CV",      # in the evening
+    "C": "C",        # at a meal (from lat. cum)
+}
+
+# =============================================================================
+# Observation Mappings
+# =============================================================================
+
+# Map C-CDA observation statusCode to FHIR Observation status
+OBSERVATION_STATUS_TO_FHIR = {
+    "completed": FHIRCodes.ObservationStatus.FINAL,
+    "active": FHIRCodes.ObservationStatus.REGISTERED,
+    "aborted": FHIRCodes.ObservationStatus.CANCELLED,
+    "cancelled": FHIRCodes.ObservationStatus.CANCELLED,
+}
+
+# Map C-CDA observation statusCode to FHIR DiagnosticReport status
+DIAGNOSTIC_REPORT_STATUS_TO_FHIR = {
+    "completed": FHIRCodes.DiagnosticReportStatus.FINAL,
+    "active": FHIRCodes.DiagnosticReportStatus.REGISTERED,
+    "aborted": FHIRCodes.DiagnosticReportStatus.CANCELLED,
+    "cancelled": FHIRCodes.DiagnosticReportStatus.CANCELLED,
+}
+
+# =============================================================================
+# Procedure Mappings
+# =============================================================================
+
+# Map C-CDA procedure statusCode to FHIR Procedure status
+PROCEDURE_STATUS_TO_FHIR = {
+    "completed": FHIRCodes.ProcedureStatus.COMPLETED,
+    "active": FHIRCodes.ProcedureStatus.IN_PROGRESS,
+    "aborted": FHIRCodes.ProcedureStatus.STOPPED,
+    "cancelled": FHIRCodes.ProcedureStatus.NOT_DONE,
+    "new": FHIRCodes.ProcedureStatus.PREPARATION,
+    "held": FHIRCodes.ProcedureStatus.ON_HOLD,
+    "suspended": FHIRCodes.ProcedureStatus.ON_HOLD,
+}
+
+# =============================================================================
+# Encounter Mappings
+# =============================================================================
+
+# Map C-CDA encounter statusCode to FHIR Encounter status
+ENCOUNTER_STATUS_TO_FHIR = {
+    "completed": FHIRCodes.EncounterStatus.FINISHED,
+    "active": FHIRCodes.EncounterStatus.IN_PROGRESS,
+    "aborted": FHIRCodes.EncounterStatus.CANCELLED,
+    "cancelled": FHIRCodes.EncounterStatus.CANCELLED,
+}
+
+# Map C-CDA V3 ActCode encounter class codes
+V3_ACT_CODE_SYSTEM = "2.16.840.1.113883.5.4"
+
+# Map discharge disposition codes (HL7 Table 0112) to FHIR
+DISCHARGE_DISPOSITION_TO_FHIR = {
+    "01": "home",
+    "02": "other-hcf",
+    "03": "snf",
+    "04": "aama",
+    "05": "oth",
+    "06": "exp",
+    "07": "hosp",
+}
+
+# Map C-CDA encounter participant function codes to FHIR ParticipationType codes
+# Reference: docs/mapping/08-encounter.md lines 217-223
+ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP = {
+    "PCP": "PPRF",      # Primary Care Provider → primary performer
+    "ATTPHYS": "ATND",  # Attending Physician → attender
+    "ADMPHYS": "ADM",   # Admitting Physician → admitter
+    "DISPHYS": "DIS",   # Discharging Physician → discharger
+}
+
+# Map C-CDA Note Activity statusCode to FHIR DocumentReference status
+DOCUMENT_REFERENCE_STATUS_TO_FHIR = {
+    "completed": FHIRCodes.DocumentReferenceStatus.CURRENT,
+    "active": FHIRCodes.DocumentReferenceStatus.CURRENT,
+    "aborted": FHIRCodes.DocumentReferenceStatus.ENTERED_IN_ERROR,
+    "cancelled": FHIRCodes.DocumentReferenceStatus.ENTERED_IN_ERROR,
+}
+
+# LOINC code for Vital signs panel
+VITAL_SIGNS_PANEL_CODE = "85353-1"
+VITAL_SIGNS_PANEL_DISPLAY = "Vital signs, weight, height, head circumference, oxygen saturation and BMI panel"
+
+# =============================================================================
+# Provenance Mappings
+# =============================================================================
+
+# Map C-CDA role/function codes to FHIR Provenance agent type
+CCDA_ROLE_TO_PROVENANCE_AGENT = {
+    "AUT": FHIRCodes.ProvenanceAgent.AUTHOR,
+    "PRF": FHIRCodes.ProvenanceAgent.PERFORMER,
+    "INF": FHIRCodes.ProvenanceAgent.INFORMANT,
+    "ENT": FHIRCodes.ProvenanceAgent.ENTERER,
+    "LA": FHIRCodes.ProvenanceAgent.ATTESTER,
+    "CST": FHIRCodes.ProvenanceAgent.CUSTODIAN,
+}

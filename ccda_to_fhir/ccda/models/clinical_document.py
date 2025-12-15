@@ -554,3 +554,6 @@ class ClinicalDocument(CDAModel):
 
 # Rebuild models with forward references
 HealthCareFacility.model_rebuild()
+Custodian.model_rebuild()
+AssignedCustodian.model_rebuild()
+CustodianOrganization.model_rebuild()

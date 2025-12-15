@@ -1,0 +1,638 @@
+"""Encounter converter: C-CDA Encounter Activity to FHIR Encounter resource."""
+
+from __future__ import annotations
+
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+
+from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
+from ccda_to_fhir.ccda.models.observation import EntryRelationship
+from ccda_to_fhir.constants import (
+    DISCHARGE_DISPOSITION_TO_FHIR,
+    ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP,
+    ENCOUNTER_STATUS_TO_FHIR,
+    V3_ACT_CODE_SYSTEM,
+    FHIRCodes,
+    FHIRSystems,
+    TemplateIds,
+    TypeCodes,
+)
+
+from .base import BaseConverter
+
+
+class EncounterConverter(BaseConverter[CCDAEncounter]):
+    """Convert C-CDA Encounter Activity to FHIR Encounter resource.
+
+    This converter handles the mapping from C-CDA Encounter Activity
+    to a FHIR R4B Encounter resource, including status, class, type, and period.
+
+    Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-EncounterActivity.html
+    """
+
+    def convert(self, encounter: CCDAEncounter) -> FHIRResourceDict:
+        """Convert a C-CDA Encounter Activity to a FHIR Encounter resource.
+
+        Args:
+            encounter: The C-CDA Encounter Activity
+
+        Returns:
+            FHIR Encounter resource as a dictionary
+
+        Raises:
+            ValueError: If the encounter lacks required data
+        """
+        fhir_encounter: JSONObject = {
+            "resourceType": FHIRCodes.ResourceTypes.ENCOUNTER,
+        }
+
+        # Generate ID from encounter identifier
+        if encounter.id and len(encounter.id) > 0:
+            first_id = encounter.id[0]
+            fhir_encounter["id"] = self._generate_encounter_id(first_id.root, first_id.extension)
+
+        # Identifiers
+        if encounter.id:
+            fhir_encounter["identifier"] = [
+                self.create_identifier(id_elem.root, id_elem.extension)
+                for id_elem in encounter.id
+                if id_elem.root
+            ]
+
+        # Status - Map from statusCode, with moodCode as fallback
+        fhir_encounter["status"] = self._extract_status(encounter)
+
+        # Class - Map from code if V3 ActCode, otherwise default to ambulatory
+        fhir_encounter["class"] = self._extract_class(encounter)
+
+        # Subject (patient reference)
+        fhir_encounter["subject"] = {
+            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
+        }
+
+        # Type - Convert encounter code to type (if not used for class)
+        encounter_type = self._extract_type(encounter)
+        if encounter_type:
+            fhir_encounter["type"] = [encounter_type]
+
+        # Participant - Extract performers and their roles
+        participants = self._extract_participants(encounter)
+        if participants:
+            fhir_encounter["participant"] = participants
+
+        # Period - Convert effective time to period
+        if encounter.effective_time:
+            period = self._convert_period(encounter.effective_time)
+            if period:
+                fhir_encounter["period"] = period
+
+        # Reason codes - Extract from indication entry relationships
+        reason_codes = self._extract_reason_codes(encounter.entry_relationship)
+        if reason_codes:
+            fhir_encounter["reasonCode"] = reason_codes
+
+        # Diagnosis - Extract from encounter diagnosis entry relationships
+        diagnoses = self._extract_diagnoses(encounter.entry_relationship)
+        if diagnoses:
+            fhir_encounter["diagnosis"] = diagnoses
+
+        # Location - Extract from location participants
+        locations = self._extract_locations(encounter)
+        if locations:
+            fhir_encounter["location"] = locations
+
+        # Hospitalization (discharge disposition)
+        hospitalization = self._extract_hospitalization(encounter)
+        if hospitalization:
+            fhir_encounter["hospitalization"] = hospitalization
+
+        return fhir_encounter
+
+    def _generate_encounter_id(self, root: str | None, extension: str | None) -> str:
+        """Generate a FHIR Encounter ID from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            A FHIR-compliant ID string
+        """
+        if extension:
+            # Use extension as the ID (sanitized)
+            return extension.replace(" ", "-").replace(".", "-")
+        elif root:
+            # Use root as the ID (sanitized)
+            return root.replace(".", "-").replace(":", "-")
+        else:
+            # Fallback to a default ID
+            return "encounter-unknown"
+
+    def _extract_status(self, encounter: CCDAEncounter) -> str:
+        """Extract FHIR status from C-CDA encounter.
+
+        Maps from statusCode first, then falls back to moodCode.
+
+        Args:
+            encounter: The C-CDA encounter
+
+        Returns:
+            FHIR encounter status code
+        """
+        # First try statusCode
+        if encounter.status_code and encounter.status_code.code:
+            status_code = encounter.status_code.code.lower()
+            if status_code in ENCOUNTER_STATUS_TO_FHIR:
+                return ENCOUNTER_STATUS_TO_FHIR[status_code]
+
+        # Fallback to moodCode
+        if encounter.mood_code:
+            mood_code = encounter.mood_code.upper()
+            if mood_code == "INT":
+                return FHIRCodes.EncounterStatus.PLANNED
+            elif mood_code == "EVN":
+                return FHIRCodes.EncounterStatus.FINISHED
+
+        # Default to finished for documented encounters
+        return FHIRCodes.EncounterStatus.FINISHED
+
+    def _extract_class(self, encounter: CCDAEncounter) -> JSONObject:
+        """Extract FHIR class from C-CDA encounter code.
+
+        If the encounter code is from V3 ActCode system, use it for class.
+        Otherwise, default to ambulatory.
+
+        Args:
+            encounter: The C-CDA encounter
+
+        Returns:
+            FHIR Coding object for encounter class
+        """
+        if encounter.code and encounter.code.code:
+            # Check if code is from V3 ActCode system
+            if encounter.code.code_system == V3_ACT_CODE_SYSTEM:
+                return {
+                    "system": FHIRSystems.V3_ACT_CODE,
+                    "code": encounter.code.code,
+                    "display": encounter.code.display_name if encounter.code.display_name else None,
+                }
+
+            # Check translations for V3 ActCode
+            if hasattr(encounter.code, "translation") and encounter.code.translation:
+                for trans in encounter.code.translation:
+                    trans_system = None
+                    trans_code = None
+                    trans_display = None
+
+                    if isinstance(trans, dict):
+                        trans_system = trans.get("code_system")
+                        trans_code = trans.get("code")
+                        trans_display = trans.get("display_name")
+                    elif hasattr(trans, "code_system"):
+                        trans_system = trans.code_system
+                        trans_code = trans.code if hasattr(trans, "code") else None
+                        trans_display = trans.display_name if hasattr(trans, "display_name") else None
+
+                    if trans_system == V3_ACT_CODE_SYSTEM and trans_code:
+                        return {
+                            "system": FHIRSystems.V3_ACT_CODE,
+                            "code": trans_code,
+                            "display": trans_display,
+                        }
+
+        # Default to ambulatory
+        return {
+            "system": FHIRSystems.V3_ACT_CODE,
+            "code": FHIRCodes.EncounterClass.AMBULATORY,
+        }
+
+    def _extract_type(self, encounter: CCDAEncounter) -> JSONObject | None:
+        """Extract FHIR type from C-CDA encounter code.
+
+        If the encounter code is NOT from V3 ActCode (since that's used for class),
+        convert it to type.
+
+        Args:
+            encounter: The C-CDA encounter
+
+        Returns:
+            FHIR CodeableConcept for encounter type, or None
+        """
+        if not encounter.code or not encounter.code.code:
+            return None
+
+        # If code is from V3 ActCode, don't use it for type (it's used for class)
+        if encounter.code.code_system == V3_ACT_CODE_SYSTEM:
+            return None
+
+        return self._convert_code(encounter.code)
+
+    def _convert_code(self, code) -> JSONObject | None:
+        """Convert C-CDA encounter code to FHIR CodeableConcept.
+
+        Args:
+            code: The C-CDA encounter code
+
+        Returns:
+            FHIR CodeableConcept or None
+        """
+        if not code or not code.code:
+            return None
+
+        # Extract translations if present
+        translations = []
+        if hasattr(code, "translation") and code.translation:
+            for trans in code.translation:
+                if isinstance(trans, dict):
+                    trans_code = trans.get("code")
+                    trans_system = trans.get("code_system")
+                    trans_display = trans.get("display_name")
+                elif hasattr(trans, "code"):
+                    trans_code = trans.code
+                    trans_system = trans.code_system if hasattr(trans, "code_system") else None
+                    trans_display = trans.display_name if hasattr(trans, "display_name") else None
+                else:
+                    continue
+
+                if trans_code and trans_system:
+                    translations.append({
+                        "code": trans_code,
+                        "code_system": trans_system,
+                        "display_name": trans_display,
+                    })
+
+        # Get original text if present (with reference resolution)
+        original_text = None
+        if hasattr(code, "original_text") and code.original_text:
+            # original_text is an ED (Encapsulated Data) object
+            original_text = self.extract_original_text(code.original_text, section=None)
+
+        # Use display_name as text if original_text not available
+        if not original_text and code.display_name:
+            original_text = code.display_name
+
+        return self.create_codeable_concept(
+            code=code.code,
+            code_system=code.code_system,
+            display_name=code.display_name,
+            original_text=original_text,
+            translations=translations,
+        )
+
+    def _convert_period(self, effective_time) -> JSONObject | None:
+        """Convert C-CDA effectiveTime to FHIR Period.
+
+        Args:
+            effective_time: The C-CDA effectiveTime (can be IVL_TS or simple value)
+
+        Returns:
+            FHIR Period or None
+        """
+        if isinstance(effective_time, str):
+            # Simple datetime value - use as start
+            converted = self.convert_date(effective_time)
+            if converted:
+                return {"start": converted}
+
+        period: JSONObject = {}
+
+        # Handle single value
+        if hasattr(effective_time, "value") and effective_time.value:
+            converted = self.convert_date(effective_time.value)
+            if converted:
+                period["start"] = converted
+
+        # Handle period (low/high)
+        if hasattr(effective_time, "low") and effective_time.low:
+            low_value = effective_time.low.value if hasattr(effective_time.low, "value") else effective_time.low
+            if low_value:
+                converted_low = self.convert_date(str(low_value))
+                if converted_low:
+                    period["start"] = converted_low
+
+        if hasattr(effective_time, "high") and effective_time.high:
+            high_value = effective_time.high.value if hasattr(effective_time.high, "value") else effective_time.high
+            if high_value:
+                converted_high = self.convert_date(str(high_value))
+                if converted_high:
+                    period["end"] = converted_high
+
+        return period if period else None
+
+    def _extract_participants(self, encounter: CCDAEncounter) -> list[JSONObject]:
+        """Extract FHIR participants from C-CDA performers.
+
+        Args:
+            encounter: The C-CDA encounter
+
+        Returns:
+            List of FHIR participant objects
+        """
+        participants = []
+
+        if not encounter.performer:
+            return participants
+
+        for performer in encounter.performer:
+            participant: JSONObject = {}
+
+            # Extract participant type from functionCode
+            # Map C-CDA function codes to FHIR ParticipationType codes
+            # Reference: docs/mapping/08-encounter.md lines 217-223
+            if hasattr(performer, "function_code") and performer.function_code:
+                function_code = performer.function_code.code if hasattr(performer.function_code, "code") else None
+
+                # Map known function codes (PCP→PPRF, ATTPHYS→ATND, etc.)
+                mapped_code = ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP.get(
+                    function_code,
+                    function_code  # Pass through if not in map
+                ) if function_code else "PART"  # Default to PART if no code
+
+                type_coding = {
+                    "system": FHIRSystems.V3_PARTICIPATION_TYPE,
+                    "code": mapped_code,
+                    "display": performer.function_code.display_name if hasattr(performer.function_code, "display_name") else None,
+                }
+                participant["type"] = [{"coding": [type_coding]}]
+            else:
+                # Default to PART (participant) if no function code specified
+                participant["type"] = [{
+                    "coding": [{
+                        "system": FHIRSystems.V3_PARTICIPATION_TYPE,
+                        "code": "PART",
+                        "display": "participant",
+                    }]
+                }]
+
+            # Extract individual reference from assignedEntity
+            if hasattr(performer, "assigned_entity") and performer.assigned_entity:
+                assigned_entity = performer.assigned_entity
+
+                # Generate practitioner ID from NPI or other identifiers
+                if hasattr(assigned_entity, "id") and assigned_entity.id:
+                    for id_elem in assigned_entity.id:
+                        if id_elem.root:
+                            practitioner_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                            participant["individual"] = {
+                                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{practitioner_id}"
+                            }
+                            break
+
+            if participant:
+                participants.append(participant)
+
+        return participants
+
+    def _extract_locations(self, encounter: CCDAEncounter) -> list[JSONObject]:
+        """Extract FHIR locations from C-CDA location participants.
+
+        Args:
+            encounter: The C-CDA encounter
+
+        Returns:
+            List of FHIR location objects
+        """
+        locations = []
+
+        if not encounter.participant:
+            return locations
+
+        for participant in encounter.participant:
+            # Look for location participants (typeCode="LOC")
+            if hasattr(participant, "type_code") and participant.type_code == "LOC":
+                location: JSONObject = {}
+
+                # Extract location reference and display
+                if hasattr(participant, "participant_role") and participant.participant_role:
+                    role = participant.participant_role
+
+                    # Generate location ID from role ID
+                    location_id = "location-unknown"
+                    if hasattr(role, "id") and role.id:
+                        for id_elem in role.id:
+                            if id_elem.root:
+                                location_id = self._generate_location_id(id_elem.root, id_elem.extension)
+                                break
+
+                    # Extract location name from playingEntity
+                    display = None
+                    if hasattr(role, "playing_entity") and role.playing_entity:
+                        entity = role.playing_entity
+                        if hasattr(entity, "name"):
+                            if isinstance(entity.name, str):
+                                display = entity.name
+                            elif hasattr(entity.name, "value"):
+                                display = entity.name.value
+
+                    location["location"] = {
+                        "reference": f"Location/{location_id}"
+                    }
+                    if display:
+                        location["location"]["display"] = display
+
+                # Set status based on encounter status
+                # For completed encounters, location status is also completed
+                location["status"] = "completed"
+
+                if location:
+                    locations.append(location)
+
+        return locations
+
+    def _extract_hospitalization(self, encounter: CCDAEncounter) -> JSONObject | None:
+        """Extract FHIR hospitalization from C-CDA discharge disposition.
+
+        Args:
+            encounter: The C-CDA encounter
+
+        Returns:
+            FHIR hospitalization object or None
+        """
+        if not encounter.sdtc_discharge_disposition_code:
+            return None
+
+        disposition = encounter.sdtc_discharge_disposition_code
+        if not disposition.code:
+            return None
+
+        # Map discharge disposition code to FHIR
+        fhir_code = DISCHARGE_DISPOSITION_TO_FHIR.get(disposition.code)
+        if not fhir_code:
+            # Use original code if not in mapping
+            fhir_code = disposition.code
+
+        hospitalization: JSONObject = {
+            "dischargeDisposition": {
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
+                    "code": fhir_code,
+                    "display": disposition.display_name if hasattr(disposition, "display_name") and disposition.display_name else None,
+                }]
+            }
+        }
+
+        return hospitalization
+
+    def _extract_diagnoses(self, entry_relationships: list[EntryRelationship] | None) -> list[JSONObject]:
+        """Extract FHIR diagnoses from encounter diagnosis entry relationships.
+
+        Creates condition references instead of reasonCode.
+
+        Args:
+            entry_relationships: List of entry relationships
+
+        Returns:
+            List of FHIR diagnosis objects with condition references
+        """
+        diagnoses = []
+
+        if not entry_relationships:
+            return diagnoses
+
+        for entry_rel in entry_relationships:
+            # Look for Encounter Diagnosis act (template 2.16.840.1.113883.10.20.22.4.80)
+            if entry_rel.act and entry_rel.act.template_id:
+                for template in entry_rel.act.template_id:
+                    if template.root == TemplateIds.ENCOUNTER_DIAGNOSIS:
+                        # Extract diagnosis from nested observation
+                        if entry_rel.act.entry_relationship:
+                            for nested_entry in entry_rel.act.entry_relationship:
+                                if nested_entry.observation:
+                                    obs = nested_entry.observation
+
+                                    # Generate condition ID from observation ID
+                                    condition_id = "condition-unknown"
+                                    if obs.id and len(obs.id) > 0:
+                                        first_id = obs.id[0]
+                                        if first_id.root:
+                                            condition_id = self._generate_condition_id(first_id.root, first_id.extension)
+
+                                    diagnosis: JSONObject = {
+                                        "condition": {
+                                            "reference": f"{FHIRCodes.ResourceTypes.CONDITION}/{condition_id}"
+                                        }
+                                    }
+
+                                    # Default to "AD" (admission diagnosis)
+                                    # NOTE: C-CDA on FHIR spec provides no guidance for mapping
+                                    # entryRelationship/@typeCode to Encounter.diagnosis.use.
+                                    # The binding is "Preferred" (not required), so defaulting to
+                                    # AD is a safe, conservative approach.
+                                    # See: https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-encounters.html
+                                    diagnosis["use"] = {
+                                        "coding": [{
+                                            "system": "http://terminology.hl7.org/CodeSystem/diagnosis-role",
+                                            "code": "AD",
+                                            "display": "Admission diagnosis"
+                                        }]
+                                    }
+
+                                    diagnoses.append(diagnosis)
+                        break
+
+        return diagnoses
+
+    def _extract_reason_codes(self, entry_relationships: list[EntryRelationship] | None) -> list[JSONObject]:
+        """Extract reason codes from indication entry relationships.
+
+        This extracts codes from RSON (reason) relationships, which are different
+        from encounter diagnoses.
+
+        Args:
+            entry_relationships: List of entry relationships
+
+        Returns:
+            List of FHIR CodeableConcept for reason codes
+        """
+        reason_codes = []
+
+        if not entry_relationships:
+            return reason_codes
+
+        for entry_rel in entry_relationships:
+            # Look for indication observations (RSON typeCode)
+            if entry_rel.type_code == TypeCodes.REASON and entry_rel.observation:
+                obs = entry_rel.observation
+
+                # Extract reason code from observation.value
+                if obs.value:
+                    if isinstance(obs.value, list):
+                        for value in obs.value:
+                            if hasattr(value, "code") and value.code:
+                                codeable = self._convert_diagnosis_code(value)
+                                if codeable:
+                                    reason_codes.append(codeable)
+                    elif hasattr(obs.value, "code"):
+                        codeable = self._convert_diagnosis_code(obs.value)
+                        if codeable:
+                            reason_codes.append(codeable)
+
+        return reason_codes
+
+    def _convert_diagnosis_code(self, code) -> JSONObject | None:
+        """Convert diagnosis code to FHIR CodeableConcept.
+
+        Args:
+            code: The diagnosis code
+
+        Returns:
+            FHIR CodeableConcept or None
+        """
+        if not code or not hasattr(code, "code") or not code.code:
+            return None
+
+        return self.create_codeable_concept(
+            code=code.code,
+            code_system=code.code_system if hasattr(code, "code_system") else None,
+            display_name=code.display_name if hasattr(code, "display_name") else None,
+        )
+
+    def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
+        """Generate a FHIR Practitioner ID from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            A FHIR-compliant ID string
+        """
+        if extension:
+            return f"practitioner-{extension.replace(' ', '-').replace('.', '-')}"
+        elif root:
+            return f"practitioner-{root.replace('.', '-').replace(':', '-')}"
+        else:
+            return "practitioner-unknown"
+
+    def _generate_location_id(self, root: str | None, extension: str | None) -> str:
+        """Generate a FHIR Location ID from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            A FHIR-compliant ID string
+        """
+        if extension:
+            return extension.replace(" ", "-").replace(".", "-")
+        elif root:
+            return root.replace(".", "-").replace(":", "-")
+        else:
+            return "location-unknown"
+
+    def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
+        """Generate a FHIR Condition ID from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            A FHIR-compliant ID string
+        """
+        if extension:
+            return f"condition-{extension.replace(' ', '-').replace('.', '-')}"
+        elif root:
+            return f"condition-{root.replace('.', '-').replace(':', '-')}"
+        else:
+            return "condition-unknown"

@@ -1,0 +1,598 @@
+"""Procedure converter: C-CDA Procedure Activity to FHIR Procedure resource."""
+
+from __future__ import annotations
+
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+
+from ccda_to_fhir.ccda.models.datatypes import CD, II, IVL_TS
+from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
+from ccda_to_fhir.constants import (
+    PROCEDURE_STATUS_TO_FHIR,
+    FHIRCodes,
+)
+
+from .base import BaseConverter
+
+
+class ProcedureConverter(BaseConverter[CCDAProcedure]):
+    """Convert C-CDA Procedure Activity to FHIR Procedure resource.
+
+    This converter handles the mapping from C-CDA Procedure Activity Procedure
+    to a FHIR R4B Procedure resource, including status, code, and performed date.
+
+    Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-ProcedureActivityProcedure.html
+    """
+
+    def convert(self, procedure: CCDAProcedure) -> FHIRResourceDict:
+        """Convert a C-CDA Procedure Activity to a FHIR Procedure resource.
+
+        Args:
+            procedure: The C-CDA Procedure Activity
+
+        Returns:
+            FHIR Procedure resource as a dictionary
+
+        Raises:
+            ValueError: If the procedure lacks required data
+        """
+        if not procedure.code:
+            raise ValueError("Procedure Activity must have a code")
+
+        fhir_procedure: JSONObject = {
+            "resourceType": FHIRCodes.ResourceTypes.PROCEDURE,
+        }
+
+        # Generate ID from procedure identifier
+        if procedure.id and len(procedure.id) > 0:
+            first_id = procedure.id[0]
+            fhir_procedure["id"] = self._generate_procedure_id(first_id.root, first_id.extension)
+
+        # Identifiers
+        if procedure.id:
+            fhir_procedure["identifier"] = [
+                self.create_identifier(id_elem.root, id_elem.extension)
+                for id_elem in procedure.id
+                if id_elem.root
+            ]
+
+        # Status (required)
+        status = self._map_status(procedure.status_code)
+        # Override status if negationInd is true
+        if procedure.negation_ind:
+            status = FHIRCodes.ProcedureStatus.NOT_DONE
+        fhir_procedure["status"] = status
+
+        # Code (required)
+        fhir_procedure["code"] = self._convert_code(procedure.code)
+
+        # Subject (patient reference)
+        fhir_procedure["subject"] = {
+            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
+        }
+
+        # Performed date/time
+        if procedure.effective_time:
+            performed = self._convert_performed_time(procedure.effective_time)
+            if performed:
+                # Use performedDateTime if it's a single datetime, otherwise performedPeriod
+                if "start" in performed or "end" in performed:
+                    fhir_procedure["performedPeriod"] = performed
+                else:
+                    fhir_procedure["performedDateTime"] = performed
+
+        # Body site
+        if procedure.target_site_code:
+            body_sites = []
+            for site_code in procedure.target_site_code:
+                if site_code.code:
+                    body_site = self.create_codeable_concept(
+                        code=site_code.code,
+                        code_system=site_code.code_system,
+                        display_name=site_code.display_name,
+                        original_text=site_code.original_text if hasattr(site_code, "original_text") else None,
+                    )
+                    if body_site:
+                        body_sites.append(body_site)
+            if body_sites:
+                fhir_procedure["bodySite"] = body_sites
+
+        # Performers
+        if procedure.performer:
+            performers = self._extract_performers(procedure.performer)
+            if performers:
+                fhir_procedure["performer"] = performers
+
+        # Location
+        if procedure.participant:
+            location = self._extract_location(procedure.participant)
+            if location:
+                fhir_procedure["location"] = location
+
+        # Author/recorder
+        if procedure.author:
+            recorder = self._extract_recorder(procedure.author)
+            if recorder:
+                fhir_procedure["recorder"] = recorder
+
+        # Reason codes and references
+        if procedure.entry_relationship:
+            reasons = self._extract_reasons(procedure.entry_relationship)
+            if reasons.get("codes"):
+                fhir_procedure["reasonCode"] = reasons["codes"]
+            if reasons.get("references"):
+                fhir_procedure["reasonReference"] = reasons["references"]
+
+            # Outcomes
+            outcomes = self._extract_outcomes(procedure.entry_relationship)
+            if outcomes:
+                fhir_procedure["outcome"] = outcomes
+
+            # Complications
+            complications = self._extract_complications(procedure.entry_relationship)
+            if complications:
+                fhir_procedure["complication"] = complications
+
+            # Follow-up
+            followups = self._extract_followups(procedure.entry_relationship)
+            if followups:
+                fhir_procedure["followUp"] = followups
+
+        # Notes
+        notes = self._extract_notes(procedure)
+        if notes:
+            fhir_procedure["note"] = notes
+
+        return fhir_procedure
+
+    def _generate_procedure_id(self, root: str | None, extension: str | None) -> str:
+        """Generate a FHIR Procedure ID from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            A FHIR-compliant ID string
+        """
+        if extension:
+            # Use extension as the ID (sanitized)
+            return extension.replace(" ", "-").replace(".", "-")
+        elif root:
+            # Use root as the ID (sanitized)
+            return root.replace(".", "-")
+        else:
+            # Fallback to a default ID
+            return "procedure-unknown"
+
+    def _map_status(self, status_code) -> str:
+        """Map C-CDA status code to FHIR Procedure status.
+
+        Args:
+            status_code: The C-CDA status code
+
+        Returns:
+            FHIR Procedure status code
+        """
+        if not status_code or not status_code.code:
+            return FHIRCodes.ProcedureStatus.UNKNOWN
+
+        ccda_status = status_code.code.lower()
+        return PROCEDURE_STATUS_TO_FHIR.get(ccda_status, FHIRCodes.ProcedureStatus.UNKNOWN)
+
+    def _convert_code(self, code: CD) -> JSONObject:
+        """Convert C-CDA procedure code to FHIR CodeableConcept.
+
+        Args:
+            code: The C-CDA procedure code
+
+        Returns:
+            FHIR CodeableConcept
+        """
+        # Extract translations if present
+        translations = []
+        if hasattr(code, "translation") and code.translation:
+            for trans in code.translation:
+                if isinstance(trans, (CD, dict)):
+                    trans_code = trans.code if hasattr(trans, "code") else trans.get("code")
+                    trans_system = trans.code_system if hasattr(trans, "code_system") else trans.get("code_system")
+                    trans_display = trans.display_name if hasattr(trans, "display_name") else trans.get("display_name")
+
+                    if trans_code and trans_system:
+                        translations.append({
+                            "code": trans_code,
+                            "code_system": trans_system,
+                            "display_name": trans_display,
+                        })
+
+        # Get original text if present (with reference resolution)
+        original_text = None
+        if hasattr(code, "original_text") and code.original_text:
+            # original_text is an ED (Encapsulated Data) object
+            original_text = self.extract_original_text(code.original_text, section=None)
+
+        # Use display_name as text if original_text not available
+        if not original_text and code.display_name:
+            original_text = code.display_name
+
+        return self.create_codeable_concept(
+            code=code.code,
+            code_system=code.code_system,
+            display_name=code.display_name,
+            original_text=original_text,
+            translations=translations,
+        )
+
+    def _convert_performed_time(self, effective_time: IVL_TS | str) -> JSONObject | str | None:
+        """Convert C-CDA effectiveTime to FHIR performed time.
+
+        Args:
+            effective_time: The C-CDA effectiveTime (can be IVL_TS or simple value)
+
+        Returns:
+            FHIR performedDateTime (string) or performedPeriod (dict), or None
+        """
+        if isinstance(effective_time, str):
+            # Simple datetime value
+            return self.convert_date(effective_time)
+
+        # Handle IVL_TS (interval)
+        if hasattr(effective_time, "value") and effective_time.value:
+            # Single point in time
+            return self.convert_date(effective_time.value)
+
+        # Handle period (low/high)
+        period: JSONObject = {}
+
+        if hasattr(effective_time, "low") and effective_time.low:
+            low_value = effective_time.low.value if hasattr(effective_time.low, "value") else effective_time.low
+            if low_value:
+                converted_low = self.convert_date(str(low_value))
+                if converted_low:
+                    period["start"] = converted_low
+
+        if hasattr(effective_time, "high") and effective_time.high:
+            high_value = effective_time.high.value if hasattr(effective_time.high, "value") else effective_time.high
+            if high_value:
+                converted_high = self.convert_date(str(high_value))
+                if converted_high:
+                    period["end"] = converted_high
+
+        return period if period else None
+
+    def _extract_performers(self, performers: list) -> list[JSONObject]:
+        """Extract FHIR performers from C-CDA performers.
+
+        Args:
+            performers: List of C-CDA performer elements
+
+        Returns:
+            List of FHIR performer objects
+        """
+        fhir_performers = []
+
+        for performer in performers:
+            if not hasattr(performer, "assigned_entity") or not performer.assigned_entity:
+                continue
+
+            assigned_entity = performer.assigned_entity
+            performer_obj: JSONObject = {}
+
+            # Extract practitioner reference from assigned entity
+            if hasattr(assigned_entity, "id") and assigned_entity.id:
+                for id_elem in assigned_entity.id:
+                    if id_elem.root:
+                        pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                        performer_obj["actor"] = {
+                            "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
+                        }
+                        break
+
+            # Extract organization reference if present
+            if hasattr(assigned_entity, "represented_organization") and assigned_entity.represented_organization:
+                org = assigned_entity.represented_organization
+                if hasattr(org, "id") and org.id:
+                    for id_elem in org.id:
+                        if id_elem.root:
+                            org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
+                            performer_obj["onBehalfOf"] = {
+                                "reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{org_id}"
+                            }
+                            break
+
+            if performer_obj:
+                fhir_performers.append(performer_obj)
+
+        return fhir_performers
+
+    def _extract_location(self, participants: list) -> JSONObject | None:
+        """Extract FHIR location from C-CDA participants.
+
+        Args:
+            participants: List of C-CDA participant elements
+
+        Returns:
+            FHIR location reference or None
+        """
+        for participant in participants:
+            # Look for location participants (typeCode="LOC")
+            if hasattr(participant, "type_code") and participant.type_code == "LOC":
+                if hasattr(participant, "participant_role") and participant.participant_role:
+                    role = participant.participant_role
+
+                    # Generate location ID from role ID
+                    location_id = "location-unknown"
+                    if hasattr(role, "id") and role.id:
+                        for id_elem in role.id:
+                            if id_elem.root:
+                                location_id = self._generate_location_id(id_elem.root, id_elem.extension)
+                                break
+
+                    # Extract location name from playingEntity
+                    display = None
+                    if hasattr(role, "playing_entity") and role.playing_entity:
+                        entity = role.playing_entity
+                        if hasattr(entity, "name"):
+                            if isinstance(entity.name, str):
+                                display = entity.name
+                            elif hasattr(entity.name, "value"):
+                                display = entity.name.value
+
+                    location_ref: JSONObject = {
+                        "reference": f"{FHIRCodes.ResourceTypes.LOCATION}/{location_id}"
+                    }
+                    if display:
+                        location_ref["display"] = display
+
+                    return location_ref
+
+        return None
+
+    def _extract_recorder(self, authors: list) -> JSONObject | None:
+        """Extract FHIR recorder from C-CDA authors.
+
+        Uses the latest author by timestamp as the recorder.
+
+        Args:
+            authors: List of C-CDA author elements
+
+        Returns:
+            FHIR recorder reference or None
+        """
+        if not authors or len(authors) == 0:
+            return None
+
+        # Filter authors with time
+        authors_with_time = [
+            a for a in authors
+            if hasattr(a, 'time') and a.time and a.time.value
+        ]
+
+        if not authors_with_time:
+            return None
+
+        # Get latest author by timestamp
+        latest_author = max(authors_with_time, key=lambda a: a.time.value)
+
+        if hasattr(latest_author, "assigned_author") and latest_author.assigned_author:
+            assigned_author = latest_author.assigned_author
+
+            # Check for practitioner (assigned_person)
+            if hasattr(assigned_author, "assigned_person") and assigned_author.assigned_person:
+                if hasattr(assigned_author, "id") and assigned_author.id:
+                    for id_elem in assigned_author.id:
+                        if id_elem.root:
+                            pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                            return {
+                                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
+                            }
+
+            # Check for device (assigned_authoring_device)
+            elif hasattr(assigned_author, "assigned_authoring_device") and assigned_author.assigned_authoring_device:
+                if hasattr(assigned_author, "id") and assigned_author.id:
+                    for id_elem in assigned_author.id:
+                        if id_elem.root:
+                            device_id = self._generate_device_id(id_elem.root, id_elem.extension)
+                            return {
+                                "reference": f"{FHIRCodes.ResourceTypes.DEVICE}/{device_id}"
+                            }
+
+        return None
+
+    def _extract_reasons(self, entry_relationships: list) -> dict[str, list]:
+        """Extract FHIR reason codes and references from C-CDA entry relationships.
+
+        Args:
+            entry_relationships: List of C-CDA entry relationship elements
+
+        Returns:
+            Dict with "codes" and "references" lists
+        """
+        reason_codes = []
+        reason_refs = []
+
+        for entry_rel in entry_relationships:
+            # Look for RSON (reason) relationships
+            if hasattr(entry_rel, "type_code") and entry_rel.type_code == "RSON":
+                if hasattr(entry_rel, "observation") and entry_rel.observation:
+                    obs = entry_rel.observation
+
+                    # Extract reason code from observation value
+                    if hasattr(obs, "value") and obs.value:
+                        value = obs.value
+                        if hasattr(value, "code") and value.code:
+                            reason_code = self.create_codeable_concept(
+                                code=value.code,
+                                code_system=value.code_system if hasattr(value, "code_system") else None,
+                                display_name=value.display_name if hasattr(value, "display_name") else None,
+                            )
+                            if reason_code:
+                                reason_codes.append(reason_code)
+
+        return {"codes": reason_codes, "references": reason_refs}
+
+    def _extract_outcomes(self, entry_relationships: list) -> JSONObject | None:
+        """Extract FHIR outcome from C-CDA entry relationships.
+
+        Args:
+            entry_relationships: List of C-CDA entry relationship elements
+
+        Returns:
+            FHIR outcome CodeableConcept or None
+        """
+        # Look for outcome observations (typically typeCode="OUTC" or result observations)
+        for entry_rel in entry_relationships:
+            if hasattr(entry_rel, "type_code") and entry_rel.type_code in ["OUTC", "COMP"]:
+                if hasattr(entry_rel, "observation") and entry_rel.observation:
+                    obs = entry_rel.observation
+                    if hasattr(obs, "value") and obs.value:
+                        value = obs.value
+                        if hasattr(value, "code") and value.code:
+                            return self.create_codeable_concept(
+                                code=value.code,
+                                code_system=value.code_system if hasattr(value, "code_system") else None,
+                                display_name=value.display_name if hasattr(value, "display_name") else None,
+                            )
+
+        return None
+
+    def _extract_complications(self, entry_relationships: list) -> list[JSONObject]:
+        """Extract FHIR complications from C-CDA entry relationships.
+
+        Args:
+            entry_relationships: List of C-CDA entry relationship elements
+
+        Returns:
+            List of FHIR complication CodeableConcepts
+        """
+        complications = []
+
+        for entry_rel in entry_relationships:
+            # Look for COMP (complication) relationships
+            if hasattr(entry_rel, "type_code") and entry_rel.type_code == "COMP":
+                if hasattr(entry_rel, "observation") and entry_rel.observation:
+                    obs = entry_rel.observation
+                    if hasattr(obs, "value") and obs.value:
+                        value = obs.value
+                        if hasattr(value, "code") and value.code:
+                            complication = self.create_codeable_concept(
+                                code=value.code,
+                                code_system=value.code_system if hasattr(value, "code_system") else None,
+                                display_name=value.display_name if hasattr(value, "display_name") else None,
+                            )
+                            if complication:
+                                complications.append(complication)
+
+        return complications
+
+    def _extract_followups(self, entry_relationships: list) -> list[JSONObject]:
+        """Extract FHIR follow-ups from C-CDA entry relationships.
+
+        Args:
+            entry_relationships: List of C-CDA entry relationship elements
+
+        Returns:
+            List of FHIR follow-up CodeableConcepts
+        """
+        followups = []
+
+        for entry_rel in entry_relationships:
+            # Look for SPRT (support) relationships which typically contain follow-up instructions
+            if hasattr(entry_rel, "type_code") and entry_rel.type_code == "SPRT":
+                if hasattr(entry_rel, "act") and entry_rel.act:
+                    act = entry_rel.act
+                    if hasattr(act, "code") and act.code:
+                        followup = self.create_codeable_concept(
+                            code=act.code.code if hasattr(act.code, "code") else None,
+                            code_system=act.code.code_system if hasattr(act.code, "code_system") else None,
+                            display_name=act.code.display_name if hasattr(act.code, "display_name") else None,
+                        )
+                        if followup:
+                            followups.append(followup)
+
+        return followups
+
+    def _extract_notes(self, procedure) -> list[JSONObject]:
+        """Extract FHIR notes from C-CDA procedure.
+
+        Args:
+            procedure: The C-CDA procedure element
+
+        Returns:
+            List of FHIR Annotation objects
+        """
+        notes = []
+
+        # Extract from text element
+        if hasattr(procedure, "text") and procedure.text:
+            text_content = None
+            if isinstance(procedure.text, str):
+                text_content = procedure.text
+            elif hasattr(procedure.text, "value"):
+                text_content = procedure.text.value
+            elif hasattr(procedure.text, "reference"):
+                # Could resolve reference here if needed
+                pass
+
+            if text_content:
+                notes.append({"text": text_content})
+
+        # Extract from Comment Activity entries
+        if hasattr(procedure, "entry_relationship") and procedure.entry_relationship:
+            for entry_rel in procedure.entry_relationship:
+                # Look for Comment Activity (template 2.16.840.1.113883.10.20.22.4.64)
+                if hasattr(entry_rel, "act") and entry_rel.act:
+                    act = entry_rel.act
+                    # Check if it's a Comment Activity
+                    if hasattr(act, "template_id") and act.template_id:
+                        for template in act.template_id:
+                            if template.root == "2.16.840.1.113883.10.20.22.4.64":
+                                # This is a Comment Activity
+                                if hasattr(act, "text") and act.text:
+                                    comment_text = None
+                                    if isinstance(act.text, str):
+                                        comment_text = act.text
+                                    elif hasattr(act.text, "value"):
+                                        comment_text = act.text.value
+
+                                    if comment_text:
+                                        notes.append({"text": comment_text})
+                                break
+
+        return notes
+
+    def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
+        """Generate a FHIR Practitioner ID from C-CDA identifiers."""
+        if extension:
+            return f"practitioner-{extension.replace(' ', '-').replace('.', '-')}"
+        elif root:
+            return f"practitioner-{root.replace('.', '-')}"
+        else:
+            return "practitioner-unknown"
+
+    def _generate_organization_id(self, root: str | None, extension: str | None) -> str:
+        """Generate a FHIR Organization ID from C-CDA identifiers."""
+        if extension:
+            return f"organization-{extension.replace(' ', '-').replace('.', '-')}"
+        elif root:
+            return f"organization-{root.replace('.', '-')}"
+        else:
+            return "organization-unknown"
+
+    def _generate_location_id(self, root: str | None, extension: str | None) -> str:
+        """Generate a FHIR Location ID from C-CDA identifiers."""
+        if extension:
+            return extension.replace(" ", "-").replace(".", "-")
+        elif root:
+            return root.replace(".", "-")
+        else:
+            return "location-unknown"
+
+    def _generate_device_id(self, root: str | None, extension: str | None) -> str:
+        """Generate consistent Device ID from C-CDA identifiers."""
+        if extension:
+            clean_ext = extension.replace(' ', '-').replace('.', '-')
+            return f"device-{clean_ext}"
+        elif root:
+            root_suffix = root.replace('.', '-').replace('urn:oid:', '')[-16:]
+            return f"device-{root_suffix}"
+        return "device-unknown"

@@ -242,6 +242,11 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
     child_elements: dict[str, list[etree._Element]] = {}
 
     for child in element:
+        # Skip comments and processing instructions
+        # Comments and PIs have a 'tag' attribute that's a function, not a string
+        if not isinstance(child.tag, str):
+            continue
+
         tag = _strip_namespace(child.tag)
         # Handle SDTC namespace elements
         # lxml expands namespaces, so <sdtc:deceasedInd> becomes {urn:hl7-org:sdtc}deceasedInd
@@ -339,6 +344,22 @@ def _parse_child_element(
     # Unwrap Optional/Union types and list types
     target_type = _unwrap_field_type(field_type)
 
+    # Resolve ForwardRef if necessary
+    from typing import ForwardRef, get_type_hints
+    if isinstance(target_type, ForwardRef):
+        # Get type hints from parent model to resolve forward references
+        # This handles cases where a model references another model defined later in the file
+        try:
+            type_hints = get_type_hints(parent_model_class)
+            if field_name in type_hints:
+                resolved_type = type_hints[field_name]
+                # Unwrap the resolved type (it might be Optional[X] or X | None)
+                target_type = _unwrap_field_type(resolved_type)
+        except Exception:
+            # If resolution fails, continue with the ForwardRef
+            # It will be handled as an unknown type and skipped
+            pass
+
     # Check for xsi:type on the element
     xsi_type = element.get(f"{{{NAMESPACES['xsi']}}}type")
     if xsi_type:
@@ -378,8 +399,8 @@ def _parse_child_element(
 
     # If we have a Union of multiple types, we need to detect which one
     # This handles cases like: value: CD | CE | CS | ST | PQ | ...
-    if _is_union_type(field_type):
-        return _parse_union_element(element, field_type)
+    if _is_union_type(target_type):
+        return _parse_union_element(element, target_type)
 
     # Fallback: try to parse as the target type if it's a BaseModel
     if isinstance(target_type, type) and issubclass(target_type, BaseModel):
@@ -392,6 +413,14 @@ def _parse_child_element(
 def _unwrap_field_type(field_type: Any) -> Any:
     """Unwrap Optional, Union, and list types to get the core type."""
     import typing
+    from typing import ForwardRef
+
+    # Resolve ForwardRef if present
+    # ForwardRef is a placeholder for a type that hasn't been defined yet
+    # We can't easily resolve it here without the module context
+    # So we'll just return it as-is and handle it elsewhere
+    if isinstance(field_type, ForwardRef):
+        return field_type
 
     origin = getattr(field_type, "__origin__", None)
 
@@ -456,6 +485,10 @@ def _parse_union_element(element: etree._Element, union_type: Any) -> Any:
     for possible_type in non_none_args:
         # Unwrap list if needed
         unwrapped = _unwrap_field_type(possible_type)
+
+        # Handle simple string type
+        if unwrapped is str:
+            return element.text.strip() if element.text else None
 
         if isinstance(unwrapped, type) and issubclass(unwrapped, BaseModel):
             try:

@@ -1,0 +1,438 @@
+"""E2E tests for Composition resource conversion."""
+
+from __future__ import annotations
+
+from ccda_to_fhir.types import JSONObject
+
+from ccda_to_fhir.convert import convert_document
+
+from .conftest import wrap_in_ccda_document
+
+
+def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObject | None:
+    """Find a resource of the given type in a FHIR Bundle."""
+    for entry in bundle.get("entry", []):
+        resource = entry.get("resource", {})
+        if resource.get("resourceType") == resource_type:
+            return resource
+    return None
+
+
+class TestCompositionConversion:
+    """E2E tests for C-CDA ClinicalDocument to FHIR Composition conversion."""
+
+    def test_bundle_has_composition_as_first_entry(self) -> None:
+        """Test that Composition is the first entry in a document bundle."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        assert bundle["type"] == "document"
+        assert len(bundle["entry"]) > 0
+        assert bundle["entry"][0]["resource"]["resourceType"] == "Composition"
+
+    def test_creates_composition_resource(self) -> None:
+        """Test that Composition resource is created."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert composition["resourceType"] == "Composition"
+
+    def test_converts_status_to_final(self) -> None:
+        """Test that status is set to 'final'.
+
+        Note: Per C-CDA on FHIR spec, legalAuthenticator maps to Composition.attester,
+        not Composition.status. There is no official guidance for inferring status from
+        authentication state, so we default to 'final' for all documents.
+        """
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert composition["status"] == "final"
+
+    def test_converts_identifier(self) -> None:
+        """Test that document ID is converted to identifier."""
+        # wrap_in_ccda_document uses default document ID
+        # <id root="2.16.840.1.113883.19.5.99999.1"/>
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "identifier" in composition
+        assert composition["identifier"]["system"] == "urn:oid:2.16.840.1.113883.19.5.99999.1"
+
+    def test_converts_document_type(self) -> None:
+        """Test that document code is converted to type."""
+        # Default document code from wrap_in_ccda_document:
+        # <code code="34133-9" displayName="Summarization of Episode Note"
+        #       codeSystem="2.16.840.1.113883.6.1"/>
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "type" in composition
+        assert "coding" in composition["type"]
+        assert len(composition["type"]["coding"]) >= 1
+
+        loinc_coding = next(
+            (c for c in composition["type"]["coding"] if c.get("system") == "http://loinc.org"),
+            None,
+        )
+        assert loinc_coding is not None
+        assert loinc_coding["code"] == "34133-9"
+        assert loinc_coding["display"] == "Summarization of Episode Note"
+
+    def test_converts_subject_reference(self) -> None:
+        """Test that patient reference is created."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "subject" in composition
+        assert "reference" in composition["subject"]
+        # Should reference the Patient resource
+        assert "Patient/" in composition["subject"]["reference"]
+
+    def test_converts_date_from_effective_time(self) -> None:
+        """Test that document effectiveTime is converted to date."""
+        # Default effectiveTime from wrap_in_ccda_document:
+        # <effectiveTime value="20231215120000-0500"/>
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "date" in composition
+        # Should be ISO 8601 format
+        assert composition["date"].startswith("2023-12-15")
+
+    def test_converts_author_references(self) -> None:
+        """Test that document authors are referenced."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "author" in composition
+        assert len(composition["author"]) >= 1
+        # Should have a reference or display
+        assert "reference" in composition["author"][0] or "display" in composition["author"][0]
+
+    def test_converts_title(self) -> None:
+        """Test that title is set."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "title" in composition
+        assert len(composition["title"]) > 0
+
+    def test_converts_confidentiality(self) -> None:
+        """Test that confidentiality code is converted."""
+        # Default confidentialityCode from wrap_in_ccda_document:
+        # <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "confidentiality" in composition
+        assert composition["confidentiality"] == "N"
+
+    def test_converts_custodian_reference(self) -> None:
+        """Test that custodian is converted to organization reference."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "custodian" in composition
+        # Should have a reference or display
+        assert "reference" in composition["custodian"] or "display" in composition["custodian"]
+
+    def test_resource_type_is_composition(self) -> None:
+        """Test that resourceType is Composition."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert composition["resourceType"] == "Composition"
+
+
+class TestCompositionSections:
+    """Tests for Composition section creation."""
+
+    def test_creates_sections_from_structured_body(self) -> None:
+        """Test that sections are created from structured body."""
+        # Create a document with a problem section
+        ccda_doc_with_section = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+                    <code code="11450-4" codeSystem="2.16.840.1.113883.6.1" displayName="Problem List"/>
+                    <title>Problems</title>
+                    <text>Problem section narrative</text>
+                    <entry></entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc_with_section)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "section" in composition
+        assert len(composition["section"]) >= 1
+
+    def test_section_has_title(self) -> None:
+        """Test that section title is converted."""
+        ccda_doc_with_section = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+                    <code code="11450-4" codeSystem="2.16.840.1.113883.6.1" displayName="Problem List"/>
+                    <title>Problems</title>
+                    <text>Problem section narrative</text>
+                    <entry></entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc_with_section)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "section" in composition
+        assert len(composition["section"]) >= 1
+        assert composition["section"][0]["title"] == "Problems"
+
+    def test_section_has_code(self) -> None:
+        """Test that section code is converted."""
+        ccda_doc_with_section = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+                    <code code="11450-4" codeSystem="2.16.840.1.113883.6.1" displayName="Problem List"/>
+                    <title>Problems</title>
+                    <text>Problem section narrative</text>
+                    <entry></entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc_with_section)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "section" in composition
+        assert len(composition["section"]) >= 1
+
+        section = composition["section"][0]
+        assert "code" in section
+        assert "coding" in section["code"]
+
+        loinc_coding = next(
+            (c for c in section["code"]["coding"] if c.get("system") == "http://loinc.org"),
+            None,
+        )
+        assert loinc_coding is not None
+        assert loinc_coding["code"] == "11450-4"
+
+    def test_section_has_text(self) -> None:
+        """Test that section text/narrative is converted."""
+        ccda_doc_with_section = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+                    <code code="11450-4" codeSystem="2.16.840.1.113883.6.1" displayName="Problem List"/>
+                    <title>Problems</title>
+                    <text>Problem section narrative</text>
+                    <entry></entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc_with_section)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "section" in composition
+        assert len(composition["section"]) >= 1
+
+        section = composition["section"][0]
+        assert "text" in section
+        assert "status" in section["text"]
+        assert "div" in section["text"]
+        assert "Problem section narrative" in section["text"]["div"]

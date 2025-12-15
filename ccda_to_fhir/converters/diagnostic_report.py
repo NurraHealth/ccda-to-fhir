@@ -1,0 +1,238 @@
+"""DiagnosticReport converter: C-CDA Result Organizer to FHIR DiagnosticReport resource."""
+
+from __future__ import annotations
+
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+
+from ccda_to_fhir.ccda.models.organizer import Organizer
+from ccda_to_fhir.constants import (
+    DIAGNOSTIC_REPORT_STATUS_TO_FHIR,
+    FHIRCodes,
+    FHIRSystems,
+)
+
+from .base import BaseConverter
+from .observation import ObservationConverter
+
+
+class DiagnosticReportConverter(BaseConverter[Organizer]):
+    """Convert C-CDA Result Organizer to FHIR DiagnosticReport resource.
+
+    This converter handles the mapping from C-CDA Result Organizer
+    (template 2.16.840.1.113883.10.20.22.4.1) to a FHIR R4B DiagnosticReport
+    resource, including panel code, status, category, and contained result observations.
+
+    Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-results.html
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the diagnostic report converter."""
+        super().__init__(*args, **kwargs)
+        self.observation_converter = ObservationConverter()
+
+    def convert(self, organizer: Organizer) -> FHIRResourceDict:
+        """Convert a C-CDA Result Organizer to a FHIR DiagnosticReport.
+
+        Args:
+            organizer: The C-CDA Result Organizer
+
+        Returns:
+            FHIR DiagnosticReport resource as a dictionary
+
+        Raises:
+            ValueError: If the organizer lacks required data
+        """
+        report: JSONObject = {
+            "resourceType": FHIRCodes.ResourceTypes.DIAGNOSTIC_REPORT,
+        }
+
+        # 1. Generate ID from organizer identifier
+        if organizer.id and len(organizer.id) > 0:
+            first_id = organizer.id[0]
+            report["id"] = self._generate_report_id(first_id.root, first_id.extension)
+
+        # 2. Identifiers
+        if organizer.id:
+            identifiers = []
+            for id_elem in organizer.id:
+                if id_elem.root:
+                    identifier = self.create_identifier(id_elem.root, id_elem.extension)
+                    if identifier:
+                        identifiers.append(identifier)
+            if identifiers:
+                report["identifier"] = identifiers
+
+        # 3. Status (required)
+        status = self._determine_status(organizer)
+        report["status"] = status
+
+        # 4. Category - LAB
+        report["category"] = [
+            {
+                "coding": [
+                    {
+                        "system": FHIRSystems.V2_0074,
+                        "code": FHIRCodes.DiagnosticReportCategory.LAB,
+                        "display": "Laboratory",
+                    }
+                ]
+            }
+        ]
+
+        # 5. Code (required) - panel code from organizer
+        if organizer.code:
+            code_cc = self._convert_code_to_codeable_concept(organizer.code)
+            if code_cc:
+                report["code"] = code_cc
+
+        # 6. Subject (patient reference)
+        report["subject"] = {
+            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
+        }
+
+        # 7. Effective time
+        effective_time = self._extract_effective_time(organizer)
+        if effective_time:
+            report["effectiveDateTime"] = effective_time
+
+        # 8. Convert component observations to contained resources
+        contained_obs = []
+        result_refs = []
+
+        if organizer.component:
+            for idx, component in enumerate(organizer.component):
+                if component.observation:
+                    # Convert the component observation
+                    contained = self.observation_converter.convert(component.observation)
+
+                    # Generate a contained ID
+                    contained_id = f"result-{idx + 1}"
+                    contained["id"] = contained_id
+
+                    contained_obs.append(contained)
+
+                    # Add result reference
+                    result_refs.append({"reference": f"#{contained_id}"})
+
+        if contained_obs:
+            report["contained"] = contained_obs
+
+        if result_refs:
+            report["result"] = result_refs
+
+        return report
+
+    def _generate_report_id(self, root: str | None, extension: str | None) -> str:
+        """Generate a FHIR resource ID from C-CDA identifier.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            A valid FHIR ID string
+        """
+        if extension:
+            # Use extension as ID (removing any invalid characters)
+            return extension.replace(".", "-").replace(":", "-")
+        elif root:
+            # Use root as ID
+            return root.replace(".", "-").replace(":", "-")
+        else:
+            return "report-unknown"
+
+    def _determine_status(self, organizer: Organizer) -> str:
+        """Determine FHIR DiagnosticReport status from C-CDA status code.
+
+        Args:
+            organizer: The C-CDA Organizer
+
+        Returns:
+            FHIR DiagnosticReport status code
+        """
+        if not organizer.status_code or not organizer.status_code.code:
+            return FHIRCodes.DiagnosticReportStatus.FINAL
+
+        status_code = organizer.status_code.code.lower()
+        return DIAGNOSTIC_REPORT_STATUS_TO_FHIR.get(
+            status_code, FHIRCodes.DiagnosticReportStatus.FINAL
+        )
+
+    def _convert_code_to_codeable_concept(self, code) -> JSONObject | None:
+        """Convert C-CDA CD to FHIR CodeableConcept.
+
+        Args:
+            code: The C-CDA code element
+
+        Returns:
+            FHIR CodeableConcept or None
+        """
+        if not code:
+            return None
+
+        codings = []
+
+        # Primary coding
+        if code.code and code.code_system:
+            coding: JSONObject = {
+                "system": self.map_oid_to_uri(code.code_system),
+                "code": code.code,
+            }
+            if code.display_name:
+                coding["display"] = code.display_name
+            codings.append(coding)
+
+        # Translations
+        if hasattr(code, "translation") and code.translation:
+            for trans in code.translation:
+                if trans.code and trans.code_system:
+                    trans_coding: JSONObject = {
+                        "system": self.map_oid_to_uri(trans.code_system),
+                        "code": trans.code,
+                    }
+                    if trans.display_name:
+                        trans_coding["display"] = trans.display_name
+                    codings.append(trans_coding)
+
+        if not codings:
+            return None
+
+        codeable_concept: JSONObject = {"coding": codings}
+
+        # Original text
+        if hasattr(code, "original_text") and code.original_text:
+            # original_text is ED (Encapsulated Data)
+            if hasattr(code.original_text, "reference"):
+                # Skip reference-only original text
+                pass
+            elif hasattr(code.original_text, "text") and code.original_text.text:
+                codeable_concept["text"] = code.original_text.text
+
+        return codeable_concept
+
+    def _extract_effective_time(self, organizer: Organizer) -> str | None:
+        """Extract and convert effective time to FHIR format.
+
+        Args:
+            organizer: The C-CDA Organizer
+
+        Returns:
+            FHIR formatted datetime string or None
+        """
+        if not organizer.effective_time:
+            return None
+
+        # Handle IVL_TS (interval) - use low if available, otherwise high
+        if hasattr(organizer.effective_time, "low") and organizer.effective_time.low:
+            if hasattr(organizer.effective_time.low, "value"):
+                return self.convert_date(organizer.effective_time.low.value)
+
+        if hasattr(organizer.effective_time, "high") and organizer.effective_time.high:
+            if hasattr(organizer.effective_time.high, "value"):
+                return self.convert_date(organizer.effective_time.high.value)
+
+        # Handle TS (single time point)
+        if hasattr(organizer.effective_time, "value") and organizer.effective_time.value:
+            return self.convert_date(organizer.effective_time.value)
+
+        return None

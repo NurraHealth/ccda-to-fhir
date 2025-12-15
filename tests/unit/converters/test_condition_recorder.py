@@ -1,0 +1,244 @@
+"""Unit tests for Condition.recorder field extraction."""
+
+import pytest
+
+from ccda_to_fhir.ccda.models.act import Act
+from ccda_to_fhir.ccda.models.author import (
+    Author,
+    AssignedAuthor,
+    AssignedPerson,
+    AssignedAuthoringDevice,
+)
+from ccda_to_fhir.ccda.models.datatypes import CE, II, TS
+from ccda_to_fhir.ccda.models.observation import Observation
+from ccda_to_fhir.converters.condition import ConditionConverter
+
+
+class TestConditionRecorder:
+    """Test Condition.recorder field extraction from latest author."""
+
+    def create_observation_with_authors(self, authors: list[Author] | None) -> Observation:
+        """Helper to create observation with given authors."""
+        obs = Observation()
+        obs.code = CE(code="55607006", code_system="2.16.840.1.113883.6.96")
+        obs.value = CE(code="233604007", code_system="2.16.840.1.113883.6.96", display_name="Pneumonia")
+        obs.id = [II(root="1.2.3.4", extension="obs-1")]
+        obs.author = authors
+        return obs
+
+    def create_author(
+        self,
+        time: str | None,
+        practitioner_ext: str | None = None,
+        has_person: bool = True,
+        has_device: bool = False
+    ) -> Author:
+        """Helper to create author with specified time and identifiers."""
+        assigned_author = AssignedAuthor()
+        assigned_author.id = [II(root="2.16.840.1.113883.4.6", extension=practitioner_ext)] if practitioner_ext else []
+
+        if has_person and not has_device:
+            assigned_author.assigned_person = AssignedPerson(name=[])
+        elif has_device:
+            assigned_author.assigned_authoring_device = AssignedAuthoringDevice(
+                manufacturer_model_name="Test Device",
+                software_name="Test Software"
+            )
+
+        author = Author()
+        author.time = TS(value=time) if time else None
+        author.assigned_author = assigned_author
+        return author
+
+    def create_concern_act_with_authors(self, authors: list[Author] | None) -> Act:
+        """Helper to create concern act with given authors."""
+        act = Act()
+        act.author = authors
+        return act
+
+    def test_single_author_with_time_creates_recorder(self):
+        """Test that single author with time creates recorder reference."""
+        author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
+        obs = self.create_observation_with_authors([author])
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        assert "recorder" in condition
+        assert condition["recorder"]["reference"] == "Practitioner/practitioner-DOC-001"
+
+    def test_multiple_authors_chronological_returns_latest(self):
+        """Test that latest author by timestamp is used for recorder."""
+        authors = [
+            self.create_author(time="20240101", practitioner_ext="EARLY-DOC"),
+            self.create_author(time="20240201", practitioner_ext="MIDDLE-DOC"),
+            self.create_author(time="20240301", practitioner_ext="LATEST-DOC"),
+        ]
+        obs = self.create_observation_with_authors(authors)
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        assert "recorder" in condition
+        assert condition["recorder"]["reference"] == "Practitioner/practitioner-LATEST-DOC"
+
+    def test_multiple_authors_reverse_chronological_returns_latest(self):
+        """Test that latest author is found even if not last in list."""
+        authors = [
+            self.create_author(time="20240301", practitioner_ext="LATEST-DOC"),
+            self.create_author(time="20240201", practitioner_ext="MIDDLE-DOC"),
+            self.create_author(time="20240101", practitioner_ext="EARLY-DOC"),
+        ]
+        obs = self.create_observation_with_authors(authors)
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        assert "recorder" in condition
+        assert condition["recorder"]["reference"] == "Practitioner/practitioner-LATEST-DOC"
+
+    def test_author_without_time_excluded(self):
+        """Test that authors without time are excluded from recorder selection."""
+        authors = [
+            self.create_author(time=None, practitioner_ext="NO-TIME-DOC"),
+            self.create_author(time="20240215", practitioner_ext="WITH-TIME-DOC"),
+        ]
+        obs = self.create_observation_with_authors(authors)
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        assert "recorder" in condition
+        assert condition["recorder"]["reference"] == "Practitioner/practitioner-WITH-TIME-DOC"
+
+    def test_all_authors_without_time_no_recorder(self):
+        """Test that no recorder is created if all authors lack time."""
+        authors = [
+            self.create_author(time=None, practitioner_ext="NO-TIME-1"),
+            self.create_author(time=None, practitioner_ext="NO-TIME-2"),
+        ]
+        obs = self.create_observation_with_authors(authors)
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        assert "recorder" not in condition
+
+    def test_author_without_id_no_recorder(self):
+        """Test that author without ID cannot create recorder reference."""
+        author = self.create_author(time="20240115", practitioner_ext=None)
+        obs = self.create_observation_with_authors([author])
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        assert "recorder" not in condition
+
+    def test_device_author_creates_device_reference(self):
+        """Test that device author creates Device reference."""
+        author = self.create_author(
+            time="20240115",
+            practitioner_ext="DEVICE-001",
+            has_person=False,
+            has_device=True
+        )
+        obs = self.create_observation_with_authors([author])
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        assert "recorder" in condition
+        assert condition["recorder"]["reference"] == "Device/device-DEVICE-001"
+
+    def test_practitioner_and_device_authors_returns_latest_by_time(self):
+        """Test that latest author is selected regardless of type."""
+        authors = [
+            self.create_author(time="20240101", practitioner_ext="EARLY-PRAC", has_person=True),
+            self.create_author(time="20240301", practitioner_ext="LATE-DEVICE", has_person=False, has_device=True),
+            self.create_author(time="20240201", practitioner_ext="MID-PRAC", has_person=True),
+        ]
+        obs = self.create_observation_with_authors(authors)
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        assert "recorder" in condition
+        assert condition["recorder"]["reference"] == "Device/device-LATE-DEVICE"
+
+    def test_empty_authors_list_no_recorder(self):
+        """Test that empty authors list does not create recorder."""
+        obs = self.create_observation_with_authors([])
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        assert "recorder" not in condition
+
+    def test_none_authors_no_recorder(self):
+        """Test that None authors does not create recorder."""
+        obs = self.create_observation_with_authors(None)
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        assert "recorder" not in condition
+
+    def test_concern_act_and_observation_authors_both_considered(self):
+        """Test that authors from both concern act and observation are considered."""
+        concern_act_authors = [
+            self.create_author(time="20240101", practitioner_ext="CONCERN-EARLY")
+        ]
+        obs_authors = [
+            self.create_author(time="20240301", practitioner_ext="OBS-LATEST")
+        ]
+
+        concern_act = self.create_concern_act_with_authors(concern_act_authors)
+        obs = self.create_observation_with_authors(obs_authors)
+
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=concern_act
+        )
+        condition = converter.convert(obs)
+
+        assert "recorder" in condition
+        assert condition["recorder"]["reference"] == "Practitioner/practitioner-OBS-LATEST"
+
+    def test_latest_from_concern_act_used_if_later_than_observation(self):
+        """Test that concern act author is used if it's latest."""
+        concern_act_authors = [
+            self.create_author(time="20240301", practitioner_ext="CONCERN-LATEST")
+        ]
+        obs_authors = [
+            self.create_author(time="20240101", practitioner_ext="OBS-EARLY")
+        ]
+
+        concern_act = self.create_concern_act_with_authors(concern_act_authors)
+        obs = self.create_observation_with_authors(obs_authors)
+
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=concern_act
+        )
+        condition = converter.convert(obs)
+
+        assert "recorder" in condition
+        assert condition["recorder"]["reference"] == "Practitioner/practitioner-CONCERN-LATEST"
+
+    def test_recorded_date_still_uses_earliest_author(self):
+        """Test that recordedDate still uses earliest author time (existing behavior)."""
+        authors = [
+            self.create_author(time="20240301", practitioner_ext="LATEST-DOC"),
+            self.create_author(time="20240101", practitioner_ext="EARLIEST-DOC"),
+        ]
+        obs = self.create_observation_with_authors(authors)
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        condition = converter.convert(obs)
+
+        # recordedDate should still use earliest
+        assert condition.get("recordedDate") == "2024-01-01"
+        # recorder should use latest
+        assert condition["recorder"]["reference"] == "Practitioner/practitioner-LATEST-DOC"

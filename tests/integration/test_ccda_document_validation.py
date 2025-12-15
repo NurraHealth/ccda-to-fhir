@@ -16,18 +16,18 @@ import pytest
 
 from ccda_to_fhir.ccda.models import ClinicalDocument
 from ccda_to_fhir.ccda.parser import parse_ccda, MalformedXMLError
+from ccda_to_fhir.convert import convert_document
 
 
 # Path to test fixtures
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
-@pytest.mark.skip(reason="Blocked by Section model forward reference issue - needs model_rebuild()")
 class TestRealWorldDocuments:
-    """Test parsing of real-world C-CDA documents."""
+    """Test parsing and conversion of real-world C-CDA documents."""
 
     def test_parse_practice_fusion_alice_newman(self) -> None:
-        """Parse complete Practice Fusion CCD for Alice Newman."""
+        """Parse and convert complete Practice Fusion CCD for Alice Newman."""
         xml_path = FIXTURES_DIR / "practice_fusion_alice_newman.xml"
         xml = xml_path.read_text()
 
@@ -71,8 +71,26 @@ class TestRealWorldDocuments:
         # Verify custodian exists
         assert doc.custodian is not None
 
+        # Test conversion to FHIR
+        bundle = convert_document(xml)
+
+        assert bundle is not None
+        assert bundle["resourceType"] == "Bundle"
+        assert bundle["type"] == "document"
+        assert "entry" in bundle
+        assert len(bundle["entry"]) > 0
+
+        # First entry must be Composition
+        first_resource = bundle["entry"][0]["resource"]
+        assert first_resource["resourceType"] == "Composition"
+
+        # Bundle should contain a Patient resource
+        resource_types = [entry["resource"]["resourceType"] for entry in bundle["entry"]]
+        assert "Patient" in resource_types
+        assert "Composition" in resource_types
+
     def test_parse_practice_fusion_jeremy_bates(self) -> None:
-        """Parse complete Practice Fusion CCD for Jeremy Bates."""
+        """Parse and convert complete Practice Fusion CCD for Jeremy Bates."""
         xml_path = FIXTURES_DIR / "practice_fusion_jeremy_bates.xml"
         xml = xml_path.read_text()
 
@@ -95,8 +113,23 @@ class TestRealWorldDocuments:
         assert doc.author is not None
         assert doc.custodian is not None
 
+        # Test conversion to FHIR
+        bundle = convert_document(xml)
 
-@pytest.mark.skip(reason="Blocked by Section model forward reference issue - needs model_rebuild()")
+        assert bundle is not None
+        assert bundle["resourceType"] == "Bundle"
+        assert bundle["type"] == "document"
+        assert "entry" in bundle
+
+        # First entry must be Composition
+        first_resource = bundle["entry"][0]["resource"]
+        assert first_resource["resourceType"] == "Composition"
+
+        # Bundle should contain a Patient resource
+        resource_types = [entry["resource"]["resourceType"] for entry in bundle["entry"]]
+        assert "Patient" in resource_types
+
+
 class TestDocumentSections:
     """Test that document sections parse correctly."""
 
@@ -109,9 +142,15 @@ class TestDocumentSections:
 
         # Most CCDs have a component with structuredBody
         assert doc.component is not None
+        assert doc.component.structured_body is not None
 
-        # The component should have a structured body (if present)
-        # Note: This depends on the model structure - adjust based on actual implementation
+        # Should have sections
+        assert doc.component.structured_body.component is not None
+        assert len(doc.component.structured_body.component) > 0
+
+        # Each component should have a section
+        for comp in doc.component.structured_body.component:
+            assert comp.section is not None
 
 
 class TestValidationErrors:

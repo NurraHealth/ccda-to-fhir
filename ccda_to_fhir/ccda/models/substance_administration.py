@@ -226,8 +226,8 @@ class SubstanceAdministration(CDAModel):
     # Rate quantity (for IV)
     rate_quantity: PQ | IVL_PQ | None = Field(default=None, alias="rateQuantity")
 
-    # Maximum dose quantity
-    max_dose_quantity: PQ | None = Field(default=None, alias="maxDoseQuantity")
+    # Maximum dose quantity (RTO = Ratio with numerator/denominator)
+    max_dose_quantity: RTO | None = Field(default=None, alias="maxDoseQuantity")
 
     # Administration unit code (tablet, capsule, etc.)
     administration_unit_code: CE | None = Field(default=None, alias="administrationUnitCode")

@@ -8,6 +8,8 @@ from typing import Any
 
 import pytest
 
+from ccda_to_fhir.constants import CCDACodes, TemplateIds
+
 # NOTE: Conversion tests are skipped until converter is implemented
 # from ccda_to_fhir.convert import convert_document
 
@@ -28,16 +30,83 @@ CCDA_FIXTURES_DIR = FIXTURES_DIR / "ccda"
 FHIR_FIXTURES_DIR = FIXTURES_DIR / "fhir"
 
 
+# Default minimal C-CDA components
+DEFAULT_PATIENT = """
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    """
+
+DEFAULT_AUTHOR = """
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    """
+
+DEFAULT_CUSTODIAN = """
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    """
+
+
 def wrap_in_ccda_document(
     section_content: str,
     section_template_id: str | None = None,
     section_code: str | None = None,
+    patient: str | None = None,
+    author: str | None = None,
+    custodian: str | None = None,
+    legal_authenticator: str | None = None,
 ) -> str:
-    """Wrap a C-CDA fragment in a minimal valid C-CDA document structure.
+    """Create a minimal valid C-CDA document for testing.
 
-    This allows testing with XML fragments while still going through
-    the full document conversion pipeline.
+    This helper creates a complete C-CDA document with the provided content
+    and sensible defaults for required elements.
+
+    Args:
+        section_content: The C-CDA content to wrap (e.g., act, observation, etc.)
+        section_template_id: Optional section template ID
+        section_code: Optional section LOINC code
+        patient: Patient/recordTarget XML. Uses default minimal patient if not provided.
+        author: Author XML. Uses default minimal author if not provided.
+        custodian: Custodian XML. Uses default minimal custodian if not provided.
+        legal_authenticator: Legal authenticator XML. Optional.
     """
+    # Strip XML declaration if present in section_content
+    import re
+    section_content = re.sub(r'<\?xml[^?]*\?>\s*', '', section_content)
+
+    # Use defaults if not provided
+    patient_xml = patient if patient is not None else DEFAULT_PATIENT
+    author_xml = author if author is not None else DEFAULT_AUTHOR
+    custodian_xml = custodian if custodian is not None else DEFAULT_CUSTODIAN
+    legal_auth_xml = legal_authenticator if legal_authenticator is not None else ""
+
+    # Strip XML declarations from all parameters
+    patient_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', patient_xml)
+    author_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', author_xml)
+    custodian_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', custodian_xml)
+    legal_auth_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', legal_auth_xml)
+
     section_template = ""
     if section_template_id:
         section_template = f'<templateId root="{section_template_id}"/>'
@@ -45,22 +114,36 @@ def wrap_in_ccda_document(
     section_code_elem = ""
     if section_code:
         section_code_elem = f'<code code="{section_code}" codeSystem="2.16.840.1.113883.6.1"/>'
+    elif section_template_id == TemplateIds.PROBLEM_SECTION:
+        # Default to Problems section code if using Problems template
+        section_code_elem = f'<code code="{CCDACodes.PROBLEM_LIST}" codeSystem="2.16.840.1.113883.6.1" displayName="Problem List"/>'
+    elif section_template_id == TemplateIds.ALLERGY_SECTION:
+        # Default to Allergies section code if using Allergies template
+        section_code_elem = f'<code code="{CCDACodes.ALLERGIES_SECTION}" codeSystem="2.16.840.1.113883.6.1" displayName="Allergies and adverse reactions"/>'
 
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <realmCode code="US"/>
     <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
     <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
     <id root="2.16.840.1.113883.19.5.99999.1"/>
     <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
     <effectiveTime value="20231215120000-0500"/>
-    {section_content}
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    {patient_xml}
+    {author_xml}
+    {custodian_xml}
+    {legal_auth_xml}
     <component>
         <structuredBody>
             <component>
                 <section>
                     {section_template}
                     {section_code_elem}
-                    {section_content}
+                    <entry>
+                        {section_content}
+                    </entry>
                 </section>
             </component>
         </structuredBody>
@@ -135,6 +218,30 @@ def fhir_medication() -> dict[str, Any]:
 
 
 @pytest.fixture
+def ccda_medication_bedtime_hs() -> str:
+    """Load C-CDA medication with EIVL_TS bedtime (HS) timing."""
+    return (CCDA_FIXTURES_DIR / "medication_bedtime_hs.xml").read_text()
+
+
+@pytest.fixture
+def ccda_medication_before_breakfast_acm() -> str:
+    """Load C-CDA medication with EIVL_TS before breakfast (ACM) timing."""
+    return (CCDA_FIXTURES_DIR / "medication_before_breakfast_acm.xml").read_text()
+
+
+@pytest.fixture
+def ccda_medication_with_offset() -> str:
+    """Load C-CDA medication with EIVL_TS and offset timing."""
+    return (CCDA_FIXTURES_DIR / "medication_with_offset.xml").read_text()
+
+
+@pytest.fixture
+def ccda_medication_pivl_eivl_combined() -> str:
+    """Load C-CDA medication with combined PIVL_TS and EIVL_TS timing."""
+    return (CCDA_FIXTURES_DIR / "medication_pivl_eivl_combined.xml").read_text()
+
+
+@pytest.fixture
 def ccda_procedure() -> str:
     """Load C-CDA procedure fixture."""
     return (CCDA_FIXTURES_DIR / "procedure.xml").read_text()
@@ -144,6 +251,60 @@ def ccda_procedure() -> str:
 def fhir_procedure() -> dict[str, Any]:
     """Load expected FHIR procedure fixture."""
     return json.loads((FHIR_FIXTURES_DIR / "procedure.json").read_text())
+
+
+@pytest.fixture
+def ccda_procedure_with_body_site() -> str:
+    """Load C-CDA procedure with body site."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_body_site.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_with_performer() -> str:
+    """Load C-CDA procedure with performer."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_performer.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_with_location() -> str:
+    """Load C-CDA procedure with location participant."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_location.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_with_reason() -> str:
+    """Load C-CDA procedure with reason code."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_reason.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_with_author() -> str:
+    """Load C-CDA procedure with author/recorder."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_author.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_with_outcome() -> str:
+    """Load C-CDA procedure with outcome."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_outcome.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_with_complications() -> str:
+    """Load C-CDA procedure with complications."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_complications.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_with_followup() -> str:
+    """Load C-CDA procedure with follow-up instructions."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_followup.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_with_notes() -> str:
+    """Load C-CDA procedure with notes (text and Comment Activity)."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_notes.xml").read_text()
 
 
 @pytest.fixture
@@ -168,6 +329,48 @@ def ccda_encounter() -> str:
 def fhir_encounter() -> dict[str, Any]:
     """Load expected FHIR encounter fixture."""
     return json.loads((FHIR_FIXTURES_DIR / "encounter.json").read_text())
+
+
+@pytest.fixture
+def ccda_encounter_with_status_code() -> str:
+    """Load C-CDA encounter with statusCode."""
+    return (CCDA_FIXTURES_DIR / "encounter_with_status_code.xml").read_text()
+
+
+@pytest.fixture
+def ccda_encounter_inpatient_v3() -> str:
+    """Load C-CDA encounter with V3 ActCode class."""
+    return (CCDA_FIXTURES_DIR / "encounter_inpatient_v3.xml").read_text()
+
+
+@pytest.fixture
+def ccda_encounter_with_function_code() -> str:
+    """Load C-CDA encounter with performer functionCode."""
+    return (CCDA_FIXTURES_DIR / "encounter_with_function_code.xml").read_text()
+
+
+@pytest.fixture
+def ccda_encounter_with_location() -> str:
+    """Load C-CDA encounter with location participant."""
+    return (CCDA_FIXTURES_DIR / "encounter_with_location.xml").read_text()
+
+
+@pytest.fixture
+def ccda_encounter_with_discharge() -> str:
+    """Load C-CDA encounter with discharge disposition."""
+    return (CCDA_FIXTURES_DIR / "encounter_with_discharge.xml").read_text()
+
+
+@pytest.fixture
+def ccda_header_encounter_only() -> str:
+    """Load C-CDA document with header encompassingEncounter only (no body encounters)."""
+    return (CCDA_FIXTURES_DIR / "header_encounter_only.xml").read_text()
+
+
+@pytest.fixture
+def ccda_header_and_body_encounter() -> str:
+    """Load C-CDA document with both header and body encounters with duplicate ID."""
+    return (CCDA_FIXTURES_DIR / "header_and_body_encounter.xml").read_text()
 
 
 @pytest.fixture
@@ -228,3 +431,138 @@ def ccda_author() -> str:
 def fhir_practitioner() -> dict[str, Any]:
     """Load expected FHIR practitioner fixture."""
     return json.loads((FHIR_FIXTURES_DIR / "practitioner.json").read_text())
+
+
+# Condition test fixtures for untested features
+@pytest.fixture
+def ccda_condition_with_abatement() -> str:
+    """Load C-CDA condition with abatement date."""
+    return (CCDA_FIXTURES_DIR / "condition_with_abatement.xml").read_text()
+
+
+@pytest.fixture
+def ccda_condition_with_body_site() -> str:
+    """Load C-CDA condition with body site."""
+    return (CCDA_FIXTURES_DIR / "condition_with_body_site.xml").read_text()
+
+
+@pytest.fixture
+def ccda_condition_with_severity() -> str:
+    """Load C-CDA condition with severity."""
+    return (CCDA_FIXTURES_DIR / "condition_with_severity.xml").read_text()
+
+
+@pytest.fixture
+def ccda_condition_with_note() -> str:
+    """Load C-CDA condition with note from text element."""
+    return (CCDA_FIXTURES_DIR / "condition_with_note.xml").read_text()
+
+
+@pytest.fixture
+def ccda_condition_negated() -> str:
+    """Load C-CDA condition with negationInd=true."""
+    return (CCDA_FIXTURES_DIR / "condition_negated.xml").read_text()
+
+
+@pytest.fixture
+def ccda_condition_with_asserted_date() -> str:
+    """Load C-CDA condition with Date of Diagnosis (assertedDate extension)."""
+    return (CCDA_FIXTURES_DIR / "condition_with_asserted_date.xml").read_text()
+
+
+@pytest.fixture
+def ccda_condition_with_comment() -> str:
+    """Load C-CDA condition with Comment Activity."""
+    return (CCDA_FIXTURES_DIR / "condition_with_comment.xml").read_text()
+
+
+@pytest.fixture
+def ccda_condition_with_evidence() -> str:
+    """Load C-CDA condition with supporting observations (evidence)."""
+    return (CCDA_FIXTURES_DIR / "condition_with_evidence.xml").read_text()
+
+
+# AllergyIntolerance test fixtures for untested features
+@pytest.fixture
+def ccda_allergy_with_type() -> str:
+    """Load C-CDA allergy with type field (allergy vs intolerance)."""
+    return (CCDA_FIXTURES_DIR / "allergy_with_type.xml").read_text()
+
+
+@pytest.fixture
+def ccda_allergy_with_verification_status() -> str:
+    """Load C-CDA allergy with verification status (confirmed)."""
+    return (CCDA_FIXTURES_DIR / "allergy_with_verification_status.xml").read_text()
+
+
+@pytest.fixture
+def ccda_allergy_with_criticality() -> str:
+    """Load C-CDA allergy with Criticality Observation."""
+    return (CCDA_FIXTURES_DIR / "allergy_with_criticality.xml").read_text()
+
+
+@pytest.fixture
+def ccda_allergy_with_abatement() -> str:
+    """Load C-CDA allergy with abatement extension (effectiveTime/high)."""
+    return (CCDA_FIXTURES_DIR / "allergy_with_abatement.xml").read_text()
+
+
+@pytest.fixture
+def ccda_allergy_with_recorded_date() -> str:
+    """Load C-CDA allergy with author/time for recordedDate."""
+    return (CCDA_FIXTURES_DIR / "allergy_with_recorded_date.xml").read_text()
+
+
+@pytest.fixture
+def ccda_allergy_with_comment() -> str:
+    """Load C-CDA allergy with Comment Activity."""
+    return (CCDA_FIXTURES_DIR / "allergy_with_comment.xml").read_text()
+
+
+# New fixtures for recent edge case coverage
+@pytest.fixture
+def ccda_medication_negated() -> str:
+    """Load C-CDA medication with negationInd=true."""
+    return (CCDA_FIXTURES_DIR / "medication_negated.xml").read_text()
+
+
+@pytest.fixture
+def ccda_immunization_negated() -> str:
+    """Load C-CDA immunization with negationInd=true."""
+    return (CCDA_FIXTURES_DIR / "immunization_negated.xml").read_text()
+
+
+@pytest.fixture
+def ccda_observation_ivl_pq() -> str:
+    """Load C-CDA observation with IVL_PQ value."""
+    return (CCDA_FIXTURES_DIR / "observation_ivl_pq.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_negated() -> str:
+    """Load C-CDA procedure with negationInd=true."""
+    return (CCDA_FIXTURES_DIR / "procedure_negated.xml").read_text()
+
+
+@pytest.fixture
+def ccda_problem_multiple_authors() -> str:
+    """Load C-CDA problem with multiple authors at different times."""
+    return (CCDA_FIXTURES_DIR / "problem_multiple_authors.xml").read_text()
+
+
+@pytest.fixture
+def ccda_allergy_multiple_authors() -> str:
+    """Load C-CDA allergy with multiple authors at different times."""
+    return (CCDA_FIXTURES_DIR / "allergy_multiple_authors.xml").read_text()
+
+
+@pytest.fixture
+def ccda_medication_multiple_authors() -> str:
+    """Load C-CDA medication with multiple authors at different times."""
+    return (CCDA_FIXTURES_DIR / "medication_multiple_authors.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_multiple_authors() -> str:
+    """Load C-CDA procedure with multiple authors at different times."""
+    return (CCDA_FIXTURES_DIR / "procedure_multiple_authors.xml").read_text()

@@ -245,10 +245,11 @@ class PIVL_TS(CDAModel):
     """Periodic Interval of Time (PIVL<TS>).
 
     A time interval that recurs periodically.
+    Period can be either a single PQ value or an IVL_PQ range.
     """
 
     phase: IVL_TS | None = None
-    period: PQ | None = None
+    period: PQ | IVL_PQ | None = None
     alignment: str | None = None
     institution_specified: bool | None = Field(default=None, alias="institutionSpecified")
     operator: str | None = None
@@ -261,7 +262,7 @@ class EIVL_TS(CDAModel):
     """
 
     event: CE | None = None
-    offset: IVL_PQ | None = None
+    offset: PQ | IVL_PQ | None = None
     operator: str | None = None
 
 
@@ -296,8 +297,13 @@ class IVL_PQ(CDAModel):
     """Interval of Physical Quantity (IVL<PQ>).
 
     A range of physical quantities.
+    Can be expressed as an interval (low/high) or as a single value.
     """
 
+    # Single value (shorthand for low=high=value)
+    value: str | None = None
+
+    # Interval bounds
     low: PQ | None = None
     high: PQ | None = None
     center: PQ | None = None
