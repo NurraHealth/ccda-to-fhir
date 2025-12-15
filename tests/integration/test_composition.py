@@ -166,6 +166,136 @@ class TestCompositionConversion:
         assert composition is not None
         assert composition["resourceType"] == "Composition"
 
+    def test_converts_legal_authenticator_to_attester(self) -> None:
+        """Test that legalAuthenticator maps to Composition.attester."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            legal_authenticator="""
+            <legalAuthenticator>
+                <time value="20200301"/>
+                <signatureCode code="S"/>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Adam</given>
+                            <family>Careful</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </legalAuthenticator>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Should have attester array
+        assert "attester" in composition
+        assert len(composition["attester"]) == 1
+
+        attester = composition["attester"][0]
+
+        # Mode should be "legal"
+        assert attester["mode"] == "legal"
+
+        # Should have time
+        assert "time" in attester
+        assert attester["time"] == "2020-03-01"
+
+        # Should reference practitioner
+        assert "party" in attester
+        assert attester["party"]["reference"].startswith("Practitioner/")
+
+        # Verify practitioner was created in bundle with correct ID
+        expected_id = attester["party"]["reference"].split("/")[1]
+        assert expected_id == "npi-1234567890"
+
+        # Find the legal authenticator's practitioner (not the author's)
+        legal_auth_practitioner = None
+        for entry in bundle.get("entry", []):
+            resource = entry.get("resource", {})
+            if resource.get("resourceType") == "Practitioner" and resource.get("id") == "npi-1234567890":
+                legal_auth_practitioner = resource
+                break
+
+        assert legal_auth_practitioner is not None
+        assert "identifier" in legal_auth_practitioner
+        # Verify NPI identifier
+        npi_identifier = next(
+            (id for id in legal_auth_practitioner["identifier"]
+             if id.get("system") == "http://hl7.org/fhir/sid/us-npi"),
+            None
+        )
+        assert npi_identifier is not None
+        assert npi_identifier["value"] == "1234567890"
+
+    def test_converts_legal_authenticator_without_time(self) -> None:
+        """Test that legalAuthenticator without time still creates attester."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            legal_authenticator="""
+            <legalAuthenticator>
+                <signatureCode code="S"/>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="9999999999"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Jane</given>
+                            <family>Smith</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </legalAuthenticator>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "attester" in composition
+
+        attester = composition["attester"][0]
+        assert attester["mode"] == "legal"
+        # Should NOT have time when not provided
+        assert "time" not in attester
+        # Should still have party reference
+        assert "party" in attester
+
+    def test_converts_legal_authenticator_without_assigned_entity(self) -> None:
+        """Test that legalAuthenticator without assignedEntity creates attester with mode only."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            legal_authenticator="""
+            <legalAuthenticator>
+                <time value="20200301"/>
+                <signatureCode code="S"/>
+            </legalAuthenticator>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "attester" in composition
+
+        attester = composition["attester"][0]
+        assert attester["mode"] == "legal"
+        assert attester["time"] == "2020-03-01"
+        # Should NOT have party when assignedEntity is missing
+        assert "party" not in attester
+
+    def test_no_attester_without_legal_authenticator(self) -> None:
+        """Test that no attester is created when legalAuthenticator is absent."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        # Should NOT have attester field
+        assert "attester" not in composition
+
 
 class TestCompositionSections:
     """Tests for Composition section creation."""

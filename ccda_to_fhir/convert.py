@@ -364,6 +364,22 @@ class DocumentConverter:
             for resource in practitioners_and_orgs:
                 self.reference_registry.register_resource(resource)
 
+        # Convert Practitioner from legalAuthenticator
+        if ccda_doc.legal_authenticator and ccda_doc.legal_authenticator.assigned_entity:
+            try:
+                practitioner = self.practitioner_converter.convert(
+                    ccda_doc.legal_authenticator.assigned_entity
+                )
+                if self._validate_resource(practitioner):
+                    resources.append(practitioner)
+                    self.reference_registry.register_resource(practitioner)
+            except Exception as e:
+                logger.warning(
+                    f"Error converting legal authenticator practitioner: {e}",
+                    exc_info=True,
+                    extra={"error_type": type(e).__name__}
+                )
+
         # Convert custodian organization if present
         if ccda_doc.custodian:
             custodian_org = self._extract_custodian_organization(ccda_doc.custodian)

@@ -86,6 +86,12 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         # See: https://build.fhir.org/ig/HL7/ccda-on-fhir/
         composition["status"] = FHIRCodes.CompositionStatus.FINAL
 
+        # Attester from legalAuthenticator (if present)
+        if clinical_document.legal_authenticator:
+            attester = self._extract_attester(clinical_document.legal_authenticator)
+            if attester:
+                composition["attester"] = [attester]
+
         # Type - REQUIRED (document type code)
         if clinical_document.code:
             doc_type = self.create_codeable_concept(
@@ -329,6 +335,70 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             return software
         else:
             return None
+
+    def _extract_attester(self, legal_authenticator) -> JSONObject | None:
+        """Extract attester from legalAuthenticator.
+
+        Maps C-CDA legal authentication to FHIR Composition.attester
+        with mode="legal".
+
+        Args:
+            legal_authenticator: C-CDA legalAuthenticator element
+
+        Returns:
+            FHIR attester object or None
+        """
+        if not legal_authenticator:
+            return None
+
+        attester: JSONObject = {
+            "mode": "legal"  # Legal attestation
+        }
+
+        # Extract time
+        if legal_authenticator.time and legal_authenticator.time.value:
+            time_str = self.convert_date(legal_authenticator.time.value)
+            if time_str:
+                attester["time"] = time_str
+
+        # Extract party reference (Practitioner)
+        if legal_authenticator.assigned_entity:
+            assigned = legal_authenticator.assigned_entity
+
+            # Generate practitioner ID from identifiers
+            if assigned.id:
+                practitioner_id = self._generate_practitioner_id(assigned.id)
+                if practitioner_id:
+                    attester["party"] = {
+                        "reference": f"Practitioner/{practitioner_id}"
+                    }
+
+        return attester
+
+    def _generate_practitioner_id(self, identifiers: list[II]) -> str:
+        """Generate FHIR Practitioner ID from C-CDA identifiers.
+
+        Args:
+            identifiers: List of C-CDA II identifiers
+
+        Returns:
+            Generated ID string
+        """
+        from ccda_to_fhir.constants import CodeSystemOIDs
+
+        # Prefer NPI if present
+        for identifier in identifiers:
+            if identifier.root == CodeSystemOIDs.NPI and identifier.extension:
+                return f"npi-{identifier.extension}"
+
+        # Otherwise use first identifier
+        if identifiers and identifiers[0].extension:
+            return identifiers[0].extension.replace(" ", "-").replace(".", "-")
+        elif identifiers and identifiers[0].root:
+            # Use last 16 chars of root OID
+            return identifiers[0].root.replace(".", "")[-16:]
+        else:
+            return "practitioner-unknown"
 
     def _convert_confidentiality(self, conf_code) -> str | None:
         """Convert confidentiality code to FHIR value.
