@@ -8,6 +8,39 @@ This library currently supports unidirectional mapping:
 - **C-CDA → FHIR**: Converting clinical documents to FHIR resources ✅ **Implemented**
 - **FHIR → C-CDA**: Converting FHIR resources to clinical documents 🚧 **Planned**
 
+## Documentation Structure
+
+This directory contains comprehensive mapping documentation organized as follows:
+
+### Clinical Domain Mappings
+
+Detailed mappings for specific clinical areas (aligned with HL7 C-CDA on FHIR IG):
+
+- **[01-patient.md](01-patient.md)**: Patient demographics and administrative data
+- **[02-condition.md](02-condition.md)**: Problems and diagnoses
+- **[03-allergy-intolerance.md](03-allergy-intolerance.md)**: Allergies and intolerances
+- **[04-observation.md](04-observation.md)**: Laboratory results and observations
+- **[05-procedure.md](05-procedure.md)**: Procedures and interventions
+- **[06-immunization.md](06-immunization.md)**: Immunizations and vaccinations
+- **[07-medication-request.md](07-medication-request.md)**: Medications and prescriptions
+- **[08-encounter.md](08-encounter.md)**: Encounters and visits
+- **[09-participations.md](09-participations.md)**: Document participants (author, performer, informant, etc.)
+- **[10-notes.md](10-notes.md)**: Clinical notes and documentation
+- **[11-social-history.md](11-social-history.md)**: Social history observations
+- **[12-vital-signs.md](12-vital-signs.md)**: Vital signs measurements
+
+### Supplementary Documentation
+
+Supporting resources for implementation:
+
+- **[terminology-maps.md](terminology-maps.md)**: Concept maps for value set translation between C-CDA and FHIR
+- **[known-issues.md](known-issues.md)**: Known limitations, edge cases, and unresolved challenges
+- **[change-log.md](change-log.md)**: Version history and mapping changes
+
+### Planning Documentation
+
+- **[../c-cda-fhir-compliance-plan.md](../c-cda-fhir-compliance-plan.md)**: Roadmap for achieving full HL7 C-CDA on FHIR IG compliance
+
 ## Core Data Type Mappings
 
 ### Identifier Mapping
