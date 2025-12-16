@@ -255,3 +255,349 @@ class TestPatientConversion:
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
         assert patient["resourceType"] == "Patient"
+
+    def test_converts_birth_sex_extension_female(self) -> None:
+        """Test that birth sex observation maps to Patient.extension (female)."""
+        birth_sex_observation = """
+        <observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.200"/>
+            <code code="76689-9" displayName="Sex assigned at birth"
+                  codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="F" displayName="Female"
+                   codeSystem="2.16.840.1.113883.5.1"/>
+        </observation>
+        """
+        ccda_doc = wrap_in_ccda_document(
+            birth_sex_observation,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        # Should have us-core-birthsex extension
+        assert "extension" in patient
+        birthsex_ext = next(
+            (e for e in patient["extension"]
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
+            None
+        )
+        assert birthsex_ext is not None
+        assert birthsex_ext["valueCode"] == "F"
+
+        # Should NOT create a separate Observation resource for birth sex
+        observations = [
+            entry["resource"] for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Observation"
+        ]
+        birth_sex_observations = [
+            obs for obs in observations
+            if obs.get("code", {}).get("coding", [{}])[0].get("code") == "76689-9"
+        ]
+        assert len(birth_sex_observations) == 0, "Birth sex should NOT create an Observation resource"
+
+    def test_converts_birth_sex_extension_male(self) -> None:
+        """Test that birth sex observation maps to Patient.extension (male)."""
+        observation = """
+        <observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.200"/>
+            <code code="76689-9" displayName="Sex assigned at birth"
+                  codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="M" displayName="Male"
+                   codeSystem="2.16.840.1.113883.5.1"/>
+        </observation>
+        """
+        ccda_doc = wrap_in_ccda_document(
+            observation,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        birthsex_ext = next(
+            (e for e in patient.get("extension", [])
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
+            None
+        )
+        assert birthsex_ext is not None
+        assert birthsex_ext["valueCode"] == "M"
+
+    def test_converts_birth_sex_extension_unknown(self) -> None:
+        """Test that birth sex observation maps to Patient.extension (unknown)."""
+        observation = """
+        <observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.200"/>
+            <code code="76689-9" displayName="Sex assigned at birth"
+                  codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="UNK" displayName="Unknown"
+                   codeSystem="2.16.840.1.113883.5.1"/>
+        </observation>
+        """
+        ccda_doc = wrap_in_ccda_document(
+            observation,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        birthsex_ext = next(
+            (e for e in patient.get("extension", [])
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
+            None
+        )
+        assert birthsex_ext is not None
+        assert birthsex_ext["valueCode"] == "UNK"
+
+    def test_converts_gender_identity_extension_male(self) -> None:
+        """Test that gender identity observation maps to Patient.extension (identifies as male)."""
+        observation = """
+        <observation classCode="OBS" moodCode="EVN">
+            <code code="76691-5" displayName="Gender identity"
+                  codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="446151000124109"
+                   displayName="Identifies as male"
+                   codeSystem="2.16.840.1.113883.6.96"/>
+        </observation>
+        """
+        ccda_doc = wrap_in_ccda_document(
+            observation,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        # Should have us-core-genderIdentity extension
+        assert "extension" in patient
+        gender_id_ext = next(
+            (e for e in patient["extension"]
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
+            None
+        )
+        assert gender_id_ext is not None
+        assert "valueCodeableConcept" in gender_id_ext
+        coding = gender_id_ext["valueCodeableConcept"]["coding"][0]
+        assert coding["code"] == "446151000124109"
+        assert coding["system"] == "http://snomed.info/sct"
+        assert "Identifies as male" in coding["display"]
+
+        # Should NOT create a separate Observation resource for gender identity
+        observations = [
+            entry["resource"] for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Observation"
+        ]
+        gender_identity_observations = [
+            obs for obs in observations
+            if obs.get("code", {}).get("coding", [{}])[0].get("code") == "76691-5"
+        ]
+        assert len(gender_identity_observations) == 0, "Gender identity should NOT create an Observation resource"
+
+    def test_converts_gender_identity_extension_female(self) -> None:
+        """Test that gender identity observation maps to Patient.extension (identifies as female)."""
+        observation = """
+        <observation classCode="OBS" moodCode="EVN">
+            <code code="76691-5" displayName="Gender identity"
+                  codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="446141000124107"
+                   displayName="Identifies as female"
+                   codeSystem="2.16.840.1.113883.6.96"/>
+        </observation>
+        """
+        ccda_doc = wrap_in_ccda_document(
+            observation,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        gender_id_ext = next(
+            (e for e in patient.get("extension", [])
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
+            None
+        )
+        assert gender_id_ext is not None
+        coding = gender_id_ext["valueCodeableConcept"]["coding"][0]
+        assert coding["code"] == "446141000124107"
+        assert "Identifies as female" in coding["display"]
+
+    def test_converts_gender_identity_extension_non_conforming(self) -> None:
+        """Test that gender identity observation maps to Patient.extension (non-conforming)."""
+        observation = """
+        <observation classCode="OBS" moodCode="EVN">
+            <code code="76691-5" displayName="Gender identity"
+                  codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="446131000124102"
+                   displayName="Identifies as non-conforming"
+                   codeSystem="2.16.840.1.113883.6.96"/>
+        </observation>
+        """
+        ccda_doc = wrap_in_ccda_document(
+            observation,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        gender_id_ext = next(
+            (e for e in patient.get("extension", [])
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
+            None
+        )
+        assert gender_id_ext is not None
+        coding = gender_id_ext["valueCodeableConcept"]["coding"][0]
+        assert coding["code"] == "446131000124102"
+
+    def test_converts_both_birth_sex_and_gender_identity(self) -> None:
+        """Test that both birth sex and gender identity are correctly mapped to Patient extensions."""
+        # Custom document with multiple entries - wrap_in_ccda_document only supports single entry
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id" extension="test-patient-id"/>
+            <patient>
+                <name><family>Patient</family><given>Test</given></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson><name><family>Author</family><given>Test</given></name></assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+                <name>Test Hospital</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.17"/>
+                    <code code="29762-2" codeSystem="2.16.840.1.113883.6.1"/>
+                    <entry>
+                        <observation classCode="OBS" moodCode="EVN">
+                            <templateId root="2.16.840.1.113883.10.20.22.4.200"/>
+                            <code code="76689-9" displayName="Sex assigned at birth"
+                                  codeSystem="2.16.840.1.113883.6.1"/>
+                            <statusCode code="completed"/>
+                            <value xsi:type="CD" code="F" displayName="Female"
+                                   codeSystem="2.16.840.1.113883.5.1"/>
+                        </observation>
+                    </entry>
+                    <entry>
+                        <observation classCode="OBS" moodCode="EVN">
+                            <code code="76691-5" displayName="Gender identity"
+                                  codeSystem="2.16.840.1.113883.6.1"/>
+                            <statusCode code="completed"/>
+                            <value xsi:type="CD" code="446151000124109"
+                                   displayName="Identifies as male"
+                                   codeSystem="2.16.840.1.113883.6.96"/>
+                        </observation>
+                    </entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+        assert "extension" in patient
+
+        # Check birth sex extension
+        birthsex_ext = next(
+            (e for e in patient["extension"]
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
+            None
+        )
+        assert birthsex_ext is not None
+        assert birthsex_ext["valueCode"] == "F"
+
+        # Check gender identity extension
+        gender_id_ext = next(
+            (e for e in patient["extension"]
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
+            None
+        )
+        assert gender_id_ext is not None
+        coding = gender_id_ext["valueCodeableConcept"]["coding"][0]
+        assert coding["code"] == "446151000124109"
+
+        # Verify NO Observation resources created for birth sex or gender identity
+        observations = [
+            entry["resource"] for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Observation"
+        ]
+        social_history_obs_codes = set()
+        for obs in observations:
+            if obs.get("code", {}).get("coding"):
+                for coding in obs["code"]["coding"]:
+                    social_history_obs_codes.add(coding.get("code"))
+
+        assert "76689-9" not in social_history_obs_codes, "Birth sex should be extension only"
+        assert "76691-5" not in social_history_obs_codes, "Gender identity should be extension only"
+
+    def test_no_birth_sex_or_gender_identity_when_not_present(self) -> None:
+        """Test that birth sex and gender identity extensions are not added when observations are absent."""
+        ccda_doc = wrap_in_ccda_document("")  # No social history section
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        # Check that birth sex extension is not present
+        if "extension" in patient:
+            birthsex_ext = next(
+                (e for e in patient["extension"]
+                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
+                None
+            )
+            assert birthsex_ext is None
+
+            # Check that gender identity extension is not present
+            gender_id_ext = next(
+                (e for e in patient["extension"]
+                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
+                None
+            )
+            assert gender_id_ext is None

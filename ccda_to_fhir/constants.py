@@ -54,6 +54,9 @@ class TemplateIds:
     RESULT_OBSERVATION = "2.16.840.1.113883.10.20.22.4.2"
     SMOKING_STATUS_OBSERVATION = "2.16.840.1.113883.10.20.22.4.78"
     SOCIAL_HISTORY_OBSERVATION = "2.16.840.1.113883.10.20.22.4.38"
+    BIRTH_SEX_OBSERVATION = "2.16.840.1.113883.10.20.22.4.200"
+    # Gender Identity Observation doesn't have a standardized template ID in C-CDA
+    # It's typically identified by LOINC code 76691-5
 
     # Procedure templates
     PROCEDURE_ACTIVITY_PROCEDURE = "2.16.840.1.113883.10.20.22.4.14"
@@ -113,6 +116,8 @@ class CCDACodes:
     STATUS = "33999-4"  # Status code
     CRITICALITY = "82606-5"  # Allergy or intolerance criticality
     AGE_AT_ONSET = "445518008"  # SNOMED code for age at onset
+    BIRTH_SEX = "76689-9"  # Sex assigned at birth
+    GENDER_IDENTITY = "76691-5"  # Gender identity
 
     # Severity code
     SEVERITY = "SEV"
@@ -331,6 +336,8 @@ class FHIRSystems:
     # US Core extensions
     US_CORE_RACE = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
     US_CORE_ETHNICITY = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
+    US_CORE_BIRTHSEX = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
+    US_CORE_GENDER_IDENTITY = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
 
     # Units
     UCUM = "http://unitsofmeasure.org"

@@ -333,6 +333,18 @@ class DocumentConverter:
                 try:
                     patient = self.patient_converter.convert(record_target)
 
+                    # Extract birth sex and gender identity extensions from social history
+                    if ccda_doc.component and ccda_doc.component.structured_body:
+                        social_history_extensions = (
+                            self._extract_patient_extensions_from_social_history(
+                                ccda_doc.component.structured_body
+                            )
+                        )
+                        if social_history_extensions:
+                            if "extension" not in patient:
+                                patient["extension"] = []
+                            patient["extension"].extend(social_history_extensions)
+
                     # Validate the patient resource
                     if self._validate_resource(patient):
                         resources.append(patient)
@@ -741,6 +753,107 @@ class DocumentConverter:
         """
         return self.results_processor.process(structured_body)
 
+    def _extract_patient_extensions_from_social_history(
+        self, structured_body: StructuredBody
+    ) -> list[JSONObject]:
+        """Extract birth sex and gender identity extensions for Patient from social history.
+
+        Birth sex and gender identity are special cases in social history - they should
+        map to Patient extensions, NOT to separate Observation resources.
+
+        Args:
+            structured_body: The structuredBody element
+
+        Returns:
+            List of FHIR extension dicts for Patient resource
+        """
+        from ccda_to_fhir.constants import CCDACodes, CodeSystemOIDs, FHIRSystems
+
+        extensions = []
+
+        if not structured_body.component:
+            return extensions
+
+        for comp in structured_body.component:
+            if not comp.section:
+                continue
+
+            section = comp.section
+
+            # Only process social history sections
+            # Check both template ID and section code (LOINC 29762-2)
+            is_social_history = False
+
+            if section.template_id:
+                is_social_history = any(
+                    t.root == TemplateIds.SOCIAL_HISTORY_SECTION
+                    for t in section.template_id
+                    if t.root
+                )
+
+            # Also check section code for social history (LOINC 29762-2)
+            if not is_social_history and section.code:
+                is_social_history = (
+                    section.code.code == "29762-2"
+                    and section.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
+                )
+
+            if not is_social_history:
+                continue
+
+            # Process entries in this section
+            if section.entry:
+                for entry in section.entry:
+                    if not entry.observation:
+                        continue
+
+                    obs = entry.observation
+
+                    # Check if it's a Birth Sex observation
+                    if obs.template_id:
+                        for template in obs.template_id:
+                            if template.root == TemplateIds.BIRTH_SEX_OBSERVATION:
+                                # Birth Sex Extension
+                                if obs.value and hasattr(obs.value, "code") and obs.value.code:
+                                    birth_sex_ext = {
+                                        "url": FHIRSystems.US_CORE_BIRTHSEX,
+                                        "valueCode": obs.value.code,  # F, M, or UNK
+                                    }
+                                    extensions.append(birth_sex_ext)
+                                break
+
+                    # Check if it's a Gender Identity observation (by LOINC code)
+                    if obs.code:
+                        # Gender Identity identified by LOINC 76691-5
+                        if (
+                            obs.code.code == CCDACodes.GENDER_IDENTITY
+                            and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
+                        ):
+                            # Gender Identity Extension
+                            if obs.value:
+                                gender_identity_ext = {
+                                    "url": FHIRSystems.US_CORE_GENDER_IDENTITY,
+                                    "valueCodeableConcept": self.observation_converter.create_codeable_concept(
+                                        code=getattr(obs.value, "code", None),
+                                        code_system=getattr(obs.value, "code_system", None),
+                                        display_name=getattr(obs.value, "display_name", None),
+                                    ),
+                                }
+                                extensions.append(gender_identity_ext)
+
+            # Process nested sections recursively
+            if section.component:
+                for nested_comp in section.component:
+                    if nested_comp.section:
+                        # Create a temporary structured body for recursion
+                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        nested_extensions = self._extract_patient_extensions_from_social_history(
+                            temp_body
+                        )
+                        extensions.extend(nested_extensions)
+
+        return extensions
+
     def _extract_social_history(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Social History Observations from the structured body.
 
@@ -766,18 +879,39 @@ class DocumentConverter:
                 for entry in section.entry:
                     # Check for Observation (smoking status, social history)
                     if entry.observation:
+                        obs = entry.observation
+
+                        # Skip birth sex observations - they map to Patient.extension
+                        if obs.template_id:
+                            is_birth_sex = any(
+                                t.root == TemplateIds.BIRTH_SEX_OBSERVATION
+                                for t in obs.template_id
+                                if t.root
+                            )
+                            if is_birth_sex:
+                                continue
+
+                        # Skip gender identity observations - they map to Patient.extension
+                        if obs.code:
+                            from ccda_to_fhir.constants import CCDACodes
+
+                            is_gender_identity = (
+                                obs.code.code == CCDACodes.GENDER_IDENTITY
+                                and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
+                            )
+                            if is_gender_identity:
+                                continue
+
                         # Check if it's a Smoking Status or Social History Observation
-                        if entry.observation.template_id:
-                            for template in entry.observation.template_id:
+                        if obs.template_id:
+                            for template in obs.template_id:
                                 if template.root in (
                                     TemplateIds.SMOKING_STATUS_OBSERVATION,
                                     TemplateIds.SOCIAL_HISTORY_OBSERVATION,
                                 ):
                                     # This is a Social History Observation
                                     try:
-                                        observation = self.observation_converter.convert(
-                                            entry.observation
-                                        )
+                                        observation = self.observation_converter.convert(obs)
                                         observations.append(observation)
 
                                         # Store author metadata
