@@ -403,3 +403,73 @@ class TestVitalSignsConversion:
 
         # Verify method field is not present
         assert "method" not in hr_obs, "Observation should not have method field when methodCode is absent"
+
+    def test_converts_body_site_blood_pressure(self) -> None:
+        """Test that targetSiteCode is converted to Observation.bodySite for blood pressure."""
+        # Load fixture with blood pressure with body site (right arm)
+        with open("tests/integration/fixtures/ccda/vital_signs_bp_with_body_site.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find combined blood pressure observation (should combine systolic/diastolic)
+        bp_obs = _find_observation_by_code(bundle, "85354-9")
+        assert bp_obs is not None, "Blood pressure observation should be found"
+
+        # Verify bodySite field exists
+        assert "bodySite" in bp_obs, "Observation should have bodySite field"
+        body_site = bp_obs["bodySite"]
+
+        # Verify bodySite is a CodeableConcept with coding
+        assert "coding" in body_site, "bodySite should have coding array"
+        assert len(body_site["coding"]) > 0, "bodySite should have at least one coding"
+
+        # Verify SNOMED CT system and code
+        coding = body_site["coding"][0]
+        assert coding["system"] == "http://snomed.info/sct", "bodySite system should be SNOMED CT"
+        assert coding["code"] == "368209003", "bodySite code should be 368209003 (Right arm)"
+        assert coding["display"] == "Right arm", "bodySite display should be preserved"
+
+    def test_converts_body_site_heart_rate(self) -> None:
+        """Test that targetSiteCode is converted to Observation.bodySite for heart rate."""
+        # Load fixture with heart rate with body site (left arm)
+        with open("tests/integration/fixtures/ccda/vital_signs_hr_with_body_site.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find heart rate observation
+        hr_obs = _find_observation_by_code(bundle, "8867-4")
+        assert hr_obs is not None, "Heart rate observation should be found"
+
+        # Verify bodySite field exists
+        assert "bodySite" in hr_obs, "Observation should have bodySite field"
+        body_site = hr_obs["bodySite"]
+
+        # Verify bodySite is a CodeableConcept with coding
+        assert "coding" in body_site, "bodySite should have coding array"
+        assert len(body_site["coding"]) > 0, "bodySite should have at least one coding"
+
+        # Verify SNOMED CT system and code
+        coding = body_site["coding"][0]
+        assert coding["system"] == "http://snomed.info/sct", "bodySite system should be SNOMED CT"
+        assert coding["code"] == "368208008", "bodySite code should be 368208008 (Left arm)"
+        assert coding["display"] == "Left arm", "bodySite display should be preserved"
+
+    def test_body_site_not_present_when_absent(self) -> None:
+        """Test that bodySite field is not present when targetSiteCode is absent in C-CDA."""
+        # Use existing fixture without targetSiteCode
+        with open("tests/integration/fixtures/ccda/vital_signs.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find heart rate observation (no body site in this fixture)
+        hr_obs = _find_observation_by_code(bundle, "8867-4")
+        assert hr_obs is not None, "Heart rate observation should be found"
+
+        # Verify bodySite field is not present
+        assert "bodySite" not in hr_obs, "Observation should not have bodySite field when targetSiteCode is absent"

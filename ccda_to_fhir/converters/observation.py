@@ -135,7 +135,17 @@ class ObservationConverter(BaseConverter[Observation]):
                 if method_cc:
                     fhir_obs["method"] = method_cc
 
-        # 11. Reference ranges
+        # 11. Body site (target site code)
+        if observation.target_site_code and len(observation.target_site_code) > 0:
+            # Per FHIR R4: bodySite is 0..1 (single CodeableConcept)
+            # Take the first target site code if multiple are present
+            first_site = observation.target_site_code[0]
+            if isinstance(first_site, (CD, CE)):
+                body_site_cc = self._convert_code_to_codeable_concept(first_site)
+                if body_site_cc:
+                    fhir_obs["bodySite"] = body_site_cc
+
+        # 12. Reference ranges
         if observation.reference_range:
             ref_ranges = []
             for ref_range in observation.reference_range:
@@ -146,7 +156,7 @@ class ObservationConverter(BaseConverter[Observation]):
             if ref_ranges:
                 fhir_obs["referenceRange"] = ref_ranges
 
-        # 12. Pregnancy observation special handling
+        # 13. Pregnancy observation special handling
         if observation.template_id:
             from ccda_to_fhir.constants import TemplateIds
             is_pregnancy = any(
@@ -859,6 +869,11 @@ class ObservationConverter(BaseConverter[Observation]):
         effective_time = systolic_obs.get("effectiveDateTime") or diastolic_obs.get("effectiveDateTime")
         if effective_time:
             bp_obs["effectiveDateTime"] = effective_time
+
+        # Body site (use from systolic, or diastolic if systolic doesn't have it)
+        body_site = systolic_obs.get("bodySite") or diastolic_obs.get("bodySite")
+        if body_site:
+            bp_obs["bodySite"] = body_site
 
         # Components
         components = []
