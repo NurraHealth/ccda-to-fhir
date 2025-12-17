@@ -719,3 +719,138 @@ class TestAllergyNarrativePropagation:
 
         # Verify styleCode is converted to class
         assert 'class="Bold"' in div_content
+
+
+class TestAllergyReactionDetails:
+    """E2E tests for reaction.description and reaction.note fields per FHIR R4 spec."""
+
+    def test_reaction_description_from_text_element(self) -> None:
+        """Test that Reaction Observation text element maps to reaction.description."""
+        with open("tests/integration/fixtures/ccda/allergy_with_reaction_details.xml") as f:
+            allergy_xml = f.read()
+
+        ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
+        ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+        assert allergy is not None
+        assert "reaction" in allergy
+        assert len(allergy["reaction"]) == 1
+
+        # Verify description is populated from text element
+        reaction = allergy["reaction"][0]
+        assert "description" in reaction
+        assert "severe hives and itching" in reaction["description"]
+        assert "30 minutes" in reaction["description"]
+
+    def test_reaction_note_from_comment_activity(self) -> None:
+        """Test that Comment Activity within Reaction Observation maps to reaction.note."""
+        with open("tests/integration/fixtures/ccda/allergy_with_reaction_details.xml") as f:
+            allergy_xml = f.read()
+
+        ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
+        ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+        assert allergy is not None
+        assert "reaction" in allergy
+
+        # Verify note is populated from Comment Activity
+        reaction = allergy["reaction"][0]
+        assert "note" in reaction
+        assert len(reaction["note"]) == 1
+        assert "emergency treatment with epinephrine" in reaction["note"][0]["text"]
+
+    def test_reaction_multiple_notes(self) -> None:
+        """Test that multiple Comment Activities create multiple reaction notes."""
+        with open("tests/integration/fixtures/ccda/allergy_with_reaction_text_reference.xml") as f:
+            allergy_xml = f.read()
+
+        ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
+        ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+        assert allergy is not None
+        assert "reaction" in allergy
+
+        # Verify multiple notes are created
+        reaction = allergy["reaction"][0]
+        assert "note" in reaction
+        assert len(reaction["note"]) == 2
+
+        # Verify both note texts
+        note_texts = [note["text"] for note in reaction["note"]]
+        assert "epinephrine auto-injector" in note_texts[0]
+        assert "Avoid all peanut-containing products" in note_texts[1]
+
+    def test_reaction_description_and_note_coexist(self) -> None:
+        """Test that reaction.description and reaction.note can coexist."""
+        with open("tests/integration/fixtures/ccda/allergy_with_reaction_details.xml") as f:
+            allergy_xml = f.read()
+
+        ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
+        ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+        assert allergy is not None
+
+        reaction = allergy["reaction"][0]
+        # Both should be present
+        assert "description" in reaction
+        assert "note" in reaction
+        # And they should contain different content
+        assert reaction["description"] != reaction["note"][0]["text"]
+
+    def test_reaction_details_preserve_manifestation_and_severity(self) -> None:
+        """Test that adding description/note doesn't interfere with manifestation and severity."""
+        with open("tests/integration/fixtures/ccda/allergy_with_reaction_details.xml") as f:
+            allergy_xml = f.read()
+
+        ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
+        ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+        assert allergy is not None
+
+        reaction = allergy["reaction"][0]
+
+        # Verify manifestation is still present
+        assert "manifestation" in reaction
+        assert len(reaction["manifestation"]) == 1
+        snomed_coding = next(
+            (c for c in reaction["manifestation"][0]["coding"]
+             if c.get("system") == "http://snomed.info/sct"),
+            None
+        )
+        assert snomed_coding is not None
+        assert snomed_coding["code"] == "247472004"
+
+        # Verify severity is still present
+        assert "severity" in reaction
+        assert reaction["severity"] == "severe"
+
+    def test_reaction_without_description_or_note(self) -> None:
+        """Test that reactions work normally when description and note are absent."""
+        # Use existing fixture that doesn't have description or note
+        with open("tests/integration/fixtures/ccda/allergy.xml") as f:
+            allergy_xml = f.read()
+
+        ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
+        ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+        assert allergy is not None
+        assert "reaction" in allergy
+
+        reaction = allergy["reaction"][0]
+        # Should not have description or note fields
+        assert "description" not in reaction
+        assert "note" not in reaction
+        # But should still have manifestation
+        assert "manifestation" in reaction

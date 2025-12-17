@@ -559,6 +559,12 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         - Scenario B: Severity at both levels → reaction level takes precedence
         - Scenario C: Severity only at reaction level → use reaction severity
 
+        Extracts multiple reaction details per FHIR R4 spec:
+        - manifestation (required)
+        - onset, severity (standard fields)
+        - description (from Reaction Observation text)
+        - note (from Comment Activity entries within reaction)
+
         Args:
             observation: The Allergy Intolerance Observation
             allergy_level_severity: Optional severity from allergy level
@@ -593,6 +599,22 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     )
                     reaction["manifestation"] = [manifestation]
 
+                # Description (from Reaction Observation text element)
+                if rel.observation.text:
+                    description_text = None
+                    if isinstance(rel.observation.text, str):
+                        description_text = rel.observation.text
+                    elif hasattr(rel.observation.text, "value") and rel.observation.text.value:
+                        description_text = rel.observation.text.value
+                    elif hasattr(rel.observation.text, "reference"):
+                        # Resolve text reference to section narrative
+                        description_text = self.extract_original_text(
+                            rel.observation.text, section=self.section
+                        )
+
+                    if description_text:
+                        reaction["description"] = description_text
+
                 # Onset date
                 if rel.observation.effective_time:
                     if rel.observation.effective_time.low and rel.observation.effective_time.low.value:
@@ -612,6 +634,11 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                 # Scenario A: Fall back to allergy-level severity
                 elif allergy_level_severity:
                     reaction["severity"] = allergy_level_severity
+
+                # Notes (from Comment Activity entries within reaction)
+                reaction_notes = self._extract_reaction_notes(rel.observation)
+                if reaction_notes:
+                    reaction["note"] = reaction_notes
 
                 if reaction:
                     reactions.append(reaction)
@@ -638,6 +665,43 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                         severity_code = rel.observation.value.code
                         return SNOMED_SEVERITY_TO_FHIR.get(severity_code)
         return None
+
+    def _extract_reaction_notes(self, reaction_observation: Observation) -> list[JSONObject]:
+        """Extract FHIR notes from Reaction Observation.
+
+        Extracts notes from Comment Activity entries (template 2.16.840.1.113883.10.20.22.4.64)
+        within the Reaction Observation.
+
+        Args:
+            reaction_observation: The Reaction Observation
+
+        Returns:
+            List of FHIR Annotation objects (as dicts with 'text' field)
+        """
+        notes = []
+
+        # Extract from Comment Activity entries
+        if reaction_observation.entry_relationship:
+            for entry_rel in reaction_observation.entry_relationship:
+                if hasattr(entry_rel, "act") and entry_rel.act:
+                    act = entry_rel.act
+                    # Check if it's a Comment Activity
+                    if hasattr(act, "template_id") and act.template_id:
+                        for template in act.template_id:
+                            if template.root == TemplateIds.COMMENT_ACTIVITY:
+                                # This is a Comment Activity
+                                if hasattr(act, "text") and act.text:
+                                    comment_text = None
+                                    if isinstance(act.text, str):
+                                        comment_text = act.text
+                                    elif hasattr(act.text, "value") and act.text.value:
+                                        comment_text = act.text.value
+
+                                    if comment_text:
+                                        notes.append({"text": comment_text})
+                                break
+
+        return notes
 
     def _extract_notes(self, observation: Observation) -> list[JSONObject]:
         """Extract FHIR notes from C-CDA observation.
