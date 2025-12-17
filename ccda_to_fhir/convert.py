@@ -30,7 +30,7 @@ from ccda_to_fhir.validation import FHIRValidator
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.ccda.models.section import StructuredBody
 from ccda_to_fhir.ccda.parser import parse_ccda
-from ccda_to_fhir.constants import TemplateIds, ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP
+from ccda_to_fhir.constants import TemplateIds, PARTICIPATION_FUNCTION_CODE_MAP
 from ccda_to_fhir.logging_config import get_logger
 
 from .converters.allergy_intolerance import convert_allergy_concern_act
@@ -1436,11 +1436,12 @@ class DocumentConverter:
                                 "reference": f"Practitioner/{practitioner_id}"
                             }
                         }
-                        # Add type code - map C-CDA function codes to FHIR ParticipationType codes
+                        # Add type code - map C-CDA ParticipationFunction codes to FHIR ParticipationType codes
                         # Reference: docs/mapping/08-encounter.md lines 217-223
+                        # Reference: docs/mapping/09-participations.md lines 217-232
                         if participant.type_code:
-                            # Map known function codes (PCP→PPRF, ATTPHYS→ATND, etc.)
-                            mapped_code = ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP.get(
+                            # Map known function codes (PCP→PPRF, ATTPHYS→ATND, ANEST→SPRF, etc.)
+                            mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(
                                 participant.type_code,
                                 participant.type_code  # Pass through if not in map
                             )

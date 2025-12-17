@@ -9,7 +9,7 @@ from ccda_to_fhir.ccda.models.observation import EntryRelationship
 from ccda_to_fhir.constants import (
     CPT_CODE_SYSTEM,
     DISCHARGE_DISPOSITION_TO_FHIR,
-    ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP,
+    PARTICIPATION_FUNCTION_CODE_MAP,
     ENCOUNTER_STATUS_TO_FHIR,
     V3_ACT_CODE_SYSTEM,
     FHIRCodes,
@@ -368,13 +368,14 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             participant: JSONObject = {}
 
             # Extract participant type from functionCode
-            # Map C-CDA function codes to FHIR ParticipationType codes
+            # Map C-CDA ParticipationFunction codes to FHIR ParticipationType codes
             # Reference: docs/mapping/08-encounter.md lines 217-223
+            # Reference: docs/mapping/09-participations.md lines 217-232
             if hasattr(performer, "function_code") and performer.function_code:
                 function_code = performer.function_code.code if hasattr(performer.function_code, "code") else None
 
-                # Map known function codes (PCP→PPRF, ATTPHYS→ATND, etc.)
-                mapped_code = ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP.get(
+                # Map known function codes (PCP→PPRF, ATTPHYS→ATND, ANEST→SPRF, etc.)
+                mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(
                     function_code,
                     function_code  # Pass through if not in map
                 ) if function_code else "PART"  # Default to PART if no code

@@ -9,6 +9,7 @@ from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.constants import (
     PROCEDURE_STATUS_TO_FHIR,
     FHIRCodes,
+    FHIRSystems,
     TemplateIds,
 )
 
@@ -275,6 +276,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure]):
         Returns:
             List of FHIR performer objects
         """
+        from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP
+
         fhir_performers = []
 
         for performer in performers:
@@ -283,6 +286,30 @@ class ProcedureConverter(BaseConverter[CCDAProcedure]):
 
             assigned_entity = performer.assigned_entity
             performer_obj: JSONObject = {}
+
+            # Extract function code from performer
+            # Maps C-CDA ParticipationFunction to FHIR ParticipationType
+            # Reference: docs/mapping/09-participations.md lines 211-232
+            if hasattr(performer, "function_code") and performer.function_code:
+                function_code = performer.function_code.code if hasattr(performer.function_code, "code") else None
+
+                if function_code:
+                    # Map known function codes or pass through if not in map
+                    mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(function_code, function_code)
+
+                    # Only include codes that are valid for Procedure.performer.function
+                    # The performer-function value set excludes encounter-specific codes like ADM, DIS
+                    # Reference: https://build.fhir.org/valueset-performer-function.html
+                    encounter_only_codes = {"ADM", "DIS", "REF"}
+                    if mapped_code not in encounter_only_codes:
+                        function_coding = {
+                            "system": FHIRSystems.V3_PARTICIPATION_TYPE,
+                            "code": mapped_code,
+                        }
+                        if hasattr(performer.function_code, "display_name") and performer.function_code.display_name:
+                            function_coding["display"] = performer.function_code.display_name
+
+                        performer_obj["function"] = {"coding": [function_coding]}
 
             # Extract practitioner reference from assigned entity
             if hasattr(assigned_entity, "id") and assigned_entity.id:

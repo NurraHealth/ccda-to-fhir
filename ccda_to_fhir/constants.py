@@ -938,14 +938,34 @@ DISCHARGE_DISPOSITION_TO_FHIR = {
     "07": "hosp",
 }
 
-# Map C-CDA encounter participant function codes to FHIR ParticipationType codes
-# Reference: docs/mapping/08-encounter.md lines 217-223
-ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP = {
-    "PCP": "PPRF",      # Primary Care Provider → primary performer
-    "ATTPHYS": "ATND",  # Attending Physician → attender
-    "ADMPHYS": "ADM",   # Admitting Physician → admitter
-    "DISPHYS": "DIS",   # Discharging Physician → discharger
+# Map C-CDA ParticipationFunction codes (OID 2.16.840.1.113883.5.88) to FHIR ParticipationType codes
+# Reference: docs/mapping/09-participations.md lines 217-232
+# Reference: https://phinvads.cdc.gov/vads/ViewCodeSystem.action?id=2.16.840.1.113883.5.88
+# Reference: http://hl7.org/fhir/R4/v3/ParticipationType/cs.html
+#
+# Note: Some codes are context-specific:
+# - For Encounter.participant.type: Can use ADM, DIS, REF (broader value set)
+# - For Procedure.performer.function: Limited to performer-function value set (PPRF, SPRF, ATND, etc.)
+PARTICIPATION_FUNCTION_CODE_MAP = {
+    # C-CDA Code: FHIR Code - Description
+    "ADMPHYS": "ADM",       # Admitting Physician → admitter (Encounter only)
+    "ANRS": "SPRF",         # Anesthesia Nurse → secondary performer
+    "ANEST": "SPRF",        # Anesthesist → secondary performer (ANEST not in FHIR v3-ParticipationType)
+    "ATTPHYS": "ATND",      # Attending Physician → attender
+    "DISPHYS": "DIS",       # Discharging Physician → discharger (Encounter only)
+    "FASST": "SPRF",        # First Assistant Surgeon → secondary performer
+    "MDWF": "PPRF",         # Midwife → primary performer
+    "NASST": "SPRF",        # Nurse Assistant → secondary performer
+    "PCP": "PPRF",          # Primary Care Physician → primary performer
+    "PRISURG": "PPRF",      # Primary Surgeon → primary performer
+    "RNDPHYS": "ATND",      # Rounding Physician → attender
+    "SNRS": "SPRF",         # Scrub Nurse → secondary performer
+    "SASST": "SPRF",        # Second Assistant Surgeon → secondary performer
+    "TASST": "SPRF",        # Third Assistant Surgeon → secondary performer
 }
+
+# Backward compatibility alias for encounter-specific usage
+ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP = PARTICIPATION_FUNCTION_CODE_MAP
 
 
 def map_cpt_to_actcode(cpt_code: str) -> str | None:

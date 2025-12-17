@@ -220,8 +220,16 @@ When multiple authors exist:
 | `ATTPHYS` | `ATND` (attender) |
 | `ADMPHYS` | `ADM` (admitter) |
 | `DISPHYS` | `DIS` (discharger) |
-| `ANEST` | `ANEST` (anesthetist) |
+| `ANEST` | `SPRF` (secondary performer) |
 | `RNDPHYS` | `ATND` (attender) |
+| `PRISURG` | `PPRF` (primary performer) |
+| `FASST` | `SPRF` (secondary performer) |
+| `ANRS` | `SPRF` (secondary performer) |
+| `MDWF` | `PPRF` (primary performer) |
+| `NASST` | `SPRF` (secondary performer) |
+| `SNRS` | `SPRF` (secondary performer) |
+| `SASST` | `SPRF` (secondary performer) |
+| `TASST` | `SPRF` (secondary performer) |
 
 ## Informant Mapping
 

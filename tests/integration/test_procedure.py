@@ -152,6 +152,141 @@ class TestProcedureConversion:
         assert "reference" in performer["actor"]
         assert "Practitioner/" in performer["actor"]["reference"]
 
+    def test_maps_prisurg_function_code(self) -> None:
+        """Test that PRISURG function code maps to PPRF (primary performer).
+
+        Reference: docs/mapping/09-participations.md line 960
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<procedure classCode="PROC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.14"/>
+                <id root="test-procedure-001"/>
+                <code code="80146002" codeSystem="2.16.840.1.113883.6.96" displayName="Appendectomy"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <performer>
+                    <functionCode code="PRISURG" codeSystem="2.16.840.1.113883.5.88" displayName="Primary Surgeon"/>
+                    <assignedEntity>
+                        <id root="2.16.840.1.113883.4.6" extension="1111111111"/>
+                        <assignedPerson><name><given>Sarah</given><family>Surgeon</family></name></assignedPerson>
+                    </assignedEntity>
+                </performer>
+            </procedure>""",
+            PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+
+        assert procedure is not None
+        assert "performer" in procedure
+        performer = procedure["performer"][0]
+        assert "function" in performer
+        coding = performer["function"]["coding"][0]
+        assert coding["code"] == "PPRF", "C-CDA PRISURG should map to FHIR PPRF (primary performer)"
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
+        assert coding["display"] == "Primary Surgeon"
+
+    def test_maps_fasst_function_code(self) -> None:
+        """Test that FASST function code maps to SPRF (secondary performer).
+
+        Reference: docs/mapping/09-participations.md line 956
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<procedure classCode="PROC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.14"/>
+                <id root="test-procedure-002"/>
+                <code code="80146002" codeSystem="2.16.840.1.113883.6.96" displayName="Appendectomy"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <performer>
+                    <functionCode code="FASST" codeSystem="2.16.840.1.113883.5.88" displayName="First Assistant Surgeon"/>
+                    <assignedEntity>
+                        <id root="2.16.840.1.113883.4.6" extension="2222222222"/>
+                        <assignedPerson><name><given>John</given><family>Assistant</family></name></assignedPerson>
+                    </assignedEntity>
+                </performer>
+            </procedure>""",
+            PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+
+        assert procedure is not None
+        assert "performer" in procedure
+        performer = procedure["performer"][0]
+        assert "function" in performer
+        coding = performer["function"]["coding"][0]
+        assert coding["code"] == "SPRF", "C-CDA FASST should map to FHIR SPRF (secondary performer)"
+        assert coding["display"] == "First Assistant Surgeon"
+
+    def test_maps_anrs_function_code(self) -> None:
+        """Test that ANRS function code maps to SPRF (secondary performer).
+
+        Reference: docs/mapping/09-participations.md line 952
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<procedure classCode="PROC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.14"/>
+                <id root="test-procedure-003"/>
+                <code code="80146002" codeSystem="2.16.840.1.113883.6.96" displayName="Appendectomy"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <performer>
+                    <functionCode code="ANRS" codeSystem="2.16.840.1.113883.5.88" displayName="Anesthesia Nurse"/>
+                    <assignedEntity>
+                        <id root="2.16.840.1.113883.4.6" extension="3333333333"/>
+                        <assignedPerson><name><given>Linda</given><family>Nurse</family></name></assignedPerson>
+                    </assignedEntity>
+                </performer>
+            </procedure>""",
+            PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+
+        assert procedure is not None
+        assert "performer" in procedure
+        performer = procedure["performer"][0]
+        assert "function" in performer
+        coding = performer["function"]["coding"][0]
+        assert coding["code"] == "SPRF", "C-CDA ANRS should map to FHIR SPRF (secondary performer)"
+        assert coding["display"] == "Anesthesia Nurse"
+
+    def test_excludes_encounter_only_function_codes(self) -> None:
+        """Test that encounter-only function codes (ADMPHYS) are excluded from Procedure.performer.function.
+
+        ADMPHYS maps to ADM which is not in the performer-function value set.
+        The performer should still be created but without the function field.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<procedure classCode="PROC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.14"/>
+                <id root="test-procedure-004"/>
+                <code code="80146002" codeSystem="2.16.840.1.113883.6.96" displayName="Appendectomy"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <performer>
+                    <functionCode code="ADMPHYS" codeSystem="2.16.840.1.113883.5.88" displayName="Admitting Physician"/>
+                    <assignedEntity>
+                        <id root="2.16.840.1.113883.4.6" extension="4444444444"/>
+                        <assignedPerson><name><given>Mark</given><family>Doctor</family></name></assignedPerson>
+                    </assignedEntity>
+                </performer>
+            </procedure>""",
+            PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+
+        assert procedure is not None
+        assert "performer" in procedure
+        performer = procedure["performer"][0]
+        # ADM is encounter-only, so function should not be included for procedures
+        assert "function" not in performer, "Encounter-only codes like ADM should not appear in Procedure.performer.function"
+        # But actor should still be present
+        assert "actor" in performer
+        assert "Practitioner/" in performer["actor"]["reference"]
+
     def test_converts_location(self, ccda_procedure_with_location: str) -> None:
         """Test that LOC participant is converted to location."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_location, PROCEDURES_TEMPLATE_ID)

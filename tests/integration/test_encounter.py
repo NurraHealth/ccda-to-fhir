@@ -341,6 +341,69 @@ class TestEncounterConversion:
         assert coding["code"] == "PART", "No functionCode should default to PART (participant)"
         assert coding["display"] == "participant"
 
+    def test_maps_anest_function_code(self) -> None:
+        """Test that ANEST function code maps to SPRF (secondary performer).
+
+        ANEST (anesthesist) is not in FHIR v3-ParticipationType, so it maps to SPRF.
+        Reference: docs/mapping/09-participations.md line 953
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-005"/>
+                <code code="99213" codeSystem="2.16.840.1.113883.6.12"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <performer>
+                    <functionCode code="ANEST" codeSystem="2.16.840.1.113883.5.88" displayName="Anesthesist"/>
+                    <assignedEntity>
+                        <id root="2.16.840.1.113883.4.6" extension="9999999999"/>
+                        <assignedPerson><name><given>Emily</given><family>Brown</family></name></assignedPerson>
+                    </assignedEntity>
+                </performer>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        participant = next((p for p in encounter["participant"] if "type" in p), None)
+        assert participant is not None
+        coding = participant["type"][0]["coding"][0]
+        assert coding["code"] == "SPRF", "C-CDA ANEST should map to FHIR SPRF (secondary performer)"
+        assert coding["display"] == "Anesthesist"
+
+    def test_maps_rndphys_function_code(self) -> None:
+        """Test that RNDPHYS function code maps to ATND (attender).
+
+        Reference: docs/mapping/09-participations.md line 961
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-006"/>
+                <code code="99213" codeSystem="2.16.840.1.113883.6.12"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <performer>
+                    <functionCode code="RNDPHYS" codeSystem="2.16.840.1.113883.5.88" displayName="Rounding Physician"/>
+                    <assignedEntity>
+                        <id root="2.16.840.1.113883.4.6" extension="8888888888"/>
+                        <assignedPerson><name><given>Michael</given><family>Davis</family></name></assignedPerson>
+                    </assignedEntity>
+                </performer>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        participant = next((p for p in encounter["participant"] if "type" in p), None)
+        assert participant is not None
+        coding = participant["type"][0]["coding"][0]
+        assert coding["code"] == "ATND", "C-CDA RNDPHYS should map to FHIR ATND (attender)"
+        assert coding["display"] == "Rounding Physician"
+
     def test_header_encounter_only(
         self, ccda_header_encounter_only: str
     ) -> None:
