@@ -924,6 +924,9 @@ ENCOUNTER_STATUS_TO_FHIR = {
 # Map C-CDA V3 ActCode encounter class codes
 V3_ACT_CODE_SYSTEM = "2.16.840.1.113883.5.4"
 
+# CPT code system OID
+CPT_CODE_SYSTEM = "2.16.840.1.113883.6.12"
+
 # Map discharge disposition codes (HL7 Table 0112) to FHIR
 DISCHARGE_DISPOSITION_TO_FHIR = {
     "01": "home",
@@ -943,6 +946,52 @@ ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP = {
     "ADMPHYS": "ADM",   # Admitting Physician → admitter
     "DISPHYS": "DIS",   # Discharging Physician → discharger
 }
+
+
+def map_cpt_to_actcode(cpt_code: str) -> str | None:
+    """Map CPT encounter code to V3 ActCode.
+
+    Per C-CDA on FHIR IG specification (docs/mapping/08-encounter.md lines 77-86):
+    - 99201-99215: Outpatient visits → AMB (ambulatory)
+    - 99221-99223: Initial hospital care → IMP (inpatient encounter)
+    - 99281-99285: Emergency department visits → EMER (emergency)
+    - 99341-99350: Home visits → HH (home health)
+
+    Args:
+        cpt_code: The CPT code as a string (e.g., "99213")
+
+    Returns:
+        The corresponding V3 ActCode or None if no mapping exists
+
+    Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-encounters.html
+    """
+    if not cpt_code:
+        return None
+
+    try:
+        code_int = int(cpt_code)
+    except (ValueError, TypeError):
+        return None
+
+    # Outpatient visits (99201-99215)
+    if 99201 <= code_int <= 99215:
+        return "AMB"
+
+    # Initial hospital care (99221-99223)
+    elif 99221 <= code_int <= 99223:
+        return "IMP"
+
+    # Emergency department visits (99281-99285)
+    elif 99281 <= code_int <= 99285:
+        return "EMER"
+
+    # Home visits (99341-99350)
+    elif 99341 <= code_int <= 99350:
+        return "HH"
+
+    # No mapping found
+    return None
+
 
 # Map C-CDA Note Activity statusCode to FHIR DocumentReference status
 DOCUMENT_REFERENCE_STATUS_TO_FHIR = {

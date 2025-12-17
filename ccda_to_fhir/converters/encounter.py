@@ -7,6 +7,7 @@ from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
 from ccda_to_fhir.ccda.models.observation import EntryRelationship
 from ccda_to_fhir.constants import (
+    CPT_CODE_SYSTEM,
     DISCHARGE_DISPOSITION_TO_FHIR,
     ENCOUNTER_PARTICIPANT_FUNCTION_CODE_MAP,
     ENCOUNTER_STATUS_TO_FHIR,
@@ -15,6 +16,7 @@ from ccda_to_fhir.constants import (
     FHIRSystems,
     TemplateIds,
     TypeCodes,
+    map_cpt_to_actcode,
 )
 
 from .base import BaseConverter
@@ -167,6 +169,8 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         """Extract FHIR class from C-CDA encounter code.
 
         If the encounter code is from V3 ActCode system, use it for class.
+        If translations contain V3 ActCode, prefer that over CPT mapping.
+        If the encounter code is a CPT code with no V3 translation, map to V3 ActCode per C-CDA on FHIR IG.
         Otherwise, default to ambulatory.
 
         Args:
@@ -184,7 +188,8 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                     "display": encounter.code.display_name if encounter.code.display_name else None,
                 }
 
-            # Check translations for V3 ActCode
+            # Check translations for V3 ActCode FIRST (before CPT mapping)
+            # Per C-CDA on FHIR IG, explicit V3 ActCode translations should be preferred
             if hasattr(encounter.code, "translation") and encounter.code.translation:
                 for trans in encounter.code.translation:
                     trans_system = None
@@ -206,6 +211,25 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                             "code": trans_code,
                             "display": trans_display,
                         }
+
+            # Check if code is CPT and map to V3 ActCode
+            # Only applies if no V3 ActCode translation was found above
+            # Reference: docs/mapping/08-encounter.md lines 77-86
+            if encounter.code.code_system == CPT_CODE_SYSTEM:
+                mapped_actcode = map_cpt_to_actcode(encounter.code.code)
+                if mapped_actcode:
+                    # Map CPT code display names to V3 ActCode display names
+                    display_map = {
+                        "AMB": "ambulatory",
+                        "IMP": "inpatient encounter",
+                        "EMER": "emergency",
+                        "HH": "home health",
+                    }
+                    return {
+                        "system": FHIRSystems.V3_ACT_CODE,
+                        "code": mapped_actcode,
+                        "display": display_map.get(mapped_actcode),
+                    }
 
         # Default to ambulatory
         return {

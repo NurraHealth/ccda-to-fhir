@@ -662,3 +662,213 @@ class TestEncounterConversion:
         reason_ref = encounter["reasonReference"][0]
         # ID should match condition.py generation logic: condition-{extension}
         assert reason_ref["reference"] == "Condition/condition-problem-hypertension-001"
+
+    def test_cpt_outpatient_code_maps_to_ambulatory(self) -> None:
+        """Test that CPT outpatient codes (99201-99215) map to AMB (ambulatory).
+
+        Per C-CDA on FHIR IG specification (docs/mapping/08-encounter.md lines 77-86),
+        CPT codes in the outpatient range should map to V3 ActCode AMB.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-cpt-amb"/>
+                <code code="99213" codeSystem="2.16.840.1.113883.6.12" displayName="Office outpatient visit 15 minutes"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "class" in encounter
+        assert encounter["class"]["system"] == "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+        assert encounter["class"]["code"] == "AMB", "CPT 99213 (outpatient) should map to AMB"
+        assert encounter["class"]["display"] == "ambulatory"
+
+        # CPT code should still appear in type
+        assert "type" in encounter
+        cpt_coding = next(
+            (c for c in encounter["type"][0]["coding"]
+             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
+            None
+        )
+        assert cpt_coding is not None
+        assert cpt_coding["code"] == "99213"
+
+    def test_cpt_inpatient_code_maps_to_inpatient(self) -> None:
+        """Test that CPT inpatient codes (99221-99223) map to IMP (inpatient encounter).
+
+        Per C-CDA on FHIR IG specification (docs/mapping/08-encounter.md lines 77-86),
+        CPT codes in the initial hospital care range should map to V3 ActCode IMP.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-cpt-imp"/>
+                <code code="99221" codeSystem="2.16.840.1.113883.6.12" displayName="Initial hospital care"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "class" in encounter
+        assert encounter["class"]["system"] == "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+        assert encounter["class"]["code"] == "IMP", "CPT 99221 (inpatient) should map to IMP"
+        assert encounter["class"]["display"] == "inpatient encounter"
+
+        # CPT code should still appear in type
+        assert "type" in encounter
+        cpt_coding = next(
+            (c for c in encounter["type"][0]["coding"]
+             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
+            None
+        )
+        assert cpt_coding is not None
+        assert cpt_coding["code"] == "99221"
+
+    def test_cpt_emergency_code_maps_to_emergency(self) -> None:
+        """Test that CPT emergency codes (99281-99285) map to EMER (emergency).
+
+        Per C-CDA on FHIR IG specification (docs/mapping/08-encounter.md lines 77-86),
+        CPT codes in the emergency department range should map to V3 ActCode EMER.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-cpt-emer"/>
+                <code code="99283" codeSystem="2.16.840.1.113883.6.12" displayName="Emergency department visit"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "class" in encounter
+        assert encounter["class"]["system"] == "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+        assert encounter["class"]["code"] == "EMER", "CPT 99283 (emergency) should map to EMER"
+        assert encounter["class"]["display"] == "emergency"
+
+        # CPT code should still appear in type
+        assert "type" in encounter
+        cpt_coding = next(
+            (c for c in encounter["type"][0]["coding"]
+             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
+            None
+        )
+        assert cpt_coding is not None
+        assert cpt_coding["code"] == "99283"
+
+    def test_cpt_home_visit_code_maps_to_home_health(self) -> None:
+        """Test that CPT home visit codes (99341-99350) map to HH (home health).
+
+        Per C-CDA on FHIR IG specification (docs/mapping/08-encounter.md lines 77-86),
+        CPT codes in the home visit range should map to V3 ActCode HH.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-cpt-hh"/>
+                <code code="99345" codeSystem="2.16.840.1.113883.6.12" displayName="Home visit"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "class" in encounter
+        assert encounter["class"]["system"] == "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+        assert encounter["class"]["code"] == "HH", "CPT 99345 (home visit) should map to HH"
+        assert encounter["class"]["display"] == "home health"
+
+        # CPT code should still appear in type
+        assert "type" in encounter
+        cpt_coding = next(
+            (c for c in encounter["type"][0]["coding"]
+             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
+            None
+        )
+        assert cpt_coding is not None
+        assert cpt_coding["code"] == "99345"
+
+    def test_cpt_code_outside_mapped_ranges_defaults_to_ambulatory(self) -> None:
+        """Test that CPT codes outside known ranges default to ambulatory.
+
+        CPT codes that don't fall into the mapped ranges (99201-99215, 99221-99223,
+        99281-99285, 99341-99350) should default to ambulatory per the fallback logic.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-cpt-unmapped"/>
+                <code code="99499" codeSystem="2.16.840.1.113883.6.12" displayName="Unlisted service"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "class" in encounter
+        assert encounter["class"]["system"] == "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+        assert encounter["class"]["code"] == "AMB", "Unmapped CPT codes should default to AMB"
+
+        # CPT code should still appear in type
+        assert "type" in encounter
+        cpt_coding = next(
+            (c for c in encounter["type"][0]["coding"]
+             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
+            None
+        )
+        assert cpt_coding is not None
+        assert cpt_coding["code"] == "99499"
+
+    def test_cpt_boundary_code_99215_maps_to_ambulatory(self) -> None:
+        """Test boundary code 99215 (last in outpatient range) maps to AMB."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-cpt-99215"/>
+                <code code="99215" codeSystem="2.16.840.1.113883.6.12" displayName="Office outpatient visit 40 minutes"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "AMB", "CPT 99215 (boundary) should map to AMB"
+
+    def test_cpt_boundary_code_99223_maps_to_inpatient(self) -> None:
+        """Test boundary code 99223 (last in inpatient range) maps to IMP."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-cpt-99223"/>
+                <code code="99223" codeSystem="2.16.840.1.113883.6.12" displayName="Initial hospital care"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "IMP", "CPT 99223 (boundary) should map to IMP"
