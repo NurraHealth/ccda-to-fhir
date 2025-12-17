@@ -438,6 +438,22 @@ class DocumentConverter:
                     extra={"error_type": type(e).__name__}
                 )
 
+        # Convert Practitioner from dataEnterer
+        if ccda_doc.data_enterer and ccda_doc.data_enterer.assigned_entity:
+            try:
+                practitioner = self.practitioner_converter.convert(
+                    ccda_doc.data_enterer.assigned_entity
+                )
+                if self._validate_resource(practitioner):
+                    resources.append(practitioner)
+                    self.reference_registry.register_resource(practitioner)
+            except Exception as e:
+                logger.warning(
+                    f"Error converting data enterer practitioner: {e}",
+                    exc_info=True,
+                    extra={"error_type": type(e).__name__}
+                )
+
         # Convert custodian organization if present
         if ccda_doc.custodian:
             custodian_org = self._extract_custodian_organization(ccda_doc.custodian)

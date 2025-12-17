@@ -76,6 +76,7 @@ def wrap_in_ccda_document(
     author: str | None = None,
     custodian: str | None = None,
     legal_authenticator: str | None = None,
+    data_enterer: str | None = None,
 ) -> str:
     """Create a minimal valid C-CDA document for testing.
 
@@ -90,6 +91,7 @@ def wrap_in_ccda_document(
         author: Author XML. Uses default minimal author if not provided.
         custodian: Custodian XML. Uses default minimal custodian if not provided.
         legal_authenticator: Legal authenticator XML. Optional.
+        data_enterer: Data enterer XML. Optional.
     """
     # Strip XML declaration if present in section_content
     import re
@@ -100,12 +102,14 @@ def wrap_in_ccda_document(
     author_xml = author if author is not None else DEFAULT_AUTHOR
     custodian_xml = custodian if custodian is not None else DEFAULT_CUSTODIAN
     legal_auth_xml = legal_authenticator if legal_authenticator is not None else ""
+    data_enterer_xml = data_enterer if data_enterer is not None else ""
 
     # Strip XML declarations from all parameters
     patient_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', patient_xml)
     author_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', author_xml)
     custodian_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', custodian_xml)
     legal_auth_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', legal_auth_xml)
+    data_enterer_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', data_enterer_xml)
 
     section_template = ""
     if section_template_id:
@@ -133,6 +137,7 @@ def wrap_in_ccda_document(
     <languageCode code="en-US"/>
     {patient_xml}
     {author_xml}
+    {data_enterer_xml}
     {custodian_xml}
     {legal_auth_xml}
     <component>

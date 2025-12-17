@@ -92,6 +92,19 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if attester:
                 composition["attester"] = [attester]
 
+        # Extensions array for C-CDA on FHIR participant extensions
+        extensions = []
+
+        # Data Enterer extension
+        if clinical_document.data_enterer:
+            data_enterer_ext = self._extract_data_enterer_extension(clinical_document.data_enterer)
+            if data_enterer_ext:
+                extensions.append(data_enterer_ext)
+
+        # Add all extensions to composition if any exist
+        if extensions:
+            composition["extension"] = extensions
+
         # Type - REQUIRED (document type code)
         if clinical_document.code:
             doc_type = self.create_codeable_concept(
@@ -374,6 +387,38 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                     }
 
         return attester
+
+    def _extract_data_enterer_extension(self, data_enterer) -> JSONObject | None:
+        """Extract Data Enterer extension from C-CDA dataEnterer.
+
+        Maps to: http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension
+
+        Per C-CDA on FHIR IG v2.0.0, this is a simple extension with valueReference only.
+        Note: C-CDA dataEnterer/time is not captured in the extension per official spec.
+
+        Args:
+            data_enterer: C-CDA DataEnterer element
+
+        Returns:
+            FHIR extension object or None
+        """
+        if not data_enterer:
+            return None
+
+        # Create Practitioner reference from assignedEntity
+        if data_enterer.assigned_entity and data_enterer.assigned_entity.id:
+            practitioner_id = self._generate_practitioner_id(data_enterer.assigned_entity.id)
+            if practitioner_id:
+                # Simple extension with valueReference (per official C-CDA on FHIR IG)
+                extension: JSONObject = {
+                    "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension",
+                    "valueReference": {
+                        "reference": f"Practitioner/{practitioner_id}"
+                    }
+                }
+                return extension
+
+        return None
 
     def _generate_practitioner_id(self, identifiers: list[II]) -> str:
         """Generate FHIR Practitioner ID from C-CDA identifiers.
