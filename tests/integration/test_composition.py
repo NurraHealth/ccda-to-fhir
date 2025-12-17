@@ -672,3 +672,396 @@ class TestCompositionSections:
         assert '<td>' in div_content
         assert 'Hypertension' in div_content
         assert 'Type 2 Diabetes' in div_content
+
+
+class TestEmptySectionsWithNullFlavor:
+    """Tests for empty sections with nullFlavor mapped to emptyReason.
+
+    Per C-CDA spec, sections can have nullFlavor instead of entries to indicate
+    why they're empty. For example, Notes Section can have nullFlavor instead of
+    Note Activity entries. These map to FHIR Composition.section.emptyReason.
+
+    Reference: C-CDA Notes Section (2.16.840.1.113883.10.20.22.2.65)
+    Reference: http://terminology.hl7.org/CodeSystem/list-empty-reason
+    """
+
+    def test_empty_section_with_nask_maps_to_notasked(self) -> None:
+        """Test that NASK nullFlavor maps to 'notasked' emptyReason."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section nullFlavor="NASK">
+                    <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+                    <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+                    <title>Notes</title>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "section" in composition
+        section = composition["section"][0]
+
+        # Should have emptyReason
+        assert "emptyReason" in section
+        assert section["emptyReason"]["coding"][0]["code"] == "notasked"
+        assert section["emptyReason"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/list-empty-reason"
+        assert section["emptyReason"]["coding"][0]["display"] == "Not Asked"
+
+    def test_empty_section_with_unk_maps_to_unavailable(self) -> None:
+        """Test that UNK nullFlavor maps to 'unavailable' emptyReason.
+
+        UNK (unknown) means we don't know if items exist, which is semantically
+        different from nilknown (confirmed no items after investigation).
+        Conservative mapping to 'unavailable'.
+        """
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section nullFlavor="UNK">
+                    <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+                    <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+                    <title>Notes</title>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        section = composition["section"][0]
+
+        assert "emptyReason" in section
+        assert section["emptyReason"]["coding"][0]["code"] == "unavailable"
+        assert section["emptyReason"]["coding"][0]["display"] == "Unavailable"
+
+    def test_empty_section_with_nav_maps_to_unavailable(self) -> None:
+        """Test that NAV nullFlavor maps to 'unavailable' emptyReason."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section nullFlavor="NAV">
+                    <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+                    <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+                    <title>Notes</title>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        section = composition["section"][0]
+
+        assert "emptyReason" in section
+        assert section["emptyReason"]["coding"][0]["code"] == "unavailable"
+        assert section["emptyReason"]["coding"][0]["display"] == "Unavailable"
+
+    def test_empty_section_with_msk_maps_to_withheld(self) -> None:
+        """Test that MSK nullFlavor maps to 'withheld' emptyReason."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section nullFlavor="MSK">
+                    <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+                    <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+                    <title>Notes</title>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        section = composition["section"][0]
+
+        assert "emptyReason" in section
+        assert section["emptyReason"]["coding"][0]["code"] == "withheld"
+        assert section["emptyReason"]["coding"][0]["display"] == "Information Withheld"
+
+    def test_empty_section_without_nullflavor_defaults_to_unavailable(self) -> None:
+        """Test that empty section without nullFlavor defaults to 'unavailable'."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+                    <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+                    <title>Notes</title>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        section = composition["section"][0]
+
+        # Should still have emptyReason (default to unavailable)
+        assert "emptyReason" in section
+        assert section["emptyReason"]["coding"][0]["code"] == "unavailable"
+        assert section["emptyReason"]["coding"][0]["display"] == "Unavailable"
+
+    def test_nullflavor_mapping_case_insensitive(self) -> None:
+        """Test that nullFlavor mapping is case-insensitive."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section nullFlavor="nask">
+                    <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+                    <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+                    <title>Notes</title>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        section = composition["section"][0]
+
+        # Should map lowercase "nask" to "notasked"
+        assert "emptyReason" in section
+        assert section["emptyReason"]["coding"][0]["code"] == "notasked"

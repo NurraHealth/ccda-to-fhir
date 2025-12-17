@@ -1051,6 +1051,35 @@ O2_CONCENTRATION_CODE = "3150-0"
 O2_CONCENTRATION_DISPLAY = "Inhaled oxygen concentration"
 
 # =============================================================================
+# Section Empty Reason Mappings
+# =============================================================================
+
+# Map C-CDA section nullFlavor to FHIR Composition.section.emptyReason
+# Reference: http://terminology.hl7.org/CodeSystem/list-empty-reason
+# C-CDA nullFlavor values per: http://terminology.hl7.org/CodeSystem/v3-NullFlavor
+#
+# IMPORTANT: This is a custom mapping as no official HL7 guidance exists for
+# mapping section-level nullFlavor to emptyReason. The official C-CDA on FHIR
+# ConceptMap (CF-NullFlavorDataAbsentReason) maps nullFlavor to data-absent-reason
+# for element values, not section-level empty reasons.
+#
+# Semantic mapping choices:
+# - Conservative approach: Most unmappable values → "unavailable"
+# - Only map when semantics clearly align between the two value sets
+NULL_FLAVOR_TO_EMPTY_REASON = {
+    "NASK": "notasked",  # Not asked → Not Asked (exact semantic match)
+    "NAV": "unavailable",  # Temporarily unavailable → Unavailable (exact semantic match)
+    "UNK": "unavailable",  # Unknown → Unavailable (conservative: we don't know if items exist)
+    "MSK": "withheld",  # Masked → Information Withheld (exact semantic match for privacy)
+    "NA": "unavailable",  # Not applicable → Unavailable (conservative: concept doesn't apply)
+    "NI": "unavailable",  # No information → Unavailable (most common section nullFlavor)
+    "OTH": "unavailable",  # Other → Unavailable (conservative fallback)
+    "ASKU": "unavailable",  # Asked but unknown → Unavailable (patient was asked but didn't know)
+    "NP": "unavailable",  # Not present → Unavailable (conservative)
+    "TRC": "unavailable",  # Trace amount → Unavailable (not semantically applicable for sections)
+}
+
+# =============================================================================
 # Provenance Mappings
 # =============================================================================
 

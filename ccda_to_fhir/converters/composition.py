@@ -588,13 +588,16 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         # FHIR constraint: section must have text, entries, or subsections
         if not any(key in section_dict for key in ["text", "entry", "section"]):
-            # If section is empty, we can add emptyReason
+            # If section is empty, add emptyReason based on nullFlavor if present
+            # Per C-CDA spec, sections can have nullFlavor to indicate why they're empty
+            # (e.g., Notes Section with nullFlavor instead of Note Activity entries)
+            empty_reason_code = self._map_null_flavor_to_empty_reason(section.null_flavor)
             section_dict["emptyReason"] = {
                 "coding": [
                     {
                         "system": "http://terminology.hl7.org/CodeSystem/list-empty-reason",
-                        "code": "unavailable",
-                        "display": "Unavailable",
+                        "code": empty_reason_code,
+                        "display": self._get_empty_reason_display(empty_reason_code),
                     }
                 ]
             }
@@ -668,3 +671,47 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                         entries.append({"reference": f"{resource_type}/{resource_id}"})
 
         return entries
+
+    def _map_null_flavor_to_empty_reason(self, null_flavor: str | None) -> str:
+        """Map C-CDA nullFlavor to FHIR emptyReason code.
+
+        When a C-CDA section has a nullFlavor attribute instead of entries,
+        this indicates why the section is empty. We map this to the appropriate
+        FHIR emptyReason code from the list-empty-reason code system.
+
+        Reference: http://terminology.hl7.org/CodeSystem/list-empty-reason
+
+        Args:
+            null_flavor: C-CDA nullFlavor code (e.g., "NASK", "UNK", "NAV")
+
+        Returns:
+            FHIR emptyReason code (defaults to "unavailable" if unmapped)
+        """
+        from ccda_to_fhir.constants import NULL_FLAVOR_TO_EMPTY_REASON
+
+        if not null_flavor:
+            # No nullFlavor specified, use default
+            return "unavailable"
+
+        # Look up the mapping (case-insensitive)
+        null_flavor_upper = null_flavor.upper()
+        return NULL_FLAVOR_TO_EMPTY_REASON.get(null_flavor_upper, "unavailable")
+
+    def _get_empty_reason_display(self, code: str) -> str:
+        """Get display text for FHIR emptyReason code.
+
+        Args:
+            code: FHIR emptyReason code
+
+        Returns:
+            Display text for the code
+        """
+        display_map = {
+            "nilknown": "Nil Known",
+            "notasked": "Not Asked",
+            "withheld": "Information Withheld",
+            "unavailable": "Unavailable",
+            "notstarted": "Not Started",
+            "closed": "Closed",
+        }
+        return display_map.get(code, "Unavailable")
