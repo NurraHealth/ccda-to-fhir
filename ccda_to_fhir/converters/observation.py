@@ -875,6 +875,11 @@ class ObservationConverter(BaseConverter[Observation]):
         if body_site:
             bp_obs["bodySite"] = body_site
 
+        # Interpretation (use from systolic, or diastolic if systolic doesn't have it)
+        interpretation = systolic_obs.get("interpretation") or diastolic_obs.get("interpretation")
+        if interpretation:
+            bp_obs["interpretation"] = interpretation
+
         # Components
         components = []
 

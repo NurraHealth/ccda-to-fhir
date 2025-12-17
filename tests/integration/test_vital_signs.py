@@ -473,3 +473,171 @@ class TestVitalSignsConversion:
 
         # Verify bodySite field is not present
         assert "bodySite" not in hr_obs, "Observation should not have bodySite field when targetSiteCode is absent"
+
+    def test_converts_interpretation_code_normal(self) -> None:
+        """Test that interpretationCode is converted to Observation.interpretation for normal values."""
+        # Load fixture with interpretation codes
+        with open("tests/integration/fixtures/ccda/vital_signs_with_interpretation.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find heart rate observation (Normal interpretation)
+        hr_obs = _find_observation_by_code(bundle, "8867-4")
+        assert hr_obs is not None, "Heart rate observation should be found"
+
+        # Verify interpretation field exists
+        assert "interpretation" in hr_obs, "Observation should have interpretation field"
+        interpretation = hr_obs["interpretation"]
+
+        # Verify interpretation is an array of CodeableConcepts
+        assert isinstance(interpretation, list), "interpretation should be an array"
+        assert len(interpretation) > 0, "interpretation should have at least one element"
+
+        # Verify interpretation CodeableConcept has coding
+        assert "coding" in interpretation[0], "interpretation should have coding array"
+        assert len(interpretation[0]["coding"]) > 0, "interpretation should have at least one coding"
+
+        # Verify v3-ObservationInterpretation system and code
+        coding = interpretation[0]["coding"][0]
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", \
+            "interpretation system should be v3-ObservationInterpretation"
+        assert coding["code"] == "N", "interpretation code should be N (Normal)"
+        assert coding["display"] == "Normal", "interpretation display should be preserved"
+
+    def test_converts_interpretation_code_high(self) -> None:
+        """Test that interpretationCode is converted to Observation.interpretation for high values."""
+        # Load fixture with interpretation codes
+        with open("tests/integration/fixtures/ccda/vital_signs_with_interpretation.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find combined BP observation
+        bp_obs = _find_observation_by_code(bundle, "85354-9")
+        assert bp_obs is not None, "Blood pressure observation should be found"
+
+        # Note: Systolic has H, diastolic has N - converter preserves first (systolic)
+        # Verify interpretation field exists
+        assert "interpretation" in bp_obs, "Observation should have interpretation field"
+        interpretation = bp_obs["interpretation"]
+
+        # Verify interpretation array
+        assert isinstance(interpretation, list), "interpretation should be an array"
+        assert len(interpretation) > 0, "interpretation should have at least one element"
+
+        # Verify v3-ObservationInterpretation code H (High)
+        coding = interpretation[0]["coding"][0]
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+        assert coding["code"] == "H", "interpretation code should be H (High)"
+        assert coding["display"] == "High", "interpretation display should be preserved"
+
+    def test_converts_interpretation_code_low(self) -> None:
+        """Test that interpretationCode is converted to Observation.interpretation for low values."""
+        # Load fixture with interpretation codes
+        with open("tests/integration/fixtures/ccda/vital_signs_with_interpretation.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find body temperature observation (Low interpretation)
+        temp_obs = _find_observation_by_code(bundle, "8310-5")
+        assert temp_obs is not None, "Body temperature observation should be found"
+
+        # Verify interpretation field exists
+        assert "interpretation" in temp_obs, "Observation should have interpretation field"
+        interpretation = temp_obs["interpretation"]
+
+        # Verify v3-ObservationInterpretation code L (Low)
+        coding = interpretation[0]["coding"][0]
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+        assert coding["code"] == "L", "interpretation code should be L (Low)"
+        assert coding["display"] == "Low", "interpretation display should be preserved"
+
+    def test_converts_interpretation_code_abnormal(self) -> None:
+        """Test that interpretationCode is converted to Observation.interpretation for abnormal values."""
+        # Load fixture with interpretation codes
+        with open("tests/integration/fixtures/ccda/vital_signs_with_interpretation.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find respiratory rate observation (Abnormal interpretation)
+        rr_obs = _find_observation_by_code(bundle, "9279-1")
+        assert rr_obs is not None, "Respiratory rate observation should be found"
+
+        # Verify interpretation field exists
+        assert "interpretation" in rr_obs, "Observation should have interpretation field"
+        interpretation = rr_obs["interpretation"]
+
+        # Verify v3-ObservationInterpretation code A (Abnormal)
+        coding = interpretation[0]["coding"][0]
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+        assert coding["code"] == "A", "interpretation code should be A (Abnormal)"
+        assert coding["display"] == "Abnormal", "interpretation display should be preserved"
+
+    def test_converts_interpretation_code_critical_high(self) -> None:
+        """Test that interpretationCode is converted to Observation.interpretation for critical high values."""
+        # Load fixture with critical interpretation codes
+        with open("tests/integration/fixtures/ccda/vital_signs_critical_interpretation.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find heart rate observation (Critical high interpretation)
+        hr_obs = _find_observation_by_code(bundle, "8867-4")
+        assert hr_obs is not None, "Heart rate observation should be found"
+
+        # Verify interpretation field exists
+        assert "interpretation" in hr_obs, "Observation should have interpretation field"
+        interpretation = hr_obs["interpretation"]
+
+        # Verify v3-ObservationInterpretation code HH (Critical high)
+        coding = interpretation[0]["coding"][0]
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+        assert coding["code"] == "HH", "interpretation code should be HH (Critical high)"
+        assert coding["display"] == "Critical high", "interpretation display should be preserved"
+
+    def test_converts_interpretation_code_critical_low(self) -> None:
+        """Test that interpretationCode is converted to Observation.interpretation for critical low values."""
+        # Load fixture with critical interpretation codes
+        with open("tests/integration/fixtures/ccda/vital_signs_critical_interpretation.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find body temperature observation (Critical low interpretation)
+        temp_obs = _find_observation_by_code(bundle, "8310-5")
+        assert temp_obs is not None, "Body temperature observation should be found"
+
+        # Verify interpretation field exists
+        assert "interpretation" in temp_obs, "Observation should have interpretation field"
+        interpretation = temp_obs["interpretation"]
+
+        # Verify v3-ObservationInterpretation code LL (Critical low)
+        coding = interpretation[0]["coding"][0]
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+        assert coding["code"] == "LL", "interpretation code should be LL (Critical low)"
+        assert coding["display"] == "Critical low", "interpretation display should be preserved"
+
+    def test_interpretation_code_not_present_when_absent(self) -> None:
+        """Test that interpretation field is not present when interpretationCode is absent in C-CDA."""
+        # Use existing fixture without interpretationCode
+        with open("tests/integration/fixtures/ccda/vital_signs.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find heart rate observation (no interpretation code in this fixture)
+        hr_obs = _find_observation_by_code(bundle, "8867-4")
+        assert hr_obs is not None, "Heart rate observation should be found"
+
+        # Verify interpretation field is not present
+        assert "interpretation" not in hr_obs, "Observation should not have interpretation field when interpretationCode is absent"
