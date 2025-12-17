@@ -196,6 +196,102 @@ class TestPatientConversion:
         assert patient is not None
         assert patient["deceasedBoolean"] is False
 
+    def test_converts_deceased_indicator_true(self) -> None:
+        """Test that sdtc:deceasedInd='true' is converted to deceasedBoolean: true."""
+        ccda_patient = """
+        <recordTarget>
+            <patientRole>
+                <id root="test-patient-id"/>
+                <patient>
+                    <name><given>Test</given><family>Patient</family></name>
+                    <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1"/>
+                    <birthTime value="19800101"/>
+                    <sdtc:deceasedInd xmlns:sdtc="urn:hl7-org:sdtc" value="true"/>
+                </patient>
+            </patientRole>
+        </recordTarget>
+        """
+        ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+        assert patient["deceasedBoolean"] is True
+        # Should not have deceasedDateTime
+        assert "deceasedDateTime" not in patient
+
+    def test_converts_deceased_time(self) -> None:
+        """Test that sdtc:deceasedTime is converted to deceasedDateTime."""
+        ccda_patient = """
+        <recordTarget>
+            <patientRole>
+                <id root="test-patient-id"/>
+                <patient>
+                    <name><given>Test</given><family>Patient</family></name>
+                    <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1"/>
+                    <birthTime value="19800101"/>
+                    <sdtc:deceasedTime xmlns:sdtc="urn:hl7-org:sdtc" value="20200315"/>
+                </patient>
+            </patientRole>
+        </recordTarget>
+        """
+        ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+        assert patient["deceasedDateTime"] == "2020-03-15"
+        # Should not have deceasedBoolean
+        assert "deceasedBoolean" not in patient
+
+    def test_deceased_time_takes_precedence_over_indicator(self) -> None:
+        """Test that when both deceasedTime and deceasedInd are present, deceasedDateTime is used."""
+        ccda_patient = """
+        <recordTarget>
+            <patientRole>
+                <id root="test-patient-id"/>
+                <patient>
+                    <name><given>Test</given><family>Patient</family></name>
+                    <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1"/>
+                    <birthTime value="19800101"/>
+                    <sdtc:deceasedInd xmlns:sdtc="urn:hl7-org:sdtc" value="true"/>
+                    <sdtc:deceasedTime xmlns:sdtc="urn:hl7-org:sdtc" value="20200315"/>
+                </patient>
+            </patientRole>
+        </recordTarget>
+        """
+        ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+        # Should use deceasedDateTime, not deceasedBoolean
+        assert patient["deceasedDateTime"] == "2020-03-15"
+        assert "deceasedBoolean" not in patient
+
+    def test_no_deceased_field_when_not_present(self) -> None:
+        """Test that no deceased field is added when neither deceasedInd nor deceasedTime are present."""
+        ccda_patient = """
+        <recordTarget>
+            <patientRole>
+                <id root="test-patient-id"/>
+                <patient>
+                    <name><given>Test</given><family>Patient</family></name>
+                    <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1"/>
+                    <birthTime value="19800101"/>
+                </patient>
+            </patientRole>
+        </recordTarget>
+        """
+        ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+        # Should not have any deceased field
+        assert "deceasedBoolean" not in patient
+        assert "deceasedDateTime" not in patient
+
     def test_converts_birthplace_extension(
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that birthplace is converted to patient-birthPlace extension."""
@@ -601,3 +697,42 @@ class TestPatientConversion:
                 None
             )
             assert gender_id_ext is None
+
+    def test_converts_birth_time_extension(self) -> None:
+        """Test that birthTime with time component creates patient-birthTime extension on _birthDate."""
+        # Custom patient with time component in birthTime (with timezone)
+        patient_xml = """
+        <recordTarget>
+            <patientRole>
+                <id root="test-patient-id"/>
+                <patient>
+                    <name><family>Test</family><given>Patient</given></name>
+                    <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1"/>
+                    <birthTime value="19750501103022-0500"/>
+                </patient>
+            </patientRole>
+        </recordTarget>
+        """
+        ccda_doc = wrap_in_ccda_document("", patient=patient_xml)
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        # Should have birthDate
+        assert "birthDate" in patient
+        assert patient["birthDate"] == "1975-05-01"
+
+        # Should have _birthDate with patient-birthTime extension
+        assert "_birthDate" in patient
+        assert "extension" in patient["_birthDate"]
+        birth_time_ext = next(
+            (e for e in patient["_birthDate"]["extension"]
+             if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-birthTime"),
+            None
+        )
+        assert birth_time_ext is not None
+        assert "valueDateTime" in birth_time_ext
+        # Should include full timestamp
+        assert "1975-05-01" in birth_time_ext["valueDateTime"]
+        assert "10:30:22" in birth_time_ext["valueDateTime"]

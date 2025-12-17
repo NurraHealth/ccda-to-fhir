@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Type
 
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
@@ -131,10 +132,12 @@ class DocumentConverter:
             code_system_mapper=self.code_system_mapper
         )
         self.procedure_converter = ProcedureConverter(
-            code_system_mapper=self.code_system_mapper
+            code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
         )
         self.encounter_converter = EncounterConverter(
-            code_system_mapper=self.code_system_mapper
+            code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
         )
         self.practitioner_converter = PractitionerConverter(
             code_system_mapper=self.code_system_mapper
@@ -520,6 +523,16 @@ class DocumentConverter:
                     encounters.append(header_encounter)
                     logger.debug(f"Added header encounter {header_id} to bundle")
 
+                    # Store author metadata for header encounter
+                    # Header encounters use document-level authors from the encompassingEncounter
+                    if header_id and ccda_doc.component_of and ccda_doc.component_of.encompassing_encounter:
+                        self._store_author_metadata(
+                            resource_type="Encounter",
+                            resource_id=header_id,
+                            ccda_element=ccda_doc.component_of.encompassing_encounter,
+                            concern_act=None,
+                        )
+
             resources.extend(encounters)
             for encounter in encounters:
                 self.reference_registry.register_resource(encounter)
@@ -534,8 +547,24 @@ class DocumentConverter:
             if notes:
                 section_resource_map[TemplateIds.NOTES_SECTION] = notes
 
-        # Generate Provenance resources (after all clinical resources, before Composition)
-        provenances = self._generate_provenance_resources(resources)
+        # Generate Provenance resources and create missing author resources
+        # (after all clinical resources, before Composition)
+        provenances, devices, practitioners, organizations = self._generate_provenance_resources(resources)
+
+        # Add entry-level author resources first (Device, Practitioner, Organization)
+        resources.extend(devices)
+        for device in devices:
+            self.reference_registry.register_resource(device)
+
+        resources.extend(practitioners)
+        for practitioner in practitioners:
+            self.reference_registry.register_resource(practitioner)
+
+        resources.extend(organizations)
+        for org in organizations:
+            self.reference_registry.register_resource(org)
+
+        # Then add Provenance resources
         resources.extend(provenances)
         for provenance in provenances:
             self.reference_registry.register_resource(provenance)
@@ -715,19 +744,34 @@ class DocumentConverter:
                             for template in entry.organizer.template_id:
                                 if template.root == TemplateIds.VITAL_SIGNS_ORGANIZER:
                                     try:
-                                        vital_signs_panel = self.observation_converter.convert_vital_signs_organizer(
-                                            entry.organizer
+                                        panel, individuals = self.observation_converter.convert_vital_signs_organizer(
+                                            entry.organizer, section=section
                                         )
-                                        vital_signs.append(vital_signs_panel)
+
+                                        # Add the panel observation
+                                        vital_signs.append(panel)
+
+                                        # Add individual vital sign observations
+                                        vital_signs.extend(individuals)
 
                                         # Store author metadata for panel observation
-                                        if vital_signs_panel.get("id"):
+                                        if panel.get("id"):
                                             self._store_author_metadata(
                                                 resource_type="Observation",
-                                                resource_id=vital_signs_panel["id"],
+                                                resource_id=panel["id"],
                                                 ccda_element=entry.organizer,
                                                 concern_act=None,
                                             )
+
+                                        # Store author metadata for individual observations
+                                        for individual in individuals:
+                                            if individual.get("id"):
+                                                self._store_author_metadata(
+                                                    resource_type="Observation",
+                                                    resource_id=individual["id"],
+                                                    ccda_element=entry.organizer,
+                                                    concern_act=None,
+                                                )
                                     except Exception as e:
                                         logger.error(f"Error converting vital signs organizer", exc_info=True)
                                     break
@@ -742,6 +786,79 @@ class DocumentConverter:
 
         return vital_signs
 
+    def _store_diagnostic_report_metadata(
+        self, structured_body: StructuredBody, reports: list[FHIRResourceDict]
+    ):
+        """Store author metadata for DiagnosticReport resources.
+
+        Args:
+            structured_body: The structuredBody element
+            reports: List of converted DiagnosticReport resources
+        """
+        if not structured_body.component:
+            return
+
+        # Create a map of report IDs to track which ones need metadata
+        report_ids_needing_metadata = {r.get("id") for r in reports if r.get("id")}
+
+        for comp in structured_body.component:
+            if not comp.section:
+                continue
+
+            section = comp.section
+
+            # Process entries in this section
+            if section.entry:
+                for entry in section.entry:
+                    if entry.organizer and entry.organizer.template_id:
+                        for template in entry.organizer.template_id:
+                            if template.root == TemplateIds.RESULT_ORGANIZER:
+                                # Generate the same ID the converter would use
+                                if entry.organizer.id and len(entry.organizer.id) > 0:
+                                    first_id = entry.organizer.id[0]
+                                    report_id = self._generate_report_id_from_identifier(
+                                        first_id.root, first_id.extension
+                                    )
+
+                                    # If this report is in our list, store metadata
+                                    if report_id and report_id in report_ids_needing_metadata:
+                                        self._store_author_metadata(
+                                            resource_type="DiagnosticReport",
+                                            resource_id=report_id,
+                                            ccda_element=entry.organizer,
+                                            concern_act=None,
+                                        )
+                                        # Remove from tracking set
+                                        report_ids_needing_metadata.discard(report_id)
+                                break
+
+            # Process nested sections recursively
+            if section.component:
+                for nested_comp in section.component:
+                    if nested_comp.section:
+                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        self._store_diagnostic_report_metadata(temp_body, reports)
+
+    def _generate_report_id_from_identifier(
+        self, root: str | None, extension: str | None
+    ) -> str | None:
+        """Generate a report ID matching DiagnosticReportConverter logic.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated ID string or None
+        """
+        if extension:
+            # Use extension as ID (removing any invalid characters)
+            return extension.replace(".", "-").replace(":", "-")
+        elif root:
+            # Use root as ID
+            return root.replace(".", "-").replace(":", "-")
+        return None
+
     def _extract_results(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Lab Results from the structured body.
 
@@ -751,7 +868,12 @@ class DocumentConverter:
         Returns:
             List of FHIR DiagnosticReport resources
         """
-        return self.results_processor.process(structured_body)
+        reports = self.results_processor.process(structured_body)
+
+        # Store author metadata for Provenance generation
+        self._store_diagnostic_report_metadata(structured_body, reports)
+
+        return reports
 
     def _extract_patient_extensions_from_social_history(
         self, structured_body: StructuredBody
@@ -841,6 +963,19 @@ class DocumentConverter:
                                 }
                                 extensions.append(gender_identity_ext)
 
+                        # Sex observation identified by LOINC 46098-0
+                        if (
+                            obs.code.code == CCDACodes.SEX
+                            and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
+                        ):
+                            # Sex Extension (US Core)
+                            if obs.value and hasattr(obs.value, "code") and obs.value.code:
+                                sex_ext = {
+                                    "url": FHIRSystems.US_CORE_SEX,
+                                    "valueCode": obs.value.code,
+                                }
+                                extensions.append(sex_ext)
+
             # Process nested sections recursively
             if section.component:
                 for nested_comp in section.component:
@@ -902,16 +1037,26 @@ class DocumentConverter:
                             if is_gender_identity:
                                 continue
 
-                        # Check if it's a Smoking Status or Social History Observation
+                        # Skip sex observations - they map to Patient.extension
+                        if obs.code:
+                            is_sex = (
+                                obs.code.code == CCDACodes.SEX
+                                and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
+                            )
+                            if is_sex:
+                                continue
+
+                        # Check if it's a Smoking Status, Pregnancy, or Social History Observation
                         if obs.template_id:
                             for template in obs.template_id:
                                 if template.root in (
                                     TemplateIds.SMOKING_STATUS_OBSERVATION,
                                     TemplateIds.SOCIAL_HISTORY_OBSERVATION,
+                                    TemplateIds.PREGNANCY_OBSERVATION,
                                 ):
                                     # This is a Social History Observation
                                     try:
-                                        observation = self.observation_converter.convert(obs)
+                                        observation = self.observation_converter.convert(obs, section=section)
                                         observations.append(observation)
 
                                         # Store author metadata
@@ -946,7 +1091,30 @@ class DocumentConverter:
         Returns:
             List of FHIR Procedure resources
         """
-        return self.procedure_processor.process(structured_body)
+        # Process procedures using the section processor
+        procedures = self.procedure_processor.process(structured_body)
+
+        # Store author metadata for each procedure
+        # Note: We need to re-traverse to get the C-CDA elements for metadata
+        # This is a limitation of the class-based converter approach
+        self._store_procedure_metadata(structured_body, procedures)
+
+        return procedures
+
+    def _store_procedure_metadata(
+        self, structured_body: StructuredBody, procedures: list[FHIRResourceDict]
+    ):
+        """Store author metadata for procedure resources.
+
+        Args:
+            structured_body: The structuredBody element
+            procedures: List of converted Procedure resources
+        """
+        if not structured_body.component:
+            return
+
+        # Create a map of procedure IDs to track which ones need metadata
+        procedure_ids_needing_metadata = {p.get("id") for p in procedures if p.get("id")}
 
         for comp in structured_body.component:
             if not comp.section:
@@ -957,41 +1125,34 @@ class DocumentConverter:
             # Process entries in this section
             if section.entry:
                 for entry in section.entry:
-                    # Check for Procedure Activity Procedure
-                    if entry.procedure:
-                        # Check if it's a Procedure Activity Procedure
-                        if entry.procedure.template_id:
-                            for template in entry.procedure.template_id:
-                                if template.root == TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE:
-                                    # This is a Procedure Activity Procedure
-                                    try:
-                                        procedure = self.procedure_converter.convert(
-                                            entry.procedure
-                                        )
-                                        procedures.append(procedure)
+                    if entry.procedure and entry.procedure.template_id:
+                        for template in entry.procedure.template_id:
+                            if template.root == TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE:
+                                # Generate the same ID the converter would use
+                                if entry.procedure.id and len(entry.procedure.id) > 0:
+                                    first_id = entry.procedure.id[0]
+                                    procedure_id = self.procedure_converter._generate_procedure_id(
+                                        first_id.root, first_id.extension
+                                    )
 
-                                        # Store author metadata
-                                        if procedure.get("id"):
-                                            self._store_author_metadata(
-                                                resource_type="Procedure",
-                                                resource_id=procedure["id"],
-                                                ccda_element=entry.procedure,
-                                                concern_act=None,
-                                            )
-                                    except Exception as e:
-                                        logger.error(f"Error converting procedure", exc_info=True)
-                                    break
+                                    # If this procedure is in our list, store metadata
+                                    if procedure_id in procedure_ids_needing_metadata:
+                                        self._store_author_metadata(
+                                            resource_type="Procedure",
+                                            resource_id=procedure_id,
+                                            ccda_element=entry.procedure,
+                                            concern_act=None,
+                                        )
+                                        # Remove from tracking set
+                                        procedure_ids_needing_metadata.discard(procedure_id)
+                                break
 
             # Process nested sections recursively
             if section.component:
                 for nested_comp in section.component:
                     if nested_comp.section:
-                        # Create a temporary structured body for recursion
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        nested_procedures = self._extract_procedures(temp_body)
-                        procedures.extend(nested_procedures)
-
-        return procedures
+                        self._store_procedure_metadata(temp_body, procedures)
 
     def _extract_encounters(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Encounters from the structured body.
@@ -1002,7 +1163,68 @@ class DocumentConverter:
         Returns:
             List of FHIR Encounter resources
         """
-        return self.encounter_processor.process(structured_body)
+        # Process encounters using the section processor
+        encounters = self.encounter_processor.process(structured_body)
+
+        # Store author metadata for each encounter
+        # Note: We need to re-traverse to get the C-CDA elements for metadata
+        # This is a limitation of the class-based converter approach
+        self._store_encounter_metadata(structured_body, encounters)
+
+        return encounters
+
+    def _store_encounter_metadata(
+        self, structured_body: StructuredBody, encounters: list[FHIRResourceDict]
+    ):
+        """Store author metadata for encounter resources.
+
+        Args:
+            structured_body: The structuredBody element
+            encounters: List of converted Encounter resources
+        """
+        if not structured_body.component:
+            return
+
+        # Create a map of encounter IDs to track which ones need metadata
+        encounter_ids_needing_metadata = {e.get("id") for e in encounters if e.get("id")}
+
+        for comp in structured_body.component:
+            if not comp.section:
+                continue
+
+            section = comp.section
+
+            # Process entries in this section
+            if section.entry:
+                for entry in section.entry:
+                    if entry.encounter and entry.encounter.template_id:
+                        for template in entry.encounter.template_id:
+                            if template.root == TemplateIds.ENCOUNTER_ACTIVITY:
+                                # Generate the same ID the converter would use
+                                if entry.encounter.id and len(entry.encounter.id) > 0:
+                                    first_id = entry.encounter.id[0]
+                                    encounter_id = self.encounter_converter._generate_encounter_id(
+                                        first_id.root, first_id.extension
+                                    )
+
+                                    # If this encounter is in our list, store metadata
+                                    if encounter_id in encounter_ids_needing_metadata:
+                                        self._store_author_metadata(
+                                            resource_type="Encounter",
+                                            resource_id=encounter_id,
+                                            ccda_element=entry.encounter,
+                                            concern_act=None,
+                                        )
+                                        # Remove from tracking set
+                                        encounter_ids_needing_metadata.discard(encounter_id)
+                                break
+
+            # Process nested sections recursively
+            if section.component:
+                for nested_comp in section.component:
+                    if nested_comp.section:
+                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        self._store_encounter_metadata(temp_body, encounters)
 
     def _extract_header_encounter(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict | None:
         """Extract and convert encompassingEncounter from document header.
@@ -1256,6 +1478,80 @@ class DocumentConverter:
 
         return fhir_encounter
 
+    def _store_note_metadata(
+        self, structured_body: StructuredBody, notes: list[FHIRResourceDict]
+    ):
+        """Store author metadata for note (DocumentReference) resources.
+
+        Args:
+            structured_body: The structuredBody element
+            notes: List of converted DocumentReference resources
+        """
+        if not structured_body.component:
+            return
+
+        # Create a map of note IDs to track which ones need metadata
+        note_ids_needing_metadata = {n.get("id") for n in notes if n.get("id")}
+
+        for comp in structured_body.component:
+            if not comp.section:
+                continue
+
+            section = comp.section
+
+            # Process entries in this section
+            if section.entry:
+                for entry in section.entry:
+                    if entry.act and entry.act.template_id:
+                        for template in entry.act.template_id:
+                            if template.root == TemplateIds.NOTE_ACTIVITY:
+                                # Generate the same ID the converter would use
+                                if entry.act.id and len(entry.act.id) > 0:
+                                    first_id = entry.act.id[0]
+                                    note_id = self._generate_note_id_from_identifier(first_id)
+
+                                    # If this note is in our list, store metadata
+                                    if note_id and note_id in note_ids_needing_metadata:
+                                        self._store_author_metadata(
+                                            resource_type="DocumentReference",
+                                            resource_id=note_id,
+                                            ccda_element=entry.act,
+                                            concern_act=None,
+                                        )
+                                        # Remove from tracking set
+                                        note_ids_needing_metadata.discard(note_id)
+                                break
+
+            # Process nested sections recursively
+            if section.component:
+                for nested_comp in section.component:
+                    if nested_comp.section:
+                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        self._store_note_metadata(temp_body, notes)
+
+    def _generate_note_id_from_identifier(self, identifier) -> str | None:
+        """Generate a note ID matching NoteActivityConverter logic.
+
+        Args:
+            identifier: Note II identifier
+
+        Returns:
+            Generated ID string or None
+        """
+        if not identifier:
+            return None
+
+        # Use extension if present
+        if identifier.extension:
+            clean_ext = identifier.extension.replace(" ", "-").replace(".", "-").lower()
+            return f"note-{clean_ext}"
+        elif identifier.root:
+            # Use hash of root if no extension (matching NoteActivityConverter)
+            hash_val = hashlib.sha256(identifier.root.encode()).hexdigest()[:16]
+            return f"note-{hash_val}"
+
+        return None
+
     def _extract_notes(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Note Activities from the structured body.
 
@@ -1265,10 +1561,15 @@ class DocumentConverter:
         Returns:
             List of FHIR DocumentReference resources
         """
-        return self.note_processor.process(
+        notes = self.note_processor.process(
             structured_body,
             code_system_mapper=self.code_system_mapper,
         )
+
+        # Store author metadata for Provenance generation
+        self._store_note_metadata(structured_body, notes)
+
+        return notes
 
     def _extract_practitioners_and_organizations(
         self, authors: list
@@ -1415,20 +1716,131 @@ class DocumentConverter:
             logger.error(f"Error converting custodian organization", exc_info=True)
             return None
 
+    def _create_resources_from_author_info(
+        self,
+        author_info_list: list[AuthorInfo],
+        seen_devices: set[str],
+        seen_practitioners: set[str],
+        seen_organizations: set[str],
+    ) -> tuple[list[FHIRResourceDict], list[FHIRResourceDict], list[FHIRResourceDict]]:
+        """Create Device, Practitioner, and Organization resources from AuthorInfo.
+
+        This method creates the actual FHIR resources that Provenance agents reference.
+        It's used for entry-level authors (procedures, observations, etc.) where the
+        Device/Practitioner resources aren't created during document-level processing.
+
+        Args:
+            author_info_list: List of AuthorInfo objects with extracted author data
+            seen_devices: Set of device IDs already created (for deduplication)
+            seen_practitioners: Set of practitioner IDs already created (for deduplication)
+            seen_organizations: Set of organization IDs already created (for deduplication)
+
+        Returns:
+            Tuple of (devices, practitioners, organizations) lists
+        """
+        devices = []
+        practitioners = []
+        organizations = []
+
+        for author_info in author_info_list:
+            # Create Device resource if needed
+            if author_info.device_id and author_info.device_id not in seen_devices:
+                # Reconstruct AssignedAuthor from the original Author
+                if author_info.author and author_info.author.assigned_author:
+                    assigned = author_info.author.assigned_author
+                    if assigned.assigned_authoring_device:
+                        try:
+                            device = self.device_converter.convert(assigned)
+                            device_id = device.get("id")
+
+                            if self._validate_resource(device):
+                                if device_id and device_id not in seen_devices:
+                                    devices.append(device)
+                                    seen_devices.add(device_id)
+                            else:
+                                logger.warning("Device failed validation, skipping", device_id=device_id)
+                        except Exception as e:
+                            logger.error("Error converting device from entry author", exc_info=True)
+
+            # Create Practitioner resource if needed
+            if author_info.practitioner_id and author_info.practitioner_id not in seen_practitioners:
+                # Reconstruct AssignedAuthor from the original Author
+                if author_info.author and author_info.author.assigned_author:
+                    assigned = author_info.author.assigned_author
+                    if assigned.assigned_person:
+                        try:
+                            practitioner = self.practitioner_converter.convert(assigned)
+                            practitioner_id = practitioner.get("id")
+
+                            if self._validate_resource(practitioner):
+                                if practitioner_id and practitioner_id not in seen_practitioners:
+                                    practitioners.append(practitioner)
+                                    seen_practitioners.add(practitioner_id)
+                            else:
+                                logger.warning("Practitioner failed validation, skipping", practitioner_id=practitioner_id)
+                        except Exception as e:
+                            logger.error("Error converting practitioner from entry author", exc_info=True)
+
+            # Create Organization resource if needed
+            if author_info.organization_id and author_info.organization_id not in seen_organizations:
+                # Reconstruct from the original Author
+                if author_info.author and author_info.author.assigned_author:
+                    assigned = author_info.author.assigned_author
+                    if assigned.represented_organization:
+                        try:
+                            organization = self.organization_converter.convert(
+                                assigned.represented_organization
+                            )
+                            org_id = organization.get("id")
+
+                            if self._validate_resource(organization):
+                                if org_id and org_id not in seen_organizations:
+                                    organizations.append(organization)
+                                    seen_organizations.add(org_id)
+                            else:
+                                logger.warning("Organization failed validation, skipping", org_id=org_id)
+                        except Exception as e:
+                            logger.error("Error converting organization from entry author", exc_info=True)
+
+        return (devices, practitioners, organizations)
+
     def _generate_provenance_resources(
         self, resources: list[FHIRResourceDict]
-    ) -> list[FHIRResourceDict]:
-        """Generate Provenance resources for all resources with stored author metadata.
+    ) -> tuple[list[FHIRResourceDict], list[FHIRResourceDict], list[FHIRResourceDict], list[FHIRResourceDict]]:
+        """Generate Provenance resources and create missing author resources.
+
+        This method generates Provenance resources for all resources with stored author
+        metadata. It also creates any Device, Practitioner, or Organization resources
+        that are referenced by Provenance agents but don't exist yet (from entry-level authors).
 
         Args:
             resources: List of FHIR resources that have been converted
 
         Returns:
-            List of Provenance resources
+            Tuple of (provenances, devices, practitioners, organizations) lists
         """
         provenances = []
-        seen_provenances = set()
+        devices = []
+        practitioners = []
+        organizations = []
 
+        seen_provenances = set()
+        seen_devices = set()
+        seen_practitioners = set()
+        seen_organizations = set()
+
+        # First, track what resources already exist in the bundle
+        for resource in resources:
+            resource_type = resource.get("resourceType")
+            resource_id = resource.get("id")
+            if resource_type == "Device" and resource_id:
+                seen_devices.add(resource_id)
+            elif resource_type == "Practitioner" and resource_id:
+                seen_practitioners.add(resource_id)
+            elif resource_type == "Organization" and resource_id:
+                seen_organizations.add(resource_id)
+
+        # Process each resource and create Provenance + missing author resources
         for resource in resources:
             resource_type = resource.get("resourceType")
             resource_id = resource.get("id")
@@ -1442,6 +1854,14 @@ class DocumentConverter:
             author_info = self._author_metadata.get(key)
             if not author_info:
                 continue
+
+            # Create missing Device/Practitioner/Organization resources from entry-level authors
+            entry_devices, entry_practitioners, entry_orgs = self._create_resources_from_author_info(
+                author_info, seen_devices, seen_practitioners, seen_organizations
+            )
+            devices.extend(entry_devices)
+            practitioners.extend(entry_practitioners)
+            organizations.extend(entry_orgs)
 
             # Create Provenance only if there are valid agents
             # (authors with practitioner/device IDs)
@@ -1474,7 +1894,7 @@ class DocumentConverter:
                         exc_info=True,
                     )
 
-        return provenances
+        return (provenances, devices, practitioners, organizations)
 
     def _store_author_metadata(
         self,
@@ -1492,7 +1912,9 @@ class DocumentConverter:
             concern_act: Optional concern act (for combined author extraction)
         """
         from ccda_to_fhir.ccda.models.act import Act
+        from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
         from ccda_to_fhir.ccda.models.observation import Observation
+        from ccda_to_fhir.ccda.models.organizer import Organizer
         from ccda_to_fhir.ccda.models.procedure import Procedure
         from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 
@@ -1511,6 +1933,10 @@ class DocumentConverter:
                 )
             elif isinstance(ccda_element, Procedure):
                 authors = self.author_extractor.extract_from_procedure(ccda_element)
+            elif isinstance(ccda_element, CCDAEncounter):
+                authors = self.author_extractor.extract_from_encounter(ccda_element)
+            elif isinstance(ccda_element, Organizer):
+                authors = self.author_extractor.extract_from_organizer(ccda_element)
             elif isinstance(ccda_element, Act):
                 authors = self.author_extractor.extract_from_concern_act(ccda_element)
 

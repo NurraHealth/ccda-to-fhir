@@ -93,10 +93,11 @@ class PatientConverter(BaseConverter[RecordTarget]):
             birth_date, birth_time_ext = self._extract_birth_date_and_time(patient_data.birth_time)
             if birth_date:
                 patient["birthDate"] = birth_date
-            if birth_time_ext:
-                if "extension" not in patient:
-                    patient["extension"] = []
-                patient["extension"].append(birth_time_ext)
+                # Attach birthTime extension to _birthDate element
+                if birth_time_ext:
+                    patient["_birthDate"] = {
+                        "extension": [birth_time_ext]
+                    }
 
         # Deceased
         deceased = self._convert_deceased(patient_data)
@@ -221,8 +222,9 @@ class PatientConverter(BaseConverter[RecordTarget]):
         # Time component would be like: 20000101120000-0500 (14+ digits)
         has_time = len(birth_time_str) > 8
 
-        # Extract date portion for birthDate
-        birth_date = self.convert_date(birth_time_str)
+        # Extract date portion for birthDate (only YYYYMMDD, no time)
+        date_portion = birth_time_str[:8]  # First 8 characters
+        birth_date = self.convert_date(date_portion)
 
         # If has time component, create extension
         birth_time_ext = None
@@ -537,24 +539,26 @@ class PatientConverter(BaseConverter[RecordTarget]):
         for guardian in guardians:
             contact: JSONObject = {}
 
-            # Relationship - always include GUARD code
+            # Relationship - specific code first (if available), then GUARD
             relationships = []
+
+            # Add specific relationship code if provided (primary)
+            if guardian.code and guardian.code.code:
+                specific_coding = self.create_codeable_concept(
+                    code=guardian.code.code,
+                    code_system=guardian.code.code_system,
+                    display_name=guardian.code.display_name,
+                )
+                if specific_coding and specific_coding.get("coding"):
+                    relationships.append(specific_coding)
+
+            # Always add generic GUARD code
             guard_coding = {
                 "system": FHIRSystems.V3_ROLE_CODE,
                 "code": V3RoleCodes.GUARDIAN,
                 "display": "Guardian",
             }
             relationships.append({"coding": [guard_coding]})
-
-            # Add any additional relationship code
-            if guardian.code and guardian.code.code:
-                additional_coding = self.create_codeable_concept(
-                    code=guardian.code.code,
-                    code_system=guardian.code.code_system,
-                    display_name=guardian.code.display_name,
-                )
-                if additional_coding and additional_coding.get("coding"):
-                    relationships.append(additional_coding)
 
             contact["relationship"] = relationships
 

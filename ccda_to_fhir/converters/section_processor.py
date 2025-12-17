@@ -119,6 +119,13 @@ class SectionProcessor:
                                     if self.config.include_section_code:
                                         kwargs["section_code"] = section_code
 
+                                    # Pass section only for converters that accept it
+                                    # Check if converter accepts 'section' parameter
+                                    import inspect
+                                    converter_sig = inspect.signature(self.config.converter)
+                                    if "section" in converter_sig.parameters:
+                                        kwargs["section"] = section
+
                                     # Call converter
                                     result = self.config.converter(
                                         entry_element, **kwargs

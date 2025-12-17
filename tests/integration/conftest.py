@@ -278,6 +278,24 @@ def ccda_procedure_with_reason() -> str:
 
 
 @pytest.fixture
+def ccda_procedure_with_reason_reference() -> str:
+    """Load C-CDA procedure with inline Problem Observation (creates reasonCode)."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_reason_reference.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_with_problem_reference() -> str:
+    """Load C-CDA document with Problems section and Procedure referencing it (creates reasonReference)."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_problem_reference.xml").read_text()
+
+
+@pytest.fixture
+def ccda_pregnancy_intention() -> str:
+    """Load C-CDA pregnancy intention observation."""
+    return (CCDA_FIXTURES_DIR / "pregnancy_intention.xml").read_text()
+
+
+@pytest.fixture
 def ccda_procedure_with_author() -> str:
     """Load C-CDA procedure with author/recorder."""
     return (CCDA_FIXTURES_DIR / "procedure_with_author.xml").read_text()
@@ -311,6 +329,18 @@ def ccda_procedure_with_notes() -> str:
 def ccda_result() -> str:
     """Load C-CDA result/lab fixture."""
     return (CCDA_FIXTURES_DIR / "result.xml").read_text()
+
+
+@pytest.fixture
+def ccda_result_with_author() -> str:
+    """Load C-CDA result with author/recorder."""
+    return (CCDA_FIXTURES_DIR / "result_with_author.xml").read_text()
+
+
+@pytest.fixture
+def ccda_result_multiple_authors() -> str:
+    """Load C-CDA result with multiple authors at different times."""
+    return (CCDA_FIXTURES_DIR / "result_multiple_authors.xml").read_text()
 
 
 @pytest.fixture
@@ -362,6 +392,30 @@ def ccda_encounter_with_discharge() -> str:
 
 
 @pytest.fixture
+def ccda_encounter_with_author() -> str:
+    """Load C-CDA encounter with author/recorder."""
+    return (CCDA_FIXTURES_DIR / "encounter_with_author.xml").read_text()
+
+
+@pytest.fixture
+def ccda_encounter_multiple_authors() -> str:
+    """Load C-CDA encounter with multiple authors at different times."""
+    return (CCDA_FIXTURES_DIR / "encounter_multiple_authors.xml").read_text()
+
+
+@pytest.fixture
+def ccda_encounter_with_reason_reference() -> str:
+    """Load C-CDA encounter with inline Problem Observation (creates reasonCode)."""
+    return (CCDA_FIXTURES_DIR / "encounter_with_reason_reference.xml").read_text()
+
+
+@pytest.fixture
+def ccda_encounter_with_problem_reference() -> str:
+    """Load C-CDA document with Problems section and Encounter referencing it (creates reasonReference)."""
+    return (CCDA_FIXTURES_DIR / "encounter_with_problem_reference.xml").read_text()
+
+
+@pytest.fixture
 def ccda_header_encounter_only() -> str:
     """Load C-CDA document with header encompassingEncounter only (no body encounters)."""
     return (CCDA_FIXTURES_DIR / "header_encounter_only.xml").read_text()
@@ -404,6 +458,18 @@ def ccda_smoking_status() -> str:
 
 
 @pytest.fixture
+def ccda_smoking_status_with_author() -> str:
+    """Load C-CDA smoking status with author."""
+    return (CCDA_FIXTURES_DIR / "smoking_status_with_author.xml").read_text()
+
+
+@pytest.fixture
+def ccda_smoking_status_multiple_authors() -> str:
+    """Load C-CDA smoking status with multiple authors at different times."""
+    return (CCDA_FIXTURES_DIR / "smoking_status_multiple_authors.xml").read_text()
+
+
+@pytest.fixture
 def fhir_smoking_status() -> dict[str, Any]:
     """Load expected FHIR smoking status observation fixture."""
     return json.loads((FHIR_FIXTURES_DIR / "smoking_status.json").read_text())
@@ -413,6 +479,18 @@ def fhir_smoking_status() -> dict[str, Any]:
 def ccda_pregnancy() -> str:
     """Load C-CDA pregnancy observation fixture."""
     return (CCDA_FIXTURES_DIR / "pregnancy.xml").read_text()
+
+
+@pytest.fixture
+def ccda_pregnancy_no_edd() -> str:
+    """Load C-CDA pregnancy observation without EDD fixture."""
+    return (CCDA_FIXTURES_DIR / "pregnancy_no_edd.xml").read_text()
+
+
+@pytest.fixture
+def ccda_pregnancy_loinc() -> str:
+    """Load C-CDA pregnancy observation with LOINC code (C-CDA 4.0+)."""
+    return (CCDA_FIXTURES_DIR / "pregnancy_loinc.xml").read_text()
 
 
 @pytest.fixture
@@ -533,6 +611,12 @@ def ccda_immunization_negated() -> str:
 
 
 @pytest.fixture
+def ccda_immunization_multiple_authors() -> str:
+    """Load C-CDA immunization with multiple authors at different times."""
+    return (CCDA_FIXTURES_DIR / "immunization_multiple_authors.xml").read_text()
+
+
+@pytest.fixture
 def ccda_observation_ivl_pq() -> str:
     """Load C-CDA observation with IVL_PQ value."""
     return (CCDA_FIXTURES_DIR / "observation_ivl_pq.xml").read_text()
@@ -557,9 +641,39 @@ def ccda_allergy_multiple_authors() -> str:
 
 
 @pytest.fixture
+def ccda_allergy_with_allergy_level_severity() -> str:
+    """Load C-CDA allergy with severity at allergy level only (Scenario A)."""
+    return (CCDA_FIXTURES_DIR / "allergy_with_allergy_level_severity.xml").read_text()
+
+
+@pytest.fixture
+def ccda_allergy_with_both_level_severity() -> str:
+    """Load C-CDA allergy with severity at both allergy and reaction levels (Scenario B)."""
+    return (CCDA_FIXTURES_DIR / "allergy_with_both_level_severity.xml").read_text()
+
+
+@pytest.fixture
 def ccda_medication_multiple_authors() -> str:
     """Load C-CDA medication with multiple authors at different times."""
     return (CCDA_FIXTURES_DIR / "medication_multiple_authors.xml").read_text()
+
+
+@pytest.fixture
+def ccda_medication_with_start_date() -> str:
+    """Load C-CDA medication with IVL_TS start date only (boundsPeriod.start)."""
+    return (CCDA_FIXTURES_DIR / "medication_with_start_date.xml").read_text()
+
+
+@pytest.fixture
+def ccda_medication_with_start_end_dates() -> str:
+    """Load C-CDA medication with IVL_TS start and end dates (boundsPeriod)."""
+    return (CCDA_FIXTURES_DIR / "medication_with_start_end_dates.xml").read_text()
+
+
+@pytest.fixture
+def ccda_medication_bounds_period_with_frequency() -> str:
+    """Load C-CDA medication with IVL_TS boundsPeriod and PIVL_TS frequency."""
+    return (CCDA_FIXTURES_DIR / "medication_bounds_period_with_frequency.xml").read_text()
 
 
 @pytest.fixture

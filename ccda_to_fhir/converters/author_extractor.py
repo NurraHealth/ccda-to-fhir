@@ -10,7 +10,9 @@ from typing import Union
 
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.author import Author
+from ccda_to_fhir.ccda.models.encounter import Encounter
 from ccda_to_fhir.ccda.models.observation import Observation
+from ccda_to_fhir.ccda.models.organizer import Organizer
 from ccda_to_fhir.ccda.models.procedure import Procedure
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 
@@ -212,6 +214,36 @@ class AuthorExtractor:
         if procedure.author:
             for author in procedure.author:
                 authors.append(AuthorInfo(author, context="procedure"))
+        return authors
+
+    def extract_from_encounter(self, encounter: Encounter) -> list[AuthorInfo]:
+        """Extract authors from Encounter.
+
+        Args:
+            encounter: The C-CDA Encounter element
+
+        Returns:
+            List of AuthorInfo objects
+        """
+        authors = []
+        if encounter.author:
+            for author in encounter.author:
+                authors.append(AuthorInfo(author, context="encounter"))
+        return authors
+
+    def extract_from_organizer(self, organizer: Organizer) -> list[AuthorInfo]:
+        """Extract authors from Organizer (Result Organizer, Vital Signs Organizer).
+
+        Args:
+            organizer: The C-CDA Organizer element
+
+        Returns:
+            List of AuthorInfo objects
+        """
+        authors = []
+        if organizer.author:
+            for author in organizer.author:
+                authors.append(AuthorInfo(author, context="organizer"))
         return authors
 
     def extract_combined(

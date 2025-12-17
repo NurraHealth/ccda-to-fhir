@@ -44,3 +44,108 @@ class TestObservationRange:
         assert val_range["low"]["unit"] == "10*9/L"
         assert val_range["high"]["value"] == 11.0
         assert val_range["high"]["unit"] == "10*9/L"
+
+    def test_converts_ivl_pq_high_only_to_quantity_with_comparator(self) -> None:
+        """Test that IVL_PQ with only high value converts to valueQuantity with <= comparator."""
+        with open("tests/integration/fixtures/ccda/observation_ivl_pq_high_only.xml") as f:
+            organizer_xml = f.read()
+
+        ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        # Result Organizer maps to DiagnosticReport
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None, "Result Organizer should map to DiagnosticReport"
+
+        # Observation should be in contained array
+        assert "contained" in report
+        assert len(report["contained"]) > 0
+        observation = report["contained"][0]
+        assert observation["resourceType"] == "Observation"
+
+        # Verify IVL_PQ (high-only) → valueQuantity with comparator
+        assert "valueQuantity" in observation
+        assert "valueRange" not in observation
+
+        val_quantity = observation["valueQuantity"]
+        assert val_quantity["value"] == 100
+        assert val_quantity["unit"] == "mg/dL"
+        assert val_quantity["comparator"] == "<="
+
+    def test_converts_ivl_pq_low_only_to_quantity_with_comparator(self) -> None:
+        """Test that IVL_PQ with only low value converts to valueQuantity with >= comparator."""
+        with open("tests/integration/fixtures/ccda/observation_ivl_pq_low_only.xml") as f:
+            organizer_xml = f.read()
+
+        ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        # Result Organizer maps to DiagnosticReport
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None, "Result Organizer should map to DiagnosticReport"
+
+        # Observation should be in contained array
+        assert "contained" in report
+        assert len(report["contained"]) > 0
+        observation = report["contained"][0]
+        assert observation["resourceType"] == "Observation"
+
+        # Verify IVL_PQ (low-only) → valueQuantity with comparator
+        assert "valueQuantity" in observation
+        assert "valueRange" not in observation
+
+        val_quantity = observation["valueQuantity"]
+        assert val_quantity["value"] == 200
+        assert val_quantity["unit"] == "mg/dL"
+        assert val_quantity["comparator"] == ">="
+
+    def test_high_only_comparator_has_ucum_system(self) -> None:
+        """Test that high-only IVL_PQ comparator quantity includes UCUM system."""
+        with open("tests/integration/fixtures/ccda/observation_ivl_pq_high_only.xml") as f:
+            organizer_xml = f.read()
+
+        ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None
+        observation = report["contained"][0]
+
+        val_quantity = observation["valueQuantity"]
+        assert val_quantity["system"] == "http://unitsofmeasure.org"
+        assert val_quantity["code"] == "mg/dL"
+
+    def test_low_only_comparator_has_ucum_system(self) -> None:
+        """Test that low-only IVL_PQ comparator quantity includes UCUM system."""
+        with open("tests/integration/fixtures/ccda/observation_ivl_pq_low_only.xml") as f:
+            organizer_xml = f.read()
+
+        ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None
+        observation = report["contained"][0]
+
+        val_quantity = observation["valueQuantity"]
+        assert val_quantity["system"] == "http://unitsofmeasure.org"
+        assert val_quantity["code"] == "mg/dL"
+
+    def test_comparator_preserves_observation_metadata(self) -> None:
+        """Test that using comparator preserves other observation metadata."""
+        with open("tests/integration/fixtures/ccda/observation_ivl_pq_high_only.xml") as f:
+            organizer_xml = f.read()
+
+        ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None
+        observation = report["contained"][0]
+
+        # Verify metadata is preserved
+        assert observation["status"] == "final"
+        assert "code" in observation
+        assert observation["code"]["coding"][0]["code"] == "2339-0"
+        assert "effectiveDateTime" in observation
+        assert "2012-08-06" in observation["effectiveDateTime"]

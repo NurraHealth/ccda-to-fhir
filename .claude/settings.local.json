@@ -18,7 +18,9 @@
       "Bash(tail:*)",
       "Bash(jq:*)",
       "Bash(uv sync:*)",
-      "Bash(uv run pytest:*)"
+      "Bash(uv run pytest:*)",
+      "WebFetch(domain:hl7.org)",
+      "WebFetch(domain:terminology.hl7.org)"
     ]
   }
 }

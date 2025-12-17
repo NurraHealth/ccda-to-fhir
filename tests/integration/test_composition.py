@@ -566,3 +566,109 @@ class TestCompositionSections:
         assert "status" in section["text"]
         assert "div" in section["text"]
         assert "Problem section narrative" in section["text"]["div"]
+
+    def test_section_has_structured_narrative(self) -> None:
+        """Test that section with structured StrucDocText (paragraphs, tables) is converted."""
+        ccda_doc_with_structured_section = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+                    <code code="11450-4" codeSystem="2.16.840.1.113883.6.1" displayName="Problem List"/>
+                    <title>Problems</title>
+                    <text>
+                        <paragraph ID="p1">
+                            <content styleCode="Bold">Active Problems:</content>
+                        </paragraph>
+                        <table>
+                            <tbody>
+                                <tr ID="prob-1">
+                                    <td>Hypertension</td>
+                                    <td>Active since 2020</td>
+                                </tr>
+                                <tr ID="prob-2">
+                                    <td>Type 2 Diabetes</td>
+                                    <td>Controlled</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </text>
+                    <entry></entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc_with_structured_section)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "section" in composition
+        assert len(composition["section"]) >= 1
+
+        section = composition["section"][0]
+
+        # Verify narrative structure exists
+        assert "text" in section
+        assert "status" in section["text"]
+        assert section["text"]["status"] == "generated"
+        assert "div" in section["text"]
+
+        div_content = section["text"]["div"]
+
+        # Verify XHTML namespace
+        assert 'xmlns="http://www.w3.org/1999/xhtml"' in div_content
+
+        # Verify paragraph with ID and styled content
+        assert '<p' in div_content
+        assert 'id="p1"' in div_content
+        assert 'class="Bold"' in div_content
+        assert 'Active Problems:' in div_content
+
+        # Verify table structure
+        assert '<table' in div_content
+        assert '<tbody>' in div_content
+        assert '<tr' in div_content
+        assert 'id="prob-1"' in div_content
+        assert '<td>' in div_content
+        assert 'Hypertension' in div_content
+        assert 'Type 2 Diabetes' in div_content

@@ -54,6 +54,8 @@ class TemplateIds:
     RESULT_OBSERVATION = "2.16.840.1.113883.10.20.22.4.2"
     SMOKING_STATUS_OBSERVATION = "2.16.840.1.113883.10.20.22.4.78"
     SOCIAL_HISTORY_OBSERVATION = "2.16.840.1.113883.10.20.22.4.38"
+    PREGNANCY_OBSERVATION = "2.16.840.1.113883.10.20.15.3.8"
+    ESTIMATED_DELIVERY_DATE_OBSERVATION = "2.16.840.1.113883.10.20.15.3.1"
     BIRTH_SEX_OBSERVATION = "2.16.840.1.113883.10.20.22.4.200"
     # Gender Identity Observation doesn't have a standardized template ID in C-CDA
     # It's typically identified by LOINC code 76691-5
@@ -118,6 +120,7 @@ class CCDACodes:
     AGE_AT_ONSET = "445518008"  # SNOMED code for age at onset
     BIRTH_SEX = "76689-9"  # Sex assigned at birth
     GENDER_IDENTITY = "76691-5"  # Gender identity
+    SEX = "46098-0"  # Sex (documented clinical sex)
 
     # Severity code
     SEVERITY = "SEV"
@@ -274,6 +277,12 @@ class SnomedCodes:
     PROPENSITY_TO_ADVERSE_REACTIONS = "420134006"
     PROPENSITY_TO_FOOD_REACTIONS = "418471000"
 
+    # No known allergy codes (negated concept codes)
+    NO_KNOWN_ALLERGY = "716186003"
+    NO_KNOWN_DRUG_ALLERGY = "409137002"
+    NO_KNOWN_FOOD_ALLERGY = "429625007"
+    NO_KNOWN_ENVIRONMENTAL_ALLERGY = "428607008"
+
 
 # =============================================================================
 # HL7 V3 Criticality Codes
@@ -338,6 +347,7 @@ class FHIRSystems:
     US_CORE_ETHNICITY = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
     US_CORE_BIRTHSEX = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
     US_CORE_GENDER_IDENTITY = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+    US_CORE_SEX = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
 
     # Units
     UCUM = "http://unitsofmeasure.org"
@@ -934,6 +944,24 @@ DOCUMENT_REFERENCE_STATUS_TO_FHIR = {
 # LOINC code for Vital signs panel
 VITAL_SIGNS_PANEL_CODE = "85353-1"
 VITAL_SIGNS_PANEL_DISPLAY = "Vital signs, weight, height, head circumference, oxygen saturation and BMI panel"
+
+# LOINC codes for Blood Pressure
+BP_PANEL_CODE = "85354-9"
+BP_PANEL_DISPLAY = "Blood pressure panel with all children optional"
+BP_SYSTOLIC_CODE = "8480-6"
+BP_SYSTOLIC_DISPLAY = "Systolic blood pressure"
+BP_DIASTOLIC_CODE = "8462-4"
+BP_DIASTOLIC_DISPLAY = "Diastolic blood pressure"
+
+# LOINC codes for Pulse Oximetry
+PULSE_OX_PRIMARY_CODE = "59408-5"
+PULSE_OX_PRIMARY_DISPLAY = "Oxygen saturation in Arterial blood by Pulse oximetry"
+PULSE_OX_ALT_CODE = "2708-6"
+PULSE_OX_ALT_DISPLAY = "Oxygen saturation in Arterial blood"
+O2_FLOW_RATE_CODE = "3151-8"
+O2_FLOW_RATE_DISPLAY = "Inhaled oxygen flow rate"
+O2_CONCENTRATION_CODE = "3150-0"
+O2_CONCENTRATION_DISPLAY = "Inhaled oxygen concentration"
 
 # =============================================================================
 # Provenance Mappings

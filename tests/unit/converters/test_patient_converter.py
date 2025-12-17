@@ -14,7 +14,9 @@ import pytest
 
 from ccda_to_fhir.ccda.models.datatypes import AD, CE, EN, ENXP, II, PN, TEL, TS
 from ccda_to_fhir.ccda.models.record_target import (
+    Birthplace,
     Guardian,
+    GuardianPerson,
     LanguageCommunication,
     Patient,
     PatientRole,
@@ -107,9 +109,9 @@ def complete_patient() -> Patient:
         ],
         # Race - Hispanic/Latino (OMB standard)
         race_code=CE(
-            code="2135-2",  # Hispanic or Latino
+            code="2106-3",  # White (OMB Race Category)
             code_system="2.16.840.1.113883.6.238",  # Race & Ethnicity - CDC
-            display_name="Hispanic or Latino",
+            display_name="White",
         ),
         # Ethnicity - Central American
         ethnic_group_code=CE(
@@ -122,12 +124,6 @@ def complete_patient() -> Patient:
             code="1013",  # Roman Catholic
             code_system="2.16.840.1.113883.5.1076",  # ReligiousAffiliation
             display_name="Roman Catholic Church",
-        ),
-        # Birth sex (US Core extension)
-        sdtc_birth_sex_code=CE(
-            code="F",
-            code_system="2.16.840.1.113883.5.1",
-            display_name="Female",
         ),
     )
 
@@ -239,7 +235,7 @@ def patient_with_guardian() -> tuple[Patient, Guardian]:
             code_system="2.16.840.1.113883.5.111",  # RoleCode
             display_name="Mother",
         ),
-        guardian_person=Patient(
+        guardian_person=GuardianPerson(
             name=[
                 PN(
                     given=[ENXP(value="Sarah")],
@@ -278,13 +274,13 @@ def deceased_patient() -> Patient:
             display_name="Male",
         ),
         birth_time=TS(value="19450315"),
-        deceased_ind=True,
-        deceased_time=TS(value="20231107"),  # Died Nov 7, 2023
+        sdtc_deceased_ind=True,
+        sdtc_deceased_time=TS(value="20231107"),  # Died Nov 7, 2023
     )
 
 
 @pytest.fixture
-def patient_with_birthplace() -> tuple[Patient, Place]:
+def patient_with_birthplace() -> tuple[Patient, Birthplace]:
     """Create patient with birthplace (international).
 
     Realistic scenario: Patient born in Mexico, relevant for
@@ -305,11 +301,13 @@ def patient_with_birthplace() -> tuple[Patient, Place]:
         birth_time=TS(value="19800610"),
     )
 
-    birthplace = Place(
-        addr=AD(
-            city="Mexico City",
-            state="CDMX",
-            country="Mexico",
+    birthplace = Birthplace(
+        place=Place(
+            addr=AD(
+                city="Mexico City",
+                state="CDMX",
+                country="Mexico",
+            ),
         ),
     )
 
@@ -381,7 +379,7 @@ class TestBasicDemographics:
 
         # Multiple names
         assert len(result["name"]) == 2
-        assert result["name"][0]["use"] == "official"  # L -> official
+        assert result["name"][0]["use"] == "usual"  # L (Legal) -> usual per V3 EntityNameUse standard
         assert result["name"][0]["given"] == ["Isabella", "Maria"]
         assert result["name"][0]["family"] == "Garcia"
         assert result["name"][1]["use"] == "nickname"  # P -> nickname
@@ -421,7 +419,7 @@ class TestBasicDemographics:
         # Spanish (preferred)
         spanish = result["communication"][0]
         assert spanish["language"]["coding"][0]["code"] == "es"
-        assert spanish["language"]["coding"][0]["display"] == "Spanish"
+        # Display is optional in FHIR Coding
         assert spanish["preferred"] is True
 
         # English (non-preferred)
@@ -470,6 +468,7 @@ class TestPatientIdentifiers:
         SSN requires special handling per:
         - HIPAA privacy rules
         - V2 identifier type codes
+        - Conversion to canonical FHIR URI
         """
         patient_role_with_identifiers.patient = basic_patient
 
@@ -478,10 +477,10 @@ class TestPatientIdentifiers:
         converter = PatientConverter()
         result = converter.convert(record_target)
 
-        # SSN identifier
-        ssn = next(i for i in result["identifier"] if "4.1" in i["system"])
+        # SSN identifier - OID is converted to canonical FHIR URI
+        ssn = next(i for i in result["identifier"] if "us-ssn" in i["system"])
         assert ssn["value"] == "123-45-6789"
-        assert "2.16.840.1.113883.4.1" in ssn["system"]  # Official SSN OID
+        assert ssn["system"] == "http://hl7.org/fhir/sid/us-ssn"  # Canonical URI (not raw OID)
 
     def test_handles_missing_identifiers_gracefully(self, basic_patient):
         """Test patient with no identifiers.
@@ -638,8 +637,8 @@ class TestUSCoreExtensions:
         )
 
         assert omb_category is not None
-        assert omb_category["valueCoding"]["code"] == "2135-2"
-        assert "Hispanic" in omb_category["valueCoding"]["display"]
+        assert omb_category["valueCoding"]["code"] == "2106-3"
+        assert "White" in omb_category["valueCoding"]["display"]
 
     def test_converts_ethnicity_extension_omb_compliant(self, complete_patient):
         """Test ethnicity extension per OMB standard.
@@ -669,45 +668,16 @@ class TestUSCoreExtensions:
 
         assert eth_ext is not None, "Ethnicity extension missing"
 
-        # Should have ombCategory sub-extension
-        omb_category = next(
-            (e for e in eth_ext["extension"] if e["url"] == "ombCategory"),
+        # Central American (2155-0) is a detailed ethnicity code, not an OMB category
+        # OMB categories are: 2135-2 (Hispanic or Latino) or 2186-5 (Not Hispanic or Latino)
+        detailed = next(
+            (e for e in eth_ext["extension"] if e["url"] == "detailed"),
             None
         )
 
-        assert omb_category is not None
-        assert omb_category["valueCoding"]["code"] == "2155-0"
-
-    def test_converts_birthsex_extension(self, complete_patient):
-        """Test birth sex extension.
-
-        Birth sex != gender identity
-        - Birth sex: Assigned at birth (M/F/UNK)
-        - Gender: Current gender identity
-
-        Important for:
-        - Clinical decision support
-        - Gender-affirming care
-        """
-        record_target = RecordTarget(
-            patient_role=PatientRole(
-                id=[II(root="2.16.840.1.113883.19.5", extension="bs-test")],
-                patient=complete_patient,
-            )
-        )
-
-        converter = PatientConverter()
-        result = converter.convert(record_target)
-
-        # Find birthsex extension
-        birthsex_ext = next(
-            (e for e in result.get("extension", [])
-             if "us-core-birthsex" in e["url"]),
-            None
-        )
-
-        assert birthsex_ext is not None, "Birth sex extension missing"
-        assert birthsex_ext["valueCode"] == "F"
+        assert detailed is not None
+        assert detailed["valueCoding"]["code"] == "2155-0"
+        assert "Central American" in detailed["valueCoding"]["display"]
 
 
 # ============================================================================

@@ -496,14 +496,27 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 section_dict["code"] = code
 
         # Text (narrative content)
-        # C-CDA sections have narrative in section.text (ED type or string)
+        # C-CDA sections have narrative in section.text (StrucDocText, ED type, or string)
         text_content = None
         if section.text:
-            if isinstance(section.text, str):
+            # Import StrucDocText type for checking
+            from ccda_to_fhir.ccda.models.struc_doc import StrucDocText
+
+            if isinstance(section.text, StrucDocText):
+                # StrucDocText: convert structured narrative to HTML
+                from ccda_to_fhir.utils.struc_doc_utils import narrative_to_html
+                html_content = narrative_to_html(section.text)
+                if html_content:
+                    # Wrap in XHTML div with namespace
+                    text_content = f'<div xmlns="http://www.w3.org/1999/xhtml">{html_content}</div>'
+            elif isinstance(section.text, str):
+                # Plain string
                 text_content = section.text
             elif hasattr(section.text, "text") and section.text.text:
+                # StrucDocText with only plain text (no structured elements)
                 text_content = section.text.text
             elif hasattr(section.text, "value") and section.text.value:
+                # ED type with value field
                 text_content = section.text.value
 
         if text_content:

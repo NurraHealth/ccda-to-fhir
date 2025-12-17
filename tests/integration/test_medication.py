@@ -219,6 +219,105 @@ class TestMedicationConversion:
         ]
         assert requester_ref in agent_refs
 
+    def test_provenance_has_recorded_date(
+        self, ccda_medication: str
+    ) -> None:
+        """Test that Provenance has a recorded date from author time."""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        med_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                med_request["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                med_provenance = prov
+                break
+
+        assert med_provenance is not None
+        assert "recorded" in med_provenance
+        # Should have a valid ISO datetime
+        assert len(med_provenance["recorded"]) > 0
+
+    def test_provenance_agent_has_correct_type(
+        self, ccda_medication: str
+    ) -> None:
+        """Test that Provenance agent has type 'author'."""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        med_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                med_request["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                med_provenance = prov
+                break
+
+        assert med_provenance is not None
+        assert "agent" in med_provenance
+        assert len(med_provenance["agent"]) > 0
+
+        # Check agent type
+        agent = med_provenance["agent"][0]
+        assert "type" in agent
+        assert "coding" in agent["type"]
+        assert len(agent["type"]["coding"]) > 0
+        assert agent["type"]["coding"][0]["code"] == "author"
+
+    def test_multiple_authors_creates_multiple_provenance_agents(
+        self, ccda_medication_multiple_authors: str
+    ) -> None:
+        """Test that multiple authors create multiple Provenance agents."""
+        ccda_doc = wrap_in_ccda_document(ccda_medication_multiple_authors, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        med_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                med_request["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                med_provenance = prov
+                break
+
+        assert med_provenance is not None
+        assert "agent" in med_provenance
+        # Should have multiple agents for multiple authors
+        assert len(med_provenance["agent"]) >= 2
+
+        # Verify all agents reference practitioners
+        for agent in med_provenance["agent"]:
+            assert "who" in agent
+            assert "reference" in agent["who"]
+            assert agent["who"]["reference"].startswith("Practitioner/")
+
     def test_multiple_authors_selects_latest_for_requester(
         self, ccda_medication_multiple_authors: str
     ) -> None:
@@ -309,3 +408,88 @@ class TestEIVLTimingConversion:
 
         assert "when" in timing
         assert timing["when"] == ["C"]  # with meals
+
+
+class TestBoundsPeriodConversion:
+    """E2E tests for IVL_TS (boundsPeriod) conversion."""
+
+    def test_converts_start_date_only(self, ccda_medication_with_start_date: str) -> None:
+        """Test that IVL_TS with only start date is correctly converted to boundsPeriod.start."""
+        ccda_doc = wrap_in_ccda_document(ccda_medication_with_start_date, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+        assert "dosageInstruction" in med_request
+
+        timing = med_request["dosageInstruction"][0]["timing"]["repeat"]
+        assert "boundsPeriod" in timing
+        assert "start" in timing["boundsPeriod"]
+        assert timing["boundsPeriod"]["start"] == "2020-01-15"
+        # Should not have end date
+        assert "end" not in timing["boundsPeriod"]
+
+    def test_converts_start_and_end_dates(self, ccda_medication_with_start_end_dates: str) -> None:
+        """Test that IVL_TS with start and end dates is correctly converted to boundsPeriod."""
+        ccda_doc = wrap_in_ccda_document(ccda_medication_with_start_end_dates, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+        assert "dosageInstruction" in med_request
+
+        timing = med_request["dosageInstruction"][0]["timing"]["repeat"]
+        assert "boundsPeriod" in timing
+        assert "start" in timing["boundsPeriod"]
+        assert "end" in timing["boundsPeriod"]
+        assert timing["boundsPeriod"]["start"] == "2020-03-01"
+        assert timing["boundsPeriod"]["end"] == "2020-05-31"
+
+    def test_converts_bounds_period_with_frequency(
+        self, ccda_medication_bounds_period_with_frequency: str
+    ) -> None:
+        """Test that IVL_TS boundsPeriod and PIVL_TS frequency are both correctly converted."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_medication_bounds_period_with_frequency, MEDICATIONS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+        assert "dosageInstruction" in med_request
+
+        timing = med_request["dosageInstruction"][0]["timing"]["repeat"]
+
+        # Should have boundsPeriod (from IVL_TS)
+        assert "boundsPeriod" in timing
+        assert timing["boundsPeriod"]["start"] == "2021-01-01"
+        assert timing["boundsPeriod"]["end"] == "2021-06-30"
+
+        # Should also have frequency/period (from PIVL_TS)
+        assert "period" in timing
+        assert timing["period"] == 12
+        assert timing["periodUnit"] == "h"
+
+    def test_bounds_period_does_not_affect_other_timing_elements(
+        self, ccda_medication_bounds_period_with_frequency: str
+    ) -> None:
+        """Test that boundsPeriod does not interfere with other timing elements."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_medication_bounds_period_with_frequency, MEDICATIONS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+
+        dosage = med_request["dosageInstruction"][0]
+
+        # Verify all expected dosage elements are present
+        assert "timing" in dosage
+        assert "route" in dosage
+        assert "doseAndRate" in dosage
+
+        # Verify timing structure integrity
+        timing_repeat = dosage["timing"]["repeat"]
+        assert isinstance(timing_repeat, dict)
+        assert len(timing_repeat) >= 3  # boundsPeriod, period, periodUnit

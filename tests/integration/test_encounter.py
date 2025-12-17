@@ -465,3 +465,200 @@ class TestEncounterConversion:
         # Location should be from body (LOC-BODY-001), not header (LOC-HEADER-001)
         location_ref = encounter["location"][0]["location"]["reference"]
         assert "LOC-BODY-001" in location_ref, "Should use body encounter location (LOC-BODY-001)"
+
+    def test_provenance_created_for_encounter_with_author(
+        self, ccda_encounter_with_author: str
+    ) -> None:
+        """Test that Provenance resource is created for Encounter with author."""
+        ccda_doc = wrap_in_ccda_document(ccda_encounter_with_author, ENCOUNTERS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+
+        # Find Provenance for this encounter
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+
+        # Find Provenance that targets this encounter
+        encounter_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                encounter["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                encounter_provenance = prov
+                break
+
+        assert encounter_provenance is not None, "Provenance resource should be created for Encounter"
+        # Verify Provenance has recorded date
+        assert "recorded" in encounter_provenance
+        # Verify Provenance has agents
+        assert "agent" in encounter_provenance
+        assert len(encounter_provenance["agent"]) > 0
+
+    def test_provenance_agent_references_practitioner(
+        self, ccda_encounter_with_author: str
+    ) -> None:
+        """Test that Provenance agent references Practitioner."""
+        ccda_doc = wrap_in_ccda_document(ccda_encounter_with_author, ENCOUNTERS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        encounter_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                encounter["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                encounter_provenance = prov
+                break
+
+        assert encounter_provenance is not None
+        # Verify agent references practitioner
+        agent = encounter_provenance["agent"][0]
+        assert "who" in agent
+        assert "reference" in agent["who"]
+        assert agent["who"]["reference"].startswith("Practitioner/")
+
+    def test_provenance_agent_has_author_type(
+        self, ccda_encounter_with_author: str
+    ) -> None:
+        """Test that Provenance agent has type 'author'."""
+        ccda_doc = wrap_in_ccda_document(ccda_encounter_with_author, ENCOUNTERS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        encounter_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                encounter["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                encounter_provenance = prov
+                break
+
+        assert encounter_provenance is not None
+        agent = encounter_provenance["agent"][0]
+        assert "type" in agent
+        assert "coding" in agent["type"]
+        assert len(agent["type"]["coding"]) > 0
+        assert agent["type"]["coding"][0]["code"] == "author"
+
+    def test_multiple_authors_creates_multiple_provenance_agents(
+        self, ccda_encounter_multiple_authors: str
+    ) -> None:
+        """Test that multiple authors create multiple Provenance agents."""
+        ccda_doc = wrap_in_ccda_document(ccda_encounter_multiple_authors, ENCOUNTERS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        encounter_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                encounter["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                encounter_provenance = prov
+                break
+
+        assert encounter_provenance is not None
+        assert "agent" in encounter_provenance
+        # Should have 2 agents for 2 authors
+        assert len(encounter_provenance["agent"]) == 2
+
+        # Verify both agents reference practitioners
+        for agent in encounter_provenance["agent"]:
+            assert "who" in agent
+            assert "reference" in agent["who"]
+            assert agent["who"]["reference"].startswith("Practitioner/")
+
+    def test_converts_inline_problem_to_reason_code(self, ccda_encounter_with_reason_reference: str) -> None:
+        """Test that inline Problem Observation (not in Problems section) creates reasonCode."""
+        ccda_doc = wrap_in_ccda_document(ccda_encounter_with_reason_reference, ENCOUNTERS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+        # Inline Problem Observation should create reasonCode (not reasonReference)
+        assert "reasonCode" in encounter
+        assert len(encounter["reasonCode"]) >= 1
+        reason_code = encounter["reasonCode"][0]
+        assert "coding" in reason_code
+        coding = reason_code["coding"][0]
+        assert coding["system"] == "http://snomed.info/sct"
+        assert coding["code"] == "59621000"
+        assert "Essential hypertension" in coding["display"]
+
+    def test_inline_problem_has_no_reason_reference(self, ccda_encounter_with_reason_reference: str) -> None:
+        """Test that inline Problem Observation creates reasonCode, not reasonReference."""
+        ccda_doc = wrap_in_ccda_document(ccda_encounter_with_reason_reference, ENCOUNTERS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+        # Should have reasonCode (from inline Problem value)
+        assert "reasonCode" in encounter
+        # Should NOT have reasonReference (Condition doesn't exist)
+        assert "reasonReference" not in encounter
+
+    def test_converts_referenced_problem_to_reason_reference(self, ccda_encounter_with_problem_reference: str) -> None:
+        """Test that Problem Observation from Problems section creates reasonReference."""
+        # This fixture includes both Problems section and Encounters section
+        bundle = convert_document(ccda_encounter_with_problem_reference)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+        # Referenced Problem Observation should create reasonReference
+        assert "reasonReference" in encounter
+        assert len(encounter["reasonReference"]) >= 1
+        reason_ref = encounter["reasonReference"][0]
+        assert "reference" in reason_ref
+        assert "Condition/" in reason_ref["reference"]
+        # Should reference the Condition created from Problems section
+        assert "condition-problem-hypertension-001" in reason_ref["reference"]
+
+    def test_referenced_problem_has_no_reason_code(self, ccda_encounter_with_problem_reference: str) -> None:
+        """Test that referenced Problem Observation creates reasonReference, not reasonCode."""
+        bundle = convert_document(ccda_encounter_with_problem_reference)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+        # Should have reasonReference (Condition exists)
+        assert "reasonReference" in encounter
+        # Should NOT have reasonCode (reference takes precedence)
+        assert "reasonCode" not in encounter
+
+    def test_reason_reference_condition_id_format(self, ccda_encounter_with_problem_reference: str) -> None:
+        """Test that reasonReference uses consistent Condition ID format."""
+        bundle = convert_document(ccda_encounter_with_problem_reference)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+
+        reason_ref = encounter["reasonReference"][0]
+        # ID should match condition.py generation logic: condition-{extension}
+        assert reason_ref["reference"] == "Condition/condition-problem-hypertension-001"

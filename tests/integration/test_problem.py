@@ -318,6 +318,105 @@ class TestProblemConversion:
         ]
         assert recorder_ref in agent_refs
 
+    def test_provenance_has_recorded_date(
+        self, ccda_problem: str
+    ) -> None:
+        """Test that Provenance has a recorded date from author time."""
+        ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        condition = _find_resource_in_bundle(bundle, "Condition")
+        assert condition is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        condition_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                condition["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                condition_provenance = prov
+                break
+
+        assert condition_provenance is not None
+        assert "recorded" in condition_provenance
+        # Should have a valid ISO datetime
+        assert len(condition_provenance["recorded"]) > 0
+
+    def test_provenance_agent_has_correct_type(
+        self, ccda_problem: str
+    ) -> None:
+        """Test that Provenance agent has type 'author'."""
+        ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        condition = _find_resource_in_bundle(bundle, "Condition")
+        assert condition is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        condition_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                condition["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                condition_provenance = prov
+                break
+
+        assert condition_provenance is not None
+        assert "agent" in condition_provenance
+        assert len(condition_provenance["agent"]) > 0
+
+        # Check agent type
+        agent = condition_provenance["agent"][0]
+        assert "type" in agent
+        assert "coding" in agent["type"]
+        assert len(agent["type"]["coding"]) > 0
+        assert agent["type"]["coding"][0]["code"] == "author"
+
+    def test_multiple_authors_creates_multiple_provenance_agents(
+        self, ccda_problem_multiple_authors: str
+    ) -> None:
+        """Test that multiple authors create multiple Provenance agents."""
+        ccda_doc = wrap_in_ccda_document(ccda_problem_multiple_authors, PROBLEMS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        condition = _find_resource_in_bundle(bundle, "Condition")
+        assert condition is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        condition_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                condition["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                condition_provenance = prov
+                break
+
+        assert condition_provenance is not None
+        assert "agent" in condition_provenance
+        # Should have 3 agents: 1 from concern act + 2 from observation
+        assert len(condition_provenance["agent"]) == 3
+
+        # Verify all agents reference practitioners
+        for agent in condition_provenance["agent"]:
+            assert "who" in agent
+            assert "reference" in agent["who"]
+            assert agent["who"]["reference"].startswith("Practitioner/")
+
     def test_multiple_authors_selects_latest_for_recorder(
         self, ccda_problem_multiple_authors: str
     ) -> None:
@@ -338,3 +437,109 @@ class TestProblemConversion:
         # recordedDate uses earliest observation author time (not concern act author)
         # So it's 2023-06-15 (MIDDLE-DOC-456), not 2023-01-01 (EARLY-DOC-123 from concern act)
         assert condition["recordedDate"] == "2023-06-15"
+
+    def test_narrative_propagates_from_text_reference(self) -> None:
+        """Test that Condition.text narrative is generated from text/reference."""
+        # Create complete document with section text and entry with text/reference
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="test-doc-id"/>
+    <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+    <effectiveTime value="20231215120000"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999"/>
+            <assignedPerson><name><given>Test</given><family>Author</family></name></assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="test-org"/>
+                <name>Test Org</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+                    <code code="11450-4" codeSystem="2.16.840.1.113883.6.1" displayName="Problem List"/>
+                    <text>
+                        <paragraph ID="problem-narrative-1">
+                            <content styleCode="Bold">Active Problem:</content>
+                            Type 2 Diabetes Mellitus, diagnosed 2020, managed with metformin.
+                        </paragraph>
+                    </text>
+                    <entry>
+                        <act classCode="ACT" moodCode="EVN">
+                            <templateId root="2.16.840.1.113883.10.20.22.4.3"/>
+                            <id root="problem-concern-123"/>
+                            <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
+                            <statusCode code="active"/>
+                            <effectiveTime>
+                                <low value="20200115"/>
+                            </effectiveTime>
+                            <entryRelationship typeCode="SUBJ">
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.4"/>
+                                    <id root="problem-obs-456"/>
+                                    <code code="55607006" displayName="Problem" codeSystem="2.16.840.1.113883.6.96"/>
+                                    <text>
+                                        <reference value="#problem-narrative-1"/>
+                                    </text>
+                                    <statusCode code="completed"/>
+                                    <effectiveTime>
+                                        <low value="20200115"/>
+                                    </effectiveTime>
+                                    <value xsi:type="CD" code="44054006" displayName="Type 2 Diabetes Mellitus"
+                                           codeSystem="2.16.840.1.113883.6.96"/>
+                                </observation>
+                            </entryRelationship>
+                        </act>
+                    </entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+        bundle = convert_document(ccda_doc)
+
+        condition = _find_resource_in_bundle(bundle, "Condition")
+        assert condition is not None
+        
+        # Verify Condition has text.div with resolved narrative
+        assert "text" in condition, "Condition should have .text field"
+        assert "status" in condition["text"]
+        assert condition["text"]["status"] == "generated"
+        assert "div" in condition["text"], "Condition should have .text.div"
+        
+        div_content = condition["text"]["div"]
+        
+        # Verify XHTML namespace
+        assert 'xmlns="http://www.w3.org/1999/xhtml"' in div_content
+        
+        # Verify referenced content was resolved
+        assert "Type 2 Diabetes Mellitus" in div_content
+        assert "metformin" in div_content
+        
+        # Verify structured markup preserved
+        assert "<p" in div_content  # Paragraph converted to <p>
+        assert 'id="problem-narrative-1"' in div_content  # ID preserved
+        assert 'class="Bold"' in div_content or "Bold" in div_content  # Style preserved

@@ -184,6 +184,73 @@ class TestProcedureConversion:
         assert icd10_coding is not None
         assert icd10_coding["code"] == "K51.90"
 
+    def test_converts_inline_problem_to_reason_code(self, ccda_procedure_with_reason_reference: str) -> None:
+        """Test that inline Problem Observation (not in Problems section) creates reasonCode."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_with_reason_reference, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        # Inline Problem Observation should create reasonCode (not reasonReference)
+        assert "reasonCode" in procedure
+        assert len(procedure["reasonCode"]) >= 1
+        reason_code = procedure["reasonCode"][0]
+        assert "coding" in reason_code
+        coding = reason_code["coding"][0]
+        assert coding["system"] == "http://snomed.info/sct"
+        assert coding["code"] == "85189001"
+        assert "Acute appendicitis" in coding["display"]
+
+    def test_inline_problem_has_no_reason_reference(self, ccda_procedure_with_reason_reference: str) -> None:
+        """Test that inline Problem Observation creates reasonCode, not reasonReference."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_with_reason_reference, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        # Should have reasonCode (from inline Problem value)
+        assert "reasonCode" in procedure
+        # Should NOT have reasonReference (Condition doesn't exist)
+        assert "reasonReference" not in procedure
+
+    def test_converts_referenced_problem_to_reason_reference(self, ccda_procedure_with_problem_reference: str) -> None:
+        """Test that Problem Observation from Problems section creates reasonReference."""
+        # This fixture includes both Problems section and Procedures section
+        bundle = convert_document(ccda_procedure_with_problem_reference)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        # Referenced Problem Observation should create reasonReference
+        assert "reasonReference" in procedure
+        assert len(procedure["reasonReference"]) >= 1
+        reason_ref = procedure["reasonReference"][0]
+        assert "reference" in reason_ref
+        assert "Condition/" in reason_ref["reference"]
+        # Should reference the Condition created from Problems section
+        assert "condition-problem-appendicitis-001" in reason_ref["reference"]
+
+    def test_referenced_problem_has_no_reason_code(self, ccda_procedure_with_problem_reference: str) -> None:
+        """Test that referenced Problem Observation creates reasonReference, not reasonCode."""
+        bundle = convert_document(ccda_procedure_with_problem_reference)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        # Should have reasonReference (Condition exists)
+        assert "reasonReference" in procedure
+        # Should NOT have reasonCode (reference takes precedence)
+        assert "reasonCode" not in procedure
+
+    def test_reason_reference_condition_id_format(self, ccda_procedure_with_problem_reference: str) -> None:
+        """Test that reasonReference uses consistent Condition ID format."""
+        bundle = convert_document(ccda_procedure_with_problem_reference)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+
+        reason_ref = procedure["reasonReference"][0]
+        # ID should match condition.py generation logic: condition-{extension}
+        assert reason_ref["reference"] == "Condition/condition-problem-appendicitis-001"
+
     def test_converts_author_to_recorder(self, ccda_procedure_with_author: str) -> None:
         """Test that author is converted to recorder."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
@@ -284,3 +351,233 @@ class TestProcedureConversion:
         # Not EARLY-PROC-DOC (time: 20231105100000)
         assert "LATEST-PROC-DOC" in procedure["recorder"]["reference"]
         assert "EARLY-PROC-DOC" not in procedure["recorder"]["reference"]
+
+    def test_recorder_and_provenance_reference_same_practitioner(
+        self, ccda_procedure_with_author: str
+    ) -> None:
+        """Test that recorder and Provenance both reference the same Practitioner."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert "recorder" in procedure
+        recorder_ref = procedure["recorder"]["reference"]
+
+        # Find Provenance for this procedure
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+
+        # Find Provenance that targets this procedure
+        procedure_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                procedure["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                procedure_provenance = prov
+                break
+
+        assert procedure_provenance is not None, "Provenance resource should be created for Procedure"
+        # Verify Provenance agent references same practitioner
+        assert "agent" in procedure_provenance
+        assert len(procedure_provenance["agent"]) > 0
+        # Latest author should be in Provenance agents
+        agent_refs = [
+            agent.get("who", {}).get("reference")
+            for agent in procedure_provenance["agent"]
+        ]
+        assert recorder_ref in agent_refs
+
+    def test_provenance_has_recorded_date(
+        self, ccda_procedure_with_author: str
+    ) -> None:
+        """Test that Provenance has a recorded date from author time."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        procedure_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                procedure["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                procedure_provenance = prov
+                break
+
+        assert procedure_provenance is not None
+        assert "recorded" in procedure_provenance
+        # Should have a valid ISO datetime
+        assert len(procedure_provenance["recorded"]) > 0
+
+    def test_provenance_agent_has_correct_type(
+        self, ccda_procedure_with_author: str
+    ) -> None:
+        """Test that Provenance agent has type 'author'."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        procedure_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                procedure["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                procedure_provenance = prov
+                break
+
+        assert procedure_provenance is not None
+        assert "agent" in procedure_provenance
+        assert len(procedure_provenance["agent"]) > 0
+
+        # Check agent type
+        agent = procedure_provenance["agent"][0]
+        assert "type" in agent
+        assert "coding" in agent["type"]
+        assert len(agent["type"]["coding"]) > 0
+        assert agent["type"]["coding"][0]["code"] == "author"
+
+    def test_multiple_authors_creates_multiple_provenance_agents(
+        self, ccda_procedure_multiple_authors: str
+    ) -> None:
+        """Test that multiple authors create multiple Provenance agents."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_multiple_authors, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        procedure_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                procedure["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                procedure_provenance = prov
+                break
+
+        assert procedure_provenance is not None
+        assert "agent" in procedure_provenance
+        # Should have 2 agents for 2 authors
+        assert len(procedure_provenance["agent"]) == 2
+
+        # Verify both agents reference practitioners
+        for agent in procedure_provenance["agent"]:
+            assert "who" in agent
+            assert "reference" in agent["who"]
+            assert agent["who"]["reference"].startswith("Practitioner/")
+
+    def test_narrative_propagates_from_text_reference(self) -> None:
+        """Test that Procedure.text narrative is generated from text/reference."""
+        # Create complete document with section text and entry with text/reference
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="test-doc-id"/>
+    <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+    <effectiveTime value="20231215120000"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999"/>
+            <assignedPerson><name><given>Test</given><family>Author</family></name></assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="test-org"/>
+                <name>Test Org</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.7.1"/>
+                    <code code="47519-4" codeSystem="2.16.840.1.113883.6.1" displayName="History of Procedures"/>
+                    <text>
+                        <paragraph ID="procedure-narrative-1">
+                            <content styleCode="Bold">Surgical Procedure:</content>
+                            Total knee replacement, left knee, performed under general anesthesia.
+                        </paragraph>
+                    </text>
+                    <entry>
+                        <procedure classCode="PROC" moodCode="EVN">
+                            <templateId root="2.16.840.1.113883.10.20.22.4.14"/>
+                            <id root="procedure-123"/>
+                            <code code="609588000" displayName="Total knee replacement"
+                                  codeSystem="2.16.840.1.113883.6.96"/>
+                            <text>
+                                <reference value="#procedure-narrative-1"/>
+                            </text>
+                            <statusCode code="completed"/>
+                            <effectiveTime value="20230815"/>
+                        </procedure>
+                    </entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+
+        # Verify Procedure has text.div with resolved narrative
+        assert "text" in procedure, "Procedure should have .text field"
+        assert "status" in procedure["text"]
+        assert procedure["text"]["status"] == "generated"
+        assert "div" in procedure["text"], "Procedure should have .text.div"
+
+        div_content = procedure["text"]["div"]
+
+        # Verify XHTML namespace
+        assert 'xmlns="http://www.w3.org/1999/xhtml"' in div_content
+
+        # Verify referenced content was resolved
+        assert "Total knee replacement" in div_content
+        assert "general anesthesia" in div_content
+
+        # Verify structured markup preserved
+        assert "<p" in div_content  # Paragraph converted to <p>
+        assert 'id="procedure-narrative-1"' in div_content  # ID preserved
+        assert 'class="Bold"' in div_content or "Bold" in div_content  # Style preserved

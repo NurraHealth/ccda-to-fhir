@@ -450,3 +450,171 @@ class TestDiagnosticReportConversion:
         codes = [dr["code"]["coding"][0]["code"] for dr in diagnostic_reports]
         assert "24323-8" in codes
         assert "58410-2" in codes
+
+    def test_provenance_created_for_report_with_author(
+        self, ccda_result_with_author: str
+    ) -> None:
+        """Test that Provenance resource is created for DiagnosticReport with author."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
+        )
+        bundle = convert_document(ccda_doc)
+
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None
+
+        # Find Provenance for this report
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+
+        # Find Provenance that targets this report
+        report_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                report["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                report_provenance = prov
+                break
+
+        assert report_provenance is not None, "Provenance resource should be created for DiagnosticReport"
+        # Verify Provenance has recorded date
+        assert "recorded" in report_provenance
+        # Verify Provenance has agents
+        assert "agent" in report_provenance
+        assert len(report_provenance["agent"]) > 0
+
+    def test_provenance_agent_references_practitioner(
+        self, ccda_result_with_author: str
+    ) -> None:
+        """Test that Provenance agent references Practitioner."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
+        )
+        bundle = convert_document(ccda_doc)
+
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        report_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                report["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                report_provenance = prov
+                break
+
+        assert report_provenance is not None
+        # Verify agent references practitioner
+        agent = report_provenance["agent"][0]
+        assert "who" in agent
+        assert "reference" in agent["who"]
+        assert agent["who"]["reference"].startswith("Practitioner/")
+
+    def test_provenance_has_recorded_date_from_author(
+        self, ccda_result_with_author: str
+    ) -> None:
+        """Test that Provenance has recorded date from author time."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
+        )
+        bundle = convert_document(ccda_doc)
+
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        report_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                report["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                report_provenance = prov
+                break
+
+        assert report_provenance is not None
+        # Verify recorded date matches author time (20150622103000-0500)
+        assert report_provenance["recorded"] == "2015-06-22T10:30:00-05:00"
+
+    def test_provenance_agent_has_author_type(
+        self, ccda_result_with_author: str
+    ) -> None:
+        """Test that Provenance agent has type 'author'."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
+        )
+        bundle = convert_document(ccda_doc)
+
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        report_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                report["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                report_provenance = prov
+                break
+
+        assert report_provenance is not None
+        # Verify agent type is author
+        agent = report_provenance["agent"][0]
+        assert "type" in agent
+        type_coding = agent["type"]["coding"][0]
+        assert type_coding["code"] == "author"
+        assert type_coding["system"] == "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+
+    def test_multiple_authors_creates_multiple_provenance_agents(
+        self, ccda_result_multiple_authors: str
+    ) -> None:
+        """Test that multiple authors create multiple Provenance agents."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_result_multiple_authors, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
+        )
+        bundle = convert_document(ccda_doc)
+
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        report_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                report["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                report_provenance = prov
+                break
+
+        assert report_provenance is not None
+        # Verify multiple agents (2 authors)
+        assert len(report_provenance["agent"]) == 2
+
+        # Verify both agents have correct type
+        for agent in report_provenance["agent"]:
+            assert "type" in agent
+            type_coding = agent["type"]["coding"][0]
+            assert type_coding["code"] == "author"
