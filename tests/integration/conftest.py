@@ -511,6 +511,24 @@ def fhir_pregnancy() -> dict[str, Any]:
 
 
 @pytest.fixture
+def ccda_pregnancy_with_gestational_age() -> str:
+    """Load C-CDA pregnancy observation with gestational age component."""
+    return (CCDA_FIXTURES_DIR / "pregnancy_with_gestational_age.xml").read_text()
+
+
+@pytest.fixture
+def ccda_pregnancy_with_lmp() -> str:
+    """Load C-CDA pregnancy observation with last menstrual period component."""
+    return (CCDA_FIXTURES_DIR / "pregnancy_with_lmp.xml").read_text()
+
+
+@pytest.fixture
+def ccda_pregnancy_comprehensive() -> str:
+    """Load C-CDA pregnancy observation with all components (EDD, LMP, gestational age)."""
+    return (CCDA_FIXTURES_DIR / "pregnancy_comprehensive.xml").read_text()
+
+
+@pytest.fixture
 def ccda_author() -> str:
     """Load C-CDA author fixture."""
     return (CCDA_FIXTURES_DIR / "author.xml").read_text()

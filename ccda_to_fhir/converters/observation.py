@@ -872,16 +872,20 @@ class ObservationConverter(BaseConverter[Observation]):
     def _handle_pregnancy_observation(self, observation: Observation, fhir_obs: JSONObject) -> None:
         """Handle pregnancy observation-specific conversions.
 
-        Per C-CDA on FHIR specification:
+        Per C-CDA on FHIR specification and C-CDA R2.1 Supplemental Templates:
         1. Transform code from ASSERTION (pre-C-CDA 4.0) to LOINC 82810-3 if needed
-        2. Extract estimated delivery date from entryRelationship
-        3. Add EDD as component with code 11778-8
+        2. Extract pregnancy-related observations from entryRelationship as components:
+           - Estimated delivery date (11778-8)
+           - Last menstrual period (8665-2)
+           - Gestational age (11884-4, 11885-1, 18185-9, 49051-6, etc.)
 
         Args:
             observation: The C-CDA Observation (Pregnancy Observation template)
             fhir_obs: The FHIR Observation being built (modified in place)
 
-        Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-social.html
+        References:
+            - https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-social.html
+            - C-CDA R2.1 Supplemental Templates for Pregnancy
         """
         # 1. Fix code if pre-C-CDA 4.0 (ASSERTION → 82810-3)
         # Per spec: Prior to C-CDA 4.0, uses ASSERTION; version 4.0+ uses 82810-3
@@ -895,24 +899,46 @@ class ObservationConverter(BaseConverter[Observation]):
                     }]
                 }
 
-        # 2. Extract estimated delivery date from entryRelationship
-        # Maps to component with code 11778-8
+        # 2. Extract pregnancy-related observations from entryRelationship
+        # Maps to components following the pattern established for EDD
         if observation.entry_relationship:
             for rel in observation.entry_relationship:
                 if rel.observation and rel.observation.code:
-                    # Check for Estimated Delivery Date (code 11778-8)
-                    if rel.observation.code.code == "11778-8":
+                    code = rel.observation.code.code
+
+                    # Define pregnancy-related LOINC codes and their metadata
+                    # Date-type observations
+                    date_codes = {
+                        "11778-8": "Delivery date Estimated",
+                        "8665-2": "Last menstrual period start date"
+                    }
+
+                    # Quantity-type observations (gestational age)
+                    quantity_codes = {
+                        "11884-4": "Gestational age Estimated",
+                        "11885-1": "Gestational age Estimated from last menstrual period",
+                        "18185-9": "Gestational age",
+                        "49051-6": "Gestational age in weeks",
+                        "49052-4": "Gestational age in days",
+                        "57714-8": "Obstetric estimation of gestational age",
+                        "11887-7": "Gestational age Estimated from selected delivery date",
+                        "11886-9": "Gestational age Estimated from ovulation date",
+                        "53693-8": "Gestational age Estimated from conception date"
+                    }
+
+                    # Handle date-type observations (EDD, LMP)
+                    if code in date_codes:
                         # Initialize component array if not exists
                         if "component" not in fhir_obs:
                             fhir_obs["component"] = []
 
-                        # Create EDD component
+                        # Create component
                         component: JSONObject = {
                             "code": {
                                 "coding": [{
                                     "system": "http://loinc.org",
-                                    "code": "11778-8",
-                                    "display": "Delivery date Estimated"
+                                    "code": code,
+                                    "display": date_codes[code]
                                 }]
                             }
                         }
@@ -929,6 +955,53 @@ class ObservationConverter(BaseConverter[Observation]):
                                 value_date = self.convert_date(date_str)
                                 if value_date:
                                     component["valueDateTime"] = value_date
+
+                        fhir_obs["component"].append(component)
+
+                    # Handle quantity-type observations (gestational age)
+                    elif code in quantity_codes:
+                        # Initialize component array if not exists
+                        if "component" not in fhir_obs:
+                            fhir_obs["component"] = []
+
+                        # Create component
+                        component: JSONObject = {
+                            "code": {
+                                "coding": [{
+                                    "system": "http://loinc.org",
+                                    "code": code,
+                                    "display": quantity_codes[code]
+                                }]
+                            }
+                        }
+
+                        # Extract value (PQ type in C-CDA)
+                        if rel.observation.value:
+                            if hasattr(rel.observation.value, 'value') and hasattr(rel.observation.value, 'unit'):
+                                value_quantity: JSONObject = {
+                                    "value": float(rel.observation.value.value)
+                                }
+
+                                # Add unit if present
+                                if rel.observation.value.unit:
+                                    value_quantity["unit"] = rel.observation.value.unit
+                                    # Map common UCUM units
+                                    if rel.observation.value.unit.lower() in ("wk", "weeks", "week"):
+                                        value_quantity["system"] = "http://unitsofmeasure.org"
+                                        value_quantity["code"] = "wk"
+                                    elif rel.observation.value.unit.lower() in ("d", "days", "day"):
+                                        value_quantity["system"] = "http://unitsofmeasure.org"
+                                        value_quantity["code"] = "d"
+
+                                component["valueQuantity"] = value_quantity
+                            elif hasattr(rel.observation.value, 'value'):
+                                # Value without unit (assume weeks for gestational age)
+                                component["valueQuantity"] = {
+                                    "value": float(rel.observation.value.value),
+                                    "unit": "wk",
+                                    "system": "http://unitsofmeasure.org",
+                                    "code": "wk"
+                                }
 
                         fhir_obs["component"].append(component)
 
