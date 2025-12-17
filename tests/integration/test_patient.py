@@ -736,3 +736,253 @@ class TestPatientConversion:
         # Should include full timestamp
         assert "1975-05-01" in birth_time_ext["valueDateTime"]
         assert "10:30:22" in birth_time_ext["valueDateTime"]
+
+    def test_converts_tribal_affiliation_extension_by_template(self) -> None:
+        """Test that tribal affiliation observation maps to Patient.extension (template ID match)."""
+        tribal_affiliation_observation = """
+        <observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.506" extension="2023-05-01"/>
+            <code code="95370-3" displayName="Tribal affiliation"
+                  codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="170" displayName="Navajo Nation, Arizona, New Mexico, &amp; Utah"
+                   codeSystem="2.16.840.1.113883.5.140"/>
+        </observation>
+        """
+        ccda_doc = wrap_in_ccda_document(
+            tribal_affiliation_observation,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        # Should have us-core-tribal-affiliation extension
+        assert "extension" in patient
+        tribal_ext = next(
+            (e for e in patient["extension"]
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"),
+            None
+        )
+        assert tribal_ext is not None
+        assert "extension" in tribal_ext
+
+        # Check tribalAffiliation sub-extension
+        tribal_affiliation_sub = next(
+            (e for e in tribal_ext["extension"]
+             if e["url"] == "tribalAffiliation"),
+            None
+        )
+        assert tribal_affiliation_sub is not None
+        assert "valueCodeableConcept" in tribal_affiliation_sub
+        coding = tribal_affiliation_sub["valueCodeableConcept"]["coding"][0]
+        assert coding["code"] == "170"
+        assert coding["display"] == "Navajo Nation, Arizona, New Mexico, & Utah"
+        assert coding["system"] == "urn:oid:2.16.840.1.113883.5.140"  # TribalEntityUS
+
+        # Should NOT create a separate Observation resource for tribal affiliation
+        observations = [
+            entry["resource"] for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Observation"
+        ]
+        tribal_observations = [
+            obs for obs in observations
+            if obs.get("code", {}).get("coding", [{}])[0].get("code") == "95370-3"
+        ]
+        assert len(tribal_observations) == 0, "Tribal affiliation should NOT create an Observation resource"
+
+    def test_converts_tribal_affiliation_extension_by_loinc(self) -> None:
+        """Test that tribal affiliation observation maps to Patient.extension (LOINC code match)."""
+        tribal_affiliation_observation = """
+        <observation classCode="OBS" moodCode="EVN">
+            <code code="95370-3" displayName="Tribal affiliation"
+                  codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="40" displayName="Cherokee Nation"
+                   codeSystem="2.16.840.1.113883.5.140"/>
+        </observation>
+        """
+        ccda_doc = wrap_in_ccda_document(
+            tribal_affiliation_observation,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        # Should have us-core-tribal-affiliation extension
+        assert "extension" in patient
+        tribal_ext = next(
+            (e for e in patient["extension"]
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"),
+            None
+        )
+        assert tribal_ext is not None
+
+        # Check tribalAffiliation sub-extension
+        tribal_affiliation_sub = next(
+            (e for e in tribal_ext["extension"]
+             if e["url"] == "tribalAffiliation"),
+            None
+        )
+        assert tribal_affiliation_sub is not None
+        coding = tribal_affiliation_sub["valueCodeableConcept"]["coding"][0]
+        assert coding["code"] == "40"
+        assert coding["display"] == "Cherokee Nation"
+
+    def test_converts_multiple_tribal_affiliations(self) -> None:
+        """Test that multiple tribal affiliation observations create multiple extensions."""
+        tribal_affiliations = """
+        <observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.506" extension="2023-05-01"/>
+            <code code="95370-3" displayName="Tribal affiliation"
+                  codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="170" displayName="Navajo Nation, Arizona, New Mexico, &amp; Utah"
+                   codeSystem="2.16.840.1.113883.5.140"/>
+        </observation>
+        """
+        # Create a document with two tribal affiliation entries
+        ccda_doc = f"""<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.17"/>
+                    <code code="29762-2" codeSystem="2.16.840.1.113883.6.1"/>
+                    <entry>
+                        <observation classCode="OBS" moodCode="EVN">
+                            <templateId root="2.16.840.1.113883.10.20.22.4.506" extension="2023-05-01"/>
+                            <code code="95370-3" displayName="Tribal affiliation"
+                                  codeSystem="2.16.840.1.113883.6.1"/>
+                            <statusCode code="completed"/>
+                            <value xsi:type="CD" code="170" displayName="Navajo Nation, Arizona, New Mexico, &amp; Utah"
+                                   codeSystem="2.16.840.1.113883.5.140"/>
+                        </observation>
+                    </entry>
+                    <entry>
+                        <observation classCode="OBS" moodCode="EVN">
+                            <templateId root="2.16.840.1.113883.10.20.22.4.506" extension="2023-05-01"/>
+                            <code code="95370-3" displayName="Tribal affiliation"
+                                  codeSystem="2.16.840.1.113883.6.1"/>
+                            <statusCode code="completed"/>
+                            <value xsi:type="CD" code="40" displayName="Cherokee Nation"
+                                   codeSystem="2.16.840.1.113883.5.140"/>
+                        </observation>
+                    </entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        # Should have multiple us-core-tribal-affiliation extensions
+        assert "extension" in patient
+        tribal_exts = [
+            e for e in patient["extension"]
+            if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+        ]
+        assert len(tribal_exts) == 2, "Should have 2 tribal affiliation extensions"
+
+        # Check that both tribes are present
+        tribe_codes = set()
+        for tribal_ext in tribal_exts:
+            tribal_affiliation_sub = next(
+                (e for e in tribal_ext["extension"]
+                 if e["url"] == "tribalAffiliation"),
+                None
+            )
+            assert tribal_affiliation_sub is not None
+            coding = tribal_affiliation_sub["valueCodeableConcept"]["coding"][0]
+            tribe_codes.add(coding["code"])
+
+        assert "170" in tribe_codes  # Navajo Nation, Arizona, New Mexico, & Utah
+        assert "40" in tribe_codes  # Cherokee Nation
+
+    def test_tribal_affiliation_no_observation_resource(self) -> None:
+        """Test that tribal affiliation does NOT create separate Observation resources."""
+        tribal_affiliation_observation = """
+        <observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.506" extension="2023-05-01"/>
+            <code code="95370-3" displayName="Tribal affiliation"
+                  codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <value xsi:type="CD" code="170" displayName="Navajo Nation, Arizona, New Mexico, &amp; Utah"
+                   codeSystem="2.16.840.1.113883.5.140"/>
+        </observation>
+        """
+        ccda_doc = wrap_in_ccda_document(
+            tribal_affiliation_observation,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)
+
+        # Check that no Observation resource was created
+        observations = [
+            entry["resource"] for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Observation"
+        ]
+        assert len(observations) == 0, "Tribal affiliation should NOT create any Observation resources"
+
+    def test_no_tribal_affiliation_when_not_present(self) -> None:
+        """Test that tribal affiliation extension is not added when observation is absent."""
+        ccda_doc = wrap_in_ccda_document("")  # No social history section
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+
+        # Check that tribal affiliation extension is not present
+        if "extension" in patient:
+            tribal_ext = next(
+                (e for e in patient["extension"]
+                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"),
+                None
+            )
+            assert tribal_ext is None, "Tribal affiliation extension should not be present when observation is absent"

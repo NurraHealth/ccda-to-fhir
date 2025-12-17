@@ -934,10 +934,11 @@ class DocumentConverter:
     def _extract_patient_extensions_from_social_history(
         self, structured_body: StructuredBody
     ) -> list[JSONObject]:
-        """Extract birth sex and gender identity extensions for Patient from social history.
+        """Extract patient extensions from social history observations.
 
-        Birth sex and gender identity are special cases in social history - they should
-        map to Patient extensions, NOT to separate Observation resources.
+        Birth sex, gender identity, sex, and tribal affiliation are special cases in
+        social history - they should map to Patient extensions, NOT to separate
+        Observation resources.
 
         Args:
             structured_body: The structuredBody element
@@ -987,8 +988,11 @@ class DocumentConverter:
 
                     obs = entry.observation
 
+                    # Track if we already processed this observation (to avoid duplicates)
+                    processed = False
+
                     # Check if it's a Birth Sex observation
-                    if obs.template_id:
+                    if not processed and obs.template_id:
                         for template in obs.template_id:
                             if template.root == TemplateIds.BIRTH_SEX_OBSERVATION:
                                 # Birth Sex Extension
@@ -998,10 +1002,11 @@ class DocumentConverter:
                                         "valueCode": obs.value.code,  # F, M, or UNK
                                     }
                                     extensions.append(birth_sex_ext)
+                                processed = True
                                 break
 
                     # Check if it's a Gender Identity observation (by LOINC code)
-                    if obs.code:
+                    if not processed and obs.code:
                         # Gender Identity identified by LOINC 76691-5
                         if (
                             obs.code.code == CCDACodes.GENDER_IDENTITY
@@ -1018,6 +1023,7 @@ class DocumentConverter:
                                     ),
                                 }
                                 extensions.append(gender_identity_ext)
+                            processed = True
 
                         # Sex observation identified by LOINC 46098-0
                         if (
@@ -1031,6 +1037,56 @@ class DocumentConverter:
                                     "valueCode": obs.value.code,
                                 }
                                 extensions.append(sex_ext)
+                            processed = True
+
+                        # Tribal Affiliation identified by LOINC 95370-3
+                        if (
+                            obs.code.code == CCDACodes.TRIBAL_AFFILIATION
+                            and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
+                        ):
+                            # Tribal Affiliation Extension (US Core)
+                            # Per FHIR: Extension has two sub-extensions:
+                            # - tribalAffiliation (1..1, CodeableConcept, Must-Support)
+                            # - isEnrolled (0..1, boolean, optional - not available in C-CDA)
+                            if obs.value:
+                                tribal_affiliation_ext = {
+                                    "url": FHIRSystems.US_CORE_TRIBAL_AFFILIATION,
+                                    "extension": [
+                                        {
+                                            "url": "tribalAffiliation",
+                                            "valueCodeableConcept": self.observation_converter.create_codeable_concept(
+                                                code=getattr(obs.value, "code", None),
+                                                code_system=getattr(obs.value, "code_system", None),
+                                                display_name=getattr(obs.value, "display_name", None),
+                                            ),
+                                        }
+                                    ]
+                                }
+                                extensions.append(tribal_affiliation_ext)
+                            processed = True
+
+                    # Check if it's a Tribal Affiliation observation by template ID
+                    if not processed and obs.template_id:
+                        for template in obs.template_id:
+                            if template.root == TemplateIds.TRIBAL_AFFILIATION_OBSERVATION:
+                                # Tribal Affiliation Extension (US Core)
+                                if obs.value:
+                                    tribal_affiliation_ext = {
+                                        "url": FHIRSystems.US_CORE_TRIBAL_AFFILIATION,
+                                        "extension": [
+                                            {
+                                                "url": "tribalAffiliation",
+                                                "valueCodeableConcept": self.observation_converter.create_codeable_concept(
+                                                    code=getattr(obs.value, "code", None),
+                                                    code_system=getattr(obs.value, "code_system", None),
+                                                    display_name=getattr(obs.value, "display_name", None),
+                                                ),
+                                            }
+                                        ]
+                                    }
+                                    extensions.append(tribal_affiliation_ext)
+                                processed = True
+                                break
 
             # Process nested sections recursively
             if section.component:
@@ -1100,6 +1156,25 @@ class DocumentConverter:
                                 and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
                             )
                             if is_sex:
+                                continue
+
+                        # Skip tribal affiliation observations - they map to Patient.extension
+                        if obs.code:
+                            is_tribal_affiliation = (
+                                obs.code.code == CCDACodes.TRIBAL_AFFILIATION
+                                and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
+                            )
+                            if is_tribal_affiliation:
+                                continue
+
+                        # Skip tribal affiliation observations by template ID - they map to Patient.extension
+                        if obs.template_id:
+                            is_tribal_affiliation_template = any(
+                                t.root == TemplateIds.TRIBAL_AFFILIATION_OBSERVATION
+                                for t in obs.template_id
+                                if t.root
+                            )
+                            if is_tribal_affiliation_template:
                                 continue
 
                         # Check if it's a Smoking Status, Pregnancy, or Social History Observation

@@ -58,6 +58,7 @@ class TemplateIds:
     PREGNANCY_OBSERVATION = "2.16.840.1.113883.10.20.15.3.8"
     ESTIMATED_DELIVERY_DATE_OBSERVATION = "2.16.840.1.113883.10.20.15.3.1"
     BIRTH_SEX_OBSERVATION = "2.16.840.1.113883.10.20.22.4.200"
+    TRIBAL_AFFILIATION_OBSERVATION = "2.16.840.1.113883.10.20.22.4.506"
     # Gender Identity Observation doesn't have a standardized template ID in C-CDA
     # It's typically identified by LOINC code 76691-5
 
@@ -100,6 +101,9 @@ class CodeSystemOIDs:
     # Race and Ethnicity
     CDC_RACE_ETHNICITY = "2.16.840.1.113883.6.238"
 
+    # Tribal affiliation
+    TRIBAL_ENTITY_US = "2.16.840.1.113883.5.140"  # TribalEntityUS code system
+
     # Provider specialty/taxonomy
     NUCC_PROVIDER_TAXONOMY = "2.16.840.1.113883.6.101"  # NUCC Healthcare Provider Taxonomy
 
@@ -122,6 +126,7 @@ class CCDACodes:
     BIRTH_SEX = "76689-9"  # Sex assigned at birth
     GENDER_IDENTITY = "76691-5"  # Gender identity
     SEX = "46098-0"  # Sex (documented clinical sex)
+    TRIBAL_AFFILIATION = "95370-3"  # Tribal affiliation
 
     # Severity code
     SEVERITY = "SEV"
@@ -359,6 +364,7 @@ class FHIRSystems:
     US_CORE_BIRTHSEX = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
     US_CORE_GENDER_IDENTITY = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
     US_CORE_SEX = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
+    US_CORE_TRIBAL_AFFILIATION = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
 
     # Units
     UCUM = "http://unitsofmeasure.org"
