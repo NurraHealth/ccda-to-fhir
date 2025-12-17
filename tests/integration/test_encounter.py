@@ -872,3 +872,340 @@ class TestEncounterConversion:
 
         assert encounter is not None
         assert encounter["class"]["code"] == "IMP", "CPT 99223 (boundary) should map to IMP"
+
+    def test_header_encounter_cpt_outpatient_maps_to_ambulatory(self) -> None:
+        """Test that header encounter with CPT outpatient code (no translation) maps to AMB."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="test-doc-001"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+  <title>Test Document</title>
+  <effectiveTime value="20230101"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="test-patient"/>
+      <patient><name><given>Test</given><family>Patient</family></name></patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20230101"/>
+    <assignedAuthor>
+      <id root="test-author"/>
+      <assignedPerson><name><given>Test</given><family>Author</family></name></assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="test-org"/>
+        <name>Test Org</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  <componentOf>
+    <encompassingEncounter>
+      <id root="test-header-enc" extension="ENC-CPT-AMB"/>
+      <code code="99213" codeSystem="2.16.840.1.113883.6.12" displayName="Office outpatient visit"/>
+      <effectiveTime>
+        <low value="20230101103000-0500"/>
+        <high value="20230101110000-0500"/>
+      </effectiveTime>
+    </encompassingEncounter>
+  </componentOf>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+          <code code="11450-4" codeSystem="2.16.840.1.113883.6.1"/>
+          <title>Problems</title>
+          <text>No problems</text>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>"""
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["id"] == "enc-cpt-amb"
+        assert "class" in encounter
+        assert encounter["class"]["code"] == "AMB", "Header CPT 99213 should map to AMB"
+        assert encounter["class"]["display"] == "ambulatory"
+
+    def test_header_encounter_cpt_inpatient_maps_to_inpatient(self) -> None:
+        """Test that header encounter with CPT inpatient code (no translation) maps to IMP."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="test-doc-002"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+  <title>Test Document</title>
+  <effectiveTime value="20230101"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="test-patient"/>
+      <patient><name><given>Test</given><family>Patient</family></name></patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20230101"/>
+    <assignedAuthor>
+      <id root="test-author"/>
+      <assignedPerson><name><given>Test</given><family>Author</family></name></assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="test-org"/>
+        <name>Test Org</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  <componentOf>
+    <encompassingEncounter>
+      <id root="test-header-enc" extension="ENC-CPT-IMP"/>
+      <code code="99221" codeSystem="2.16.840.1.113883.6.12" displayName="Initial hospital care"/>
+      <effectiveTime>
+        <low value="20230101103000-0500"/>
+        <high value="20230101110000-0500"/>
+      </effectiveTime>
+    </encompassingEncounter>
+  </componentOf>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+          <code code="11450-4" codeSystem="2.16.840.1.113883.6.1"/>
+          <title>Problems</title>
+          <text>No problems</text>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>"""
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["id"] == "enc-cpt-imp"
+        assert "class" in encounter
+        assert encounter["class"]["code"] == "IMP", "Header CPT 99221 should map to IMP"
+        assert encounter["class"]["display"] == "inpatient encounter"
+
+    def test_header_encounter_cpt_emergency_maps_to_emergency(self) -> None:
+        """Test that header encounter with CPT emergency code (no translation) maps to EMER."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="test-doc-003"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+  <title>Test Document</title>
+  <effectiveTime value="20230101"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="test-patient"/>
+      <patient><name><given>Test</given><family>Patient</family></name></patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20230101"/>
+    <assignedAuthor>
+      <id root="test-author"/>
+      <assignedPerson><name><given>Test</given><family>Author</family></name></assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="test-org"/>
+        <name>Test Org</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  <componentOf>
+    <encompassingEncounter>
+      <id root="test-header-enc" extension="ENC-CPT-EMER"/>
+      <code code="99283" codeSystem="2.16.840.1.113883.6.12" displayName="Emergency department visit"/>
+      <effectiveTime>
+        <low value="20230101103000-0500"/>
+        <high value="20230101110000-0500"/>
+      </effectiveTime>
+    </encompassingEncounter>
+  </componentOf>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+          <code code="11450-4" codeSystem="2.16.840.1.113883.6.1"/>
+          <title>Problems</title>
+          <text>No problems</text>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>"""
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["id"] == "enc-cpt-emer"
+        assert "class" in encounter
+        assert encounter["class"]["code"] == "EMER", "Header CPT 99283 should map to EMER"
+        assert encounter["class"]["display"] == "emergency"
+
+    def test_header_encounter_cpt_home_visit_maps_to_home_health(self) -> None:
+        """Test that header encounter with CPT home visit code (no translation) maps to HH."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="test-doc-004"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+  <title>Test Document</title>
+  <effectiveTime value="20230101"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="test-patient"/>
+      <patient><name><given>Test</given><family>Patient</family></name></patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20230101"/>
+    <assignedAuthor>
+      <id root="test-author"/>
+      <assignedPerson><name><given>Test</given><family>Author</family></name></assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="test-org"/>
+        <name>Test Org</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  <componentOf>
+    <encompassingEncounter>
+      <id root="test-header-enc" extension="ENC-CPT-HH"/>
+      <code code="99345" codeSystem="2.16.840.1.113883.6.12" displayName="Home visit"/>
+      <effectiveTime>
+        <low value="20230101103000-0500"/>
+        <high value="20230101110000-0500"/>
+      </effectiveTime>
+    </encompassingEncounter>
+  </componentOf>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+          <code code="11450-4" codeSystem="2.16.840.1.113883.6.1"/>
+          <title>Problems</title>
+          <text>No problems</text>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>"""
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["id"] == "enc-cpt-hh"
+        assert "class" in encounter
+        assert encounter["class"]["code"] == "HH", "Header CPT 99345 should map to HH"
+        assert encounter["class"]["display"] == "home health"
+
+    def test_header_encounter_translation_takes_precedence_over_cpt(self) -> None:
+        """Test that explicit V3 ActCode translation takes precedence over CPT mapping.
+
+        Per C-CDA on FHIR IG specification, explicit V3 ActCode translations should be
+        preferred over automatic CPT to ActCode mapping.
+        """
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="test-doc-005"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+  <title>Test Document</title>
+  <effectiveTime value="20230101"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="test-patient"/>
+      <patient><name><given>Test</given><family>Patient</family></name></patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20230101"/>
+    <assignedAuthor>
+      <id root="test-author"/>
+      <assignedPerson><name><given>Test</given><family>Author</family></name></assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="test-org"/>
+        <name>Test Org</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  <componentOf>
+    <encompassingEncounter>
+      <id root="test-header-enc" extension="ENC-CPT-WITH-TRANSLATION"/>
+      <code code="99221" codeSystem="2.16.840.1.113883.6.12" displayName="Initial hospital care">
+        <translation code="EMER" codeSystem="2.16.840.1.113883.5.4" displayName="Emergency"/>
+      </code>
+      <effectiveTime>
+        <low value="20230101103000-0500"/>
+        <high value="20230101110000-0500"/>
+      </effectiveTime>
+    </encompassingEncounter>
+  </componentOf>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+          <code code="11450-4" codeSystem="2.16.840.1.113883.6.1"/>
+          <title>Problems</title>
+          <text>No problems</text>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>"""
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "class" in encounter
+        # CPT 99221 would normally map to IMP, but explicit translation is EMER
+        # Translation should take precedence
+        assert encounter["class"]["code"] == "EMER", "Explicit translation EMER should take precedence over CPT mapping (IMP)"
+        assert encounter["class"]["display"] == "Emergency"

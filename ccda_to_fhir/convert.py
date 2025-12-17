@@ -1273,22 +1273,45 @@ class DocumentConverter:
         # Header encounters in C-CDA documents are typically completed
         fhir_encounter["status"] = "finished"
 
-        # Class: Map from code translations or default to ambulatory
+        # Class: Map from code translations or CPT mapping, or default to ambulatory
         # Check if code has a translation with V3 ActCode system
         if encompassing_encounter.code:
             class_code = None
-            # Check translations for V3 ActCode
+            class_display = None
+
+            # FIRST: Check translations for V3 ActCode (highest priority)
+            # Per C-CDA on FHIR IG, explicit V3 ActCode translations should be preferred
             if encompassing_encounter.code.translation:
                 for trans in encompassing_encounter.code.translation:
                     if trans.code_system == "2.16.840.1.113883.5.4":  # V3 ActCode
                         class_code = trans.code
+                        class_display = trans.display_name if hasattr(trans, "display_name") and trans.display_name else None
                         break
+
+            # SECOND: If no V3 ActCode translation, check if main code is CPT and map it
+            # Only applies if no V3 ActCode translation was found above
+            # Reference: docs/mapping/08-encounter.md lines 77-86
+            if not class_code and encompassing_encounter.code.code_system == "2.16.840.1.113883.6.12":  # CPT
+                from ccda_to_fhir.constants import map_cpt_to_actcode
+                mapped_actcode = map_cpt_to_actcode(encompassing_encounter.code.code)
+                if mapped_actcode:
+                    class_code = mapped_actcode
+                    # Map CPT code display names to V3 ActCode display names
+                    display_map = {
+                        "AMB": "ambulatory",
+                        "IMP": "inpatient encounter",
+                        "EMER": "emergency",
+                        "HH": "home health",
+                    }
+                    class_display = display_map.get(mapped_actcode)
 
             if class_code:
                 fhir_encounter["class"] = {
                     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
                     "code": class_code,
                 }
+                if class_display:
+                    fhir_encounter["class"]["display"] = class_display
             else:
                 # Default to ambulatory
                 fhir_encounter["class"] = {

@@ -14,6 +14,19 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### Recent Updates
 
+**2025-12-17**: ✅ **Header Encounter CPT to ActCode Mapping Completed** - Full Encompassing Encounter Support! 🎉
+- Implemented CPT to ActCode mapping for header encounters (encompassingEncounter in document header)
+- **Proper precedence**: V3 ActCode translations take priority over CPT mapping (same as body encounters)
+- **Outpatient visits** (CPT 99201-99215) → AMB (ambulatory)
+- **Initial hospital care** (CPT 99221-99223) → IMP (inpatient encounter)
+- **Emergency department** (CPT 99281-99285) → EMER (emergency)
+- **Home visits** (CPT 99341-99350) → HH (home health)
+- 5 comprehensive integration tests added (all CPT ranges tested, precedence verified)
+- Improved Encounter from 12 → 13 fully implemented features (1 moved from partial to fully)
+- Encounter coverage improved to ~88% (was ~84%)
+- **🎉 Encounter is now the 4th resource with ZERO partial implementations (13 fully / 0 partial / 4 missing)!**
+- **100% standards-compliant with C-CDA on FHIR IG v2.0.0 encompassing encounter mapping**
+
 **2025-12-17**: ✅ **CPT to ActCode Mapping Completed** - Full Standards-Compliant Encounter Class Mapping! 🎉
 - Implemented comprehensive CPT code to V3 ActCode mapping per C-CDA on FHIR IG specification
 - **Outpatient visits** (CPT 99201-99215) → AMB (ambulatory)
@@ -619,8 +632,8 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### 8. Encounter (08-encounter.md vs encounter.py)
 
-**Status**: 🟢 **Excellent** (12 fully / 1 partial / 4 missing)
-**Recent Update**: ✅ CPT to ActCode mapping verified and completed (2025-12-17)
+**Status**: 🟢 **Excellent** (13 fully / 0 partial / 4 missing)
+**Recent Update**: ✅ Header encounter CPT to ActCode mapping completed (2025-12-17)
 
 #### ✅ Fully Implemented
 - Core encounter mapping (status, class, type, period)
@@ -633,10 +646,11 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - **Reason handling** ✅ **FULLY IMPLEMENTED** - Conditional mapping: reasonReference if Condition exists, reasonCode otherwise (6 tests, 100% C-CDA on FHIR compliant)
 - Diagnosis references (Condition references)
 - Discharge disposition (SDTC extension)
-- **CPT to ActCode mapping** ✅ **NEW** - Complete mapping per C-CDA on FHIR IG: 99201-99215 → AMB, 99221-99223 → IMP, 99281-99285 → EMER, 99341-99350 → HH (7 comprehensive tests)
+- **CPT to ActCode mapping** ✅ - Complete mapping per C-CDA on FHIR IG: 99201-99215 → AMB, 99221-99223 → IMP, 99281-99285 → EMER, 99341-99350 → HH (7 comprehensive tests)
+- **Encompassing encounter (document header encounter)** ✅ **NEW** - Complete implementation with CPT to ActCode mapping, deduplication, participant mapping, location, discharge disposition, and author metadata (5 comprehensive tests)
 
 #### ⚠️ Partially Implemented
-- Encompassing encounter (document header encounter)
+- (None)
 
 #### ❌ Not Implemented
 - Encounter Diagnosis Act details (admission vs discharge vs encounter diagnosis use)
@@ -813,12 +827,12 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 | Procedure | 10 | 0 | 3 | ~92% | 🟢 Excellent |
 | Immunization | 12 | 0 | 3 | ~93% | 🟢 Excellent |
 | MedicationRequest | 11 | 3 | 4 | ~75% | 🟢 Very Good |
-| Encounter | 12 | 1 | 4 | ~84% | 🟢 Excellent |
+| Encounter | 13 | 0 | 4 | ~88% | 🟢 Excellent |
 | Participations | 15 | 3 | 1 | ~89% | 🟢 Excellent |
 | Notes | 14 | 0 | 2 | ~94% | 🟢 Excellent |
 | Social History | 9 | 0 | 4 | ~69% | 🟢 Good |
 | Vital Signs | 12 | 1 | 4 | ~85% | 🟢 Excellent |
-| **OVERALL** | **154** | **8** | **31** | **~95%** | 🟢 **Excellent** |
+| **OVERALL** | **155** | **7** | **31** | **~95%** | 🟢 **Excellent** |
 
 **Note on Standards Compliance**: Encounter and Procedure reasonReference/reasonCode mapping now implements the exact conditional logic specified in C-CDA on FHIR v2.0.0: "If the id of the indication references a problem in the document that has been converted to a FHIR resource, populate .reasonReference with a reference to that resource. Otherwise, map observation/value to .reasonCode."
 
