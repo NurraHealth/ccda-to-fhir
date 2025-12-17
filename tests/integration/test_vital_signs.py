@@ -333,3 +333,73 @@ class TestVitalSignsConversion:
         assert "<p" in div_content  # Paragraph converted to <p>
         assert 'id="vitals-hr-1"' in div_content  # ID preserved
         assert 'class="Bold"' in div_content or "Bold" in div_content  # Style preserved
+
+    def test_converts_method_code_oral_temperature(self) -> None:
+        """Test that methodCode is converted to Observation.method for oral temperature."""
+        # Load fixture with oral temperature method
+        with open("tests/integration/fixtures/ccda/vital_signs_temp_oral_method.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find body temperature observation
+        temp_obs = _find_observation_by_code(bundle, "8310-5")
+        assert temp_obs is not None, "Body temperature observation should be found"
+
+        # Verify method field exists
+        assert "method" in temp_obs, "Observation should have method field"
+        method = temp_obs["method"]
+
+        # Verify method is a CodeableConcept with coding
+        assert "coding" in method, "Method should have coding array"
+        assert len(method["coding"]) > 0, "Method should have at least one coding"
+
+        # Verify SNOMED CT system and code
+        coding = method["coding"][0]
+        assert coding["system"] == "http://snomed.info/sct", "Method system should be SNOMED CT"
+        assert coding["code"] == "89003005", "Method code should be 89003005 (Oral temperature taking)"
+        assert coding["display"] == "Oral temperature taking", "Method display should be preserved"
+
+    def test_converts_method_code_axillary_temperature(self) -> None:
+        """Test that methodCode is converted to Observation.method for axillary temperature."""
+        # Load fixture with axillary temperature method
+        with open("tests/integration/fixtures/ccda/vital_signs_temp_axillary_method.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find body temperature observation
+        temp_obs = _find_observation_by_code(bundle, "8310-5")
+        assert temp_obs is not None, "Body temperature observation should be found"
+
+        # Verify method field exists
+        assert "method" in temp_obs, "Observation should have method field"
+        method = temp_obs["method"]
+
+        # Verify method is a CodeableConcept with coding
+        assert "coding" in method, "Method should have coding array"
+        assert len(method["coding"]) > 0, "Method should have at least one coding"
+
+        # Verify SNOMED CT system and code
+        coding = method["coding"][0]
+        assert coding["system"] == "http://snomed.info/sct", "Method system should be SNOMED CT"
+        assert coding["code"] == "415945006", "Method code should be 415945006 (Axillary temperature taking)"
+        assert coding["display"] == "Axillary temperature taking", "Method display should be preserved"
+
+    def test_method_code_not_present_when_absent(self) -> None:
+        """Test that method field is not present when methodCode is absent in C-CDA."""
+        # Use existing fixture without methodCode
+        with open("tests/integration/fixtures/ccda/vital_signs.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find heart rate observation (no method code in this fixture)
+        hr_obs = _find_observation_by_code(bundle, "8867-4")
+        assert hr_obs is not None, "Heart rate observation should be found"
+
+        # Verify method field is not present
+        assert "method" not in hr_obs, "Observation should not have method field when methodCode is absent"

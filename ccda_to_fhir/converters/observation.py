@@ -125,7 +125,17 @@ class ObservationConverter(BaseConverter[Observation]):
             if interpretations:
                 fhir_obs["interpretation"] = interpretations
 
-        # 10. Reference ranges
+        # 10. Method code
+        if observation.method_code and len(observation.method_code) > 0:
+            # Per FHIR R4: method is 0..1 (single CodeableConcept)
+            # Take the first method code if multiple are present
+            first_method = observation.method_code[0]
+            if isinstance(first_method, (CD, CE)):
+                method_cc = self._convert_code_to_codeable_concept(first_method)
+                if method_cc:
+                    fhir_obs["method"] = method_cc
+
+        # 11. Reference ranges
         if observation.reference_range:
             ref_ranges = []
             for ref_range in observation.reference_range:
@@ -136,7 +146,7 @@ class ObservationConverter(BaseConverter[Observation]):
             if ref_ranges:
                 fhir_obs["referenceRange"] = ref_ranges
 
-        # 11. Pregnancy observation special handling
+        # 12. Pregnancy observation special handling
         if observation.template_id:
             from ccda_to_fhir.constants import TemplateIds
             is_pregnancy = any(
