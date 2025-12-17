@@ -218,7 +218,7 @@ class TestDiagnosticReportConversion:
         assert "2023-12-25" in dr["effectiveDateTime"]
 
     def test_diagnostic_report_contains_result_observations(self) -> None:
-        """Test that DiagnosticReport contains result observations."""
+        """Test that DiagnosticReport references standalone result observations."""
         result_organizer = """
         <organizer classCode="CLUSTER" moodCode="EVN">
             <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
@@ -257,19 +257,23 @@ class TestDiagnosticReportConversion:
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
 
-        # Should have contained observations
-        assert "contained" in dr
-        assert len(dr["contained"]) == 2
-        assert all(obs["resourceType"] == "Observation" for obs in dr["contained"])
+        # Should NOT have contained observations (per FHIR best practices)
+        assert "contained" not in dr
+
+        # Should have standalone observations in the bundle
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        assert len(observations) == 2
+        assert all(obs["resourceType"] == "Observation" for obs in observations)
 
         # Should have result references
         assert "result" in dr
         assert len(dr["result"]) == 2
-        # References should point to contained resources
-        assert all(ref["reference"].startswith("#") for ref in dr["result"])
+        # References should point to standalone resources (not #contained-id)
+        assert all(ref["reference"].startswith("Observation/") for ref in dr["result"])
+        assert not any(ref["reference"].startswith("#") for ref in dr["result"])
 
     def test_diagnostic_report_observation_values(self) -> None:
-        """Test that contained observations have correct values."""
+        """Test that standalone observations have correct values."""
         result_organizer = """
         <organizer classCode="CLUSTER" moodCode="EVN">
             <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
@@ -298,7 +302,10 @@ class TestDiagnosticReportConversion:
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
 
-        obs = dr["contained"][0]
+        # Find standalone observations in bundle
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        assert len(observations) == 1
+        obs = observations[0]
         assert obs["code"]["coding"][0]["code"] == "2160-0"
         assert obs["code"]["coding"][0]["display"] == "Creatinine"
         assert "valueQuantity" in obs

@@ -934,18 +934,75 @@ class DocumentConverter:
     def _extract_results(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Lab Results from the structured body.
 
+        Per FHIR best practices, result observations are created as standalone
+        resources (not contained) since they have proper identifiers and independent
+        existence.
+
         Args:
             structured_body: The structuredBody element
 
         Returns:
-            List of FHIR DiagnosticReport resources
+            List of FHIR resources (DiagnosticReport and Observation resources)
         """
-        reports = self.results_processor.process(structured_body)
+        resources = []
 
-        # Store author metadata for Provenance generation
-        self._store_diagnostic_report_metadata(structured_body, reports)
+        if not structured_body.component:
+            return resources
 
-        return reports
+        for comp in structured_body.component:
+            if not comp.section:
+                continue
+
+            section = comp.section
+
+            if section.entry:
+                for entry in section.entry:
+                    if entry.organizer:
+                        if entry.organizer.template_id:
+                            for template in entry.organizer.template_id:
+                                if template.root == TemplateIds.RESULT_ORGANIZER:
+                                    try:
+                                        report, observations = self.diagnostic_report_converter.convert(
+                                            entry.organizer, section=section
+                                        )
+
+                                        # Add the DiagnosticReport
+                                        resources.append(report)
+
+                                        # Add standalone result observations
+                                        resources.extend(observations)
+
+                                        # Store author metadata for DiagnosticReport
+                                        if report.get("id"):
+                                            self._store_author_metadata(
+                                                resource_type="DiagnosticReport",
+                                                resource_id=report["id"],
+                                                ccda_element=entry.organizer,
+                                                concern_act=None,
+                                            )
+
+                                        # Store author metadata for observations
+                                        for observation in observations:
+                                            if observation.get("id"):
+                                                self._store_author_metadata(
+                                                    resource_type="Observation",
+                                                    resource_id=observation["id"],
+                                                    ccda_element=entry.organizer,
+                                                    concern_act=None,
+                                                )
+                                    except Exception as e:
+                                        logger.error(f"Error converting result organizer", exc_info=True)
+                                    break
+
+            # Process nested sections recursively
+            if section.component:
+                for nested_comp in section.component:
+                    if nested_comp.section:
+                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        nested_results = self._extract_results(temp_body)
+                        resources.extend(nested_results)
+
+        return resources
 
     def _extract_patient_extensions_from_social_history(
         self, structured_body: StructuredBody

@@ -20,6 +20,16 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
     return None
 
 
+def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> list[JSONObject]:
+    """Find all resources of the given type in a FHIR Bundle."""
+    resources = []
+    for entry in bundle.get("entry", []):
+        resource = entry.get("resource", {})
+        if resource.get("resourceType") == resource_type:
+            resources.append(resource)
+    return resources
+
+
 class TestResultConversion:
     """E2E tests for C-CDA Result Organizer to FHIR DiagnosticReport/Observation conversion."""
 
@@ -98,8 +108,9 @@ class TestResultConversion:
         assert report is not None
         assert "result" in report
         assert len(report["result"]) >= 1
-        assert "contained" in report
-        assert len(report["contained"]) >= 1
+        # Observations should be standalone in bundle (not contained)
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        assert len(observations) >= 1
 
     def test_converts_observation_code(
         self, ccda_result: str, fhir_result: JSONObject
@@ -110,7 +121,8 @@ class TestResultConversion:
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
-        obs = report["contained"][0]
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
         loinc = next(
             (c for c in obs["code"]["coding"]
              if c.get("system") == "http://loinc.org"),
@@ -128,7 +140,8 @@ class TestResultConversion:
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
-        obs = report["contained"][0]
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
         assert "valueQuantity" in obs
         assert obs["valueQuantity"]["value"] == 1.015
 
@@ -141,7 +154,8 @@ class TestResultConversion:
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
-        obs = report["contained"][0]
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
         assert "referenceRange" in obs
         ref_range = obs["referenceRange"][0]
         assert ref_range["low"]["value"] == 1.005
@@ -156,7 +170,8 @@ class TestResultConversion:
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
-        obs = report["contained"][0]
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
         assert obs["status"] == "final"
 
     def test_converts_observation_category(
@@ -168,7 +183,8 @@ class TestResultConversion:
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
-        obs = report["contained"][0]
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
         assert obs["category"][0]["coding"][0]["code"] == "laboratory"
 
     def test_converts_identifier(
@@ -183,15 +199,16 @@ class TestResultConversion:
         assert "identifier" in report
         assert report["identifier"][0]["value"] == "R123"
 
-    def test_result_references_point_to_contained(
+    def test_result_references_point_to_standalone(
         self, ccda_result: str, fhir_result: JSONObject
     ) -> None:
-        """Test that result references point to contained observations."""
+        """Test that result references point to standalone observations."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
-        assert len(report["result"]) == len(report["contained"])
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        assert len(report["result"]) == len(observations)
         for ref in report["result"]:
-            assert ref["reference"].startswith("#")
+            assert ref["reference"].startswith("Observation/")

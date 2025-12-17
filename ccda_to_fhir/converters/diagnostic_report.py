@@ -20,7 +20,10 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
 
     This converter handles the mapping from C-CDA Result Organizer
     (template 2.16.840.1.113883.10.20.22.4.1) to a FHIR R4B DiagnosticReport
-    resource, including panel code, status, category, and contained result observations.
+    resource, including panel code, status, category, and standalone result observations.
+
+    Per FHIR best practices, result observations are created as standalone resources
+    (not contained) since they have proper identifiers and independent existence.
 
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-results.html
     """
@@ -30,15 +33,15 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         super().__init__(*args, **kwargs)
         self.observation_converter = ObservationConverter()
 
-    def convert(self, organizer: Organizer, section=None) -> FHIRResourceDict:
-        """Convert a C-CDA Result Organizer to a FHIR DiagnosticReport.
+    def convert(self, organizer: Organizer, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
+        """Convert a C-CDA Result Organizer to a FHIR DiagnosticReport and Observations.
 
         Args:
             organizer: The C-CDA Result Organizer
             section: The C-CDA Section containing this organizer (for narrative)
 
         Returns:
-            FHIR DiagnosticReport resource as a dictionary
+            Tuple of (DiagnosticReport resource, list of Observation resources)
 
         Raises:
             ValueError: If the organizer lacks required data
@@ -96,27 +99,27 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         if effective_time:
             report["effectiveDateTime"] = effective_time
 
-        # 8. Convert component observations to contained resources
-        contained_obs = []
+        # 8. Convert component observations to standalone resources
+        # Per FHIR best practices: use standalone resources (not contained) since
+        # these observations have proper identifiers and independent existence.
+        # Reference: https://www.hl7.org/fhir/R4/references.html#contained
+        observations = []
         result_refs = []
 
         if organizer.component:
-            for idx, component in enumerate(organizer.component):
+            for component in organizer.component:
                 if component.observation:
-                    # Convert the component observation
-                    contained = self.observation_converter.convert(component.observation)
+                    # Convert the component observation to standalone resource
+                    observation = self.observation_converter.convert(
+                        component.observation, section=section
+                    )
+                    observations.append(observation)
 
-                    # Generate a contained ID
-                    contained_id = f"result-{idx + 1}"
-                    contained["id"] = contained_id
-
-                    contained_obs.append(contained)
-
-                    # Add result reference
-                    result_refs.append({"reference": f"#{contained_id}"})
-
-        if contained_obs:
-            report["contained"] = contained_obs
+                    # Add reference to this observation
+                    if "id" in observation:
+                        result_refs.append({
+                            "reference": f"{FHIRCodes.ResourceTypes.OBSERVATION}/{observation['id']}"
+                        })
 
         if result_refs:
             report["result"] = result_refs
@@ -126,7 +129,7 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         if narrative:
             report["text"] = narrative
 
-        return report
+        return report, observations
 
     def _generate_report_id(self, root: str | None, extension: str | None) -> str:
         """Generate a FHIR resource ID from C-CDA identifier.

@@ -13,6 +13,15 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
             return resource
     return None
 
+def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> list[JSONObject]:
+    """Find all resources of the given type in a FHIR Bundle."""
+    resources = []
+    for entry in bundle.get("entry", []):
+        resource = entry.get("resource", {})
+        if resource.get("resourceType") == resource_type:
+            resources.append(resource)
+    return resources
+
 class TestObservationRange:
     def test_converts_ivl_pq_value_range(
         self, ccda_observation_ivl_pq: str
@@ -29,10 +38,10 @@ class TestObservationRange:
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None, "Result Organizer should map to DiagnosticReport"
 
-        # Observation should be in contained array
-        assert "contained" in report
-        assert len(report["contained"]) > 0
-        observation = report["contained"][0]
+        # Observation should be standalone in bundle (not contained)
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        assert len(observations) > 0
+        observation = observations[0]
         assert observation["resourceType"] == "Observation"
 
         # Verify IVL_PQ → valueRange conversion
@@ -57,10 +66,10 @@ class TestObservationRange:
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None, "Result Organizer should map to DiagnosticReport"
 
-        # Observation should be in contained array
-        assert "contained" in report
-        assert len(report["contained"]) > 0
-        observation = report["contained"][0]
+        # Observation should be standalone in bundle (not contained)
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        assert len(observations) > 0
+        observation = observations[0]
         assert observation["resourceType"] == "Observation"
 
         # Verify IVL_PQ (high-only) → valueQuantity with comparator
@@ -84,10 +93,10 @@ class TestObservationRange:
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None, "Result Organizer should map to DiagnosticReport"
 
-        # Observation should be in contained array
-        assert "contained" in report
-        assert len(report["contained"]) > 0
-        observation = report["contained"][0]
+        # Observation should be standalone in bundle (not contained)
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        assert len(observations) > 0
+        observation = observations[0]
         assert observation["resourceType"] == "Observation"
 
         # Verify IVL_PQ (low-only) → valueQuantity with comparator
@@ -109,7 +118,8 @@ class TestObservationRange:
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
-        observation = report["contained"][0]
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        observation = observations[0]
 
         val_quantity = observation["valueQuantity"]
         assert val_quantity["system"] == "http://unitsofmeasure.org"
@@ -125,7 +135,8 @@ class TestObservationRange:
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
-        observation = report["contained"][0]
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        observation = observations[0]
 
         val_quantity = observation["valueQuantity"]
         assert val_quantity["system"] == "http://unitsofmeasure.org"
@@ -141,7 +152,8 @@ class TestObservationRange:
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
-        observation = report["contained"][0]
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        observation = observations[0]
 
         # Verify metadata is preserved
         assert observation["status"] == "final"
