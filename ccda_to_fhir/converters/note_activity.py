@@ -105,11 +105,13 @@ class NoteActivityConverter(BaseConverter[Act]):
             if content_list:
                 doc_ref["content"] = content_list
             else:
-                # Content is required - provide empty attachment if no text
-                doc_ref["content"] = [{"attachment": {}}]
+                # Content is required but text has no extractable data
+                # Use data-absent-reason extension per FHIR R4 spec
+                doc_ref["content"] = self._create_missing_content()
         else:
-            # Content is required - provide empty attachment if no text
-            doc_ref["content"] = [{"attachment": {}}]
+            # Content is required but no text element present
+            # Use data-absent-reason extension per FHIR R4 spec
+            doc_ref["content"] = self._create_missing_content()
 
         # Context - encounter and period
         context = self._create_context(note_act)
@@ -351,6 +353,36 @@ class NoteActivityConverter(BaseConverter[Act]):
                 content_list.append(reference_content)
 
         return content_list
+
+    def _create_missing_content(self) -> list[JSONObject]:
+        """Create content element for missing attachment data with data-absent-reason.
+
+        When a Note Activity has no text content, US Core DocumentReference requires
+        at least one content element. Use data-absent-reason extension to indicate
+        the attachment data is missing.
+
+        Reference: http://hl7.org/fhir/R4/extension-data-absent-reason.html
+
+        Returns:
+            List with single content object containing data-absent-reason extension
+        """
+        from ccda_to_fhir.constants import FHIRSystems, FHIRCodes
+
+        return [
+            {
+                "attachment": {
+                    "contentType": "text/plain",
+                    "_data": {
+                        "extension": [
+                            {
+                                "url": FHIRSystems.DATA_ABSENT_REASON,
+                                "valueCode": FHIRCodes.UNKNOWN,
+                            }
+                        ]
+                    },
+                }
+            }
+        ]
 
     def _create_inline_content(self, text) -> JSONObject | None:
         """Create content element from inline text content.

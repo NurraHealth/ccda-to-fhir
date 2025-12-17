@@ -723,3 +723,255 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
         # Should have application/pdf for inline and text/html or text/plain for reference
         assert "application/pdf" in content_types, "Should have PDF content type"
         assert any(ct in ["text/html", "text/plain"] for ct in content_types), "Should have text content type"
+
+
+class TestNoteMissingContent:
+    """E2E tests for Note Activity with missing content handling."""
+
+    def test_note_without_text_uses_data_absent_reason(self) -> None:
+        """Test that note without text element uses data-absent-reason extension.
+
+        Per FHIR R4 spec, when required data is missing, use data-absent-reason extension.
+        Reference: http://hl7.org/fhir/R4/extension-data-absent-reason.html
+        """
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="2.16.840.1.113883.19.5.99999.1"/>
+  <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+  <effectiveTime value="20240315120000-0500"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="test-patient-id"/>
+      <patient>
+        <name><given>Test</given><family>Patient</family></name>
+        <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+        <birthTime value="19800101"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20240315120000-0500"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+      <assignedPerson>
+        <name><given>Test</given><family>Author</family></name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5"/>
+        <name>Test Organization</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+          <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+          <text>
+            <paragraph>Section narrative text</paragraph>
+          </text>
+          <entry>
+            <act classCode="ACT" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.202"/>
+              <code code="34109-9" codeSystem="2.16.840.1.113883.6.1" displayName="Note"/>
+              <!-- No text element -->
+              <statusCode code="completed"/>
+              <effectiveTime value="20240315"/>
+            </act>
+          </entry>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>
+        """
+        bundle = convert_document(ccda_doc)
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+
+        # Should still have content array (required 1..*)
+        assert "content" in doc_ref
+        assert len(doc_ref["content"]) == 1
+
+        # Should have attachment with data-absent-reason
+        attachment = doc_ref["content"][0]["attachment"]
+        assert "contentType" in attachment
+        assert attachment["contentType"] == "text/plain"
+
+        # Should have _data with data-absent-reason extension
+        assert "_data" in attachment
+        assert "extension" in attachment["_data"]
+
+        extensions = attachment["_data"]["extension"]
+        assert len(extensions) > 0
+
+        data_absent_ext = extensions[0]
+        assert data_absent_ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert data_absent_ext["valueCode"] == "unknown"
+
+    def test_note_with_empty_text_uses_data_absent_reason(self) -> None:
+        """Test that note with text element but no data uses data-absent-reason extension."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="2.16.840.1.113883.19.5.99999.1"/>
+  <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+  <effectiveTime value="20240315120000-0500"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="test-patient-id"/>
+      <patient>
+        <name><given>Test</given><family>Patient</family></name>
+        <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+        <birthTime value="19800101"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20240315120000-0500"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+      <assignedPerson>
+        <name><given>Test</given><family>Author</family></name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5"/>
+        <name>Test Organization</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+          <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+          <text>
+            <paragraph>Section narrative text</paragraph>
+          </text>
+          <entry>
+            <act classCode="ACT" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.202"/>
+              <code code="34109-9" codeSystem="2.16.840.1.113883.6.1" displayName="Note"/>
+              <text></text>
+              <statusCode code="completed"/>
+              <effectiveTime value="20240315"/>
+            </act>
+          </entry>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>
+        """
+        bundle = convert_document(ccda_doc)
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+
+        # Should have content with data-absent-reason
+        assert "content" in doc_ref
+        attachment = doc_ref["content"][0]["attachment"]
+        assert "_data" in attachment
+        assert attachment["_data"]["extension"][0]["valueCode"] == "unknown"
+
+    def test_data_absent_reason_extension_structure(self) -> None:
+        """Test that data-absent-reason extension has correct structure per FHIR R4 spec."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="2.16.840.1.113883.19.5.99999.1"/>
+  <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+  <effectiveTime value="20240315120000-0500"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="test-patient-id"/>
+      <patient>
+        <name><given>Test</given><family>Patient</family></name>
+        <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+        <birthTime value="19800101"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20240315120000-0500"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+      <assignedPerson>
+        <name><given>Test</given><family>Author</family></name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5"/>
+        <name>Test Organization</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+          <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+          <text>
+            <paragraph>Section narrative text</paragraph>
+          </text>
+          <entry>
+            <act classCode="ACT" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.202"/>
+              <code code="34109-9" codeSystem="2.16.840.1.113883.6.1" displayName="Note"/>
+              <statusCode code="completed"/>
+              <effectiveTime value="20240315"/>
+            </act>
+          </entry>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>
+        """
+        bundle = convert_document(ccda_doc)
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        attachment = doc_ref["content"][0]["attachment"]
+
+        # Verify extension structure
+        assert "_data" in attachment, "_data element should be present for missing data"
+        assert "extension" in attachment["_data"], "extension array should be present"
+        assert isinstance(attachment["_data"]["extension"], list), "extension should be an array"
+        assert len(attachment["_data"]["extension"]) == 1, "should have exactly one extension"
+
+        ext = attachment["_data"]["extension"][0]
+        assert "url" in ext, "extension should have url"
+        assert "valueCode" in ext, "extension should have valueCode"
+        assert ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert ext["valueCode"] == "unknown"
+
+        # Ensure no actual 'data' field is present when using data-absent-reason
+        assert "data" not in attachment, "Should not have 'data' field when using _data with extension"
