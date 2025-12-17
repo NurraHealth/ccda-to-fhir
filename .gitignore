@@ -85,3 +85,4 @@ Thumbs.db
 *.ccda
 *.xml
 !samples/*.xml
+!tests/integration/fixtures/**/*.xml

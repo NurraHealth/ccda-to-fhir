@@ -103,10 +103,14 @@ class ObservationConverter(BaseConverter[Observation]):
             "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
         }
 
-        # 7. Effective time
+        # 7. Effective time (effectiveDateTime or effectivePeriod)
         effective_time = self._extract_effective_time(observation)
         if effective_time:
-            fhir_obs["effectiveDateTime"] = effective_time
+            # effective_time can be either a string (effectiveDateTime) or a dict (effectivePeriod)
+            if isinstance(effective_time, dict):
+                fhir_obs["effectivePeriod"] = effective_time
+            else:
+                fhir_obs["effectiveDateTime"] = effective_time
 
         # 8. Value - handle different value types
         value_element = self._convert_value(observation)
@@ -146,13 +150,26 @@ class ObservationConverter(BaseConverter[Observation]):
                     fhir_obs["bodySite"] = body_site_cc
 
         # 12. Reference ranges
+        # Per C-CDA on FHIR IG: Only map reference ranges with interpretationCode="N" (normal)
+        # FHIR expects reference ranges to be "normal" ranges
         if observation.reference_range:
             ref_ranges = []
             for ref_range in observation.reference_range:
                 if ref_range.observation_range and ref_range.observation_range.value:
-                    fhir_ref_range = self._convert_reference_range(ref_range.observation_range.value)
-                    if fhir_ref_range:
-                        ref_ranges.append(fhir_ref_range)
+                    # Filter for normal ranges only (interpretationCode="N")
+                    # If no interpretationCode is present, assume it's a normal range (common case)
+                    obs_range = ref_range.observation_range
+                    if obs_range.interpretation_code:
+                        # Only include if interpretationCode is "N" (Normal)
+                        if obs_range.interpretation_code.code and obs_range.interpretation_code.code.upper() == "N":
+                            fhir_ref_range = self._convert_reference_range(obs_range)
+                            if fhir_ref_range:
+                                ref_ranges.append(fhir_ref_range)
+                    else:
+                        # No interpretationCode present - assume normal range
+                        fhir_ref_range = self._convert_reference_range(obs_range)
+                        if fhir_ref_range:
+                            ref_ranges.append(fhir_ref_range)
             if ref_ranges:
                 fhir_obs["referenceRange"] = ref_ranges
 
@@ -496,22 +513,54 @@ class ObservationConverter(BaseConverter[Observation]):
 
         return codeable_concept
 
-    def _extract_effective_time(self, observation: Observation) -> str | None:
+    def _extract_effective_time(self, observation: Observation) -> str | JSONObject | None:
         """Extract and convert effective time to FHIR format.
+
+        Per FHIR R4 and C-CDA on FHIR IG specifications:
+        - If IVL_TS has both low AND high → effectivePeriod (Period with start and end)
+        - If IVL_TS has only low → effectiveDateTime (single point in time)
+        - If TS (single value) → effectiveDateTime (single point in time)
 
         Args:
             observation: The C-CDA Observation
 
         Returns:
-            FHIR formatted datetime string or None
+            FHIR formatted datetime string (for effectiveDateTime),
+            or dict with start/end (for effectivePeriod),
+            or None
         """
         if not observation.effective_time:
             return None
 
         # Handle IVL_TS (interval)
-        if hasattr(observation.effective_time, "low") and observation.effective_time.low:
-            if hasattr(observation.effective_time.low, "value"):
-                return self.convert_date(observation.effective_time.low.value)
+        if hasattr(observation.effective_time, "low") or hasattr(observation.effective_time, "high"):
+            has_low = hasattr(observation.effective_time, "low") and observation.effective_time.low
+            has_high = hasattr(observation.effective_time, "high") and observation.effective_time.high
+
+            # Case 1: Both low and high present → effectivePeriod
+            if has_low and has_high:
+                period: JSONObject = {}
+
+                # Extract start from low
+                if hasattr(observation.effective_time.low, "value"):
+                    start_date = self.convert_date(observation.effective_time.low.value)
+                    if start_date:
+                        period["start"] = start_date
+
+                # Extract end from high
+                if hasattr(observation.effective_time.high, "value"):
+                    end_date = self.convert_date(observation.effective_time.high.value)
+                    if end_date:
+                        period["end"] = end_date
+
+                # Return period if at least one boundary is present
+                if period:
+                    return period
+
+            # Case 2: Only low present → effectiveDateTime (use start date)
+            elif has_low:
+                if hasattr(observation.effective_time.low, "value"):
+                    return self.convert_date(observation.effective_time.low.value)
 
         # Handle TS (single time point)
         if hasattr(observation.effective_time, "value") and observation.effective_time.value:
@@ -658,21 +707,22 @@ class ObservationConverter(BaseConverter[Observation]):
 
         return {}
 
-    def _convert_reference_range(self, value) -> JSONObject | None:
-        """Convert C-CDA reference range value to FHIR referenceRange.
+    def _convert_reference_range(self, observation_range) -> JSONObject | None:
+        """Convert C-CDA observation range to FHIR referenceRange.
 
         Args:
-            value: The C-CDA reference range value (typically IVL_PQ)
+            observation_range: The C-CDA ObservationRange object
 
         Returns:
             FHIR referenceRange element or None
         """
-        if not value:
+        if not observation_range or not observation_range.value:
             return None
 
         ref_range: JSONObject = {}
 
         # Handle IVL_PQ (interval of physical quantities)
+        value = observation_range.value
         if isinstance(value, IVL_PQ):
             if value.low:
                 low_quantity = self._pq_to_simple_quantity(value.low)
@@ -683,6 +733,13 @@ class ObservationConverter(BaseConverter[Observation]):
                 high_quantity = self._pq_to_simple_quantity(value.high)
                 if high_quantity:
                     ref_range["high"] = high_quantity
+
+        # Add text if present
+        if observation_range.text:
+            # Extract text content from ED (encapsulated data) type
+            # ED.value is aliased from _text in the XML
+            if hasattr(observation_range.text, 'value') and observation_range.text.value:
+                ref_range["text"] = observation_range.text.value
 
         if ref_range:
             return ref_range
@@ -880,6 +937,33 @@ class ObservationConverter(BaseConverter[Observation]):
         if interpretation:
             bp_obs["interpretation"] = interpretation
 
+        # Reference ranges (combine from systolic and diastolic if present)
+        # Per FHIR spec: referenceRange describes normal range for the observation
+        # For BP panel, we include both systolic and diastolic reference ranges
+        reference_ranges = []
+        if "referenceRange" in systolic_obs:
+            for ref_range in systolic_obs["referenceRange"]:
+                # Add context to indicate this is for systolic component
+                ref_range_with_type = ref_range.copy()
+                if "text" in ref_range_with_type:
+                    ref_range_with_type["text"] = f"Systolic: {ref_range_with_type['text']}"
+                else:
+                    ref_range_with_type["text"] = "Systolic blood pressure"
+                reference_ranges.append(ref_range_with_type)
+
+        if "referenceRange" in diastolic_obs:
+            for ref_range in diastolic_obs["referenceRange"]:
+                # Add context to indicate this is for diastolic component
+                ref_range_with_type = ref_range.copy()
+                if "text" in ref_range_with_type:
+                    ref_range_with_type["text"] = f"Diastolic: {ref_range_with_type['text']}"
+                else:
+                    ref_range_with_type["text"] = "Diastolic blood pressure"
+                reference_ranges.append(ref_range_with_type)
+
+        if reference_ranges:
+            bp_obs["referenceRange"] = reference_ranges
+
         # Components
         components = []
 
@@ -968,5 +1052,9 @@ class ObservationConverter(BaseConverter[Observation]):
 
         if components:
             pulse_ox_obs["component"] = components
+
+        # Reference ranges (pulse ox observation already has its own, no need to merge from components)
+        # The main pulse oximetry observation's reference range is preserved from the original convert()
+        # O2 flow and concentration reference ranges are not typically included in FHIR pulse ox panels
 
         return pulse_ox_obs

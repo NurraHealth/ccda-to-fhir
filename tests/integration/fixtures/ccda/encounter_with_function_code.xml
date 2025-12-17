@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<encounter classCode="ENC" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.49" extension="2015-08-01"/>
+  <id root="2a620155-9d11-439e-92b3-5d9815ff4ee3"/>
+  <code code="99213" codeSystem="2.16.840.1.113883.6.12" displayName="Office visit"/>
+  <statusCode code="completed"/>
+  <effectiveTime value="202003151030-0500"/>
+  <performer>
+    <functionCode code="PCP" codeSystem="2.16.840.1.113883.5.88" displayName="Primary Care Provider"/>
+    <assignedEntity>
+      <id root="2.16.840.1.113883.4.6" extension="9876543210"/>
+      <assignedPerson>
+        <name>
+          <given>Adam</given>
+          <family>Careful</family>
+        </name>
+      </assignedPerson>
+    </assignedEntity>
+  </performer>
+</encounter>

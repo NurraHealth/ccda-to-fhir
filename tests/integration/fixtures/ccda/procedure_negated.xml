@@ -1,0 +1,7 @@
+<procedure classCode="PROC" moodCode="EVN" negationInd="true">
+    <templateId root="2.16.840.1.113883.10.20.22.4.14"/>
+    <id root="test-procedure-negated-id"/>
+    <code code="73761001" codeSystem="2.16.840.1.113883.6.96" displayName="Colonoscopy"/>
+    <statusCode code="completed"/>
+    <effectiveTime value="20120806"/>
+</procedure>

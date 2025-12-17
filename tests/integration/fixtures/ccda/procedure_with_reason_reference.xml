@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<procedure classCode="PROC" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.14" extension="2014-06-09"/>
+  <id extension="procedure-reasonref-001" root="1.3.6.1.4.1.22812.3.99"/>
+  <code code="80146002" codeSystem="2.16.840.1.113883.6.96" displayName="Appendectomy"/>
+  <statusCode code="completed"/>
+  <effectiveTime value="20230915103000-0500"/>
+  <performer>
+    <assignedEntity>
+      <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+      <assignedPerson>
+        <name>
+          <given>Jane</given>
+          <family>Surgeon</family>
+        </name>
+      </assignedPerson>
+    </assignedEntity>
+  </performer>
+  <!-- RSON entry relationship with Problem Observation -->
+  <entryRelationship typeCode="RSON">
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01"/>
+      <id root="1.3.6.1.4.1.22812.3.99.1" extension="problem-appendicitis-001"/>
+      <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+      <statusCode code="completed"/>
+      <effectiveTime>
+        <low value="20230910"/>
+      </effectiveTime>
+      <value xsi:type="CD" code="85189001" codeSystem="2.16.840.1.113883.6.96" displayName="Acute appendicitis"/>
+    </observation>
+  </entryRelationship>
+</procedure>

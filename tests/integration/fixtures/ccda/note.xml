@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<act classCode="ACT" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.202" extension="2016-11-01"/>
+  <id root="20cf14fb-b65c-4c8c-a54d-b0cca834c18c"/>
+  <code code="34109-9" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Note">
+    <translation code="11488-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Consultation note"/>
+  </code>
+  <text mediaType="application/rtf" representation="B64">
+    e1xydGYxXGFuc2kgSGVsbG8gd29ybGQhfQ==
+    <reference value="#ConsultNote1"/>
+  </text>
+  <statusCode code="completed"/>
+  <effectiveTime value="20160908"/>
+  <author>
+    <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+    <time value="20160908083215-0500"/>
+    <assignedAuthor>
+      <id root="20cf14fb-b65c-4c8c-a54d-b0cca834c18c"/>
+      <assignedPerson>
+        <name>
+          <prefix>Dr.</prefix>
+          <family>Specialist</family>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <entryRelationship typeCode="COMP">
+    <encounter>
+      <id root="2a620155-9d11-439e-92b3-5d9815ff4de8"/>
+    </encounter>
+  </entryRelationship>
+  <reference typeCode="REFR">
+    <externalDocument>
+      <id root="4dc41c26-43a4-48d9-b17e-067890006b29"/>
+    </externalDocument>
+  </reference>
+</act>

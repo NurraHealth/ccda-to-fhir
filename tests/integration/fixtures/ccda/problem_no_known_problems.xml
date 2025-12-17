@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<act classCode="ACT" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.3" extension="2015-08-01" />
+  <templateId root="2.16.840.1.113883.10.20.22.4.3" />
+  <id extension="no-known-problems-1" root="1.3.6.1.4.1.22812.3.2009316.3.4.1" />
+  <code code="CONC" codeSystem="2.16.840.1.113883.5.6" />
+  <statusCode code="active" />
+  <effectiveTime>
+    <low value="20231215" />
+  </effectiveTime>
+  <entryRelationship typeCode="SUBJ">
+    <observation classCode="OBS" moodCode="EVN" negationInd="true">
+      <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01" />
+      <templateId root="2.16.840.1.113883.10.20.22.4.4" />
+      <id root="1.3.6.1.4.1.22812.3.2009316.3.4.1.2.1" extension="no-known-problems-obs-1"/>
+      <code code="55607006" codeSystem="2.16.840.1.113883.6.96" displayName="Problem">
+        <translation code="75326-9" codeSystem="2.16.840.1.113883.6.1" displayName="Problem" />
+      </code>
+      <statusCode code="completed" />
+      <effectiveTime>
+        <low value="20231215" />
+      </effectiveTime>
+      <value xsi:type="CD" code="55607006" codeSystem="2.16.840.1.113883.6.96" displayName="Problem" />
+    </observation>
+  </entryRelationship>
+</act>

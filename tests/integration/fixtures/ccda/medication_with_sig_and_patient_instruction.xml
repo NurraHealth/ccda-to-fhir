@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="INT" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.16" extension="2014-06-09"/>
+  <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+  <id root="cdbd66f0-6cde-11db-9fe1-0800200c9a88"/>
+  <text>1-2 tabs po q4-6h prn pain</text>
+  <statusCode code="active"/>
+  <effectiveTime xsi:type="IVL_TS">
+    <low value="20200401"/>
+  </effectiveTime>
+  <effectiveTime xsi:type="PIVL_TS" operator="A">
+    <period xsi:type="IVL_PQ">
+      <low value="4" unit="h"/>
+      <high value="6" unit="h"/>
+    </period>
+  </effectiveTime>
+  <routeCode code="C38288" codeSystem="2.16.840.1.113883.3.26.1.1" codeSystemName="NCI Thesaurus" displayName="Oral Route of Administration"/>
+  <doseQuantity xsi:type="IVL_PQ">
+    <low value="1"/>
+    <high value="2"/>
+  </doseQuantity>
+  <administrationUnitCode code="C48542" codeSystem="2.16.840.1.113883.3.26.1.1" codeSystemName="National Cancer Institute (NCI) Thesaurus" displayName="Tablet dosing unit"/>
+  <consumable>
+    <manufacturedProduct classCode="MANU">
+      <templateId root="2.16.840.1.113883.10.20.22.4.23" extension="2014-06-09"/>
+      <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+      <manufacturedMaterial>
+        <code code="857005" codeSystem="2.16.840.1.113883.6.88" codeSystemName="RxNorm" displayName="Acetaminophen 325 MG Oral Tablet"/>
+      </manufacturedMaterial>
+    </manufacturedProduct>
+  </consumable>
+  <author>
+    <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+    <time value="20200401"/>
+    <assignedAuthor>
+      <id extension="987654321" root="2.16.840.1.113883.4.6"/>
+      <assignedPerson>
+        <name>
+          <given>Robert</given>
+          <family>Prescriber</family>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <entryRelationship typeCode="SUBJ" inversionInd="true">
+    <act classCode="ACT" moodCode="INT">
+      <templateId root="2.16.840.1.113883.10.20.22.4.20" extension="2014-06-09"/>
+      <templateId root="2.16.840.1.113883.10.20.22.4.20"/>
+      <code code="409073007" displayName="Instruction" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT"/>
+      <text>Take with food to avoid stomach upset</text>
+      <statusCode code="completed"/>
+    </act>
+  </entryRelationship>
+  <precondition typeCode="PRCN">
+    <criterion>
+      <templateId root="2.16.840.1.113883.10.20.22.4.25" extension="2014-06-09" />
+      <templateId root="2.16.840.1.113883.10.20.22.4.25"/>
+      <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4" />
+      <value xsi:type="CD" code="22253000" codeSystem="2.16.840.1.113883.6.96" displayName="Pain" />
+    </criterion>
+  </precondition>
+</substanceAdministration>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<organizer classCode="CLUSTER" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.26"/>
+  <id extension="vitals-001" root="2.16.840.1.113883.19"/>
+  <code code="46680005" codeSystem="2.16.840.1.113883.6.96" displayName="Vital signs"/>
+  <statusCode code="completed"/>
+  <effectiveTime value="20200315120000-0500"/>
+
+  <!-- Oxygen saturation -->
+  <component>
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+      <id extension="spo2-001" root="2.16.840.1.113883.19"/>
+      <code code="59408-5" displayName="Oxygen saturation in Arterial blood by Pulse oximetry"
+            codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC">
+        <translation code="2708-6" displayName="Oxygen saturation in Arterial blood"
+                     codeSystem="2.16.840.1.113883.6.1"/>
+      </code>
+      <statusCode code="completed"/>
+      <effectiveTime value="20200315120000-0500"/>
+      <value xsi:type="PQ" value="98" unit="%"/>
+    </observation>
+  </component>
+
+  <!-- Oxygen flow rate -->
+  <component>
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+      <id extension="o2flow-001" root="2.16.840.1.113883.19"/>
+      <code code="3151-8" displayName="Inhaled oxygen flow rate"
+            codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"/>
+      <statusCode code="completed"/>
+      <effectiveTime value="20200315120000-0500"/>
+      <value xsi:type="PQ" value="2" unit="L/min"/>
+    </observation>
+  </component>
+</organizer>

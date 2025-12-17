@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<act classCode="ACT" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.30" extension="2015-08-01" />
+  <templateId root="2.16.840.1.113883.10.20.22.4.30" />
+  <id root="1.3.6.1.4.1.22812.3.2009316.3.4.10" extension="allergy-severity-test-001" />
+  <code code="CONC" codeSystem="2.16.840.1.113883.5.6" />
+  <statusCode code="active" />
+  <effectiveTime xsi:type="IVL_TS">
+    <low nullFlavor="NI" />
+  </effectiveTime>
+  <entryRelationship typeCode="SUBJ">
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.7" extension="2014-06-09" />
+      <templateId root="2.16.840.1.113883.10.20.22.4.7" />
+      <id root="1.3.6.1.4.1.22812.3.2009316.3.4.10.2" extension="allergy-severity-test-obs-001" />
+      <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4" />
+      <statusCode code="completed" />
+      <effectiveTime xsi:type="IVL_TS">
+        <low value="20230101" />
+      </effectiveTime>
+      <value xsi:type="CD" code="416098002" codeSystem="2.16.840.1.113883.6.96" displayName="Drug allergy" />
+      <participant typeCode="CSM">
+        <participantRole classCode="MANU">
+          <playingEntity classCode="MMAT">
+            <code code="7980" codeSystem="2.16.840.1.113883.6.88" displayName="Penicillin" />
+          </playingEntity>
+        </participantRole>
+      </participant>
+      <!-- Allergy-level Severity Observation (Scenario A) -->
+      <entryRelationship typeCode="SUBJ" inversionInd="true">
+        <observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.8" extension="2014-06-09" />
+          <templateId root="2.16.840.1.113883.10.20.22.4.8" />
+          <code code="SEV" codeSystem="2.16.840.1.113883.5.4" />
+          <statusCode code="completed" />
+          <value xsi:type="CD" code="6736007" codeSystem="2.16.840.1.113883.6.96" displayName="Moderate" />
+        </observation>
+      </entryRelationship>
+      <!-- First Reaction - no severity specified -->
+      <entryRelationship typeCode="MFST" inversionInd="true">
+        <observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.9" extension="2014-06-09" />
+          <templateId root="2.16.840.1.113883.10.20.22.4.9" />
+          <id nullFlavor="NI" />
+          <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4" />
+          <statusCode code="completed" />
+          <value xsi:type="CD" code="247472004" codeSystem="2.16.840.1.113883.6.96" displayName="Hives" />
+        </observation>
+      </entryRelationship>
+      <!-- Second Reaction - also no severity specified -->
+      <entryRelationship typeCode="MFST" inversionInd="true">
+        <observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.9" extension="2014-06-09" />
+          <templateId root="2.16.840.1.113883.10.20.22.4.9" />
+          <id nullFlavor="NI" />
+          <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4" />
+          <statusCode code="completed" />
+          <value xsi:type="CD" code="271807003" codeSystem="2.16.840.1.113883.6.96" displayName="Rash" />
+        </observation>
+      </entryRelationship>
+    </observation>
+  </entryRelationship>
+</act>

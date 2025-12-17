@@ -161,3 +161,72 @@ class TestObservationRange:
         assert observation["code"]["coding"][0]["code"] == "2339-0"
         assert "effectiveDateTime" in observation
         assert "2012-08-06" in observation["effectiveDateTime"]
+
+    def test_converts_ivl_ts_to_effective_period(self) -> None:
+        """Test that IVL_TS effectiveTime with both low and high converts to effectivePeriod."""
+        with open("tests/integration/fixtures/ccda/observation_effective_period.xml") as f:
+            organizer_xml = f.read()
+
+        ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        # Result Organizer maps to DiagnosticReport
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None, "Result Organizer should map to DiagnosticReport"
+
+        # Observation should be standalone in bundle
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        assert len(observations) > 0
+        observation = observations[0]
+        assert observation["resourceType"] == "Observation"
+
+        # Verify IVL_TS → effectivePeriod conversion
+        assert "effectivePeriod" in observation
+        assert "effectiveDateTime" not in observation
+
+        period = observation["effectivePeriod"]
+        assert "start" in period
+        assert "end" in period
+        assert "2023-11-01T08:00:00" in period["start"]
+        assert "2023-11-02T08:00:00" in period["end"]
+
+    def test_effective_period_with_date_only(self) -> None:
+        """Test that IVL_TS effectiveTime with date-only values converts to effectivePeriod."""
+        with open("tests/integration/fixtures/ccda/observation_effective_period_date_only.xml") as f:
+            organizer_xml = f.read()
+
+        ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        observation = observations[0]
+
+        # Verify IVL_TS → effectivePeriod conversion
+        assert "effectivePeriod" in observation
+        assert "effectiveDateTime" not in observation
+
+        period = observation["effectivePeriod"]
+        assert period["start"] == "2023-11-01"
+        assert period["end"] == "2023-11-02"
+
+    def test_effective_period_preserves_observation_metadata(self) -> None:
+        """Test that using effectivePeriod preserves other observation metadata."""
+        with open("tests/integration/fixtures/ccda/observation_effective_period.xml") as f:
+            organizer_xml = f.read()
+
+        ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        report = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert report is not None
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        observation = observations[0]
+
+        # Verify metadata is preserved
+        assert observation["status"] == "final"
+        assert "code" in observation
+        assert observation["code"]["coding"][0]["code"] == "5811-5"
+        assert "valueQuantity" in observation
+        assert observation["valueQuantity"]["value"] == 1.015

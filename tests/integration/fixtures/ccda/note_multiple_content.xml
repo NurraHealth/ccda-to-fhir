@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section xmlns="urn:hl7-org:v3">
+  <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+  <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+  <text>
+    <paragraph ID="note-content-1">
+      <content styleCode="Bold">Chief Complaint:</content> Patient presents with acute chest pain.
+    </paragraph>
+    <paragraph ID="note-content-2">
+      <content styleCode="Bold">Assessment:</content> Likely stable angina. Patient is hemodynamically stable.
+    </paragraph>
+    <paragraph ID="note-content-3">
+      <content styleCode="Bold">Plan:</content> Order stress test, continue aspirin and statin therapy.
+    </paragraph>
+  </text>
+  <entry>
+    <act classCode="ACT" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.202" extension="2016-11-01"/>
+      <id root="a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d"/>
+      <code code="34109-9" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Note">
+        <translation code="11488-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Consultation note"/>
+      </code>
+      <text mediaType="application/pdf" representation="B64">
+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
+        <reference value="#note-content-1"/>
+      </text>
+      <statusCode code="completed"/>
+      <effectiveTime value="20240315120000-0500"/>
+      <author>
+        <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+        <time value="20240315120000-0500"/>
+        <assignedAuthor>
+          <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+          <assignedPerson>
+            <name>
+              <prefix>Dr.</prefix>
+              <given>Sarah</given>
+              <family>Johnson</family>
+            </name>
+          </assignedPerson>
+        </assignedAuthor>
+      </author>
+    </act>
+  </entry>
+</section>

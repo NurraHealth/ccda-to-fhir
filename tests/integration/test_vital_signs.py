@@ -641,3 +641,134 @@ class TestVitalSignsConversion:
 
         # Verify interpretation field is not present
         assert "interpretation" not in hr_obs, "Observation should not have interpretation field when interpretationCode is absent"
+
+    def test_converts_reference_range_individual_vital_sign(self) -> None:
+        """Test that referenceRange is converted for individual vital sign observations."""
+        # Load fixture with heart rate with reference range
+        with open("tests/integration/fixtures/ccda/vital_signs_hr_with_reference_range.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find heart rate observation
+        hr_obs = _find_observation_by_code(bundle, "8867-4")
+        assert hr_obs is not None, "Heart rate observation should be found"
+
+        # Verify referenceRange field exists
+        assert "referenceRange" in hr_obs, "Observation should have referenceRange field"
+        ref_ranges = hr_obs["referenceRange"]
+
+        # Verify referenceRange is an array
+        assert isinstance(ref_ranges, list), "referenceRange should be an array"
+        assert len(ref_ranges) > 0, "referenceRange should have at least one element"
+
+        # Verify first reference range has low and high values
+        ref_range = ref_ranges[0]
+        assert "low" in ref_range, "referenceRange should have low value"
+        assert "high" in ref_range, "referenceRange should have high value"
+
+        # Verify low value
+        assert ref_range["low"]["value"] == 60, "Reference range low value should be 60"
+        assert ref_range["low"]["unit"] == "/min", "Reference range low unit should be /min"
+        assert ref_range["low"]["system"] == "http://unitsofmeasure.org", "Reference range should use UCUM system"
+
+        # Verify high value
+        assert ref_range["high"]["value"] == 100, "Reference range high value should be 100"
+        assert ref_range["high"]["unit"] == "/min", "Reference range high unit should be /min"
+
+        # Verify text if present
+        assert "text" in ref_range, "referenceRange should have text field"
+        assert "Normal heart rate range" in ref_range["text"], "referenceRange text should be preserved"
+
+    def test_converts_reference_range_blood_pressure_panel(self) -> None:
+        """Test that referenceRange is converted and combined for blood pressure panel observations."""
+        # Load fixture with blood pressure with reference ranges
+        with open("tests/integration/fixtures/ccda/vital_signs_bp_with_reference_ranges.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find combined blood pressure observation (should combine systolic/diastolic)
+        bp_obs = _find_observation_by_code(bundle, "85354-9")
+        assert bp_obs is not None, "Blood pressure observation should be found"
+
+        # Verify referenceRange field exists
+        assert "referenceRange" in bp_obs, "Blood pressure observation should have referenceRange field"
+        ref_ranges = bp_obs["referenceRange"]
+
+        # Verify referenceRange is an array with two elements (systolic and diastolic)
+        assert isinstance(ref_ranges, list), "referenceRange should be an array"
+        assert len(ref_ranges) == 2, "referenceRange should have two elements (systolic and diastolic)"
+
+        # Verify systolic reference range (first element)
+        systolic_ref = ref_ranges[0]
+        assert "low" in systolic_ref, "Systolic referenceRange should have low value"
+        assert "high" in systolic_ref, "Systolic referenceRange should have high value"
+        assert systolic_ref["low"]["value"] == 90, "Systolic reference range low should be 90"
+        assert systolic_ref["high"]["value"] == 120, "Systolic reference range high should be 120"
+        assert "text" in systolic_ref, "Systolic referenceRange should have text field"
+        assert "Systolic" in systolic_ref["text"], "Systolic referenceRange text should indicate systolic"
+
+        # Verify diastolic reference range (second element)
+        diastolic_ref = ref_ranges[1]
+        assert "low" in diastolic_ref, "Diastolic referenceRange should have low value"
+        assert "high" in diastolic_ref, "Diastolic referenceRange should have high value"
+        assert diastolic_ref["low"]["value"] == 60, "Diastolic reference range low should be 60"
+        assert diastolic_ref["high"]["value"] == 80, "Diastolic reference range high should be 80"
+        assert "text" in diastolic_ref, "Diastolic referenceRange should have text field"
+        assert "Diastolic" in diastolic_ref["text"], "Diastolic referenceRange text should indicate diastolic"
+
+    def test_reference_range_not_present_when_absent(self) -> None:
+        """Test that referenceRange field is not present when reference range is absent in C-CDA."""
+        # Use existing fixture without reference ranges
+        with open("tests/integration/fixtures/ccda/vital_signs.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find heart rate observation (no reference range in this fixture)
+        hr_obs = _find_observation_by_code(bundle, "8867-4")
+        assert hr_obs is not None, "Heart rate observation should be found"
+
+        # Verify referenceRange field is not present
+        assert "referenceRange" not in hr_obs, "Observation should not have referenceRange field when absent in C-CDA"
+
+        # Find blood pressure observation (no reference range in this fixture)
+        bp_obs = _find_observation_by_code(bundle, "85354-9")
+        assert bp_obs is not None, "Blood pressure observation should be found"
+
+        # Verify referenceRange field is not present in combined BP observation
+        assert "referenceRange" not in bp_obs, "Blood pressure observation should not have referenceRange field when absent in C-CDA"
+
+    def test_reference_range_filters_for_normal_interpretation_code_only(self) -> None:
+        """Test that only reference ranges with interpretationCode='N' are included per C-CDA on FHIR IG."""
+        # Load fixture with multiple reference ranges (Normal, High, Low)
+        with open("tests/integration/fixtures/ccda/vital_signs_hr_with_multiple_reference_ranges.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find heart rate observation
+        hr_obs = _find_observation_by_code(bundle, "8867-4")
+        assert hr_obs is not None, "Heart rate observation should be found"
+
+        # Verify referenceRange field exists
+        assert "referenceRange" in hr_obs, "Observation should have referenceRange field"
+        ref_ranges = hr_obs["referenceRange"]
+
+        # Per C-CDA on FHIR IG: Only normal ranges (interpretationCode="N") should be included
+        # The fixture has 3 ranges (N, H, L) but only the Normal one should be mapped
+        assert len(ref_ranges) == 1, "Should only include one reference range (Normal interpretation code)"
+
+        # Verify it's the normal range (60-100)
+        ref_range = ref_ranges[0]
+        assert ref_range["low"]["value"] == 60, "Should be the normal range with low=60"
+        assert ref_range["high"]["value"] == 100, "Should be the normal range with high=100"
+        assert "Normal heart rate range" in ref_range["text"], "Should be the normal range text"
+
+        # Verify the high and low ranges were excluded
+        # (If they were included, we'd have 3 ranges instead of 1)

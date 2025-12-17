@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<encounter classCode="ENC" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.49" extension="2015-08-01"/>
+  <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+  <id root="2a620155-9d11-439e-92b3-5d9815ff4de8"/>
+  <code code="99213" displayName="Office outpatient visit 15 minutes" codeSystemName="CPT" codeSystem="2.16.840.1.113883.6.12" codeSystemVersion="4">
+    <originalText>
+      <reference value="#Encounter1_type"/>
+    </originalText>
+  </code>
+  <text>
+    <reference value="#Encounter1"/>
+  </text>
+  <effectiveTime value="201208151000-0800"/>
+  <performer>
+    <assignedEntity>
+      <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+      <assignedPerson>
+        <name>
+          <given>John</given>
+          <family>Smith</family>
+        </name>
+      </assignedPerson>
+    </assignedEntity>
+  </performer>
+  <author>
+    <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+    <time value="20121015093000-0500"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+      <assignedPerson>
+        <name>
+          <given>Emily</given>
+          <family>Recorder</family>
+          <suffix>MD</suffix>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+</encounter>

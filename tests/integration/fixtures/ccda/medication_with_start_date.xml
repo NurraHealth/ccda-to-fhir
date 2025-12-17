@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="INT" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.16" extension="2014-06-09"/>
+  <id root="medication-start-only-001"/>
+  <statusCode code="active"/>
+  <!-- IVL_TS with only start date -->
+  <effectiveTime xsi:type="IVL_TS">
+    <low value="20200115"/>
+  </effectiveTime>
+  <routeCode code="C38288" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="Oral"/>
+  <doseQuantity value="1"/>
+  <consumable>
+    <manufacturedProduct classCode="MANU">
+      <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+      <manufacturedMaterial>
+        <code code="197361" codeSystem="2.16.840.1.113883.6.88" displayName="Lisinopril 10 MG Oral Tablet"/>
+      </manufacturedMaterial>
+    </manufacturedProduct>
+  </consumable>
+  <author>
+    <time value="20200115"/>
+    <assignedAuthor>
+      <id extension="DOC-001" root="2.16.840.1.113883.4.6"/>
+      <assignedPerson>
+        <name>
+          <given>John</given>
+          <family>Prescriber</family>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+</substanceAdministration>
