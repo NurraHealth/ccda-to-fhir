@@ -113,7 +113,7 @@ class TestMedicationConversion:
 
     def test_converts_max_dose(
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
-        """Test that max dose is correctly converted."""
+        """Test that max dose is correctly converted to FHIR Ratio with complete Quantity structure."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)
 
@@ -121,7 +121,18 @@ class TestMedicationConversion:
         assert med_request is not None
         assert "dosageInstruction" in med_request
         max_dose = med_request["dosageInstruction"][0]["maxDosePerPeriod"]
+
+        # Verify numerator structure (6 {spray})
         assert max_dose["numerator"]["value"] == 6
+        assert max_dose["numerator"]["unit"] == "{spray}"
+        assert max_dose["numerator"]["system"] == "http://unitsofmeasure.org"
+        assert max_dose["numerator"]["code"] == "{spray}"
+
+        # Verify denominator structure (1 {day})
+        assert max_dose["denominator"]["value"] == 1
+        assert max_dose["denominator"]["unit"] == "{day}"
+        assert max_dose["denominator"]["system"] == "http://unitsofmeasure.org"
+        assert max_dose["denominator"]["code"] == "{day}"
 
     def test_converts_as_needed(
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:

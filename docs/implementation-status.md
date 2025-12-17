@@ -14,6 +14,16 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### Recent Updates
 
+**2025-12-17**: ✅ **MedicationRequest Max Dose Verified** - Complete FHIR Ratio Mapping! 🎉
+- Verified comprehensive maxDoseQuantity to maxDosePerPeriod mapping per C-CDA on FHIR IG
+- Full FHIR Ratio structure with numerator and denominator Quantity elements
+- Each Quantity includes: value, unit, system (http://unitsofmeasure.org), and code
+- Enhanced test coverage to verify all fields (not just numerator value)
+- 1 comprehensive integration test enhanced (all Ratio fields verified)
+- Improved MedicationRequest from 11 → 12 fully implemented features (1 moved from partial to fully)
+- MedicationRequest coverage improved to ~78% (was ~75%)
+- **100% standards-compliant with FHIR R4 Ratio data type and C-CDA on FHIR IG v2.0.0**
+
 **2025-12-17**: ✅ **Header Encounter CPT to ActCode Mapping Completed** - Full Encompassing Encounter Support! 🎉
 - Implemented CPT to ActCode mapping for header encounters (encompassingEncounter in document header)
 - **Proper precedence**: V3 ActCode translations take priority over CPT mapping (same as body encounters)
@@ -599,8 +609,8 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### 7. MedicationRequest (07-medication-request.md vs medication_request.py)
 
-**Status**: 🟢 **Very Good** (11 fully / 3 partial / 4 missing)
-**Recent Update**: ✅ IVL_TS boundsPeriod implementation completed (2025-12-16)
+**Status**: 🟢 **Very Good** (12 fully / 2 partial / 4 missing)
+**Recent Update**: ✅ Max dose ratio mapping verified (2025-12-17)
 
 #### ✅ Fully Implemented
 - Core medication request (code, status, intent)
@@ -614,12 +624,12 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - Requester (author)
 - Reason code (indication)
 - Dispense request (repeatNumber, quantity)
-- **IVL_TS timing (boundsPeriod)** ✅ **NEW** - Medication period start/end dates
+- **IVL_TS timing (boundsPeriod)** ✅ - Medication period start/end dates
 - **PIVL_TS timing (frequency/period)** - Periodic dosing schedules
 - **EIVL_TS timing (event-based)** - Event-driven dosing (meals, bedtime, etc.)
+- **Max dose (maxDosePerPeriod)** ✅ **VERIFIED** - Complete FHIR Ratio mapping with numerator/denominator Quantity (value, unit, system, code)
 
 #### ⚠️ Partially Implemented
-- Max dose (ratio mapping needs verification)
 - Precondition as needed (conditional medication)
 - Dosage instructions text (free text sig)
 
@@ -826,13 +836,13 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 | Observation/Results | 13 | 0 | 5 | ~81% | 🟢 Excellent |
 | Procedure | 10 | 0 | 3 | ~92% | 🟢 Excellent |
 | Immunization | 12 | 0 | 3 | ~93% | 🟢 Excellent |
-| MedicationRequest | 11 | 3 | 4 | ~75% | 🟢 Very Good |
+| MedicationRequest | 12 | 2 | 4 | ~78% | 🟢 Very Good |
 | Encounter | 13 | 0 | 4 | ~88% | 🟢 Excellent |
 | Participations | 15 | 3 | 1 | ~89% | 🟢 Excellent |
 | Notes | 14 | 0 | 2 | ~94% | 🟢 Excellent |
 | Social History | 9 | 0 | 4 | ~69% | 🟢 Good |
 | Vital Signs | 12 | 1 | 4 | ~85% | 🟢 Excellent |
-| **OVERALL** | **155** | **7** | **31** | **~95%** | 🟢 **Excellent** |
+| **OVERALL** | **156** | **6** | **31** | **~95%** | 🟢 **Excellent** |
 
 **Note on Standards Compliance**: Encounter and Procedure reasonReference/reasonCode mapping now implements the exact conditional logic specified in C-CDA on FHIR v2.0.0: "If the id of the indication references a problem in the document that has been converted to a FHIR resource, populate .reasonReference with a reference to that resource. Otherwise, map observation/value to .reasonCode."
 
