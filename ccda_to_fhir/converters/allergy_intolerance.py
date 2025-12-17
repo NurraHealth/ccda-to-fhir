@@ -146,8 +146,33 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         if criticality:
             allergy["criticality"] = criticality
 
-        # Code (allergen or negated concept)
-        if is_no_known_allergy:
+        # Code (allergen, negated concept, or substanceExposureRisk extension)
+        # Per FHIR spec: substanceExposureRisk extension is used when documenting
+        # "no known allergy" to a SPECIFIC substance without a pre-coordinated negated code
+        if is_no_known_allergy and self._should_use_substance_exposure_risk(observation):
+            # Use substanceExposureRisk extension for specific substance
+            # Per FHIR constraint: code SHALL be omitted when using this extension
+            substance_code = self._extract_allergen_code(observation)
+            allergy.setdefault("extension", []).append({
+                "url": "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk",
+                "extension": [
+                    {
+                        "url": "substance",
+                        "valueCodeableConcept": substance_code,
+                    },
+                    {
+                        "url": "exposureRisk",
+                        "valueCodeableConcept": {
+                            "coding": [{
+                                "system": "http://terminology.hl7.org/CodeSystem/allerg-intol-substance-exp-risk",
+                                "code": "no-known-reaction-risk",
+                                "display": "No Known Reaction Risk",
+                            }]
+                        },
+                    },
+                ]
+            })
+        elif is_no_known_allergy:
             # Use negated concept code based on allergy type
             allergy["code"] = self._get_no_known_allergy_code(observation)
         else:
@@ -255,9 +280,9 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
     def _is_no_known_allergy(self, observation: Observation) -> bool:
         """Check if this is a "no known allergy" observation.
 
-        A no known allergy has:
-        - negationInd = true
-        - participant with nullFlavor (typically "NA")
+        A no known allergy has negationInd = true and either:
+        - Pattern A: participant with nullFlavor (typically "NA") - general "no known"
+        - Pattern B: participant with specific substance code - specific "no known X"
 
         Args:
             observation: The Allergy Intolerance Observation
@@ -268,14 +293,41 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         if not observation.negation_ind:
             return False
 
-        # Check if participant has nullFlavor
-        if observation.participant:
-            for participant in observation.participant:
-                if participant.type_code == TypeCodes.CONSUMABLE and participant.participant_role:
-                    playing_entity = participant.participant_role.playing_entity
-                    if playing_entity and playing_entity.code:
-                        if playing_entity.code.null_flavor:
-                            return True
+        # If we have a participant, it's a "no known" case
+        # (either with nullFlavor or specific substance)
+        return bool(observation.participant)
+
+    def _should_use_substance_exposure_risk(self, observation: Observation) -> bool:
+        """Check if substanceExposureRisk extension should be used.
+
+        Per FHIR spec and C-CDA on FHIR IG, use substanceExposureRisk extension when:
+        - negationInd = true (documenting "no known allergy")
+        - participant has a SPECIFIC substance code (not nullFlavor)
+        - no pre-coordinated negated concept code exists for that substance
+
+        This enables documenting "no known allergy to penicillin" where no
+        SNOMED code like "no known penicillin allergy" exists.
+
+        Args:
+            observation: The Allergy Intolerance Observation
+
+        Returns:
+            True if substanceExposureRisk extension should be used
+        """
+        if not observation.negation_ind or not observation.participant:
+            return False
+
+        # Check if participant has a specific substance code (not nullFlavor)
+        for participant in observation.participant:
+            if participant.type_code == TypeCodes.CONSUMABLE and participant.participant_role:
+                playing_entity = participant.participant_role.playing_entity
+                if playing_entity and playing_entity.code:
+                    # If code has a nullFlavor, this is Pattern A (use negated concept)
+                    if playing_entity.code.null_flavor:
+                        return False
+                    # If code has an actual value, this is Pattern B (use extension)
+                    if playing_entity.code.code:
+                        return True
         return False
 
     def _get_no_known_allergy_code(self, observation: Observation) -> FHIRResourceDict:

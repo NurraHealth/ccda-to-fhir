@@ -375,9 +375,9 @@ When the allergy has resolved, `effectiveTime/high` maps to an extension:
         "url": "exposureRisk",
         "valueCodeableConcept": {
           "coding": [{
-            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-            "code": "NKNOWN",
-            "display": "No Known Exposure"
+            "system": "http://terminology.hl7.org/CodeSystem/allerg-intol-substance-exp-risk",
+            "code": "no-known-reaction-risk",
+            "display": "No Known Reaction Risk"
           }]
         }
       }
