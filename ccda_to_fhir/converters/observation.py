@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
-from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, IVL_PQ, PQ, ST
+from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, ED, IVL_PQ, PQ, ST
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.ccda.models.organizer import Organizer
 from ccda_to_fhir.constants import (
@@ -624,6 +624,10 @@ class ObservationConverter(BaseConverter[Observation]):
             elif hasattr(observation.value, "value") and observation.value.value:
                 return {"valueString": observation.value.value}
 
+        # Handle ED (Encapsulated Data) → extension with valueAttachment
+        if isinstance(observation.value, ED):
+            return self._convert_ed_to_value_attachment(observation.value)
+
         # Handle other types as needed (INT, REAL, BL, etc.)
         # For now, return None for unsupported types
         return None
@@ -706,6 +710,75 @@ class ObservationConverter(BaseConverter[Observation]):
                 return {"valueQuantity": quantity}
 
         return {}
+
+    def _convert_ed_to_value_attachment(self, ed: ED) -> JSONObject:
+        """Convert C-CDA ED to FHIR valueAttachment extension.
+
+        FHIR R4 does not support valueAttachment as a value[x] type. This was added in R5.
+        To represent ED type observations in R4, we use the R5 backport extension.
+
+        Per C-CDA on FHIR IG:
+        - ED (Encapsulated Data) → extension with valueAttachment
+        - Extension URL: http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value
+
+        Args:
+            ed: The C-CDA Encapsulated Data
+
+        Returns:
+            Dictionary with extension containing valueAttachment
+
+        References:
+            - https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-results.html
+            - https://build.fhir.org/ig/HL7/CDA-core-2.0/StructureDefinition-ED.html
+        """
+        import base64
+
+        attachment: JSONObject = {}
+
+        # Content type from mediaType attribute (required if data present)
+        if hasattr(ed, "media_type") and ed.media_type:
+            attachment["contentType"] = ed.media_type
+        else:
+            # Default to application/octet-stream for binary data
+            attachment["contentType"] = "application/octet-stream"
+
+        # Language
+        if hasattr(ed, "language") and ed.language:
+            attachment["language"] = ed.language
+
+        # Data - base64 encoded content
+        # In C-CDA, ED can have:
+        # 1. Base64 encoded data (representation="B64")
+        # 2. Plain text content
+        # Note: ED model stores text in 'value' attribute
+        has_data = False
+        if hasattr(ed, "representation") and ed.representation == "B64":
+            # Already base64 encoded
+            if hasattr(ed, "value") and ed.value:
+                # Remove whitespace from base64 data
+                attachment["data"] = ed.value.replace("\n", "").replace(" ", "").strip()
+                has_data = True
+        elif hasattr(ed, "value") and ed.value:
+            # Plain text or other content - need to base64 encode it
+            text_bytes = ed.value.encode("utf-8")
+            attachment["data"] = base64.b64encode(text_bytes).decode("ascii")
+            has_data = True
+
+        # Only create extension if we have data
+        if not has_data:
+            return {}
+
+        # Create extension with R5 backport URL
+        extension = {
+            "extension": [
+                {
+                    "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value",
+                    "valueAttachment": attachment,
+                }
+            ]
+        }
+
+        return extension
 
     def _convert_reference_range(self, observation_range) -> JSONObject | None:
         """Convert C-CDA observation range to FHIR referenceRange.

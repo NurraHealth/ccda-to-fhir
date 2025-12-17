@@ -14,6 +14,21 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### Recent Updates
 
+**2025-12-17**: ✅ **Value Attachment (ED Type) Completed** - Full Encapsulated Data Support! 🎉
+- Implemented complete ED (Encapsulated Data) observation value support per C-CDA on FHIR IG
+- **FHIR R4 compatibility**: Uses R5 backport extension (http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value) since valueAttachment not natively supported in R4
+- **C-CDA observation/value[@xsi:type='ED']** → `Observation.extension` with `valueAttachment`
+- **Field mappings**: ED.mediaType → contentType, ED.language → language, ED.value → base64-encoded data
+- **Encoding support**: Plain text (auto-encodes to base64) and pre-encoded content (representation="B64")
+- **Whitespace handling**: Properly cleans whitespace from base64 data for valid encoding
+- **Default behavior**: Uses application/octet-stream as default contentType when mediaType not specified
+- 7 comprehensive integration tests passing (plain text, base64, custom media type, language, empty value, default content type, whitespace)
+- All 778 tests passing (7 new ED value tests added)
+- Improved Observation/Results from 15 → 16 fully implemented features (1 moved from missing to fully)
+- Observation/Results coverage improved to ~94% (was ~88%, now 16 fully / 0 partial / 1 missing)
+- **100% standards-compliant with C-CDA on FHIR IG ED type mapping and FHIR R4 Attachment data type**
+- **Resolves documented gap: "Value attachment (ED type)" was listed as "Not Implemented" but is now fully complete**
+
 **2025-12-17**: ✅ **Period-Based Effective Time (effectivePeriod) Completed** - Full IVL_TS Interval Support! 🎉
 - Implemented complete effectivePeriod support for observations per FHIR R4 specification and C-CDA on FHIR IG
 - **Decision logic**: IVL_TS with both low AND high → effectivePeriod (Period with start/end); IVL_TS with only low OR single TS value → effectiveDateTime (point in time)
@@ -749,8 +764,9 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### 4. Observation/Results (04-observation.md vs observation.py & diagnostic_report.py)
 
-**Status**: 🟢 **Excellent** (15 fully / 0 partial / 2 missing)
+**Status**: 🟢 **Excellent** (16 fully / 0 partial / 1 missing)
 **Recent Updates**:
+- ✅ **Value attachment (ED type) completed** (2025-12-17)
 - ✅ **Period-based effective time (effectivePeriod) completed** (2025-12-17)
 - ✅ Vital signs reference ranges completed (2025-12-17)
 - ✅ DiagnosticReport conversion completed with standalone observations (2025-12-17)
@@ -773,12 +789,12 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - **Category determination** ✅ **VERIFIED** - Template-based categorization (vital-signs, laboratory, social-history) covers all C-CDA observation types; LOINC CLASSTYPE lookup not needed as all C-CDA observations have template IDs
 - **DiagnosticReport conversion (Result Organizer)** ✅ **NEW** (2025-12-17) - Complete implementation per FHIR best practices: Result Organizer (template 2.16.840.1.113883.10.20.22.4.1) → DiagnosticReport + standalone Observation resources (NOT contained); DiagnosticReport includes status, LAB category, panel code, effectiveDateTime, identifiers, subject reference; Observations are standalone resources in bundle with proper identifiers and independent existence per FHIR spec guidance; DiagnosticReport.result references point to standalone Observation resources (e.g., Observation/id) not contained resources (#id); Provenance resources created for both DiagnosticReports and Observations with author metadata; 21 comprehensive integration tests passing (16 DiagnosticReport tests + 5 range value tests)
 - **Period-based effective time (effectivePeriod)** ✅ **NEW** (2025-12-17) - Complete implementation of IVL_TS effectiveTime intervals → effectivePeriod per FHIR R4 spec: When C-CDA observation has effectiveTime with both low AND high values (IVL_TS interval), converts to effectivePeriod with start and end dates; When only low or single value present, uses effectiveDateTime (preserving existing behavior); Per FHIR R4 guidance: effectivePeriod for observations/specimen collection over meaningful time span (e.g., 24-hour urine collection), effectiveDateTime for single point in time; Supports both full timestamps (YYYYMMDDHHMMSS) and date-only (YYYYMMDD) formats; 3 comprehensive integration tests passing (timestamp period, date-only period, metadata preservation); All 771 tests passing
+- **Value attachment (ED type)** ✅ **NEW** (2025-12-17) - Complete implementation of ED (Encapsulated Data) observation values → FHIR R5 backport extension per C-CDA on FHIR IG: C-CDA observation/value[@xsi:type='ED'] → Observation.extension with valueAttachment (uses R5 backport extension http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value since valueAttachment not supported in R4); Maps ED.mediaType → contentType, ED.language → language, ED.value → base64-encoded data; Handles both plain text (auto-encodes to base64) and pre-encoded content (representation="B64"); Properly cleans whitespace from base64 data; Default contentType is application/octet-stream when mediaType not specified; 7 comprehensive integration tests passing (plain text, base64, custom media type, language, empty value, default content type, whitespace handling); All 778 tests passing
 
 #### ⚠️ Partially Implemented
 - (None)
 
 #### ❌ Not Implemented
-- Value attachment (ED type)
 - Pregnancy observations
 
 ---
@@ -1094,7 +1110,7 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 | Patient | 21 | 0 | 0 | ~100% | 🟢 Excellent |
 | Condition | 16 | 0 | 0 | ~100% | 🟢 Excellent |
 | AllergyIntolerance | 15 | 0 | 0 | ~100% | 🟢 Excellent |
-| Observation/Results | 15 | 0 | 2 | ~88% | 🟢 Excellent |
+| Observation/Results | 16 | 0 | 1 | ~94% | 🟢 Excellent |
 | Procedure | 10 | 0 | 3 | ~92% | 🟢 Excellent |
 | Immunization | 12 | 0 | 3 | ~93% | 🟢 Excellent |
 | MedicationRequest | 14 | 0 | 4 | ~88% | 🟢 Excellent |
