@@ -64,10 +64,20 @@ from .models import (
     ManufacturedProduct,  # Needed for forward reference resolution
 )
 from .models.observation import EntryRelationship
-from .models.section import Entry
+from .models.section import Entry, Section
 from .models.organizer import OrganizerComponent
 from .models.author import AssignedAuthoringDevice
 from .models.clinical_document import HealthCareFacility
+from .models.struc_doc import (
+    Paragraph,
+    Content,
+    List,
+    ListItem,
+    Table,
+    TableHeaderCell,
+    TableDataCell,
+    StrucDocText,
+)
 
 # Trigger rebuilds in correct order (dependencies first)
 # These models have forward references that are now available
@@ -76,6 +86,17 @@ Entry.model_rebuild()
 OrganizerComponent.model_rebuild()
 AssignedAuthoringDevice.model_rebuild()
 HealthCareFacility.model_rebuild()
+
+# Rebuild StrucDocText models (have circular references)
+Paragraph.model_rebuild()
+Content.model_rebuild()
+ListItem.model_rebuild()
+TableHeaderCell.model_rebuild()
+TableDataCell.model_rebuild()
+StrucDocText.model_rebuild()
+
+# Rebuild Section (now references StrucDocText)
+Section.model_rebuild()
 
 # Rebuild clinical statement models that use EntryRelationship
 Observation.model_rebuild()
@@ -203,6 +224,13 @@ def _to_snake_case(name: str) -> str:
     return "".join(result)
 
 
+def _to_camel_case(name: str) -> str:
+    """Convert snake_case to camelCase."""
+    parts = name.split('_')
+    # First part stays lowercase, rest get capitalized
+    return parts[0] + ''.join(word.capitalize() for word in parts[1:])
+
+
 def _parse_typed_value(element: etree._Element) -> Any:
     """Parse an element with xsi:type attribute.
 
@@ -239,7 +267,9 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
     data.update(_parse_attributes(element))
 
     # 2. Track child elements by name for aggregation
+    # Also preserve the original order of all children for tail text processing
     child_elements: dict[str, list[etree._Element]] = {}
+    all_children: list[etree._Element] = []
 
     for child in element:
         # Skip comments and processing instructions
@@ -256,6 +286,7 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
         if tag not in child_elements:
             child_elements[tag] = []
         child_elements[tag].append(child)
+        all_children.append(child)
 
     # 3. Parse child elements
     # We need to know which fields are lists vs single values
@@ -294,13 +325,45 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
                     data[field_name] = parsed
 
     # 4. Handle text content
+    # Only capture text before first child element (not tail text)
     if element.text and element.text.strip():
-        # Store text content in the data dict
         data["_text"] = element.text.strip()
 
     # 5. Create model instance
     try:
-        return model_class.model_validate(data)
+        instance = model_class.model_validate(data)
+
+        # 6. Populate tail_text for child elements (AFTER model creation)
+        # This preserves mixed content order by capturing text after each element
+        for field_name in model_fields:
+            if not hasattr(instance, field_name):
+                continue
+
+            field_value = getattr(instance, field_name)
+            if field_value is None:
+                continue
+
+            # Handle list fields (multiple child elements)
+            if isinstance(field_value, list):
+                field_tag = _to_camel_case(field_name)
+                if field_tag in child_elements:
+                    xml_children = child_elements[field_tag]
+                    # Match parsed models with their XML elements by index
+                    for parsed_item, xml_child in zip(field_value, xml_children):
+                        if hasattr(parsed_item, 'tail_text') and hasattr(xml_child, 'tail') and xml_child.tail:
+                            if xml_child.tail.strip():
+                                parsed_item.tail_text = xml_child.tail.strip()
+
+            # Handle single-value fields
+            elif hasattr(field_value, '__dict__'):
+                field_tag = _to_camel_case(field_name)
+                if field_tag in child_elements and child_elements[field_tag]:
+                    xml_child = child_elements[field_tag][0]
+                    if hasattr(field_value, 'tail_text') and hasattr(xml_child, 'tail') and xml_child.tail:
+                        if xml_child.tail.strip():
+                            field_value.tail_text = xml_child.tail.strip()
+
+        return instance
     except Exception as e:
         raise MalformedXMLError(
             f"Failed to parse {model_class.__name__} from element {_strip_namespace(element.tag)}: {e}"

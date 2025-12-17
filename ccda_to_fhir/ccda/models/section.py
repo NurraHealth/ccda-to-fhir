@@ -15,6 +15,7 @@ from pydantic import Field
 from .author import Author
 from .datatypes import AD, CE, CS, ED, II, PN, TEL, TS, CDAModel
 from .performer import AssignedEntity
+from .struc_doc import StrucDocText
 
 if TYPE_CHECKING:
     from .act import Act
@@ -165,8 +166,10 @@ class Section(CDAModel):
     # Section title (human-readable heading)
     title: str | None = None
 
-    # Narrative text (XHTML content)
-    text: ED | None = None
+    # Narrative text (StrucDocText narrative content)
+    # Note: This is StrucDocText, not ED. ED is for binary content in nonXMLBody.
+    # StrucDocText is the structured narrative type for section bodies.
+    text: StrucDocText | None = None
 
     # Confidentiality code
     confidentiality_code: CE | None = Field(default=None, alias="confidentialityCode")

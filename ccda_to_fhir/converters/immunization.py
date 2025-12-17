@@ -32,14 +32,17 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         """Initialize the immunization converter."""
         super().__init__(*args, **kwargs)
 
-    def convert(self, substance_admin: SubstanceAdministration) -> FHIRResourceDict:
-        """Convert a C-CDA Immunization Activity to a FHIR Immunization.
+    def convert(self, substance_admin: SubstanceAdministration, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
+        """Convert a C-CDA Immunization Activity to FHIR resources.
 
         Args:
             substance_admin: The C-CDA SubstanceAdministration (Immunization Activity)
+            section: The C-CDA Section containing this immunization (for narrative)
 
         Returns:
-            FHIR Immunization resource as a dictionary
+            Tuple of (immunization, reaction_observations):
+            - immunization: FHIR Immunization resource
+            - reaction_observations: List of FHIR Observation resources for reactions
 
         Raises:
             ValueError: If the substance administration lacks required data
@@ -53,11 +56,19 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         }
 
         # 1. Generate ID from substance administration identifier
+        immunization_id = None
         if substance_admin.id and len(substance_admin.id) > 0:
             first_id = substance_admin.id[0]
-            immunization["id"] = self._generate_immunization_id(
+            immunization_id = self._generate_immunization_id(
                 first_id.root, first_id.extension
             )
+            immunization["id"] = immunization_id
+
+        # Default ID if not available
+        if not immunization_id:
+            import uuid
+            immunization_id = f"immunization-{uuid.uuid4()}"
+            immunization["id"] = immunization_id
 
         # 2. Identifiers
         if substance_admin.id:
@@ -129,7 +140,8 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             immunization["protocolApplied"] = protocol_applied
 
         # 14. Reactions - from reaction (MFST) entryRelationship
-        reactions = self._extract_reactions(substance_admin)
+        # Returns both reaction objects (with references) and Observation resources
+        reactions, reaction_observations = self._extract_reactions(substance_admin, immunization_id)
         if reactions:
             immunization["reaction"] = reactions
 
@@ -138,10 +150,23 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if performers:
             immunization["performer"] = performers
 
-        # Set primary source to true (default for recorded immunizations)
-        immunization["primarySource"] = True
+        # C-CDA does not have a direct equivalent for primarySource
+        # Use data-absent-reason extension per C-CDA on FHIR IG guidance
+        immunization["_primarySource"] = {
+            "extension": [
+                {
+                    "url": FHIRSystems.DATA_ABSENT_REASON,
+                    "valueCode": "unsupported",
+                }
+            ]
+        }
 
-        return immunization
+        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        narrative = self._generate_narrative(entry=substance_admin, section=section)
+        if narrative:
+            immunization["text"] = narrative
+
+        return immunization, reaction_observations
 
     def _generate_immunization_id(self, root: str | None, extension: str | None) -> str:
         """Generate a FHIR Immunization ID from C-CDA identifier.
@@ -442,43 +467,103 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         return []
 
-    def _extract_reactions(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
+    def _extract_reactions(self, substance_admin: SubstanceAdministration, immunization_id: str) -> tuple[list[JSONObject], list[JSONObject]]:
         """Extract reaction observations from entry relationships.
+
+        Creates separate Observation resources for reactions and references them
+        from the Immunization resource per FHIR R4 spec and C-CDA on FHIR IG.
 
         Args:
             substance_admin: The C-CDA SubstanceAdministration
+            immunization_id: The ID of the parent Immunization resource
 
         Returns:
-            List of reaction objects
+            Tuple of (reactions, observation_resources):
+            - reactions: List of reaction objects with detail references
+            - observation_resources: List of created Observation resources
         """
         reactions = []
+        observation_resources = []
 
         if not substance_admin.entry_relationship:
-            return reactions
+            return reactions, observation_resources
 
         # Find reaction (MFST) observations
-        for entry_rel in substance_admin.entry_relationship:
+        for idx, entry_rel in enumerate(substance_admin.entry_relationship):
             if entry_rel.type_code == TypeCodes.MFST and entry_rel.observation:
                 observation = entry_rel.observation
 
-                reaction: JSONObject = {}
+                # Create Observation resource for this reaction
+                observation_resource = self._create_reaction_observation(
+                    observation, immunization_id, idx
+                )
 
-                # Extract manifestation from observation.value
-                if observation.value and isinstance(observation.value, (CD, CE)):
-                    manifestation = self._convert_code_to_codeable_concept(observation.value)
-                    if manifestation:
-                        reaction["manifestation"] = [manifestation]
+                if observation_resource:
+                    observation_resources.append(observation_resource)
 
-                # Extract date from observation.effectiveTime
-                if observation.effective_time:
-                    date = self._extract_reaction_date(observation.effective_time)
-                    if date:
-                        reaction["date"] = date
+                    # Create reaction object with reference to the Observation
+                    reaction: JSONObject = {
+                        "detail": {
+                            "reference": f"Observation/{observation_resource['id']}"
+                        }
+                    }
 
-                if reaction:
+                    # Extract date from observation.effectiveTime
+                    if observation.effective_time:
+                        date = self._extract_reaction_date(observation.effective_time)
+                        if date:
+                            reaction["date"] = date
+
                     reactions.append(reaction)
 
-        return reactions
+        return reactions, observation_resources
+
+    def _create_reaction_observation(
+        self, observation, immunization_id: str, idx: int
+    ) -> JSONObject | None:
+        """Create an Observation resource for a reaction.
+
+        Args:
+            observation: The C-CDA Reaction Observation
+            immunization_id: The ID of the parent Immunization resource
+            idx: Index of this reaction (for unique ID generation)
+
+        Returns:
+            FHIR Observation resource or None
+        """
+        # Extract code from observation.value (this is the reaction manifestation)
+        if not observation.value or not isinstance(observation.value, (CD, CE)):
+            return None
+
+        code = self._convert_code_to_codeable_concept(observation.value)
+        if not code:
+            return None
+
+        # Generate unique ID for the reaction observation
+        observation_id = f"{immunization_id}-reaction-{idx}"
+
+        observation_resource: JSONObject = {
+            "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
+            "id": observation_id,
+            "status": "final",
+            "code": code,
+        }
+
+        # Add patient reference (will be updated by main converter)
+        observation_resource["subject"] = {
+            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
+        }
+
+        # Extract effectiveDateTime if available
+        if observation.effective_time:
+            date = self._extract_reaction_date(observation.effective_time)
+            if date:
+                observation_resource["effectiveDateTime"] = date
+
+        # Add value - use same code as value for reaction observations
+        observation_resource["valueCodeableConcept"] = code
+
+        return observation_resource
 
     def _extract_reaction_date(self, effective_time) -> str | None:
         """Extract date from reaction observation effectiveTime.
@@ -612,8 +697,9 @@ def convert_immunization_activity(
     substance_admin: SubstanceAdministration,
     code_system_mapper=None,
     metadata_callback=None,
-) -> FHIRResourceDict:
-    """Convert a C-CDA Immunization Activity to a FHIR Immunization resource.
+    section=None,
+) -> list[FHIRResourceDict]:
+    """Convert a C-CDA Immunization Activity to FHIR resources.
 
     This is a convenience function that creates a converter and performs the conversion.
 
@@ -621,12 +707,15 @@ def convert_immunization_activity(
         substance_admin: The C-CDA SubstanceAdministration (Immunization Activity)
         code_system_mapper: Optional CodeSystemMapper instance
         metadata_callback: Optional callback for storing author metadata
+        section: The C-CDA Section containing this immunization (for narrative)
 
     Returns:
-        FHIR Immunization resource as a dictionary
+        List of FHIR resources: [Immunization, Observation, ...]
+        - First element is always the Immunization resource
+        - Subsequent elements are Observation resources for reactions (if any)
     """
     converter = ImmunizationConverter(code_system_mapper=code_system_mapper)
-    immunization = converter.convert(substance_admin)
+    immunization, reaction_observations = converter.convert(substance_admin, section=section)
 
     # Store author metadata if callback provided
     if metadata_callback and immunization.get("id"):
@@ -637,4 +726,5 @@ def convert_immunization_activity(
             concern_act=None,
         )
 
-    return immunization
+    # Return all resources as a list
+    return [immunization] + reaction_observations

@@ -29,11 +29,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
     Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-EncounterActivity.html
     """
 
-    def convert(self, encounter: CCDAEncounter) -> FHIRResourceDict:
+    def convert(self, encounter: CCDAEncounter, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Encounter Activity to a FHIR Encounter resource.
 
         Args:
             encounter: The C-CDA Encounter Activity
+            section: The C-CDA Section containing this encounter (for narrative)
 
         Returns:
             FHIR Encounter resource as a dictionary
@@ -85,10 +86,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             if period:
                 fhir_encounter["period"] = period
 
-        # Reason codes - Extract from indication entry relationships
-        reason_codes = self._extract_reason_codes(encounter.entry_relationship)
-        if reason_codes:
-            fhir_encounter["reasonCode"] = reason_codes
+        # Reason codes and references - Extract from indication entry relationships
+        reasons = self._extract_reasons(encounter.entry_relationship)
+        if reasons["codes"]:
+            fhir_encounter["reasonCode"] = reasons["codes"]
+        if reasons["references"]:
+            fhir_encounter["reasonReference"] = reasons["references"]
 
         # Diagnosis - Extract from encounter diagnosis entry relationships
         diagnoses = self._extract_diagnoses(encounter.entry_relationship)
@@ -104,6 +107,11 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         hospitalization = self._extract_hospitalization(encounter)
         if hospitalization:
             fhir_encounter["hospitalization"] = hospitalization
+
+        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        narrative = self._generate_narrative(entry=encounter, section=section)
+        if narrative:
+            fhir_encounter["text"] = narrative
 
         return fhir_encounter
 
@@ -531,42 +539,79 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         return diagnoses
 
-    def _extract_reason_codes(self, entry_relationships: list[EntryRelationship] | None) -> list[JSONObject]:
-        """Extract reason codes from indication entry relationships.
+    def _extract_reasons(self, entry_relationships: list[EntryRelationship] | None) -> dict[str, list]:
+        """Extract FHIR reason codes and references from C-CDA entry relationships.
 
-        This extracts codes from RSON (reason) relationships, which are different
-        from encounter diagnoses.
+        Handles two patterns:
+        1. RSON observation with inline code value → reasonCode
+        2. RSON observation that IS a Problem Observation → reasonReference to Condition
 
         Args:
             entry_relationships: List of entry relationships
 
         Returns:
-            List of FHIR CodeableConcept for reason codes
+            Dict with "codes" and "references" lists
         """
         reason_codes = []
+        reason_refs = []
 
         if not entry_relationships:
-            return reason_codes
+            return {"codes": reason_codes, "references": reason_refs}
 
         for entry_rel in entry_relationships:
             # Look for indication observations (RSON typeCode)
             if entry_rel.type_code == TypeCodes.REASON and entry_rel.observation:
                 obs = entry_rel.observation
 
-                # Extract reason code from observation.value
-                if obs.value:
-                    if isinstance(obs.value, list):
-                        for value in obs.value:
-                            if hasattr(value, "code") and value.code:
-                                codeable = self._convert_diagnosis_code(value)
+                # Check if this observation IS a Problem Observation
+                is_problem_obs = False
+                if hasattr(obs, "template_id") and obs.template_id:
+                    for template in obs.template_id:
+                        if hasattr(template, "root") and template.root == TemplateIds.PROBLEM_OBSERVATION:
+                            is_problem_obs = True
+                            break
+
+                if is_problem_obs:
+                    # This is a Problem Observation - check if Condition exists
+                    condition_id = self._generate_condition_id_from_observation(obs)
+
+                    # Per C-CDA on FHIR spec: only create reasonReference if the Problem
+                    # Observation was converted to a Condition resource elsewhere in the document
+                    if self.reference_registry and self.reference_registry.has_resource(
+                        FHIRCodes.ResourceTypes.CONDITION, condition_id
+                    ):
+                        # Condition exists - use reasonReference
+                        reason_refs.append({
+                            "reference": f"{FHIRCodes.ResourceTypes.CONDITION}/{condition_id}"
+                        })
+                    else:
+                        # Inline Problem Observation not converted - use reasonCode
+                        if obs.value:
+                            if isinstance(obs.value, list):
+                                for value in obs.value:
+                                    if hasattr(value, "code") and value.code:
+                                        codeable = self._convert_diagnosis_code(value)
+                                        if codeable:
+                                            reason_codes.append(codeable)
+                            elif hasattr(obs.value, "code"):
+                                codeable = self._convert_diagnosis_code(obs.value)
                                 if codeable:
                                     reason_codes.append(codeable)
-                    elif hasattr(obs.value, "code"):
-                        codeable = self._convert_diagnosis_code(obs.value)
-                        if codeable:
-                            reason_codes.append(codeable)
+                else:
+                    # Extract reason code from observation.value
+                    if obs.value:
+                        if isinstance(obs.value, list):
+                            for value in obs.value:
+                                if hasattr(value, "code") and value.code:
+                                    codeable = self._convert_diagnosis_code(value)
+                                    if codeable:
+                                        reason_codes.append(codeable)
+                        elif hasattr(obs.value, "code"):
+                            codeable = self._convert_diagnosis_code(obs.value)
+                            if codeable:
+                                reason_codes.append(codeable)
 
-        return reason_codes
+        return {"codes": reason_codes, "references": reason_refs}
 
     def _convert_diagnosis_code(self, code) -> JSONObject | None:
         """Convert diagnosis code to FHIR CodeableConcept.
@@ -620,8 +665,29 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         else:
             return "location-unknown"
 
+    def _generate_condition_id_from_observation(self, observation) -> str:
+        """Generate a Condition resource ID from a Problem Observation.
+
+        Uses the same ID generation logic as ConditionConverter to ensure
+        consistent references to Condition resources.
+
+        Args:
+            observation: Problem Observation with ID
+
+        Returns:
+            Condition resource ID string
+        """
+        if hasattr(observation, "id") and observation.id:
+            for id_elem in observation.id:
+                if hasattr(id_elem, "root") and id_elem.root:
+                    extension = id_elem.extension if hasattr(id_elem, "extension") else None
+                    return self._generate_condition_id(id_elem.root, extension)
+        return "condition-unknown"
+
     def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
         """Generate a FHIR Condition ID from C-CDA identifiers.
+
+        Matches the ID generation logic in ConditionConverter for consistency.
 
         Args:
             root: The OID or UUID root
@@ -631,8 +697,10 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             A FHIR-compliant ID string
         """
         if extension:
-            return f"condition-{extension.replace(' ', '-').replace('.', '-')}"
+            clean_ext = extension.lower().replace(" ", "-").replace(".", "-")
+            return f"condition-{clean_ext}"
         elif root:
-            return f"condition-{root.replace('.', '-').replace(':', '-')}"
+            root_suffix = root.replace(".", "").replace("-", "")[-16:]
+            return f"condition-{root_suffix}"
         else:
             return "condition-unknown"

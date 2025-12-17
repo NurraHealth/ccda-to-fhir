@@ -30,11 +30,12 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         super().__init__(*args, **kwargs)
         self.observation_converter = ObservationConverter()
 
-    def convert(self, organizer: Organizer) -> FHIRResourceDict:
+    def convert(self, organizer: Organizer, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Result Organizer to a FHIR DiagnosticReport.
 
         Args:
             organizer: The C-CDA Result Organizer
+            section: The C-CDA Section containing this organizer (for narrative)
 
         Returns:
             FHIR DiagnosticReport resource as a dictionary
@@ -119,6 +120,11 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
 
         if result_refs:
             report["result"] = result_refs
+
+        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        narrative = self._generate_narrative(entry=organizer, section=section)
+        if narrative:
+            report["text"] = narrative
 
         return report
 

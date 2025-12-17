@@ -9,6 +9,7 @@ from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.constants import (
     PROCEDURE_STATUS_TO_FHIR,
     FHIRCodes,
+    TemplateIds,
 )
 
 from .base import BaseConverter
@@ -23,11 +24,12 @@ class ProcedureConverter(BaseConverter[CCDAProcedure]):
     Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-ProcedureActivityProcedure.html
     """
 
-    def convert(self, procedure: CCDAProcedure) -> FHIRResourceDict:
+    def convert(self, procedure: CCDAProcedure, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Procedure Activity to a FHIR Procedure resource.
 
         Args:
             procedure: The C-CDA Procedure Activity
+            section: The C-CDA Section containing this procedure (for narrative)
 
         Returns:
             FHIR Procedure resource as a dictionary
@@ -141,6 +143,11 @@ class ProcedureConverter(BaseConverter[CCDAProcedure]):
         notes = self._extract_notes(procedure)
         if notes:
             fhir_procedure["note"] = notes
+
+        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        narrative = self._generate_narrative(entry=procedure, section=section)
+        if narrative:
+            fhir_procedure["text"] = narrative
 
         return fhir_procedure
 
@@ -401,6 +408,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure]):
     def _extract_reasons(self, entry_relationships: list) -> dict[str, list]:
         """Extract FHIR reason codes and references from C-CDA entry relationships.
 
+        Handles two patterns:
+        1. RSON observation with inline code value → reasonCode
+        2. RSON observation that IS a Problem Observation → reasonReference to Condition
+
         Args:
             entry_relationships: List of C-CDA entry relationship elements
 
@@ -416,19 +427,93 @@ class ProcedureConverter(BaseConverter[CCDAProcedure]):
                 if hasattr(entry_rel, "observation") and entry_rel.observation:
                     obs = entry_rel.observation
 
-                    # Extract reason code from observation value
-                    if hasattr(obs, "value") and obs.value:
-                        value = obs.value
-                        if hasattr(value, "code") and value.code:
-                            reason_code = self.create_codeable_concept(
-                                code=value.code,
-                                code_system=value.code_system if hasattr(value, "code_system") else None,
-                                display_name=value.display_name if hasattr(value, "display_name") else None,
-                            )
-                            if reason_code:
-                                reason_codes.append(reason_code)
+                    # Check if this observation IS a Problem Observation
+                    is_problem_obs = False
+                    if hasattr(obs, "template_id") and obs.template_id:
+                        for template in obs.template_id:
+                            if hasattr(template, "root") and template.root == TemplateIds.PROBLEM_OBSERVATION:
+                                is_problem_obs = True
+                                break
+
+                    if is_problem_obs:
+                        # This is a Problem Observation - check if Condition exists
+                        condition_id = self._generate_condition_id_from_observation(obs)
+
+                        # Per C-CDA on FHIR spec: only create reasonReference if the Problem
+                        # Observation was converted to a Condition resource elsewhere in the document
+                        if self.reference_registry and self.reference_registry.has_resource(
+                            FHIRCodes.ResourceTypes.CONDITION, condition_id
+                        ):
+                            # Condition exists - use reasonReference
+                            reason_refs.append({
+                                "reference": f"{FHIRCodes.ResourceTypes.CONDITION}/{condition_id}"
+                            })
+                        else:
+                            # Inline Problem Observation not converted - use reasonCode
+                            if hasattr(obs, "value") and obs.value:
+                                value = obs.value
+                                if hasattr(value, "code") and value.code:
+                                    reason_code = self.create_codeable_concept(
+                                        code=value.code,
+                                        code_system=value.code_system if hasattr(value, "code_system") else None,
+                                        display_name=value.display_name if hasattr(value, "display_name") else None,
+                                    )
+                                    if reason_code:
+                                        reason_codes.append(reason_code)
+                    else:
+                        # Extract reason code from observation value (existing logic)
+                        if hasattr(obs, "value") and obs.value:
+                            value = obs.value
+                            if hasattr(value, "code") and value.code:
+                                reason_code = self.create_codeable_concept(
+                                    code=value.code,
+                                    code_system=value.code_system if hasattr(value, "code_system") else None,
+                                    display_name=value.display_name if hasattr(value, "display_name") else None,
+                                )
+                                if reason_code:
+                                    reason_codes.append(reason_code)
 
         return {"codes": reason_codes, "references": reason_refs}
+
+    def _generate_condition_id_from_observation(self, observation) -> str:
+        """Generate a Condition resource ID from a Problem Observation.
+
+        Uses the same ID generation logic as ConditionConverter to ensure
+        consistent references to Condition resources.
+
+        Args:
+            observation: Problem Observation with ID
+
+        Returns:
+            Condition resource ID string
+        """
+        if hasattr(observation, "id") and observation.id:
+            for id_elem in observation.id:
+                if hasattr(id_elem, "root") and id_elem.root:
+                    extension = id_elem.extension if hasattr(id_elem, "extension") else None
+                    return self._generate_condition_id(id_elem.root, extension)
+        return "condition-unknown"
+
+    def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
+        """Generate a condition resource ID.
+
+        Matches the ID generation logic in ConditionConverter for consistency.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            A resource ID string
+        """
+        if extension:
+            clean_ext = extension.lower().replace(" ", "-").replace(".", "-")
+            return f"condition-{clean_ext}"
+        elif root:
+            root_suffix = root.replace(".", "").replace("-", "")[-16:]
+            return f"condition-{root_suffix}"
+        else:
+            return "condition-unknown"
 
     def _extract_outcomes(self, entry_relationships: list) -> JSONObject | None:
         """Extract FHIR outcome from C-CDA entry relationships.

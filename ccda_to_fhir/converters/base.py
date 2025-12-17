@@ -5,12 +5,15 @@ from __future__ import annotations
 import hashlib
 import re
 from abc import ABC, abstractmethod
-from typing import ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
 from ccda_to_fhir.constants import FHIRSystems
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .code_systems import CodeSystemMapper
+
+if TYPE_CHECKING:
+    from .references import ReferenceRegistry
 
 # Type variable for input C-CDA model
 CCDAModel = TypeVar("CCDAModel")
@@ -29,13 +32,16 @@ class BaseConverter(ABC, Generic[CCDAModel]):
     def __init__(
         self,
         code_system_mapper: CodeSystemMapper | None = None,
+        reference_registry: "ReferenceRegistry | None" = None,
     ):
         """Initialize the converter.
 
         Args:
             code_system_mapper: Optional code system mapper for OID to URI conversion
+            reference_registry: Optional reference registry for tracking converted resources
         """
         self.code_system_mapper = code_system_mapper or CodeSystemMapper()
+        self.reference_registry = reference_registry
 
     @abstractmethod
     def convert(self, ccda_model: CCDAModel) -> FHIRResourceDict:
@@ -520,4 +526,138 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             text = re.sub(r'<[^>]+>', '', text)
             return text.strip()
 
+        return None
+
+    def _extract_text_reference(self, entry) -> str | None:
+        """Extract reference ID from entry's text element.
+
+        Per C-CDA standard, entries can have:
+        <text><reference value="#some-id"/></text>
+
+        Args:
+            entry: C-CDA entry (Observation, Act, Procedure, etc.)
+
+        Returns:
+            Reference ID without '#' prefix, or None if no reference found
+        """
+        if not hasattr(entry, 'text') or not entry.text:
+            return None
+
+        # Check if text has a reference element
+        if hasattr(entry.text, 'reference') and entry.text.reference:
+            ref_value = entry.text.reference.value
+            if ref_value and ref_value.startswith('#'):
+                # Remove '#' prefix to get the ID
+                return ref_value[1:]
+
+        return None
+
+    def _generate_narrative(self, entry=None, section=None) -> JSONObject | None:
+        """Generate FHIR Narrative from C-CDA entry text element.
+
+        Per C-CDA on FHIR IG, supports three scenarios:
+        1. Entry with text/reference: Extract referenced narrative from section
+        2. Entry with mixed content + reference: Combine both in separate divs
+        3. Entry with text value only: Use the text directly as narrative
+
+        Creates a FHIR Narrative element suitable for resource.text field.
+
+        Resolves Known Issue #13: "Section Narrative Not Propagated"
+
+        Args:
+            entry: C-CDA entry (Observation, Act, Procedure, etc.) with optional text element
+            section: C-CDA Section object containing text/narrative (optional for Scenario 3)
+
+        Returns:
+            FHIR Narrative dict with status and div, or None if no text found
+
+        Example:
+            >>> # Scenario 1: Entry with reference to specific narrative portion
+            >>> narrative = converter._generate_narrative(observation, section)
+            >>> # Result: {"status": "generated", "div": "<div xmlns=...><p id='ref1'>...</p></div>"}
+            >>>
+            >>> # Scenario 3: Entry with direct text content
+            >>> narrative = converter._generate_narrative(observation)
+            >>> # Result: {"status": "generated", "div": "<div xmlns=...><p>Direct text</p></div>"}
+
+        Reference:
+            - C-CDA on FHIR Mapping: https://build.fhir.org/ig/HL7/ccda-on-fhir/mappingGuidance.html
+            - FHIR Narrative: https://hl7.org/fhir/narrative.html
+        """
+        # Must have entry
+        if not entry:
+            return None
+
+        # Check if entry has text element
+        if not hasattr(entry, 'text') or not entry.text:
+            return None
+
+        import html
+
+        # Extract reference ID if present
+        reference_id = self._extract_text_reference(entry)
+
+        # Extract direct text value if present
+        direct_text = None
+        if hasattr(entry.text, 'value') and entry.text.value:
+            direct_text = entry.text.value.strip()
+
+        # Scenario 1 & 2: Entry has text/reference (with or without mixed content)
+        if reference_id:
+            # Need section to resolve reference
+            if not section or not hasattr(section, 'text') or not section.text:
+                # Can't resolve reference, fall back to direct text if available
+                if direct_text:
+                    # Scenario 3 fallback
+                    escaped_text = html.escape(direct_text)
+                    xhtml_div = f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
+                    return {"status": "generated", "div": xhtml_div}
+                return None
+
+            from ccda_to_fhir.utils.struc_doc_utils import find_element_by_id, element_to_html
+
+            # Find the referenced element in section narrative
+            referenced_element = find_element_by_id(section.text, reference_id)
+            if not referenced_element:
+                # Reference not found, fall back to direct text if available
+                if direct_text:
+                    escaped_text = html.escape(direct_text)
+                    xhtml_div = f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
+                    return {"status": "generated", "div": xhtml_div}
+                return None
+
+            # Convert referenced element to HTML
+            referenced_html = element_to_html(referenced_element)
+            if not referenced_html or referenced_html.strip() == "":
+                # Empty reference, fall back to direct text if available
+                if direct_text:
+                    escaped_text = html.escape(direct_text)
+                    xhtml_div = f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
+                    return {"status": "generated", "div": xhtml_div}
+                return None
+
+            # Check if there's also mixed content (Scenario 2)
+            if direct_text:
+                # Scenario 2: Mixed content + reference
+                # Per IG: wrap each part in separate divs for clarity
+                escaped_text = html.escape(direct_text)
+                xhtml_div = (
+                    f'<div xmlns="http://www.w3.org/1999/xhtml">'
+                    f'<div><p>{escaped_text}</p></div>'
+                    f'<div>{referenced_html}</div>'
+                    f'</div>'
+                )
+            else:
+                # Scenario 1: Reference only
+                xhtml_div = f'<div xmlns="http://www.w3.org/1999/xhtml">{referenced_html}</div>'
+
+            return {"status": "generated", "div": xhtml_div}
+
+        # Scenario 3: Entry has text value only (no reference)
+        elif direct_text:
+            escaped_text = html.escape(direct_text)
+            xhtml_div = f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
+            return {"status": "generated", "div": xhtml_div}
+
+        # No text content at all
         return None

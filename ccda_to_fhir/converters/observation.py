@@ -8,9 +8,21 @@ from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, IVL_PQ, PQ, ST
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.ccda.models.organizer import Organizer
 from ccda_to_fhir.constants import (
+    BP_DIASTOLIC_CODE,
+    BP_DIASTOLIC_DISPLAY,
+    BP_PANEL_CODE,
+    BP_PANEL_DISPLAY,
+    BP_SYSTOLIC_CODE,
+    BP_SYSTOLIC_DISPLAY,
     FHIRCodes,
     FHIRSystems,
+    O2_CONCENTRATION_CODE,
+    O2_CONCENTRATION_DISPLAY,
+    O2_FLOW_RATE_CODE,
+    O2_FLOW_RATE_DISPLAY,
     OBSERVATION_STATUS_TO_FHIR,
+    PULSE_OX_ALT_CODE,
+    PULSE_OX_PRIMARY_CODE,
     TemplateIds,
     VITAL_SIGNS_PANEL_CODE,
     VITAL_SIGNS_PANEL_DISPLAY,
@@ -36,11 +48,12 @@ class ObservationConverter(BaseConverter[Observation]):
         """Initialize the observation converter."""
         super().__init__(*args, **kwargs)
 
-    def convert(self, observation: Observation) -> FHIRResourceDict:
+    def convert(self, observation: Observation, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Observation to a FHIR Observation.
 
         Args:
             observation: The C-CDA Observation
+            section: The C-CDA Section containing this observation (for narrative)
 
         Returns:
             FHIR Observation resource as a dictionary
@@ -123,28 +136,47 @@ class ObservationConverter(BaseConverter[Observation]):
             if ref_ranges:
                 fhir_obs["referenceRange"] = ref_ranges
 
+        # 11. Pregnancy observation special handling
+        if observation.template_id:
+            from ccda_to_fhir.constants import TemplateIds
+            is_pregnancy = any(
+                t.root == TemplateIds.PREGNANCY_OBSERVATION
+                for t in observation.template_id
+                if t.root
+            )
+            if is_pregnancy:
+                self._handle_pregnancy_observation(observation, fhir_obs)
+
+        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        narrative = self._generate_narrative(entry=observation, section=section)
+        if narrative:
+            fhir_obs["text"] = narrative
+
         return fhir_obs
 
-    def convert_vital_signs_organizer(self, organizer: Organizer) -> FHIRResourceDict:
-        """Convert a C-CDA Vital Signs Organizer to a FHIR Observation panel.
+    def convert_vital_signs_organizer(self, organizer: Organizer, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
+        """Convert a C-CDA Vital Signs Organizer to FHIR Observation resources.
 
-        The vital signs organizer becomes a panel Observation with contained
-        individual vital sign observations.
+        The vital signs organizer becomes a panel Observation with individual
+        vital sign observations as standalone resources (not contained).
 
         Args:
             organizer: The C-CDA Vital Signs Organizer
+            section: The C-CDA Section containing this organizer (for narrative)
 
         Returns:
-            FHIR Observation panel resource as a dictionary
+            Tuple of (panel_observation, list_of_individual_observations)
         """
         panel: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
         }
 
         # 1. Generate ID from organizer identifier
+        panel_id = None
         if organizer.id and len(organizer.id) > 0:
             first_id = organizer.id[0]
-            panel["id"] = self._generate_observation_id(first_id.root, first_id.extension)
+            panel_id = self._generate_observation_id(first_id.root, first_id.extension)
+            panel["id"] = panel_id
 
         # 2. Identifiers
         if organizer.id:
@@ -196,32 +228,96 @@ class ObservationConverter(BaseConverter[Observation]):
             if effective_time:
                 panel["effectiveDateTime"] = effective_time
 
-        # 8. Convert component observations to contained resources
-        contained_obs = []
-        has_member_refs = []
+        # 8. Convert component observations to individual resources
+        # First pass: convert all observations and detect BP and pulse oximetry components
+        all_observations = []
+        systolic_obs = None
+        diastolic_obs = None
+        pulse_ox_obs = None
+        o2_flow_obs = None
+        o2_concentration_obs = None
 
         if organizer.component:
-            for idx, component in enumerate(organizer.component):
+            for component in organizer.component:
                 if component.observation:
-                    # Convert the component observation
-                    contained = self.convert(component.observation)
+                    # Convert the component observation to a standalone resource
+                    individual = self.convert(component.observation, section=section)
 
-                    # Generate a contained ID
-                    contained_id = f"vital-{idx + 1}"
-                    contained["id"] = contained_id
+                    # Ensure it has an ID for referencing
+                    if "id" not in individual:
+                        # Generate ID if not present
+                        if component.observation.id and len(component.observation.id) > 0:
+                            obs_id = component.observation.id[0]
+                            individual["id"] = self._generate_observation_id(
+                                obs_id.root, obs_id.extension
+                            )
 
-                    contained_obs.append(contained)
+                    # Check if this is a special vital sign requiring component handling
+                    obs_code = self._get_observation_loinc_code(individual)
 
-                    # Add hasMember reference
-                    has_member_refs.append({"reference": f"#{contained_id}"})
+                    # Blood pressure components
+                    if obs_code == BP_SYSTOLIC_CODE:
+                        systolic_obs = individual
+                    elif obs_code == BP_DIASTOLIC_CODE:
+                        diastolic_obs = individual
+                    # Pulse oximetry and O2 components
+                    elif obs_code in (PULSE_OX_PRIMARY_CODE, PULSE_OX_ALT_CODE):
+                        pulse_ox_obs = individual
+                    elif obs_code == O2_FLOW_RATE_CODE:
+                        o2_flow_obs = individual
+                    elif obs_code == O2_CONCENTRATION_CODE:
+                        o2_concentration_obs = individual
+                    else:
+                        # Not a special component, add to list
+                        all_observations.append(individual)
 
-        if contained_obs:
-            panel["contained"] = contained_obs
+        # 9. Combine BP observations if both systolic and diastolic found
+        if systolic_obs and diastolic_obs:
+            bp_combined = self._create_blood_pressure_observation(
+                systolic_obs, diastolic_obs, status
+            )
+            all_observations.append(bp_combined)
+        else:
+            # Add individual BP observations if not both present
+            if systolic_obs:
+                all_observations.append(systolic_obs)
+            if diastolic_obs:
+                all_observations.append(diastolic_obs)
+
+        # 10. Add O2 components to pulse oximetry if present
+        if pulse_ox_obs:
+            if o2_flow_obs or o2_concentration_obs:
+                pulse_ox_with_components = self._add_pulse_ox_components(
+                    pulse_ox_obs, o2_flow_obs, o2_concentration_obs
+                )
+                all_observations.append(pulse_ox_with_components)
+            else:
+                # Pulse ox without components
+                all_observations.append(pulse_ox_obs)
+        else:
+            # Add O2 observations as standalone if no pulse ox found
+            if o2_flow_obs:
+                all_observations.append(o2_flow_obs)
+            if o2_concentration_obs:
+                all_observations.append(o2_concentration_obs)
+
+        # 11. Build hasMember references
+        has_member_refs = []
+        for obs in all_observations:
+            if "id" in obs:
+                has_member_refs.append({
+                    "reference": f"{FHIRCodes.ResourceTypes.OBSERVATION}/{obs['id']}"
+                })
 
         if has_member_refs:
             panel["hasMember"] = has_member_refs
 
-        return panel
+        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        narrative = self._generate_narrative(entry=organizer, section=section)
+        if narrative:
+            panel["text"] = narrative
+
+        return panel, all_observations
 
     def _generate_observation_id(
         self, root: str | None, extension: str | None
@@ -315,6 +411,7 @@ class ObservationConverter(BaseConverter[Observation]):
             elif template.root in (
                 TemplateIds.SMOKING_STATUS_OBSERVATION,
                 TemplateIds.SOCIAL_HISTORY_OBSERVATION,
+                TemplateIds.PREGNANCY_OBSERVATION,
             ):
                 return {
                     "coding": [
@@ -497,27 +594,49 @@ class ObservationConverter(BaseConverter[Observation]):
         return {"valueQuantity": quantity}
 
     def _convert_ivl_pq_to_value_range(self, ivl_pq: IVL_PQ) -> JSONObject:
-        """Convert C-CDA IVL_PQ to FHIR valueRange.
+        """Convert C-CDA IVL_PQ to FHIR valueRange or valueQuantity with comparator.
+
+        When both low and high are present → valueRange
+        When only one boundary is present → valueQuantity with comparator
+        (Assumes inclusive=true by default per C-CDA spec)
 
         Args:
             ivl_pq: The C-CDA Interval Physical Quantity
 
         Returns:
-            Dictionary with valueRange element
+            Dictionary with valueRange or valueQuantity element
         """
-        range_val: JSONObject = {}
+        has_low = ivl_pq.low is not None
+        has_high = ivl_pq.high is not None
 
-        if ivl_pq.low:
-            low = self._pq_to_simple_quantity(ivl_pq.low)
-            if low:
-                range_val["low"] = low
+        # Case 1: Both boundaries → valueRange
+        if has_low and has_high:
+            range_val: JSONObject = {}
+            if ivl_pq.low:
+                low = self._pq_to_simple_quantity(ivl_pq.low)
+                if low:
+                    range_val["low"] = low
+            if ivl_pq.high:
+                high = self._pq_to_simple_quantity(ivl_pq.high)
+                if high:
+                    range_val["high"] = high
+            return {"valueRange": range_val} if range_val else {}
 
-        if ivl_pq.high:
-            high = self._pq_to_simple_quantity(ivl_pq.high)
-            if high:
-                range_val["high"] = high
+        # Case 2: Only high → valueQuantity with comparator "<="
+        if has_high and not has_low:
+            quantity = self._pq_to_simple_quantity(ivl_pq.high)
+            if quantity:
+                quantity["comparator"] = "<="
+                return {"valueQuantity": quantity}
 
-        return {"valueRange": range_val} if range_val else {}
+        # Case 3: Only low → valueQuantity with comparator ">="
+        if has_low and not has_high:
+            quantity = self._pq_to_simple_quantity(ivl_pq.low)
+            if quantity:
+                quantity["comparator"] = ">="
+                return {"valueQuantity": quantity}
+
+        return {}
 
     def _convert_reference_range(self, value) -> JSONObject | None:
         """Convert C-CDA reference range value to FHIR referenceRange.
@@ -583,3 +702,241 @@ class ObservationConverter(BaseConverter[Observation]):
             quantity["code"] = pq.unit
 
         return quantity
+
+    def _get_observation_loinc_code(self, observation: JSONObject) -> str | None:
+        """Extract LOINC code from an observation resource.
+
+        Args:
+            observation: FHIR Observation resource
+
+        Returns:
+            LOINC code string or None
+        """
+        code = observation.get("code", {})
+        for coding in code.get("coding", []):
+            system = coding.get("system", "")
+            if "loinc.org" in system:
+                return coding.get("code")
+        return None
+
+    def _handle_pregnancy_observation(self, observation: Observation, fhir_obs: JSONObject) -> None:
+        """Handle pregnancy observation-specific conversions.
+
+        Per C-CDA on FHIR specification:
+        1. Transform code from ASSERTION (pre-C-CDA 4.0) to LOINC 82810-3 if needed
+        2. Extract estimated delivery date from entryRelationship
+        3. Add EDD as component with code 11778-8
+
+        Args:
+            observation: The C-CDA Observation (Pregnancy Observation template)
+            fhir_obs: The FHIR Observation being built (modified in place)
+
+        Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-social.html
+        """
+        # 1. Fix code if pre-C-CDA 4.0 (ASSERTION → 82810-3)
+        # Per spec: Prior to C-CDA 4.0, uses ASSERTION; version 4.0+ uses 82810-3
+        if observation.code:
+            if observation.code.code == "ASSERTION":
+                fhir_obs["code"] = {
+                    "coding": [{
+                        "system": "http://loinc.org",
+                        "code": "82810-3",
+                        "display": "Pregnancy status"
+                    }]
+                }
+
+        # 2. Extract estimated delivery date from entryRelationship
+        # Maps to component with code 11778-8
+        if observation.entry_relationship:
+            for rel in observation.entry_relationship:
+                if rel.observation and rel.observation.code:
+                    # Check for Estimated Delivery Date (code 11778-8)
+                    if rel.observation.code.code == "11778-8":
+                        # Initialize component array if not exists
+                        if "component" not in fhir_obs:
+                            fhir_obs["component"] = []
+
+                        # Create EDD component
+                        component: JSONObject = {
+                            "code": {
+                                "coding": [{
+                                    "system": "http://loinc.org",
+                                    "code": "11778-8",
+                                    "display": "Delivery date Estimated"
+                                }]
+                            }
+                        }
+
+                        # Extract value (TS type in C-CDA)
+                        if rel.observation.value and hasattr(rel.observation.value, 'value'):
+                            date_str = rel.observation.value.value
+                            # Handle ISO format dates (YYYY-MM-DD) which may appear in C-CDA
+                            if date_str and '-' in date_str:
+                                # Already in ISO format, use directly
+                                component["valueDateTime"] = date_str
+                            else:
+                                # Convert from C-CDA format (YYYYMMDD or YYYYMMDDHHMMSS)
+                                value_date = self.convert_date(date_str)
+                                if value_date:
+                                    component["valueDateTime"] = value_date
+
+                        fhir_obs["component"].append(component)
+
+    def _create_blood_pressure_observation(
+        self,
+        systolic_obs: JSONObject,
+        diastolic_obs: JSONObject,
+        status: str
+    ) -> JSONObject:
+        """Create a combined blood pressure observation with components.
+
+        Args:
+            systolic_obs: Systolic BP observation
+            diastolic_obs: Diastolic BP observation
+            status: Observation status
+
+        Returns:
+            Combined BP observation with components
+        """
+        # Generate ID from systolic observation (use first BP component's ID as base)
+        bp_id = systolic_obs.get("id", "bp-unknown")
+        if "-" in bp_id:
+            # If ID has a suffix, use base part
+            bp_id = bp_id.rsplit("-", 1)[0] + "-bp"
+        else:
+            bp_id = bp_id + "-bp"
+
+        bp_obs: JSONObject = {
+            "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
+            "id": bp_id,
+            "status": status,
+        }
+
+        # Identifier - use from systolic observation
+        if "identifier" in systolic_obs:
+            bp_obs["identifier"] = systolic_obs["identifier"]
+
+        # Category - vital-signs
+        bp_obs["category"] = [
+            {
+                "coding": [
+                    {
+                        "system": FHIRSystems.OBSERVATION_CATEGORY,
+                        "code": FHIRCodes.ObservationCategory.VITAL_SIGNS,
+                        "display": "Vital Signs",
+                    }
+                ]
+            }
+        ]
+
+        # Code - BP panel
+        bp_obs["code"] = {
+            "coding": [
+                {
+                    "system": self.map_oid_to_uri("2.16.840.1.113883.6.1"),  # LOINC
+                    "code": BP_PANEL_CODE,
+                    "display": BP_PANEL_DISPLAY,
+                }
+            ]
+        }
+
+        # Subject
+        bp_obs["subject"] = systolic_obs.get("subject", {
+            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
+        })
+
+        # Effective time (use from systolic or diastolic)
+        effective_time = systolic_obs.get("effectiveDateTime") or diastolic_obs.get("effectiveDateTime")
+        if effective_time:
+            bp_obs["effectiveDateTime"] = effective_time
+
+        # Components
+        components = []
+
+        # Systolic component
+        if "valueQuantity" in systolic_obs:
+            components.append({
+                "code": {
+                    "coding": [
+                        {
+                            "system": self.map_oid_to_uri("2.16.840.1.113883.6.1"),
+                            "code": BP_SYSTOLIC_CODE,
+                            "display": BP_SYSTOLIC_DISPLAY,
+                        }
+                    ]
+                },
+                "valueQuantity": systolic_obs["valueQuantity"]
+            })
+
+        # Diastolic component
+        if "valueQuantity" in diastolic_obs:
+            components.append({
+                "code": {
+                    "coding": [
+                        {
+                            "system": self.map_oid_to_uri("2.16.840.1.113883.6.1"),
+                            "code": BP_DIASTOLIC_CODE,
+                            "display": BP_DIASTOLIC_DISPLAY,
+                        }
+                    ]
+                },
+                "valueQuantity": diastolic_obs["valueQuantity"]
+            })
+
+        if components:
+            bp_obs["component"] = components
+
+        return bp_obs
+
+    def _add_pulse_ox_components(
+        self,
+        pulse_ox_obs: JSONObject,
+        o2_flow_obs: JSONObject | None,
+        o2_concentration_obs: JSONObject | None
+    ) -> JSONObject:
+        """Add O2 flow rate and/or concentration as components to pulse oximetry observation.
+
+        Args:
+            pulse_ox_obs: Pulse oximetry observation
+            o2_flow_obs: Optional O2 flow rate observation
+            o2_concentration_obs: Optional O2 concentration observation
+
+        Returns:
+            Pulse oximetry observation with components added
+        """
+        components = []
+
+        # O2 flow rate component
+        if o2_flow_obs and "valueQuantity" in o2_flow_obs:
+            components.append({
+                "code": {
+                    "coding": [
+                        {
+                            "system": self.map_oid_to_uri("2.16.840.1.113883.6.1"),
+                            "code": O2_FLOW_RATE_CODE,
+                            "display": O2_FLOW_RATE_DISPLAY,
+                        }
+                    ]
+                },
+                "valueQuantity": o2_flow_obs["valueQuantity"]
+            })
+
+        # O2 concentration component
+        if o2_concentration_obs and "valueQuantity" in o2_concentration_obs:
+            components.append({
+                "code": {
+                    "coding": [
+                        {
+                            "system": self.map_oid_to_uri("2.16.840.1.113883.6.1"),
+                            "code": O2_CONCENTRATION_CODE,
+                            "display": O2_CONCENTRATION_DISPLAY,
+                        }
+                    ]
+                },
+                "valueQuantity": o2_concentration_obs["valueQuantity"]
+            })
+
+        if components:
+            pulse_ox_obs["component"] = components
+
+        return pulse_ox_obs

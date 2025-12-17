@@ -38,11 +38,12 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         """Initialize the medication request converter."""
         super().__init__(*args, **kwargs)
 
-    def convert(self, substance_admin: SubstanceAdministration) -> FHIRResourceDict:
+    def convert(self, substance_admin: SubstanceAdministration, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Medication Activity to a FHIR MedicationRequest.
 
         Args:
             substance_admin: The C-CDA SubstanceAdministration (Medication Activity)
+            section: The C-CDA Section containing this medication (for narrative)
 
         Returns:
             FHIR MedicationRequest resource as a dictionary
@@ -155,6 +156,11 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # 11. Notes (from text element)
         if substance_admin.text and substance_admin.text.value:
             med_request["note"] = [{"text": substance_admin.text.value}]
+
+        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        narrative = self._generate_narrative(entry=substance_admin, section=section)
+        if narrative:
+            med_request["text"] = narrative
 
         return med_request
 
@@ -357,15 +363,24 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         timing: JSONObject = {}
         repeat: JSONObject = {}
 
-        # Find PIVL_TS for frequency and EIVL_TS for event-based timing
+        # Find IVL_TS for boundsPeriod, PIVL_TS for frequency, and EIVL_TS for event-based timing
+        ivl_ts = None
         pivl_ts = None
         eivl_ts = None
 
         for eff_time in substance_admin.effective_time:
-            if isinstance(eff_time, PIVL_TS):
+            if isinstance(eff_time, IVL_TS):
+                ivl_ts = eff_time
+            elif isinstance(eff_time, PIVL_TS):
                 pivl_ts = eff_time
             elif isinstance(eff_time, EIVL_TS):
                 eivl_ts = eff_time
+
+        # Convert IVL_TS to timing.repeat.boundsPeriod
+        if ivl_ts:
+            bounds_period = self._convert_ivl_ts_to_bounds_period(ivl_ts)
+            if bounds_period:
+                repeat["boundsPeriod"] = bounds_period
 
         # Convert PIVL_TS to timing.repeat (frequency/period)
         if pivl_ts:
@@ -383,6 +398,33 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             timing["repeat"] = repeat
 
         return timing if timing else None
+
+    def _convert_ivl_ts_to_bounds_period(self, ivl_ts: IVL_TS) -> JSONObject | None:
+        """Convert IVL_TS (interval) to FHIR Period (boundsPeriod).
+
+        IVL_TS represents the time period during which the medication should be taken.
+        - low → boundsPeriod.start
+        - high → boundsPeriod.end
+
+        Args:
+            ivl_ts: C-CDA IVL_TS (interval of time)
+
+        Returns:
+            FHIR Period dict with start and/or end dates
+        """
+        period: JSONObject = {}
+
+        if ivl_ts.low and ivl_ts.low.value:
+            start = self.convert_date(ivl_ts.low.value)
+            if start:
+                period["start"] = start
+
+        if ivl_ts.high and ivl_ts.high.value:
+            end = self.convert_date(ivl_ts.high.value)
+            if end:
+                period["end"] = end
+
+        return period if period else None
 
     def _convert_pivl_to_repeat(self, pivl_ts: PIVL_TS) -> JSONObject | None:
         """Convert PIVL_TS (periodic interval) to FHIR Timing.repeat.
@@ -695,6 +737,7 @@ def convert_medication_activity(
     substance_admin: SubstanceAdministration,
     code_system_mapper=None,
     metadata_callback=None,
+    section=None,
 ) -> FHIRResourceDict:
     """Convert a Medication Activity to a FHIR MedicationRequest resource.
 
@@ -702,6 +745,7 @@ def convert_medication_activity(
         substance_admin: The SubstanceAdministration (Medication Activity)
         code_system_mapper: Optional code system mapper
         metadata_callback: Optional callback for storing author metadata
+        section: The C-CDA Section containing this medication (for narrative)
 
     Returns:
         FHIR MedicationRequest resource as a dictionary
@@ -709,7 +753,7 @@ def convert_medication_activity(
     converter = MedicationRequestConverter(code_system_mapper=code_system_mapper)
 
     try:
-        medication_request = converter.convert(substance_admin)
+        medication_request = converter.convert(substance_admin, section=section)
 
         # Store author metadata if callback provided
         if metadata_callback and medication_request.get("id"):

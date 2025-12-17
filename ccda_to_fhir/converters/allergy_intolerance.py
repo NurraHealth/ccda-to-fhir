@@ -16,6 +16,7 @@ from ccda_to_fhir.constants import (
     CCDACodes,
     FHIRCodes,
     FHIRSystems,
+    SnomedCodes,
     TemplateIds,
     TypeCodes,
 )
@@ -37,14 +38,16 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-allergies.html
     """
 
-    def __init__(self, *args, concern_act: Act | None = None, **kwargs):
+    def __init__(self, *args, concern_act: Act | None = None, section=None, **kwargs):
         """Initialize the allergy intolerance converter.
 
         Args:
             concern_act: The Allergy Concern Act containing this observation
+            section: The C-CDA Section containing this allergy (for narrative)
         """
         super().__init__(*args, **kwargs)
         self.concern_act = concern_act
+        self.section = section
 
     def convert(self, observation: Observation) -> FHIRResourceDict:
         """Convert a C-CDA Allergy Intolerance Observation to a FHIR AllergyIntolerance resource.
@@ -58,7 +61,11 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         Raises:
             MissingRequiredFieldError: If the observation lacks required data
         """
-        if not observation.participant:
+        # Check if this is a "no known allergy" case
+        is_no_known_allergy = self._is_no_known_allergy(observation)
+
+        # Require participant unless it's a no known allergy case
+        if not is_no_known_allergy and not observation.participant:
             raise MissingRequiredFieldError(
                 field_name="participant",
                 resource_type="Allergy Observation (AllergyIntolerance)",
@@ -94,8 +101,19 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                 ]
             }
 
-        # Verification status (for negated observations)
-        if observation.negation_ind:
+        # Verification status
+        # For no known allergies, use "confirmed" (they are confirmed absences)
+        # For other negated observations, use "refuted"
+        if is_no_known_allergy:
+            allergy["verificationStatus"] = {
+                "coding": [
+                    {
+                        "system": FHIRSystems.ALLERGY_VERIFICATION,
+                        "code": FHIRCodes.AllergyVerification.CONFIRMED,
+                    }
+                ]
+            }
+        elif observation.negation_ind:
             allergy["verificationStatus"] = {
                 "coding": [
                     {
@@ -128,8 +146,13 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         if criticality:
             allergy["criticality"] = criticality
 
-        # Code (allergen)
-        allergy["code"] = self._extract_allergen_code(observation)
+        # Code (allergen or negated concept)
+        if is_no_known_allergy:
+            # Use negated concept code based on allergy type
+            allergy["code"] = self._get_no_known_allergy_code(observation)
+        else:
+            # Extract allergen from participant
+            allergy["code"] = self._extract_allergen_code(observation)
 
         # Patient reference (will be set by DocumentConverter)
         allergy["patient"] = {"reference": "Patient/patient-placeholder"}
@@ -190,8 +213,11 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     "reference": f"Device/{latest_author.device_id}"
                 }
 
+        # Extract allergy-level severity (if present)
+        allergy_level_severity = self._extract_allergy_level_severity(observation)
+
         # Reactions
-        reactions = self._extract_reactions(observation)
+        reactions = self._extract_reactions(observation, allergy_level_severity)
         if reactions:
             allergy["reaction"] = reactions
 
@@ -199,6 +225,11 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         notes = self._extract_notes(observation)
         if notes:
             allergy["note"] = notes
+
+        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        narrative = self._generate_narrative(entry=observation, section=self.section)
+        if narrative:
+            allergy["text"] = narrative
 
         return allergy
 
@@ -220,6 +251,71 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             return f"allergy-{root_suffix}"
         else:
             return "allergy-unknown"
+
+    def _is_no_known_allergy(self, observation: Observation) -> bool:
+        """Check if this is a "no known allergy" observation.
+
+        A no known allergy has:
+        - negationInd = true
+        - participant with nullFlavor (typically "NA")
+
+        Args:
+            observation: The Allergy Intolerance Observation
+
+        Returns:
+            True if this is a no known allergy, False otherwise
+        """
+        if not observation.negation_ind:
+            return False
+
+        # Check if participant has nullFlavor
+        if observation.participant:
+            for participant in observation.participant:
+                if participant.type_code == TypeCodes.CONSUMABLE and participant.participant_role:
+                    playing_entity = participant.participant_role.playing_entity
+                    if playing_entity and playing_entity.code:
+                        if playing_entity.code.null_flavor:
+                            return True
+        return False
+
+    def _get_no_known_allergy_code(self, observation: Observation) -> FHIRResourceDict:
+        """Get the appropriate "no known allergy" negated concept code.
+
+        Maps the observation value code (allergy type) to the corresponding
+        "no known" SNOMED code.
+
+        Args:
+            observation: The Allergy Intolerance Observation
+
+        Returns:
+            FHIR CodeableConcept for the negated concept
+        """
+        # Default to general "no known allergy"
+        negated_code = SnomedCodes.NO_KNOWN_ALLERGY
+        negated_display = "No known allergy"
+
+        # Map based on observation value (allergy type)
+        if observation.value and isinstance(observation.value, (CD, CE)):
+            value_code = observation.value.code
+            if value_code == SnomedCodes.DRUG_ALLERGY:
+                negated_code = SnomedCodes.NO_KNOWN_DRUG_ALLERGY
+                negated_display = "No known drug allergy"
+            elif value_code == SnomedCodes.FOOD_ALLERGY:
+                negated_code = SnomedCodes.NO_KNOWN_FOOD_ALLERGY
+                negated_display = "No known food allergy"
+            elif value_code == SnomedCodes.ENVIRONMENTAL_ALLERGY:
+                negated_code = SnomedCodes.NO_KNOWN_ENVIRONMENTAL_ALLERGY
+                negated_display = "No known environmental allergy"
+
+        return {
+            "coding": [
+                {
+                    "system": self.map_oid_to_uri("2.16.840.1.113883.6.96"),  # SNOMED CT
+                    "code": negated_code,
+                    "display": negated_display,
+                }
+            ]
+        }
 
     def _determine_clinical_status(self, observation: Observation) -> str | None:
         """Determine the clinical status from observation or concern act.
@@ -377,11 +473,43 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         # Fallback if no participant found
         return {"text": "Unknown allergen"}
 
-    def _extract_reactions(self, observation: Observation) -> list[FHIRResourceDict]:
-        """Extract reactions from Reaction Observations.
+    def _extract_allergy_level_severity(self, observation: Observation) -> str | None:
+        """Extract severity from Severity Observation at allergy level.
+
+        Per C-CDA on FHIR IG, severity can be specified at the allergy level (not recommended)
+        or at the reaction level. This extracts allergy-level severity if present.
 
         Args:
             observation: The Allergy Intolerance Observation
+
+        Returns:
+            FHIR severity code (mild, moderate, severe) or None
+        """
+        if not observation.entry_relationship:
+            return None
+
+        for rel in observation.entry_relationship:
+            if rel.observation and rel.type_code == TypeCodes.SUBJECT:
+                # Check if it's a Severity Observation (not nested in a reaction)
+                if rel.observation.code and rel.observation.code.code == CCDACodes.SEVERITY:
+                    if rel.observation.value and isinstance(rel.observation.value, (CD, CE)):
+                        severity_code = rel.observation.value.code
+                        return SNOMED_SEVERITY_TO_FHIR.get(severity_code)
+        return None
+
+    def _extract_reactions(
+        self, observation: Observation, allergy_level_severity: str | None = None
+    ) -> list[FHIRResourceDict]:
+        """Extract reactions from Reaction Observations.
+
+        Implements severity inheritance per C-CDA on FHIR IG:
+        - Scenario A: Severity only at allergy level → apply to all reactions
+        - Scenario B: Severity at both levels → reaction level takes precedence
+        - Scenario C: Severity only at reaction level → use reaction severity
+
+        Args:
+            observation: The Allergy Intolerance Observation
+            allergy_level_severity: Optional severity from allergy level
 
         Returns:
             List of FHIR reaction elements
@@ -424,10 +552,14 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                         if onset_date:
                             reaction["onset"] = onset_date
 
-                # Severity (from nested Severity Observation)
-                severity = self._extract_reaction_severity(rel.observation)
-                if severity:
-                    reaction["severity"] = severity
+                # Severity (with inheritance)
+                # Scenario B: Reaction-level severity takes precedence
+                reaction_severity = self._extract_reaction_severity(rel.observation)
+                if reaction_severity:
+                    reaction["severity"] = reaction_severity
+                # Scenario A: Fall back to allergy-level severity
+                elif allergy_level_severity:
+                    reaction["severity"] = allergy_level_severity
 
                 if reaction:
                     reactions.append(reaction)
@@ -506,7 +638,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
 
 
 def convert_allergy_concern_act(
-    act: Act, code_system_mapper=None, metadata_callback=None
+    act: Act, code_system_mapper=None, metadata_callback=None, section=None
 ) -> list[FHIRResourceDict]:
     """Convert an Allergy Concern Act to a list of FHIR AllergyIntolerance resources.
 
@@ -514,6 +646,7 @@ def convert_allergy_concern_act(
         act: The Allergy Concern Act
         code_system_mapper: Optional code system mapper
         metadata_callback: Optional callback for storing author metadata
+        section: Optional C-CDA Section containing this allergy (for narrative)
 
     Returns:
         List of FHIR AllergyIntolerance resources (one per Allergy Intolerance Observation)
@@ -524,7 +657,7 @@ def convert_allergy_concern_act(
         return allergies
 
     converter = AllergyIntoleranceConverter(
-        code_system_mapper=code_system_mapper, concern_act=act
+        code_system_mapper=code_system_mapper, concern_act=act, section=section
     )
 
     for rel in act.entry_relationship:

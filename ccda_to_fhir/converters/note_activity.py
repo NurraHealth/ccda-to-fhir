@@ -27,11 +27,12 @@ class NoteActivityConverter(BaseConverter[Act]):
     Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-NoteActivity.html
     """
 
-    def convert(self, note_act: Act) -> FHIRResourceDict:
+    def convert(self, note_act: Act, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Note Activity Act to a FHIR DocumentReference resource.
 
         Args:
             note_act: The C-CDA Note Activity Act element
+            section: Optional containing section (for text reference resolution)
 
         Returns:
             FHIR DocumentReference resource as a dictionary
@@ -55,6 +56,11 @@ class NoteActivityConverter(BaseConverter[Act]):
         # Status (required) - map from statusCode
         status = self._extract_status(note_act)
         doc_ref["status"] = status
+
+        # DocStatus - document completion status from statusCode
+        doc_status = self._extract_doc_status(note_act)
+        if doc_status:
+            doc_ref["docStatus"] = doc_status
 
         # Type (required) - note type from code
         if note_act.code:
@@ -93,10 +99,14 @@ class NoteActivityConverter(BaseConverter[Act]):
                 doc_ref["author"] = authors
 
         # Content (required) - from text element
+        # Note: Can have multiple content items (inline + reference)
         if note_act.text:
-            content = self._create_content(note_act.text)
-            if content:
-                doc_ref["content"] = [content]
+            content_list = self._create_content_list(note_act.text, section)
+            if content_list:
+                doc_ref["content"] = content_list
+            else:
+                # Content is required - provide empty attachment if no text
+                doc_ref["content"] = [{"attachment": {}}]
         else:
             # Content is required - provide empty attachment if no text
             doc_ref["content"] = [{"attachment": {}}]
@@ -111,6 +121,11 @@ class NoteActivityConverter(BaseConverter[Act]):
             relates_to = self._convert_relates_to(note_act.reference)
             if relates_to:
                 doc_ref["relatesTo"] = relates_to
+
+        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        narrative = self._generate_narrative(entry=note_act, section=section)
+        if narrative:
+            doc_ref["text"] = narrative
 
         return doc_ref
 
@@ -153,6 +168,29 @@ class NoteActivityConverter(BaseConverter[Act]):
 
         # Default to current
         return FHIRCodes.DocumentReferenceStatus.CURRENT
+
+    def _extract_doc_status(self, note_act: Act) -> str | None:
+        """Extract FHIR docStatus from C-CDA note activity statusCode.
+
+        Maps C-CDA status to FHIR document completion status:
+        - completed → final
+        - active → preliminary
+        - Others → None (omit docStatus)
+
+        Args:
+            note_act: The Note Activity Act
+
+        Returns:
+            FHIR DocumentReference docStatus code or None
+        """
+        if note_act.status_code and note_act.status_code.code:
+            status_code = note_act.status_code.code.lower()
+            if status_code == "completed":
+                return "final"
+            elif status_code == "active":
+                return "preliminary"
+
+        return None
 
     def _convert_type(self, code: CD) -> JSONObject | None:
         """Convert note type code to FHIR CodeableConcept.
@@ -280,8 +318,42 @@ class NoteActivityConverter(BaseConverter[Act]):
 
         return "practitioner-unknown"
 
-    def _create_content(self, text) -> JSONObject | None:
-        """Create content element with attachment from note text.
+    def _create_content_list(self, text, section=None) -> list[JSONObject]:
+        """Create list of content elements with attachments from note text.
+
+        C-CDA Note Activity text can contain multiple representations:
+        1. Inline content (base64 encoded or plain text)
+        2. Reference to section narrative
+
+        When both are present, create separate content items for each.
+
+        Args:
+            text: ED (Encapsulated Data) element containing note content
+            section: Optional containing section (for reference resolution)
+
+        Returns:
+            List of FHIR content objects (may be empty)
+        """
+        if not text:
+            return []
+
+        content_list: list[JSONObject] = []
+
+        # Check for inline content (base64 or plain text)
+        inline_content = self._create_inline_content(text)
+        if inline_content:
+            content_list.append(inline_content)
+
+        # Check for reference to section narrative
+        if hasattr(text, "reference") and text.reference and section:
+            reference_content = self._create_reference_content(text.reference, section)
+            if reference_content:
+                content_list.append(reference_content)
+
+        return content_list
+
+    def _create_inline_content(self, text) -> JSONObject | None:
+        """Create content element from inline text content.
 
         Args:
             text: ED (Encapsulated Data) element containing note content
@@ -307,19 +379,187 @@ class NoteActivityConverter(BaseConverter[Act]):
         # 1. Direct text content
         # 2. Base64 encoded (representation="B64")
         # Note: ED model stores text in 'value' attribute
+        has_data = False
         if hasattr(text, "representation") and text.representation == "B64":
             # Already base64 encoded
             if hasattr(text, "value") and text.value:
                 # Remove whitespace from base64 data
                 attachment["data"] = text.value.replace("\n", "").replace(" ", "").strip()
+                has_data = True
         elif hasattr(text, "value") and text.value:
             # Plain text - need to base64 encode it
             import base64
             text_bytes = text.value.encode("utf-8")
             attachment["data"] = base64.b64encode(text_bytes).decode("ascii")
+            has_data = True
 
-        # Always return content, even if no data (content is required in FHIR)
+        # Only return content if we have data
+        return content if has_data else None
+
+    def _create_reference_content(self, reference, section) -> JSONObject | None:
+        """Create content element from reference to section narrative.
+
+        Args:
+            reference: Reference element with value attribute (e.g., value="#note-1")
+            section: Section containing the narrative text
+
+        Returns:
+            FHIR content object or None
+        """
+        if not reference or not section:
+            return None
+
+        # Resolve the reference to get the actual text
+        resolved_text = self._resolve_text_reference(reference, section)
+        if not resolved_text:
+            return None
+
+        content: JSONObject = {"attachment": {}}
+        attachment = content["attachment"]
+
+        # Determine content type based on markup presence
+        if "<" in resolved_text and ">" in resolved_text:
+            attachment["contentType"] = "text/html"
+        else:
+            attachment["contentType"] = "text/plain"
+
+        # Base64 encode the resolved text
+        import base64
+        text_bytes = resolved_text.encode("utf-8")
+        attachment["data"] = base64.b64encode(text_bytes).decode("ascii")
+
         return content
+
+    def _resolve_text_reference(self, reference, section) -> str | None:
+        """Resolve a text reference to section narrative content.
+
+        Args:
+            reference: Reference element with value attribute (e.g., value="#note-1")
+            section: Section containing the narrative text
+
+        Returns:
+            Resolved text content as string or None
+        """
+        if not reference or not section:
+            return None
+
+        # Get reference value
+        ref_value = None
+        if hasattr(reference, "value") and reference.value:
+            ref_value = reference.value
+        elif isinstance(reference, str):
+            ref_value = reference
+
+        if not ref_value:
+            return None
+
+        # Parse reference ID (remove # prefix if present)
+        ref_id = ref_value.lstrip("#")
+
+        # Access section text/narrative
+        if not hasattr(section, "text") or not section.text:
+            return None
+
+        # Use utility to extract text by ID from StrucDocText narrative
+        from ccda_to_fhir.utils.struc_doc_utils import extract_text_by_id
+
+        return extract_text_by_id(section.text, ref_id)
+
+    def _extract_narrative_by_id(self, narrative, target_id: str) -> str | None:
+        """Extract text content from CDA narrative by ID.
+
+        Args:
+            narrative: StrucDocText narrative object
+            target_id: ID to search for
+
+        Returns:
+            Text content as string or None
+        """
+        # Try to convert narrative to XML and search
+        try:
+            # If narrative has an XML representation, search it
+            if hasattr(narrative, "__dict__"):
+                # Search through narrative elements
+                for attr_name, attr_value in vars(narrative).items():
+                    if isinstance(attr_value, list):
+                        for item in attr_value:
+                            text = self._search_element_for_id(item, target_id)
+                            if text:
+                                return text
+            return None
+        except Exception:
+            return None
+
+    def _search_element_for_id(self, element, target_id: str) -> str | None:
+        """Recursively search an element for matching ID.
+
+        Args:
+            element: Element to search
+            target_id: ID to find
+
+        Returns:
+            Text content if found, None otherwise
+        """
+        if not hasattr(element, "__dict__"):
+            return None
+
+        # Check if this element has the target ID
+        if hasattr(element, "ID") and element.ID == target_id:
+            # Extract text content from this element
+            return self._extract_text_from_element(element)
+
+        # Recursively search child elements
+        for attr_value in vars(element).values():
+            if isinstance(attr_value, list):
+                for item in attr_value:
+                    text = self._search_element_for_id(item, target_id)
+                    if text:
+                        return text
+            elif hasattr(attr_value, "__dict__"):
+                text = self._search_element_for_id(attr_value, target_id)
+                if text:
+                    return text
+
+        return None
+
+    def _extract_text_from_element(self, element) -> str:
+        """Extract all text content from an element.
+
+        Args:
+            element: Element to extract text from
+
+        Returns:
+            Concatenated text content
+        """
+        texts = []
+
+        if hasattr(element, "content") and element.content:
+            if isinstance(element.content, str):
+                texts.append(element.content)
+            elif isinstance(element.content, list):
+                for item in element.content:
+                    if isinstance(item, str):
+                        texts.append(item)
+                    elif hasattr(item, "__dict__"):
+                        texts.append(self._extract_text_from_element(item))
+
+        # Check for direct text content
+        for attr_name in ["text", "value", "_value"]:
+            if hasattr(element, attr_name):
+                attr_value = getattr(element, attr_name)
+                if isinstance(attr_value, str):
+                    texts.append(attr_value)
+
+        # Recursively extract from children
+        for attr_value in vars(element).values():
+            if isinstance(attr_value, list):
+                for item in attr_value:
+                    if hasattr(item, "__dict__") and not isinstance(item, str):
+                        child_text = self._extract_text_from_element(item)
+                        if child_text:
+                            texts.append(child_text)
+
+        return " ".join(texts).strip()
 
     def _create_context(self, note_act: Act) -> JSONObject | None:
         """Create document context from note activity.
@@ -417,6 +657,7 @@ class NoteActivityConverter(BaseConverter[Act]):
 def convert_note_activity(
     note_act: Act,
     code_system_mapper=None,
+    section=None,
 ) -> FHIRResourceDict:
     """Convert a C-CDA Note Activity Act to a FHIR DocumentReference resource.
 
@@ -425,9 +666,10 @@ def convert_note_activity(
     Args:
         note_act: The C-CDA Note Activity Act
         code_system_mapper: Optional code system mapper
+        section: Optional containing section (for text reference resolution)
 
     Returns:
         FHIR DocumentReference resource
     """
     converter = NoteActivityConverter(code_system_mapper=code_system_mapper)
-    return converter.convert(note_act)
+    return converter.convert(note_act, section=section)

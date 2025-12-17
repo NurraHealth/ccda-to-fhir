@@ -40,16 +40,18 @@ class ConditionConverter(BaseConverter[Observation]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-problems.html
     """
 
-    def __init__(self, *args, section_code: str | None = None, concern_act: Act | None = None, **kwargs):
+    def __init__(self, *args, section_code: str | None = None, concern_act: Act | None = None, section=None, **kwargs):
         """Initialize the condition converter.
 
         Args:
             section_code: The LOINC code of the section containing this problem
             concern_act: The Problem Concern Act containing this observation
+            section: The C-CDA Section containing this condition (for narrative)
         """
         super().__init__(*args, **kwargs)
         self.section_code = section_code
         self.concern_act = concern_act
+        self.section = section
 
     def convert(self, observation: Observation) -> FHIRResourceDict:
         """Convert a C-CDA Problem Observation to a FHIR Condition resource.
@@ -197,6 +199,11 @@ class ConditionConverter(BaseConverter[Observation]):
         notes = self._extract_notes(observation)
         if notes:
             condition["note"] = notes
+
+        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        narrative = self._generate_narrative(entry=observation, section=self.section)
+        if narrative:
+            condition["text"] = narrative
 
         return condition
 
@@ -670,6 +677,7 @@ def convert_problem_concern_act(
     section_code: str | None = None,
     code_system_mapper=None,
     metadata_callback=None,
+    section=None,
 ) -> list[FHIRResourceDict]:
     """Convert a Problem Concern Act to a list of FHIR Condition resources.
 
@@ -678,6 +686,7 @@ def convert_problem_concern_act(
         section_code: The LOINC code of the section
         code_system_mapper: Optional code system mapper
         metadata_callback: Optional callback for storing author metadata
+        section: Optional C-CDA Section containing this problem (for narrative)
 
     Returns:
         List of FHIR Condition resources (one per Problem Observation)
@@ -688,7 +697,7 @@ def convert_problem_concern_act(
         return conditions
 
     converter = ConditionConverter(
-        code_system_mapper=code_system_mapper, section_code=section_code, concern_act=act
+        code_system_mapper=code_system_mapper, section_code=section_code, concern_act=act, section=section
     )
 
     for rel in act.entry_relationship:
