@@ -153,10 +153,6 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         if dispense_request:
             med_request["dispenseRequest"] = dispense_request
 
-        # 11. Notes (from text element)
-        if substance_admin.text and substance_admin.text.value:
-            med_request["note"] = [{"text": substance_admin.text.value}]
-
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=substance_admin, section=section)
         if narrative:
@@ -264,22 +260,28 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         """Extract dosage instruction from substance administration."""
         dosage: JSONObject = {}
 
-        # 1. PatientInstruction (from Instruction Act with typeCode=SUBJ)
+        # 1. Text (free text sig from substanceAdministration/text)
+        # Per C-CDA on FHIR IG: substanceAdministration/text → dosageInstruction.text
+        # Per FHIR R4: Dosage.text = "Free text dosage instructions e.g. SIG"
+        if substance_admin.text and substance_admin.text.value:
+            dosage["text"] = substance_admin.text.value
+
+        # 2. PatientInstruction (from Instruction Act with typeCode=SUBJ)
         patient_instruction = self._extract_patient_instruction(substance_admin)
         if patient_instruction:
             dosage["patientInstruction"] = patient_instruction
 
-        # 2. AdditionalInstruction (from Instruction Act code)
+        # 3. AdditionalInstruction (from Instruction Act code)
         additional_instructions = self._extract_additional_instructions(substance_admin)
         if additional_instructions:
             dosage["additionalInstruction"] = additional_instructions
 
-        # 3. Timing (from effectiveTime elements)
+        # 4. Timing (from effectiveTime elements)
         timing = self._extract_timing(substance_admin)
         if timing:
             dosage["timing"] = timing
 
-        # 4. AsNeeded (from precondition)
+        # 5. AsNeeded (from precondition)
         # Per C-CDA on FHIR IG: "The presence of a precondition element indicates
         # asNeededBoolean should be true. More complex maps may be possible with
         # .asNeededCodeableConcept."
@@ -294,7 +296,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             # Precondition exists but no coded value → use asNeededBoolean
             dosage["asNeededBoolean"] = True
 
-        # 5. Route (from routeCode)
+        # 6. Route (from routeCode)
         if substance_admin.route_code:
             dosage["route"] = self.create_codeable_concept(
                 code=substance_admin.route_code.code,
@@ -302,12 +304,12 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 display_name=substance_admin.route_code.display_name,
             )
 
-        # 6. DoseAndRate (from doseQuantity)
+        # 7. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)
         if dose_and_rate:
             dosage["doseAndRate"] = dose_and_rate
 
-        # 7. MaxDosePerPeriod (from maxDoseQuantity)
+        # 8. MaxDosePerPeriod (from maxDoseQuantity)
         max_dose = self._extract_max_dose_per_period(substance_admin)
         if max_dose:
             dosage["maxDosePerPeriod"] = max_dose

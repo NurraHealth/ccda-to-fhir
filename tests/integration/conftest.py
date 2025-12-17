@@ -701,6 +701,18 @@ def ccda_medication_bounds_period_with_frequency() -> str:
 
 
 @pytest.fixture
+def ccda_medication_with_sig() -> str:
+    """Load C-CDA medication with free text sig (dosageInstruction.text)."""
+    return (CCDA_FIXTURES_DIR / "medication_with_sig.xml").read_text()
+
+
+@pytest.fixture
+def ccda_medication_with_sig_and_patient_instruction() -> str:
+    """Load C-CDA medication with both free text sig and patient instruction."""
+    return (CCDA_FIXTURES_DIR / "medication_with_sig_and_patient_instruction.xml").read_text()
+
+
+@pytest.fixture
 def ccda_procedure_multiple_authors() -> str:
     """Load C-CDA procedure with multiple authors at different times."""
     return (CCDA_FIXTURES_DIR / "procedure_multiple_authors.xml").read_text()

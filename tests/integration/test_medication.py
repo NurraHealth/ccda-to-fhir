@@ -540,3 +540,72 @@ class TestBoundsPeriodConversion:
         timing_repeat = dosage["timing"]["repeat"]
         assert isinstance(timing_repeat, dict)
         assert len(timing_repeat) >= 3  # boundsPeriod, period, periodUnit
+
+
+class TestDosageInstructionText:
+    """E2E tests for dosageInstruction.text (free text sig) conversion."""
+
+    def test_converts_free_text_sig(self, ccda_medication_with_sig: str) -> None:
+        """Test that substanceAdministration/text maps to dosageInstruction.text.
+
+        Per C-CDA on FHIR IG: substanceAdministration/text → dosageInstruction.text
+        Per FHIR R4: Dosage.text = "Free text dosage instructions e.g. SIG"
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_medication_with_sig, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+        assert "dosageInstruction" in med_request
+
+        dosage = med_request["dosageInstruction"][0]
+        assert "text" in dosage
+        assert dosage["text"] == "Take one tablet by mouth daily"
+
+    def test_text_and_patient_instruction_both_present(
+        self, ccda_medication_with_sig_and_patient_instruction: str
+    ) -> None:
+        """Test that both dosageInstruction.text and patientInstruction can coexist.
+
+        Per FHIR R4:
+        - Dosage.text = "Free text dosage instructions e.g. SIG"
+        - Dosage.patientInstruction = "Instructions in terms that are understood by the patient"
+        """
+        ccda_doc = wrap_in_ccda_document(
+            ccda_medication_with_sig_and_patient_instruction, MEDICATIONS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+        assert "dosageInstruction" in med_request
+
+        dosage = med_request["dosageInstruction"][0]
+
+        # Both text (from substanceAdministration/text) and patientInstruction
+        # (from Instruction Act) should be present
+        assert "text" in dosage
+        assert dosage["text"] == "1-2 tabs po q4-6h prn pain"
+
+        assert "patientInstruction" in dosage
+        assert dosage["patientInstruction"] == "Take with food to avoid stomach upset"
+
+    def test_text_does_not_go_to_note(self, ccda_medication_with_sig: str) -> None:
+        """Test that substanceAdministration/text does NOT map to MedicationRequest.note.
+
+        The free text sig should map to dosageInstruction.text, NOT to note.
+        Per FHIR R4: MedicationRequest.note = "Extra information about the prescription
+        that could not be conveyed by the other attributes."
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_medication_with_sig, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+
+        # Should NOT have note field (no Comment Activity present)
+        assert "note" not in med_request
+
+        # Text should be in dosageInstruction.text instead
+        assert "dosageInstruction" in med_request
+        assert "text" in med_request["dosageInstruction"][0]
