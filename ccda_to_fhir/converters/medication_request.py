@@ -279,10 +279,20 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         if timing:
             dosage["timing"] = timing
 
-        # 4. AsNeededCodeableConcept (from precondition)
-        as_needed = self._extract_as_needed(substance_admin)
-        if as_needed:
-            dosage["asNeededCodeableConcept"] = as_needed
+        # 4. AsNeeded (from precondition)
+        # Per C-CDA on FHIR IG: "The presence of a precondition element indicates
+        # asNeededBoolean should be true. More complex maps may be possible with
+        # .asNeededCodeableConcept."
+        # Per FHIR R4: asNeededBoolean and asNeededCodeableConcept are mutually exclusive.
+        # When asNeededCodeableConcept is used, Boolean is implied to be true.
+        as_needed_concept = self._extract_as_needed(substance_admin)
+        if as_needed_concept:
+            # Precondition with coded value → use asNeededCodeableConcept
+            # (Boolean is implied true per FHIR spec)
+            dosage["asNeededCodeableConcept"] = as_needed_concept
+        elif substance_admin.precondition:
+            # Precondition exists but no coded value → use asNeededBoolean
+            dosage["asNeededBoolean"] = True
 
         # 5. Route (from routeCode)
         if substance_admin.route_code:

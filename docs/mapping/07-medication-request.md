@@ -466,6 +466,8 @@ When additional medication details (form, manufacturer, ingredients) require rep
 
 ### As Needed (Precondition)
 
+#### With Coded Reason
+
 **C-CDA:**
 ```xml
 <precondition typeCode="PRCN">
@@ -481,7 +483,6 @@ When additional medication details (form, manufacturer, ingredients) require rep
 ```json
 {
   "dosageInstruction": [{
-    "asNeededBoolean": true,
     "asNeededCodeableConcept": {
       "coding": [{
         "system": "http://snomed.info/sct",
@@ -493,7 +494,30 @@ When additional medication details (form, manufacturer, ingredients) require rep
 }
 ```
 
-**Note:** Presence of a precondition element indicates `asNeededBoolean` should be `true`.
+**Note:** When a coded reason is present, use `asNeededCodeableConcept`. Boolean is implied `true` per FHIR specification.
+
+#### Without Coded Reason
+
+**C-CDA:**
+```xml
+<precondition typeCode="PRCN">
+  <criterion>
+    <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+    <!-- No value element - simple PRN -->
+  </criterion>
+</precondition>
+```
+
+**FHIR:**
+```json
+{
+  "dosageInstruction": [{
+    "asNeededBoolean": true
+  }]
+}
+```
+
+**Note:** `asNeededBoolean` and `asNeededCodeableConcept` are mutually exclusive (FHIR choice type `asNeeded[x]`). Use one or the other, never both.
 
 ### Supply/Dispense Information
 

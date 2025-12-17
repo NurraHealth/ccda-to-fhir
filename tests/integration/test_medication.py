@@ -136,15 +136,51 @@ class TestMedicationConversion:
 
     def test_converts_as_needed(
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
-        """Test that precondition is converted to asNeededCodeableConcept."""
+        """Test that precondition with coded value is converted to asNeededCodeableConcept."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
         assert "dosageInstruction" in med_request
-        as_needed = med_request["dosageInstruction"][0]["asNeededCodeableConcept"]
+
+        dosage = med_request["dosageInstruction"][0]
+
+        # Should have asNeededCodeableConcept with the reason code
+        assert "asNeededCodeableConcept" in dosage
+        as_needed = dosage["asNeededCodeableConcept"]
         assert as_needed["coding"][0]["code"] == "56018004"
+        assert as_needed["coding"][0]["display"].lower() == "wheezing"
+
+        # Should NOT have asNeededBoolean (mutually exclusive)
+        assert "asNeededBoolean" not in dosage
+
+    def test_converts_as_needed_boolean(self) -> None:
+        """Test that precondition without coded value is converted to asNeededBoolean.
+
+        Per C-CDA on FHIR IG: "The presence of a precondition element indicates
+        asNeededBoolean should be true."
+        Per FHIR R4: asNeededBoolean and asNeededCodeableConcept are mutually exclusive.
+        """
+        # Load fixture with precondition but no coded value
+        with open("tests/integration/fixtures/ccda/medication_as_needed_no_reason.xml") as f:
+            ccda_medication = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+        assert "dosageInstruction" in med_request
+
+        dosage = med_request["dosageInstruction"][0]
+
+        # Should have asNeededBoolean = true
+        assert "asNeededBoolean" in dosage
+        assert dosage["asNeededBoolean"] is True
+
+        # Should NOT have asNeededCodeableConcept (mutually exclusive)
+        assert "asNeededCodeableConcept" not in dosage
 
     def test_converts_reason_code(
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
