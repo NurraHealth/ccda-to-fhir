@@ -543,6 +543,12 @@ def ccda_condition_negated() -> str:
 
 
 @pytest.fixture
+def ccda_problem_no_known_problems() -> str:
+    """Load C-CDA problem with negationInd=true and generic problem code (no known problems)."""
+    return (CCDA_FIXTURES_DIR / "problem_no_known_problems.xml").read_text()
+
+
+@pytest.fixture
 def ccda_condition_with_asserted_date() -> str:
     """Load C-CDA condition with Date of Diagnosis (assertedDate extension)."""
     return (CCDA_FIXTURES_DIR / "condition_with_asserted_date.xml").read_text()
@@ -632,6 +638,12 @@ def ccda_procedure_negated() -> str:
 def ccda_problem_multiple_authors() -> str:
     """Load C-CDA problem with multiple authors at different times."""
     return (CCDA_FIXTURES_DIR / "problem_multiple_authors.xml").read_text()
+
+
+@pytest.fixture
+def ccda_problem_with_diagnosis_type() -> str:
+    """Load C-CDA problem with diagnosis type code (282291009) for secondary category testing."""
+    return (CCDA_FIXTURES_DIR / "problem_with_diagnosis_type.xml").read_text()
 
 
 @pytest.fixture

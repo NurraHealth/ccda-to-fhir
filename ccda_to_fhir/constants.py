@@ -283,6 +283,14 @@ class SnomedCodes:
     NO_KNOWN_FOOD_ALLERGY = "429625007"
     NO_KNOWN_ENVIRONMENTAL_ALLERGY = "428607008"
 
+    # Problem-related codes
+    PROBLEM = "55607006"  # Generic problem code
+    FINDING = "404684003"  # Generic finding code
+    CONDITION = "64572001"  # Generic condition/disease code
+
+    # Negated problem codes
+    NO_CURRENT_PROBLEMS = "160245001"  # No current problems or disability
+
 
 # =============================================================================
 # HL7 V3 Criticality Codes

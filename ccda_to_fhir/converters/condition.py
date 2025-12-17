@@ -101,24 +101,42 @@ class ConditionConverter(BaseConverter[Observation]):
                 ]
             }
 
-        # Verification status (for negated observations)
-        if observation.negation_ind:
-            condition["verificationStatus"] = {
-                "coding": [
-                    {
-                        "system": FHIRSystems.CONDITION_VERIFICATION,
-                        "code": FHIRCodes.ConditionVerification.REFUTED,
-                    }
-                ]
-            }
+        # Handle negation: Check if this is a generic "no known problems" scenario
+        # or a specific condition being refuted
+        uses_negated_concept_code = False
+        if observation.negation_ind and observation.value:
+            # Check if the value is a generic problem code
+            if isinstance(observation.value, (CD, CE)) and observation.value.code in (
+                SnomedCodes.PROBLEM,  # 55607006
+                SnomedCodes.FINDING,  # 404684003
+                SnomedCodes.CONDITION,  # 64572001
+            ):
+                # Use negated concept code for generic problems
+                uses_negated_concept_code = True
+                condition["code"] = self.create_codeable_concept(
+                    code=SnomedCodes.NO_CURRENT_PROBLEMS,
+                    code_system="2.16.840.1.113883.6.96",  # SNOMED CT
+                    display_name="No current problems or disability",
+                )
+            else:
+                # For specific conditions, set verification status to refuted
+                condition["verificationStatus"] = {
+                    "coding": [
+                        {
+                            "system": FHIRSystems.CONDITION_VERIFICATION,
+                            "code": FHIRCodes.ConditionVerification.REFUTED,
+                        }
+                    ]
+                }
 
         # Category (from section code)
         categories = self._determine_categories(observation)
         if categories:
             condition["category"] = categories
 
-        # Code (diagnosis/problem)
-        condition["code"] = self._convert_diagnosis_code(observation.value)
+        # Code (diagnosis/problem) - only if not already set by negated concept code logic
+        if "code" not in condition:
+            condition["code"] = self._convert_diagnosis_code(observation.value)
 
         # Severity (from Severity Observation)
         severity = self._extract_severity(observation)

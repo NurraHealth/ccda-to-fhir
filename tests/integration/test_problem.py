@@ -63,6 +63,41 @@ class TestProblemConversion:
         assert "category" in condition
         assert condition["category"][0]["coding"][0]["code"] == "problem-list-item"
 
+    def test_converts_secondary_category_from_problem_type(
+        self, ccda_problem_with_diagnosis_type: str
+    ) -> None:
+        """Test that problem type code (282291009=Diagnosis) creates secondary category.
+
+        When a problem appears in the Problem List section (maps to problem-list-item)
+        but has a problem type code of 282291009 (Diagnosis, maps to encounter-diagnosis),
+        the Condition should have two categories:
+        1. problem-list-item (from section)
+        2. encounter-diagnosis (from problem type code)
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_problem_with_diagnosis_type, PROBLEMS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        condition = _find_resource_in_bundle(bundle, "Condition")
+        assert condition is not None
+        assert "category" in condition
+
+        # Should have two categories
+        assert len(condition["category"]) == 2
+
+        # Extract category codes
+        category_codes = [
+            cat["coding"][0]["code"]
+            for cat in condition["category"]
+        ]
+
+        # Should contain both problem-list-item (from section) and encounter-diagnosis (from problem type)
+        assert "problem-list-item" in category_codes
+        assert "encounter-diagnosis" in category_codes
+
+        # Verify system for both categories
+        for cat in condition["category"]:
+            assert cat["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/condition-category"
+
     def test_converts_onset_date(
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that onset date is correctly converted."""
@@ -214,6 +249,37 @@ class TestProblemConversion:
             condition["verificationStatus"]["coding"][0]["system"]
             == "http://terminology.hl7.org/CodeSystem/condition-ver-status"
         )
+
+    def test_converts_no_known_problems_to_negated_concept_code(
+        self, ccda_problem_no_known_problems: str
+    ) -> None:
+        """Test that negationInd=true with generic problem code maps to negated concept.
+
+        When negationInd="true" is combined with a generic problem code (55607006, 404684003,
+        or 64572001), the converter should use SNOMED CT negated concept code 160245001
+        "No current problems or disability" instead of setting verificationStatus=refuted.
+
+        This follows FHIR best practice for representing "no known problems" scenarios.
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_problem_no_known_problems, PROBLEMS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        condition = _find_resource_in_bundle(bundle, "Condition")
+        assert condition is not None
+
+        # Should NOT have verificationStatus=refuted
+        assert "verificationStatus" not in condition
+
+        # Should have negated concept code
+        assert "code" in condition
+        snomed_coding = next(
+            (c for c in condition["code"]["coding"]
+             if c.get("system") == "http://snomed.info/sct"),
+            None
+        )
+        assert snomed_coding is not None
+        assert snomed_coding["code"] == "160245001"
+        assert "No current problems" in snomed_coding.get("display", "")
 
     def test_converts_asserted_date_extension(
         self, ccda_condition_with_asserted_date: str
