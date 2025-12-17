@@ -31,6 +31,7 @@ class TemplateIds:
     AGE_OBSERVATION = "2.16.840.1.113883.10.20.22.4.31"
     CRITICALITY_OBSERVATION = "2.16.840.1.113883.10.20.22.4.145"
     COMMENT_ACTIVITY = "2.16.840.1.113883.10.20.22.4.64"
+    ASSESSMENT_SCALE_OBSERVATION = "2.16.840.1.113883.10.20.22.4.69"
 
     # Author template
     AUTHOR_PARTICIPATION = "2.16.840.1.113883.10.20.22.4.119"
@@ -144,9 +145,11 @@ class TypeCodes:
     CONSUMABLE = "CSM"  # Consumable (for allergen participant)
     REASON = "RSON"  # Reason for (indication)
     SUPPORT = "SPRT"  # Supporting observation (evidence)
+    COMPONENT = "COMP"  # Component observation (assessment scale, etc.)
     RSON = "RSON"  # Alternative name for REASON
     MFST = "MFST"  # Alternative name for MANIFESTATION
     SPRT = "SPRT"  # Alternative name for SUPPORT
+    COMP = "COMP"  # Alternative name for COMPONENT
 
 
 # =============================================================================

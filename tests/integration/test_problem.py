@@ -365,6 +365,33 @@ class TestProblemConversion:
         assert reference.startswith("Observation/")
         assert "lab-result-tsh-001" in reference
 
+    def test_converts_assessment_scale_observations_to_evidence(
+        self, ccda_condition_with_assessment_scale: str
+    ) -> None:
+        """Test that assessment scale observations (typeCode=COMP) are converted to evidence.detail.
+
+        Assessment Scale Observations (template 2.16.840.1.113883.10.20.22.4.69) provide
+        structured evaluations (e.g., PHQ-9 depression screening, Glasgow coma scale) that
+        support the diagnosis and should be referenced in Condition.evidence.detail.
+
+        Per C-CDA on FHIR IG and FHIR R4 spec, these observations are converted to FHIR
+        Observation resources and referenced to provide supporting evidence for conditions.
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_condition_with_assessment_scale, PROBLEMS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        condition = _find_resource_in_bundle(bundle, "Condition")
+        assert condition is not None
+        assert "evidence" in condition, "Condition should have evidence from assessment scale"
+        assert len(condition["evidence"]) == 1
+        assert "detail" in condition["evidence"][0]
+        assert len(condition["evidence"][0]["detail"]) == 1
+
+        # Verify the reference points to an Observation resource
+        reference = condition["evidence"][0]["detail"][0]["reference"]
+        assert reference.startswith("Observation/")
+        assert "assessment-phq9-001" in reference, "Should reference the PHQ-9 assessment observation"
+
     def test_converts_recorder_from_latest_author(
         self, ccda_problem: str, fhir_problem: JSONObject
     ) -> None:

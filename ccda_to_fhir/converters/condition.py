@@ -652,8 +652,8 @@ class ConditionConverter(BaseConverter[Observation]):
     def _extract_evidence(self, observation: Observation) -> list[JSONObject] | None:
         """Extract evidence from related observations.
 
-        Supporting observations (e.g., lab results) that support the diagnosis
-        are converted to references and linked as evidence.detail.
+        Supporting observations (e.g., lab results) and assessment scale observations
+        that support the diagnosis are converted to references and linked as evidence.detail.
 
         Args:
             observation: The Problem Observation
@@ -667,8 +667,8 @@ class ConditionConverter(BaseConverter[Observation]):
         evidence_list = []
 
         for entry_rel in observation.entry_relationship:
-            # Look for supporting observations (typeCode="SPRT")
-            if hasattr(entry_rel, "type_code") and entry_rel.type_code == TypeCodes.SUPPORT:
+            # Look for supporting observations (typeCode="SPRT") and component observations (typeCode="COMP")
+            if hasattr(entry_rel, "type_code") and entry_rel.type_code in (TypeCodes.SUPPORT, TypeCodes.COMPONENT):
                 if hasattr(entry_rel, "observation") and entry_rel.observation:
                     supporting_obs = entry_rel.observation
 

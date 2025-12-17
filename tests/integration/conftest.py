@@ -572,6 +572,12 @@ def ccda_condition_with_evidence() -> str:
     return (CCDA_FIXTURES_DIR / "condition_with_evidence.xml").read_text()
 
 
+@pytest.fixture
+def ccda_condition_with_assessment_scale() -> str:
+    """Load C-CDA condition with assessment scale observation (typeCode=COMP)."""
+    return (CCDA_FIXTURES_DIR / "condition_with_assessment_scale.xml").read_text()
+
+
 # AllergyIntolerance test fixtures for untested features
 @pytest.fixture
 def ccda_allergy_with_type() -> str:
