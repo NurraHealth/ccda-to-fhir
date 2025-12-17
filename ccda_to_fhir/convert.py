@@ -22,6 +22,7 @@ from fhir.resources.R4B.practitioner import Practitioner
 from fhir.resources.R4B.practitionerrole import PractitionerRole
 from fhir.resources.R4B.procedure import Procedure
 from fhir.resources.R4B.provenance import Provenance
+from fhir.resources.R4B.relatedperson import RelatedPerson
 
 from ccda_to_fhir.exceptions import CCDAConversionError
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
@@ -63,6 +64,7 @@ RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
     "Practitioner": Practitioner,
     "PractitionerRole": PractitionerRole,
     "Organization": Organization,
+    "RelatedPerson": RelatedPerson,
     "Device": Device,
     "DocumentReference": DocumentReference,
     "Condition": Condition,
@@ -116,6 +118,11 @@ class DocumentConverter:
         self.provenance_converter = ProvenanceConverter(
             code_system_mapper=self.code_system_mapper
         )
+
+        # Informant metadata storage for RelatedPerson/Practitioner generation
+        self._informant_metadata: dict[str, list] = {}
+        from .converters.informant_extractor import InformantExtractor
+        self.informant_extractor = InformantExtractor()
 
         # Initialize individual resource converters
         self.patient_converter = PatientConverter(
@@ -352,6 +359,9 @@ class DocumentConverter:
                     if self._validate_resource(patient):
                         resources.append(patient)
                         self.reference_registry.register_resource(patient)
+                        # Store patient ID for RelatedPerson references
+                        if "id" in patient:
+                            self._patient_id = patient["id"]
                     else:
                         logger.warning(
                             "Patient resource failed validation, skipping",
@@ -378,6 +388,39 @@ class DocumentConverter:
             resources.extend(practitioners_and_orgs)
             for resource in practitioners_and_orgs:
                 self.reference_registry.register_resource(resource)
+
+        # Process document-level informants
+        if ccda_doc.informant:
+            from .converters.informant_extractor import InformantInfo
+            for informant in ccda_doc.informant:
+                informant_info = InformantInfo(informant, context="document")
+                # Store in a temporary list to process later with _generate_informant_resources
+                # For now, manually handle document-level informants
+                if informant_info.is_practitioner and informant_info.informant.assigned_entity:
+                    try:
+                        practitioner = self.practitioner_converter.convert(
+                            informant_info.informant.assigned_entity
+                        )
+                        # Check if practitioner already exists (deduplication)
+                        practitioner_ref = f"Practitioner/{practitioner['id']}"
+                        if not self.reference_registry.resource_exists(practitioner_ref):
+                            resources.append(practitioner)
+                            self.reference_registry.register_resource(practitioner)
+                    except Exception as e:
+                        logger.error(f"Error converting document informant practitioner: {e}", exc_info=True)
+
+                elif informant_info.is_related_person and informant_info.informant.related_entity:
+                    try:
+                        patient_id = getattr(self, "_patient_id", "patient-unknown")
+                        from .converters.related_person import RelatedPersonConverter
+                        related_person_converter = RelatedPersonConverter(patient_id=patient_id)
+                        related_person = related_person_converter.convert(
+                            informant_info.informant.related_entity
+                        )
+                        resources.append(related_person)
+                        self.reference_registry.register_resource(related_person)
+                    except Exception as e:
+                        logger.error(f"Error converting document informant related person: {e}", exc_info=True)
 
         # Convert Practitioner from legalAuthenticator
         if ccda_doc.legal_authenticator and ccda_doc.legal_authenticator.assigned_entity:
@@ -568,6 +611,19 @@ class DocumentConverter:
         resources.extend(provenances)
         for provenance in provenances:
             self.reference_registry.register_resource(provenance)
+
+        # Generate Practitioner and RelatedPerson resources from informants
+        informant_practitioners, related_persons = self._generate_informant_resources()
+
+        # Add informant-generated Practitioner resources (deduplicated with author practitioners)
+        resources.extend(informant_practitioners)
+        for practitioner in informant_practitioners:
+            self.reference_registry.register_resource(practitioner)
+
+        # Add RelatedPerson resources
+        resources.extend(related_persons)
+        for related_person in related_persons:
+            self.reference_registry.register_resource(related_person)
 
         # Create Composition resource (required first entry in document bundle)
         composition_converter = CompositionConverter(
@@ -1967,6 +2023,106 @@ class DocumentConverter:
         if authors:
             key = f"{resource_type}/{resource_id}"
             self._author_metadata[key] = authors
+
+    def _store_informant_metadata(
+        self,
+        resource_type: str,
+        resource_id: str,
+        ccda_element,
+        concern_act=None,
+    ):
+        """Store informant metadata for later resource generation.
+
+        Args:
+            resource_type: FHIR resource type (e.g., "Condition", "AllergyIntolerance")
+            resource_id: FHIR resource ID
+            ccda_element: The C-CDA element containing informant information
+            concern_act: Optional concern act (for combined informant extraction)
+        """
+        from ccda_to_fhir.ccda.models.act import Act
+        from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
+        from ccda_to_fhir.ccda.models.observation import Observation
+        from ccda_to_fhir.ccda.models.organizer import Organizer
+        from ccda_to_fhir.ccda.models.procedure import Procedure
+        from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
+
+        informants = []
+
+        if concern_act:
+            # Extract from both concern act and entry element
+            informants = self.informant_extractor.extract_combined(concern_act, ccda_element)
+        else:
+            # Extract based on element type
+            if isinstance(ccda_element, Observation):
+                informants = self.informant_extractor.extract_from_observation(ccda_element)
+            elif isinstance(ccda_element, SubstanceAdministration):
+                informants = self.informant_extractor.extract_from_substance_administration(
+                    ccda_element
+                )
+            elif isinstance(ccda_element, Procedure):
+                informants = self.informant_extractor.extract_from_procedure(ccda_element)
+            elif isinstance(ccda_element, CCDAEncounter):
+                informants = self.informant_extractor.extract_from_encounter(ccda_element)
+            elif isinstance(ccda_element, Organizer):
+                informants = self.informant_extractor.extract_from_organizer(ccda_element)
+            elif isinstance(ccda_element, Act):
+                informants = self.informant_extractor.extract_from_concern_act(ccda_element)
+
+        if informants:
+            key = f"{resource_type}/{resource_id}"
+            self._informant_metadata[key] = informants
+
+    def _generate_informant_resources(
+        self
+    ) -> tuple[list[FHIRResourceDict], list[FHIRResourceDict]]:
+        """Generate Practitioner and RelatedPerson resources from informant metadata.
+
+        Returns:
+            Tuple of (practitioners, related_persons)
+        """
+        practitioners: list[FHIRResourceDict] = []
+        related_persons: list[FHIRResourceDict] = []
+        seen_practitioners: set[str] = set()
+        seen_related_persons: set[str] = set()
+
+        for key, informant_list in self._informant_metadata.items():
+            for informant_info in informant_list:
+                try:
+                    # Create Practitioner for assignedEntity informants
+                    if informant_info.is_practitioner and informant_info.informant.assigned_entity:
+                        practitioner_id = informant_info.practitioner_id
+                        if practitioner_id and practitioner_id not in seen_practitioners:
+                            practitioner = self.practitioner_converter.convert(
+                                informant_info.informant.assigned_entity
+                            )
+                            practitioners.append(practitioner)
+                            seen_practitioners.add(practitioner_id)
+
+                    # Create RelatedPerson for relatedEntity informants
+                    elif informant_info.is_related_person and informant_info.informant.related_entity:
+                        related_person_id = informant_info.related_person_id
+                        if related_person_id and related_person_id not in seen_related_persons:
+                            # Get patient_id from the first patient resource in the bundle
+                            # (All informants will reference the same patient)
+                            patient_id = "patient-unknown"  # Default fallback
+                            if hasattr(self, "_patient_id"):
+                                patient_id = self._patient_id
+
+                            from .converters.related_person import RelatedPersonConverter
+                            related_person_converter = RelatedPersonConverter(patient_id=patient_id)
+                            related_person = related_person_converter.convert(
+                                informant_info.informant.related_entity
+                            )
+                            related_persons.append(related_person)
+                            seen_related_persons.add(related_person_id)
+
+                except Exception as e:
+                    logger.error(
+                        f"Error creating informant resource: {e}",
+                        exc_info=True,
+                    )
+
+        return (practitioners, related_persons)
 
 
 def convert_document(ccda_input: str | ClinicalDocument) -> FHIRResourceDict:

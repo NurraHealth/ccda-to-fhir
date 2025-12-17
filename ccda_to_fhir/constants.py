@@ -576,6 +576,7 @@ class FHIRCodes:
         PRACTITIONER = "Practitioner"
         PRACTITIONER_ROLE = "PractitionerRole"
         ORGANIZATION = "Organization"
+        RELATED_PERSON = "RelatedPerson"
         DOCUMENT_REFERENCE = "DocumentReference"
         COMPOSITION = "Composition"
         LOCATION = "Location"
