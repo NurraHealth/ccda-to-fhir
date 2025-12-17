@@ -14,6 +14,15 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### Recent Updates
 
+**2025-12-17**: ✅ **Abatement Unknown Completed** - Data-Absent-Reason Extension Support! 🎉
+- Implemented unknown abatement date handling with data-absent-reason extension
+- When effectiveTime/high has nullFlavor="UNK" → _abatementDateTime with extension (valueCode: "unknown")
+- Properly enforces clinical status constraint (must be resolved/inactive/remission when abatement present)
+- 1 comprehensive integration test added (27 total condition tests passing)
+- Improved Condition from 14 → 15 fully implemented features (1 moved from missing to fully)
+- Condition coverage improved to ~94% (was ~93%)
+- **100% standards-compliant with FHIR R4 data-absent-reason extension and C-CDA on FHIR IG**
+
 **2025-12-17**: ✅ **Negation Handling Completed** - Both Approaches Fully Implemented! 🎉
 - Implemented negated concept code mapping for generic "no known problems" scenarios
 - When negationInd="true" with generic problem code (55607006, 404684003, 64572001) → SNOMED 160245001 "No current problems or disability"
@@ -398,8 +407,8 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### 2. Condition (02-condition.md vs condition.py)
 
-**Status**: 🟢 **Excellent** (14 fully / 0 partial / 2 missing)
-**Recent Update**: ✅ Negation handling completed - both approaches fully implemented (2025-12-17)
+**Status**: 🟢 **Excellent** (15 fully / 0 partial / 1 missing)
+**Recent Update**: ✅ Abatement unknown with data-absent-reason completed (2025-12-17)
 
 #### ✅ Fully Implemented
 - Problem observation extraction
@@ -417,13 +426,13 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - **Comment Activity → notes** ✅ **VERIFIED** - Comment Activity (template 2.16.840.1.113883.10.20.22.4.64) → Condition.note
 - **Supporting observation references** ✅ **VERIFIED** - SPRT entryRelationships → evidence.detail (References to Observation resources)
 - **Problem type category** ✅ **VERIFIED** - Secondary category from observation code (SNOMED 55607006, 282291009, etc.) → additional Condition.category
+- **Abatement unknown with data-absent-reason** ✅ **NEW** - When effectiveTime/high has nullFlavor="UNK" → _abatementDateTime with data-absent-reason extension (valueCode: "unknown")
 
 #### ⚠️ Partially Implemented
 - (None)
 
 #### ❌ Not Implemented
 - Assessment scale evidence references (typeCode="COMP")
-- Abatement unknown with data-absent-reason
 
 ---
 
@@ -775,7 +784,7 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 | Domain | Fully Implemented | Partial | Missing | Coverage | Status |
 |--------|-------------------|---------|---------|----------|--------|
 | Patient | 20 | 0 | 1 | ~95% | 🟢 Excellent |
-| Condition | 14 | 0 | 2 | ~93% | 🟢 Excellent |
+| Condition | 15 | 0 | 1 | ~94% | 🟢 Excellent |
 | AllergyIntolerance | 12 | 0 | 2 | ~95% | 🟢 Excellent |
 | Observation/Results | 13 | 0 | 5 | ~81% | 🟢 Excellent |
 | Procedure | 10 | 0 | 3 | ~92% | 🟢 Excellent |
@@ -786,7 +795,7 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 | Notes | 14 | 0 | 2 | ~94% | 🟢 Excellent |
 | Social History | 9 | 0 | 4 | ~69% | 🟢 Good |
 | Vital Signs | 12 | 1 | 4 | ~85% | 🟢 Excellent |
-| **OVERALL** | **151** | **2** | **33** | **~95%** | 🟢 **Excellent** |
+| **OVERALL** | **152** | **2** | **32** | **~95%** | 🟢 **Excellent** |
 
 **Note on Standards Compliance**: Encounter and Procedure reasonReference/reasonCode mapping now implements the exact conditional logic specified in C-CDA on FHIR v2.0.0: "If the id of the indication references a problem in the document that has been converted to a FHIR resource, populate .reasonReference with a reference to that resource. Otherwise, map observation/value to .reasonCode."
 

@@ -188,6 +188,41 @@ class TestProblemConversion:
         assert "abatementDateTime" in condition
         assert condition["abatementDateTime"] == "2020-03-20"
 
+    def test_converts_abatement_unknown_with_data_absent_reason(
+        self, ccda_condition_with_abatement_unknown: str
+    ) -> None:
+        """Test that effectiveTime high with nullFlavor=UNK is converted to _abatementDateTime with data-absent-reason.
+
+        Per C-CDA on FHIR IG and FHIR R4 spec, when the abatement date is unknown but
+        the condition is resolved, use the _abatementDateTime element with a
+        data-absent-reason extension (valueCode: "unknown").
+
+        Reference: http://hl7.org/fhir/extension-data-absent-reason.html
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_condition_with_abatement_unknown, PROBLEMS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        condition = _find_resource_in_bundle(bundle, "Condition")
+        assert condition is not None
+
+        # Should NOT have regular abatementDateTime
+        assert "abatementDateTime" not in condition
+
+        # Should have _abatementDateTime with data-absent-reason extension
+        assert "_abatementDateTime" in condition
+        assert "extension" in condition["_abatementDateTime"]
+
+        extensions = condition["_abatementDateTime"]["extension"]
+        assert len(extensions) == 1
+
+        data_absent_ext = extensions[0]
+        assert data_absent_ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert data_absent_ext["valueCode"] == "unknown"
+
+        # Should have resolved clinical status (per C-CDA on FHIR IG constraint)
+        assert "clinicalStatus" in condition
+        assert condition["clinicalStatus"]["coding"][0]["code"] == "resolved"
+
     def test_converts_body_site(self, ccda_condition_with_body_site: str) -> None:
         """Test that targetSiteCode is converted to bodySite."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_body_site, PROBLEMS_TEMPLATE_ID)

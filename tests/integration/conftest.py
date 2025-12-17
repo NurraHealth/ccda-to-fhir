@@ -519,6 +519,12 @@ def ccda_condition_with_abatement() -> str:
 
 
 @pytest.fixture
+def ccda_condition_with_abatement_unknown() -> str:
+    """Load C-CDA condition with unknown abatement date (nullFlavor=UNK)."""
+    return (CCDA_FIXTURES_DIR / "condition_with_abatement_unknown.xml").read_text()
+
+
+@pytest.fixture
 def ccda_condition_with_body_site() -> str:
     """Load C-CDA condition with body site."""
     return (CCDA_FIXTURES_DIR / "condition_with_body_site.xml").read_text()
