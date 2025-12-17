@@ -302,6 +302,12 @@ def ccda_procedure_with_author() -> str:
 
 
 @pytest.fixture
+def ccda_procedure_with_author_and_organization() -> str:
+    """Load C-CDA procedure with author that has representedOrganization."""
+    return (CCDA_FIXTURES_DIR / "procedure_with_author_and_organization.xml").read_text()
+
+
+@pytest.fixture
 def ccda_procedure_with_outcome() -> str:
     """Load C-CDA procedure with outcome."""
     return (CCDA_FIXTURES_DIR / "procedure_with_outcome.xml").read_text()

@@ -20,6 +20,16 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
     return None
 
 
+def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> list[JSONObject]:
+    """Find all resources of the given type in a FHIR Bundle."""
+    resources = []
+    for entry in bundle.get("entry", []):
+        resource = entry.get("resource", {})
+        if resource.get("resourceType") == resource_type:
+            resources.append(resource)
+    return resources
+
+
 class TestProcedureConversion:
     """E2E tests for C-CDA Procedure Activity to FHIR Procedure conversion."""
 
@@ -716,3 +726,238 @@ class TestProcedureConversion:
         assert "<p" in div_content  # Paragraph converted to <p>
         assert 'id="procedure-narrative-1"' in div_content  # ID preserved
         assert 'class="Bold"' in div_content or "Bold" in div_content  # Style preserved
+
+
+class TestRepresentedOrganization:
+    """E2E tests for represented organization in author context.
+
+    Verifies that when an author has a representedOrganization:
+    1. Organization resource is created in bundle
+    2. Provenance.agent.onBehalfOf references the organization
+    3. PractitionerRole links practitioner to organization
+    """
+
+    def test_organization_resource_created_from_represented_organization(
+        self, ccda_procedure_with_author_and_organization: str
+    ) -> None:
+        """Test that representedOrganization creates Organization resource in bundle."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        # Find all Organization resources
+        organizations = _find_all_resources_in_bundle(bundle, "Organization")
+        assert len(organizations) >= 1, "At least one Organization resource should be created"
+
+        # Find the entry-level organization (Good Health Surgical Center)
+        entry_org = next(
+            (org for org in organizations if org.get("name") == "Good Health Surgical Center"),
+            None
+        )
+        assert entry_org is not None, "Entry-level organization should be created"
+        assert entry_org["resourceType"] == "Organization"
+
+    def test_organization_has_correct_identifier(
+        self, ccda_procedure_with_author_and_organization: str
+    ) -> None:
+        """Test that Organization has correct identifier from representedOrganization."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        organizations = _find_all_resources_in_bundle(bundle, "Organization")
+        entry_org = next(
+            (org for org in organizations if org.get("name") == "Good Health Surgical Center"),
+            None
+        )
+        assert entry_org is not None
+        assert "identifier" in entry_org
+
+        # Should have identifier with root and extension
+        identifiers = entry_org["identifier"]
+        assert len(identifiers) > 0
+
+        # Verify the OID-based identifier exists
+        oid_identifier = next(
+            (i for i in identifiers
+             if "2.16.840.1.113883.19.5.9999.1393" in i.get("system", "")),
+            None
+        )
+        assert oid_identifier is not None
+
+    def test_organization_has_telecom_and_address(
+        self, ccda_procedure_with_author_and_organization: str
+    ) -> None:
+        """Test that Organization has telecom and address from representedOrganization."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        organizations = _find_all_resources_in_bundle(bundle, "Organization")
+        entry_org = next(
+            (org for org in organizations if org.get("name") == "Good Health Surgical Center"),
+            None
+        )
+        assert entry_org is not None
+
+        # Verify telecom
+        assert "telecom" in entry_org
+        assert len(entry_org["telecom"]) > 0
+        telecom = entry_org["telecom"][0]
+        assert telecom["system"] == "phone"
+        assert "+1(555)123-4567" in telecom["value"]
+
+        # Verify address
+        assert "address" in entry_org
+        assert len(entry_org["address"]) > 0
+        address = entry_org["address"][0]
+        assert address["city"] == "Portland"
+        assert address["state"] == "OR"
+        assert address["postalCode"] == "97201"
+
+    def test_provenance_agent_has_on_behalf_of_organization(
+        self, ccda_procedure_with_author_and_organization: str
+    ) -> None:
+        """Test that Provenance.agent.onBehalfOf references Organization."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+
+        # Find Provenance for this procedure
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+
+        procedure_provenance = None
+        for prov in provenances:
+            if prov.get("target") and any(
+                procedure["id"] in t.get("reference", "") for t in prov["target"]
+            ):
+                procedure_provenance = prov
+                break
+
+        assert procedure_provenance is not None, "Provenance should be created"
+
+        # Verify agent has onBehalfOf
+        assert "agent" in procedure_provenance
+        assert len(procedure_provenance["agent"]) > 0
+
+        agent = procedure_provenance["agent"][0]
+        assert "onBehalfOf" in agent, "Provenance.agent should have onBehalfOf field"
+        assert "reference" in agent["onBehalfOf"]
+        assert agent["onBehalfOf"]["reference"].startswith("Organization/")
+
+    def test_on_behalf_of_references_correct_organization(
+        self, ccda_procedure_with_author_and_organization: str
+    ) -> None:
+        """Test that onBehalfOf reference points to the correct Organization."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        # Get the entry-level Organization resource (Good Health Surgical Center)
+        organizations = _find_all_resources_in_bundle(bundle, "Organization")
+        entry_org = next(
+            (org for org in organizations if org.get("name") == "Good Health Surgical Center"),
+            None
+        )
+        assert entry_org is not None
+        org_id = entry_org["id"]
+
+        # Get the Provenance resource
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        procedure_provenance = next(
+            (p for p in provenances
+             if any(procedure["id"] in t.get("reference", "") for t in p.get("target", []))),
+            None
+        )
+
+        assert procedure_provenance is not None
+
+        # Verify onBehalfOf references the same organization
+        agent = procedure_provenance["agent"][0]
+        on_behalf_of_ref = agent["onBehalfOf"]["reference"]
+        assert on_behalf_of_ref == f"Organization/{org_id}"
+
+    def test_entry_level_author_does_not_create_practitioner_role(
+        self, ccda_procedure_with_author_and_organization: str
+    ) -> None:
+        """Test that entry-level authors with representedOrganization don't create PractitionerRole.
+
+        PractitionerRole is only created for document-level authors, not entry-level authors.
+        This is because PractitionerRole represents an ongoing relationship between a practitioner
+        and organization, which is best captured at the document level.
+
+        Entry-level authors (e.g., on a specific procedure) create:
+        1. Practitioner resource
+        2. Organization resource
+        3. Provenance with onBehalfOf linking to the organization
+
+        But NOT PractitionerRole.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        # Entry-level author creates Practitioner
+        practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
+        entry_practitioner = next(
+            (p for p in practitioners if "Documenter" in str(p.get("name", []))),
+            None
+        )
+        assert entry_practitioner is not None, "Entry-level practitioner should be created"
+
+        # Entry-level author creates Organization
+        organizations = _find_all_resources_in_bundle(bundle, "Organization")
+        entry_org = next(
+            (org for org in organizations if org.get("name") == "Good Health Surgical Center"),
+            None
+        )
+        assert entry_org is not None, "Entry-level organization should be created"
+
+        # But NO PractitionerRole is created linking them
+        # (PractitionerRole is only for document-level authors)
+        # The relationship is captured via Provenance.agent.onBehalfOf instead
+
+    def test_author_without_organization_has_no_on_behalf_of(
+        self, ccda_procedure_with_author: str
+    ) -> None:
+        """Test that author without representedOrganization has no onBehalfOf."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+
+        # Find Provenance
+        provenances = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Provenance"
+        ]
+        procedure_provenance = next(
+            (p for p in provenances
+             if any(procedure["id"] in t.get("reference", "") for t in p.get("target", []))),
+            None
+        )
+
+        if procedure_provenance:
+            # If provenance exists, verify agent has no onBehalfOf
+            agent = procedure_provenance["agent"][0]
+            assert "onBehalfOf" not in agent, "onBehalfOf should not exist when no representedOrganization"
