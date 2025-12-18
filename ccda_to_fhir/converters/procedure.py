@@ -92,6 +92,17 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     fhir_procedure["performedPeriod"] = performed
                 else:
                     fhir_procedure["performedDateTime"] = performed
+        else:
+            # When effectiveTime is missing, add data-absent-reason extension
+            # per C-CDA on FHIR IG guidance (docs/mapping/05-procedure.md lines 160-174)
+            fhir_procedure["_performedDateTime"] = {
+                "extension": [
+                    {
+                        "url": FHIRSystems.DATA_ABSENT_REASON,
+                        "valueCode": "unknown",
+                    }
+                ]
+            }
 
         # Body site (only available in Procedure, not in Act or Observation)
         if hasattr(procedure, "target_site_code") and procedure.target_site_code:

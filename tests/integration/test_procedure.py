@@ -1155,3 +1155,64 @@ class TestProcedureActivityObservation:
         }
         assert "80146002" in procedure_codes, "Appendectomy should be present"
         assert "24623002" in procedure_codes, "Screening colonoscopy should be present"
+
+
+class TestProcedureMissingEffectiveTime:
+    """Tests for Procedure with missing effectiveTime - data-absent-reason extension."""
+
+    def test_missing_effective_time_adds_data_absent_reason(
+        self, ccda_procedure_no_effective_time: str
+    ) -> None:
+        """Test that missing effectiveTime adds _performedDateTime with data-absent-reason extension."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_no_effective_time, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+
+        # Should NOT have performedDateTime or performedPeriod
+        assert "performedDateTime" not in procedure
+        assert "performedPeriod" not in procedure
+
+        # Should have _performedDateTime with data-absent-reason extension
+        assert "_performedDateTime" in procedure
+        assert "extension" in procedure["_performedDateTime"]
+
+        extensions = procedure["_performedDateTime"]["extension"]
+        assert len(extensions) == 1
+
+        data_absent_ext = extensions[0]
+        assert data_absent_ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert data_absent_ext["valueCode"] == "unknown"
+
+    def test_missing_effective_time_does_not_affect_other_fields(
+        self, ccda_procedure_no_effective_time: str
+    ) -> None:
+        """Test that missing effectiveTime doesn't affect other procedure fields."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_no_effective_time, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+
+        # Other fields should still be present
+        assert procedure["resourceType"] == "Procedure"
+        assert procedure["status"] == "completed"
+        assert "code" in procedure
+        assert "identifier" in procedure
+
+    def test_procedure_with_effective_time_no_data_absent_reason(
+        self, ccda_procedure: str
+    ) -> None:
+        """Test that procedures WITH effectiveTime don't get data-absent-reason extension."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+
+        # Should have performedDateTime
+        assert "performedDateTime" in procedure
+
+        # Should NOT have _performedDateTime with data-absent-reason
+        assert "_performedDateTime" not in procedure

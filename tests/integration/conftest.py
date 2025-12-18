@@ -763,3 +763,9 @@ def ccda_procedure_multiple_authors() -> str:
 def ccda_procedure_activity_act() -> str:
     """Load C-CDA Procedure Activity Act fixture."""
     return (CCDA_FIXTURES_DIR / "procedure_activity_act.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_no_effective_time() -> str:
+    """Load C-CDA procedure without effectiveTime (tests data-absent-reason extension)."""
+    return (CCDA_FIXTURES_DIR / "procedure_no_effective_time.xml").read_text()
