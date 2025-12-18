@@ -147,7 +147,8 @@ class ObservationConverter(BaseConverter[Observation]):
             # Take the first target site code if multiple are present
             first_site = observation.target_site_code[0]
             if isinstance(first_site, (CD, CE)):
-                body_site_cc = self._convert_code_to_codeable_concept(first_site)
+                # Use specialized method that handles laterality qualifiers
+                body_site_cc = self._convert_body_site_with_qualifiers(first_site)
                 if body_site_cc:
                     fhir_obs["bodySite"] = body_site_cc
 
@@ -557,6 +558,75 @@ class ObservationConverter(BaseConverter[Observation]):
             # original_text is ED (Encapsulated Data)
             if hasattr(code.original_text, "text") and code.original_text.text:
                 codeable_concept["text"] = code.original_text.text
+
+        return codeable_concept
+
+    def _convert_body_site_with_qualifiers(
+        self, code: CD | CE
+    ) -> JSONObject | None:
+        """Convert C-CDA targetSiteCode with qualifiers to FHIR bodySite CodeableConcept.
+
+        This method handles body site codes with laterality qualifiers. Per C-CDA standard,
+        laterality (left/right) can be specified using qualifier elements within targetSiteCode.
+
+        Example C-CDA:
+            <targetSiteCode code="40983000" displayName="Upper arm structure"
+                           codeSystem="2.16.840.1.113883.6.96">
+              <qualifier>
+                <name code="272741003" displayName="Laterality"
+                      codeSystem="2.16.840.1.113883.6.96"/>
+                <value code="7771000" displayName="Left"
+                       codeSystem="2.16.840.1.113883.6.96"/>
+              </qualifier>
+            </targetSiteCode>
+
+        Args:
+            code: The C-CDA targetSiteCode element (CD or CE type)
+
+        Returns:
+            FHIR CodeableConcept with bodySite and laterality coding, or None
+        """
+        if not code:
+            return None
+
+        # Start with basic code conversion
+        codeable_concept = self._convert_code_to_codeable_concept(code)
+        if not codeable_concept:
+            return None
+
+        # Check for laterality qualifiers
+        # Per C-CDA: laterality is specified using qualifier with name code 272741003 or 78615007
+        laterality_qualifier_codes = ["272741003", "78615007"]  # "Laterality" and "with laterality"
+        laterality_value = None
+
+        if hasattr(code, "qualifier") and code.qualifier:
+            for qualifier in code.qualifier:
+                # Check if this is a laterality qualifier
+                if qualifier.name and qualifier.name.code in laterality_qualifier_codes:
+                    if qualifier.value and qualifier.value.code and qualifier.value.code_system:
+                        laterality_value = qualifier.value
+                        break
+
+        # If we found a laterality qualifier, add it as additional coding
+        if laterality_value:
+            laterality_coding: JSONObject = {
+                "system": self.map_oid_to_uri(laterality_value.code_system),
+                "code": laterality_value.code,
+            }
+            if laterality_value.display_name:
+                laterality_coding["display"] = laterality_value.display_name
+
+            # Add laterality as additional coding
+            if "coding" not in codeable_concept:
+                codeable_concept["coding"] = []
+            codeable_concept["coding"].append(laterality_coding)
+
+            # Update text to include laterality for human readability
+            # Format: "{laterality} {site}" (e.g., "Left Upper arm structure")
+            if laterality_value.display_name and code.display_name:
+                codeable_concept["text"] = f"{laterality_value.display_name} {code.display_name}"
+            elif laterality_value.display_name and "text" in codeable_concept:
+                codeable_concept["text"] = f"{laterality_value.display_name} {codeable_concept['text']}"
 
         return codeable_concept
 

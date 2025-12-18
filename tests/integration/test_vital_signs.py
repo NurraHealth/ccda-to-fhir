@@ -474,6 +474,82 @@ class TestVitalSignsConversion:
         # Verify bodySite field is not present
         assert "bodySite" not in hr_obs, "Observation should not have bodySite field when targetSiteCode is absent"
 
+    def test_converts_body_site_with_laterality_qualifier_blood_pressure(self) -> None:
+        """Test that targetSiteCode with laterality qualifier is converted to bodySite with laterality coding."""
+        # Load fixture with blood pressure with laterality qualifier
+        with open("tests/integration/fixtures/ccda/vital_signs_bp_with_laterality.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find combined blood pressure observation
+        bp_obs = _find_observation_by_code(bundle, "85354-9")
+        assert bp_obs is not None, "Blood pressure observation should be found"
+
+        # Verify bodySite field is present
+        assert "bodySite" in bp_obs, "Blood pressure observation should have bodySite"
+        body_site = bp_obs["bodySite"]
+
+        # Verify coding array exists with at least 2 codings (site + laterality)
+        assert "coding" in body_site, "bodySite should have coding array"
+        assert len(body_site["coding"]) >= 2, "bodySite should have at least 2 codings (site + laterality)"
+
+        # Verify main body site coding (Upper arm structure)
+        site_coding = body_site["coding"][0]
+        assert site_coding["system"] == "http://snomed.info/sct", "Body site system should be SNOMED CT"
+        assert site_coding["code"] == "40983000", "Body site code should be 40983000 (Upper arm structure)"
+        assert site_coding["display"] == "Upper arm structure", "Body site display should be preserved"
+
+        # Verify laterality coding (Left)
+        laterality_coding = body_site["coding"][1]
+        assert laterality_coding["system"] == "http://snomed.info/sct", "Laterality system should be SNOMED CT"
+        assert laterality_coding["code"] == "7771000", "Laterality code should be 7771000 (Left)"
+        assert laterality_coding["display"] == "Left", "Laterality display should be preserved"
+
+        # Verify text field includes both site and laterality
+        assert "text" in body_site, "bodySite should have text field"
+        assert "Left" in body_site["text"], "bodySite text should include laterality"
+        assert "Upper arm structure" in body_site["text"], "bodySite text should include site"
+
+    def test_converts_body_site_with_laterality_qualifier_heart_rate(self) -> None:
+        """Test that targetSiteCode with laterality qualifier is converted for individual vital sign."""
+        # Load fixture with heart rate with laterality qualifier
+        with open("tests/integration/fixtures/ccda/vital_signs_hr_with_laterality.xml", encoding="utf-8") as f:
+            ccda_vital_signs = f.read()
+
+        ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Find heart rate observation
+        hr_obs = _find_observation_by_code(bundle, "8867-4")
+        assert hr_obs is not None, "Heart rate observation should be found"
+
+        # Verify bodySite field is present
+        assert "bodySite" in hr_obs, "Heart rate observation should have bodySite"
+        body_site = hr_obs["bodySite"]
+
+        # Verify coding array exists with at least 2 codings (site + laterality)
+        assert "coding" in body_site, "bodySite should have coding array"
+        assert len(body_site["coding"]) >= 2, "bodySite should have at least 2 codings (site + laterality)"
+
+        # Verify main body site coding (Structure of radial artery)
+        site_coding = body_site["coding"][0]
+        assert site_coding["system"] == "http://snomed.info/sct", "Body site system should be SNOMED CT"
+        assert site_coding["code"] == "45631007", "Body site code should be 45631007 (Structure of radial artery)"
+        assert site_coding["display"] == "Structure of radial artery", "Body site display should be preserved"
+
+        # Verify laterality coding (Right)
+        laterality_coding = body_site["coding"][1]
+        assert laterality_coding["system"] == "http://snomed.info/sct", "Laterality system should be SNOMED CT"
+        assert laterality_coding["code"] == "24028007", "Laterality code should be 24028007 (Right)"
+        assert laterality_coding["display"] == "Right", "Laterality display should be preserved"
+
+        # Verify text field includes both site and laterality
+        assert "text" in body_site, "bodySite should have text field"
+        assert "Right" in body_site["text"], "bodySite text should include laterality"
+        assert "Structure of radial artery" in body_site["text"], "bodySite text should include site"
+
     def test_converts_interpretation_code_normal(self) -> None:
         """Test that interpretationCode is converted to Observation.interpretation for normal values."""
         # Load fixture with interpretation codes

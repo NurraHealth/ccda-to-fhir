@@ -101,6 +101,7 @@ class CD(CDAModel):
     display_name: str | None = Field(default=None, alias="displayName")
     original_text: ED | None = Field(default=None, alias="originalText")
     translation: list[CD] | None = None
+    qualifier: list[CR] | None = None
     null_flavor: str | None = Field(default=None, alias="nullFlavor")
 
 
