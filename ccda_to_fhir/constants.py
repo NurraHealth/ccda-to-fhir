@@ -467,6 +467,17 @@ class FHIRCodes:
         INSTANCE_ORDER = "instance-order"
         OPTION = "option"
 
+    # MedicationStatement status
+    class MedicationStatementStatus:
+        ACTIVE = "active"
+        COMPLETED = "completed"
+        ENTERED_IN_ERROR = "entered-in-error"
+        INTENDED = "intended"
+        STOPPED = "stopped"
+        ON_HOLD = "on-hold"
+        UNKNOWN = "unknown"
+        NOT_TAKEN = "not-taken"
+
     # Immunization status
     class Immunization:
         STATUS_COMPLETED = "completed"
@@ -841,13 +852,24 @@ MEDICATION_STATUS_TO_FHIR = {
     "new": FHIRCodes.MedicationRequestStatus.DRAFT,
 }
 
+# Map C-CDA medication statusCode to FHIR MedicationStatement status
+MEDICATION_STATUS_TO_FHIR_STATEMENT = {
+    "active": FHIRCodes.MedicationStatementStatus.ACTIVE,
+    "completed": FHIRCodes.MedicationStatementStatus.COMPLETED,
+    "aborted": FHIRCodes.MedicationStatementStatus.STOPPED,
+    "cancelled": FHIRCodes.MedicationStatementStatus.STOPPED,
+    "suspended": FHIRCodes.MedicationStatementStatus.ON_HOLD,
+    "held": FHIRCodes.MedicationStatementStatus.ON_HOLD,
+    "new": FHIRCodes.MedicationStatementStatus.INTENDED,
+}
+
 # Map C-CDA medication moodCode to FHIR MedicationRequest intent
+# Note: EVN (event/historical) maps to MedicationStatement, not MedicationRequest
 MEDICATION_MOOD_TO_INTENT = {
     "INT": FHIRCodes.MedicationRequestIntent.PLAN,  # Intent
     "RQO": FHIRCodes.MedicationRequestIntent.ORDER,  # Request
     "PRMS": FHIRCodes.MedicationRequestIntent.PROPOSAL,  # Promise
     "PRP": FHIRCodes.MedicationRequestIntent.PROPOSAL,  # Proposal
-    "EVN": FHIRCodes.MedicationRequestIntent.ORDER,  # Event (treat as order)
 }
 
 # Map UCUM time units to FHIR UnitsOfTime

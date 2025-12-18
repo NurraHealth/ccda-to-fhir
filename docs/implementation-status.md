@@ -917,10 +917,10 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ---
 
-### 7. MedicationRequest (07-medication-request.md vs medication_request.py)
+### 7. MedicationRequest & MedicationStatement (07-medication-request.md vs medication_request.py & medication_statement.py)
 
-**Status**: 🟢 **Excellent** (14 fully / 0 partial / 4 missing)
-**Recent Update**: ✅ Dosage instructions text completed - Full free text sig support! (2025-12-17)
+**Status**: 🟢 **Excellent** (15 fully / 0 partial / 2 missing)
+**Recent Update**: ✅ Historical medications (MedicationStatement) completed - Full moodCode routing! (2025-12-18)
 
 #### ✅ Fully Implemented
 - Core medication request (code, status, intent)
@@ -939,13 +939,13 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - **EIVL_TS timing (event-based)** - Event-driven dosing (meals, bedtime, etc.)
 - **Max dose (maxDosePerPeriod)** ✅ **VERIFIED** - Complete FHIR Ratio mapping with numerator/denominator Quantity (value, unit, system, code)
 - **Precondition as needed** ✅ - Complete implementation: asNeededCodeableConcept when precondition has coded value, asNeededBoolean when no coded value (mutually exclusive per FHIR R4 spec)
-- **Dosage instructions text (free text sig)** ✅ **NEW** - substanceAdministration/text → dosageInstruction.text per C-CDA on FHIR IG; properly separated from patientInstruction (3 comprehensive tests)
+- **Dosage instructions text (free text sig)** ✅ - substanceAdministration/text → dosageInstruction.text per C-CDA on FHIR IG; properly separated from patientInstruction (3 comprehensive tests)
+- **Historical medications (MedicationStatement)** ✅ **NEW** (2025-12-18) - Complete implementation of moodCode="EVN" → MedicationStatement per FHIR standards; automatic routing based on moodCode (EVN→MedicationStatement, INT/RQO/PRMS/PRP→MedicationRequest); supports status mapping, effectivePeriod, dateAsserted, informationSource, reasonCode, dosage with timing; negationInd always uses MedicationRequest.doNotPerform regardless of moodCode; 3 comprehensive integration tests passing (routing, code, status); corrected existing test fixtures from non-standard EVN to INT
 
 #### ⚠️ Partially Implemented
 - (None)
 
 #### ❌ Not Implemented
-- Historical medications (moodCode="EVN" → MedicationStatement)
 - Medication as reference (complex details)
 - Drug vehicle participant
 

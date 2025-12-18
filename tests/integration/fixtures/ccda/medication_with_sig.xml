@@ -42,7 +42,7 @@
     </assignedAuthor>
   </author>
   <entryRelationship typeCode="RSON">
-    <observation classCode="OBS" moodCode="EVN">
+    <observation classCode="OBS" moodCode="INT">
       <templateId root="2.16.840.1.113883.10.20.22.4.19" extension="2014-06-09"/>
       <templateId root="2.16.840.1.113883.10.20.22.4.19"/>
       <id extension="45" root="1.3.6.1.4.1.22812.3.99930.3.4.1.3"/>

@@ -15,6 +15,7 @@ from fhir.resources.R4B.documentreference import DocumentReference
 from fhir.resources.R4B.encounter import Encounter
 from fhir.resources.R4B.immunization import Immunization
 from fhir.resources.R4B.medicationrequest import MedicationRequest
+from fhir.resources.R4B.medicationstatement import MedicationStatement
 from fhir.resources.R4B.observation import Observation
 from fhir.resources.R4B.organization import Organization
 from fhir.resources.R4B.patient import Patient
@@ -45,6 +46,7 @@ from .converters.document_reference import DocumentReferenceConverter
 from .converters.encounter import EncounterConverter
 from .converters.immunization import convert_immunization_activity
 from .converters.medication_request import convert_medication_activity
+from .converters.medication_statement import convert_medication_statement
 from .converters.note_activity import convert_note_activity
 from .converters.section_processor import SectionConfig, SectionProcessor
 from .converters.observation import ObservationConverter
@@ -70,6 +72,7 @@ RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
     "Condition": Condition,
     "AllergyIntolerance": AllergyIntolerance,
     "MedicationRequest": MedicationRequest,
+    "MedicationStatement": MedicationStatement,
     "Immunization": Immunization,
     "Observation": Observation,
     "DiagnosticReport": DiagnosticReport,
@@ -78,6 +81,59 @@ RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
     "Composition": Composition,
     "Provenance": Provenance,
 }
+
+
+def convert_medication(
+    substance_admin,
+    code_system_mapper=None,
+    metadata_callback=None,
+    section=None,
+) -> FHIRResourceDict:
+    """Route medication activity to appropriate converter based on moodCode.
+
+    Per FHIR/C-CDA standards:
+    - moodCode="EVN" (event/historical) → MedicationStatement
+    - moodCode="INT", "RQO", "PRMS", "PRP" → MedicationRequest
+    - negationInd="true" → Always MedicationRequest (with doNotPerform)
+
+    Args:
+        substance_admin: The SubstanceAdministration (Medication Activity)
+        code_system_mapper: Optional code system mapper
+        metadata_callback: Optional callback for storing author metadata
+        section: The C-CDA Section containing this medication (for narrative)
+
+    Returns:
+        FHIR MedicationRequest or MedicationStatement resource
+    """
+    mood_code = substance_admin.mood_code if hasattr(substance_admin, 'mood_code') else None
+    negation_ind = substance_admin.negation_ind if hasattr(substance_admin, 'negation_ind') else False
+
+    # Negated medications always use MedicationRequest with doNotPerform
+    if negation_ind:
+        return convert_medication_activity(
+            substance_admin,
+            code_system_mapper=code_system_mapper,
+            metadata_callback=metadata_callback,
+            section=section,
+        )
+
+    # Route based on moodCode
+    if mood_code == "EVN":
+        # Historical/actual medication use → MedicationStatement
+        return convert_medication_statement(
+            substance_admin,
+            code_system_mapper=code_system_mapper,
+            metadata_callback=metadata_callback,
+            section=section,
+        )
+    else:
+        # Intent/order/proposal → MedicationRequest
+        return convert_medication_activity(
+            substance_admin,
+            code_system_mapper=code_system_mapper,
+            metadata_callback=metadata_callback,
+            section=section,
+        )
 
 
 class DocumentConverter:
@@ -187,11 +243,12 @@ class DocumentConverter:
         )
 
         # Medications (Medication Activities)
+        # Routes to MedicationRequest or MedicationStatement based on moodCode
         self.medication_processor = SectionProcessor(
             SectionConfig(
                 template_id=TemplateIds.MEDICATION_ACTIVITY,
                 entry_type="substance_administration",
-                converter=convert_medication_activity,
+                converter=convert_medication,
                 error_message="medication activity",
                 include_section_code=False,
             )
@@ -782,11 +839,14 @@ class DocumentConverter:
     def _extract_medications(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Medications from the structured body.
 
+        Routes to MedicationRequest (moodCode=INT/RQO/PRMS/PRP) or
+        MedicationStatement (moodCode=EVN) based on mood code.
+
         Args:
             structured_body: The structuredBody element
 
         Returns:
-            List of FHIR MedicationRequest resources
+            List of FHIR MedicationRequest and/or MedicationStatement resources
         """
         return self.medication_processor.process(
             structured_body,
