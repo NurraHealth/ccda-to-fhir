@@ -464,6 +464,7 @@ class FHIRCodes:
         STOPPED = "stopped"
         DRAFT = "draft"
         UNKNOWN = "unknown"
+        ENTERED_IN_ERROR = "entered-in-error"
 
     # MedicationRequest intent
     class MedicationRequestIntent:
@@ -878,6 +879,7 @@ OMB_ETHNICITY_CATEGORIES = {
 # =============================================================================
 
 # Map C-CDA medication statusCode to FHIR MedicationRequest status
+# Per ConceptMap: http://hl7.org/fhir/us/ccda/ConceptMap/CF-MedicationStatus
 MEDICATION_STATUS_TO_FHIR = {
     "active": FHIRCodes.MedicationRequestStatus.ACTIVE,
     "completed": FHIRCodes.MedicationRequestStatus.COMPLETED,
@@ -886,6 +888,7 @@ MEDICATION_STATUS_TO_FHIR = {
     "suspended": FHIRCodes.MedicationRequestStatus.ON_HOLD,
     "held": FHIRCodes.MedicationRequestStatus.ON_HOLD,
     "new": FHIRCodes.MedicationRequestStatus.DRAFT,
+    "nullified": FHIRCodes.MedicationRequestStatus.ENTERED_IN_ERROR,
 }
 
 # Map C-CDA medication statusCode to FHIR MedicationStatement status
@@ -897,6 +900,7 @@ MEDICATION_STATUS_TO_FHIR_STATEMENT = {
     "suspended": FHIRCodes.MedicationStatementStatus.ON_HOLD,
     "held": FHIRCodes.MedicationStatementStatus.ON_HOLD,
     "new": FHIRCodes.MedicationStatementStatus.INTENDED,
+    "nullified": FHIRCodes.MedicationStatementStatus.ENTERED_IN_ERROR,
 }
 
 # Map C-CDA medication moodCode to FHIR MedicationRequest intent

@@ -185,14 +185,72 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             return "medicationrequest-unknown"
 
     def _determine_status(self, substance_admin: SubstanceAdministration) -> str:
-        """Map C-CDA statusCode to FHIR MedicationRequest status."""
+        """Map C-CDA statusCode to FHIR MedicationRequest status.
+
+        Per C-CDA on FHIR IG: C-CDA "completed" may mean "prescription writing completed"
+        rather than "medication administration completed". When statusCode="completed"
+        but effectiveTime contains future dates, map to FHIR "active" instead.
+
+        Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-medications.html
+        """
         if not substance_admin.status_code:
             return FHIRCodes.MedicationRequestStatus.ACTIVE
 
         status_code = substance_admin.status_code.code
+
+        # Special handling for "completed" status per C-CDA on FHIR IG guidance
+        if status_code == "completed":
+            # Check if medication has future dates in effectiveTime
+            if self._has_future_dates(substance_admin):
+                # Completed prescription with future dates → active medication
+                return FHIRCodes.MedicationRequestStatus.ACTIVE
+
+        # Use standard mapping for all other cases
         return MEDICATION_STATUS_TO_FHIR.get(
             status_code, FHIRCodes.MedicationRequestStatus.ACTIVE
         )
+
+    def _has_future_dates(self, substance_admin: SubstanceAdministration) -> bool:
+        """Check if medication has future dates in effectiveTime.
+
+        Examines IVL_TS effectiveTime elements to determine if the medication
+        period extends into the future.
+
+        Args:
+            substance_admin: The substance administration to check
+
+        Returns:
+            True if any effectiveTime.high is in the future or unbounded,
+            False otherwise
+        """
+        from datetime import datetime
+
+        if not substance_admin.effective_time:
+            return False
+
+        # Get current date for comparison (system local time)
+        # Note: C-CDA dates without explicit timezone (YYYYMMDD format) are typically
+        # in the document author's local timezone. Comparing against system local time
+        # is appropriate for these dates. If timezone-aware comparison is needed,
+        # the C-CDA date parser should extract and preserve timezone information.
+        now = datetime.now().strftime("%Y%m%d")
+
+        for eff_time in substance_admin.effective_time:
+            # Only check IVL_TS (interval) for medication period
+            if isinstance(eff_time, IVL_TS):
+                # If high is absent, medication is ongoing (unbounded) → future
+                if not eff_time.high or not eff_time.high.value:
+                    # Unbounded medication (no end date) is considered active/future
+                    return True
+
+                # If high date is in the future → future
+                if eff_time.high.value:
+                    # Extract date portion (first 8 chars: YYYYMMDD)
+                    high_date = str(eff_time.high.value)[:8]
+                    if high_date > now:
+                        return True
+
+        return False
 
     def _determine_intent(self, substance_admin: SubstanceAdministration) -> str:
         """Map C-CDA moodCode to FHIR MedicationRequest intent."""

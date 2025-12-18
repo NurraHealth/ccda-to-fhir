@@ -94,11 +94,48 @@ class TestHistoricalMedicationConversion:
         assert rxnorm["display"] == "Lisinopril 10 MG Oral Tablet"
 
     def test_converts_status(self) -> None:
-        """Test that status is correctly mapped to MedicationStatement status."""
+        """Test that status is correctly mapped to MedicationStatement status.
+
+        Per C-CDA on FHIR IG: statusCode="completed" with past end date → FHIR "completed"
+        """
         ccda_medication = """<?xml version="1.0" encoding="UTF-8"?>
 <substanceAdministration classCode="SBADM" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
     <id root="evn-test-3"/>
+    <statusCode code="completed"/>
+    <effectiveTime xsi:type="IVL_TS">
+        <low value="20200301"/>
+        <high value="20200401"/>
+    </effectiveTime>
+    <doseQuantity value="1"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+            <manufacturedMaterial>
+                <code code="197361" codeSystem="2.16.840.1.113883.6.88"/>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+</substanceAdministration>
+"""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
+        assert med_statement is not None
+        assert med_statement["status"] == "completed"
+
+    def test_completed_status_with_ongoing_dates_maps_to_active(self) -> None:
+        """Test that completed status with no end date correctly maps to active.
+
+        Per C-CDA on FHIR IG: C-CDA statusCode="completed" may mean "prescription writing completed"
+        not "medication administration completed". When no end date is present, the medication
+        is ongoing and should map to FHIR "active".
+        """
+        ccda_medication = """<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+    <id root="evn-test-4"/>
     <statusCode code="completed"/>
     <effectiveTime xsi:type="IVL_TS">
         <low value="20200301"/>
@@ -119,4 +156,45 @@ class TestHistoricalMedicationConversion:
 
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
         assert med_statement is not None
-        assert med_statement["status"] == "completed"
+        # Completed with no end date → active (ongoing medication)
+        assert med_statement["status"] == "active"
+
+    def test_completed_status_with_future_dates_maps_to_active(self) -> None:
+        """Test that completed status with future end date correctly maps to active.
+
+        Per C-CDA on FHIR IG: C-CDA statusCode="completed" may mean "prescription writing completed"
+        not "medication administration completed". When the end date is in the future, the medication
+        is still ongoing and should map to FHIR "active".
+        """
+        from datetime import datetime, timedelta
+
+        # Calculate a future date (30 days from now)
+        future_date = (datetime.now() + timedelta(days=30)).strftime("%Y%m%d")
+
+        ccda_medication = f"""<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+    <id root="evn-future-test"/>
+    <statusCode code="completed"/>
+    <effectiveTime xsi:type="IVL_TS">
+        <low value="20200301"/>
+        <high value="{future_date}"/>
+    </effectiveTime>
+    <doseQuantity value="1"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+            <manufacturedMaterial>
+                <code code="197361" codeSystem="2.16.840.1.113883.6.88"/>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+</substanceAdministration>
+"""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
+        assert med_statement is not None
+        # Completed with future end date → active (ongoing medication)
+        assert med_statement["status"] == "active"

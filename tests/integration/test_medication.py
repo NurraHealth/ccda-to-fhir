@@ -410,6 +410,113 @@ class TestMedicationConversion:
         # authoredOn should still use earliest time
         assert med_request["authoredOn"] == "2023-10-01T08:00:00"
 
+    def test_completed_status_with_future_dates_maps_to_active(self) -> None:
+        """Test that completed status with future end date correctly maps to active.
+
+        Per C-CDA on FHIR IG: C-CDA statusCode="completed" may mean "prescription writing completed"
+        not "medication administration completed". When the end date is in the future, the medication
+        is still ongoing and should map to FHIR "active".
+        """
+        from datetime import datetime, timedelta
+
+        # Calculate a future date (30 days from now)
+        future_date = (datetime.now() + timedelta(days=30)).strftime("%Y%m%d")
+
+        ccda_medication = f"""<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="INT" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+    <id root="med-future-test"/>
+    <statusCode code="completed"/>
+    <effectiveTime xsi:type="IVL_TS">
+        <low value="20200301"/>
+        <high value="{future_date}"/>
+    </effectiveTime>
+    <doseQuantity value="1"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+            <manufacturedMaterial>
+                <code code="197361" codeSystem="2.16.840.1.113883.6.88"/>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+</substanceAdministration>
+"""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+        # Completed with future end date → active (ongoing medication)
+        assert med_request["status"] == "active"
+
+    def test_completed_status_with_past_dates_maps_to_completed(self) -> None:
+        """Test that completed status with past end date correctly maps to completed.
+
+        Per C-CDA on FHIR IG: When statusCode="completed" and the end date is in the past,
+        the medication course has truly finished and should map to FHIR "completed".
+        """
+        ccda_medication = """<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="INT" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+    <id root="med-past-test"/>
+    <statusCode code="completed"/>
+    <effectiveTime xsi:type="IVL_TS">
+        <low value="20200301"/>
+        <high value="20200401"/>
+    </effectiveTime>
+    <doseQuantity value="1"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+            <manufacturedMaterial>
+                <code code="197361" codeSystem="2.16.840.1.113883.6.88"/>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+</substanceAdministration>
+"""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+        # Completed with past end date → completed (medication course finished)
+        assert med_request["status"] == "completed"
+
+    def test_completed_status_without_end_date_maps_to_active(self) -> None:
+        """Test that completed status with no end date correctly maps to active.
+
+        Per C-CDA on FHIR IG: When statusCode="completed" but no end date is present,
+        the medication is unbounded/ongoing and should map to FHIR "active".
+        """
+        ccda_medication = """<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="INT" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+    <id root="med-unbounded-test"/>
+    <statusCode code="completed"/>
+    <effectiveTime xsi:type="IVL_TS">
+        <low value="20200301"/>
+    </effectiveTime>
+    <doseQuantity value="1"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+            <manufacturedMaterial>
+                <code code="197361" codeSystem="2.16.840.1.113883.6.88"/>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+</substanceAdministration>
+"""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+        # Completed with no end date → active (unbounded/ongoing medication)
+        assert med_request["status"] == "active"
+
 
 class TestEIVLTimingConversion:
     """E2E tests for EIVL_TS (event-based) timing conversion."""

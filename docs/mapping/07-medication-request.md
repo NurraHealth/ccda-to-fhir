@@ -84,6 +84,7 @@ This document provides detailed mapping guidance between C-CDA Medication Activi
 | `held` | `on-hold` | — |
 | `new` | `draft` | — |
 | `suspended` | `on-hold` | — |
+| `nullified` | `entered-in-error` | — |
 
 **Status Ambiguity Note:**
 C-CDA may list a medication as "completed" but containing dates in the future. Evaluate timestamps relative to current date:

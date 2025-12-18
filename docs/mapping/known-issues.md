@@ -163,27 +163,34 @@ Per US Realm Header Profile, personal attestation (mode="personal") references P
 
 ---
 
-### 6. Medication Status Ambiguity 🟡 🤔
+### 6. Medication Status Correctly Implements Time-Aware Mapping ✅ RESOLVED
 
-**Issue**: Unclear whether completed medications should map to `completed` or `active` status in FHIR.
+**Issue**: C-CDA "completed" status was ambiguous - could mean "prescription writing completed" or "medication course finished".
 
-**Background**:
-- C-CDA "completed" can mean "patient finished the course" or "this was taken historically"
-- FHIR MedicationRequest.status `completed` means "request fulfilled"
-- FHIR MedicationRequest.status `active` often used for "medication the patient is/was on"
+**Impact**:
+- ✅ Standard-compliant FHIR output per C-CDA on FHIR IG
+- ✅ Correctly distinguishes ongoing vs. finished medications
+- ✅ Handles unbounded medications appropriately
+
+**Resolution** (Completed):
+- ✅ Per C-CDA on FHIR IG: C-CDA "completed" may mean "prescription writing completed" not "administration completed"
+- ✅ Implementation now checks effectiveTime when statusCode="completed":
+  - statusCode="completed" + future end date → FHIR `active` (prescription written but medication ongoing)
+  - statusCode="completed" + no end date (unbounded) → FHIR `active` (ongoing medication)
+  - statusCode="completed" + past end date → FHIR `completed` (medication course finished)
+- ✅ Applied to both MedicationRequest and MedicationStatement converters
+- ✅ Added comprehensive test coverage for all scenarios
 
 **Current Behavior**:
-- C-CDA `completed` → FHIR `completed`
-- C-CDA `active` → FHIR `active`
+- C-CDA `active` → FHIR `active` ✅
+- C-CDA `completed` with past dates → FHIR `completed` ✅
+- C-CDA `completed` with future dates or no end date → FHIR `active` ✅
+- C-CDA `nullified` → FHIR `entered-in-error` ✅
+- All other status codes → standard 1:1 mapping per ConceptMap ✅
 
-**Community Variance**:
-- Some implementers map all historical medications to `active`
-- Others use `completed` for finished courses
-- No clear consensus in C-CDA on FHIR IG
-
-**Recommendation**: Document your organization's policy in implementation guide
-
-**Reference**: [HL7 C-CDA on FHIR Known Issues - Medications](https://build.fhir.org/ig/HL7/ccda-on-fhir/mappingIssues.html#medications)
+**Official IG Guidance**:
+- [C-CDA on FHIR Medications Mapping](https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-medications.html)
+- [FHIR MedicationRequest Status ValueSet](https://hl7.org/fhir/R4/valueset-medicationrequest-status.html)
 
 ---
 
