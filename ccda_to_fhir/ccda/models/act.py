@@ -193,6 +193,54 @@ class Act(CDAModel):
         return self
 
     @model_validator(mode='after')
+    def validate_procedure_activity_act(self) -> 'Act':
+        """Validate Procedure Activity Act (2.16.840.1.113883.10.20.22.4.12).
+
+        Reference: https://cdasearch.hl7.org/examples/view/Guide Examples/Procedure Activity Act (V2)_2.16.840.1.113883.10.20.22.4.12
+
+        Conformance requirements from C-CDA R2.1/R5.0:
+        1. SHALL contain at least one [1..*] id
+        2. SHALL contain exactly one [1..1] code
+        3. SHALL contain exactly one [1..1] statusCode
+        4. SHALL contain exactly one [1..1] effectiveTime
+
+        Raises:
+            ValueError: If any SHALL requirement is violated
+        """
+        if not self._has_template("2.16.840.1.113883.10.20.22.4.12"):
+            return self
+
+        # 1. SHALL contain at least one id
+        if not self.id or len(self.id) == 0:
+            raise ValueError(
+                "Procedure Activity Act (2.16.840.1.113883.10.20.22.4.12): "
+                "SHALL contain at least one [1..*] id"
+            )
+
+        # 2. SHALL contain exactly one code
+        if not self.code:
+            raise ValueError(
+                "Procedure Activity Act (2.16.840.1.113883.10.20.22.4.12): "
+                "SHALL contain exactly one [1..1] code"
+            )
+
+        # 3. SHALL contain exactly one statusCode
+        if not self.status_code:
+            raise ValueError(
+                "Procedure Activity Act (2.16.840.1.113883.10.20.22.4.12): "
+                "SHALL contain exactly one [1..1] statusCode"
+            )
+
+        # 4. SHALL contain exactly one effectiveTime
+        if not self.effective_time:
+            raise ValueError(
+                "Procedure Activity Act (2.16.840.1.113883.10.20.22.4.12): "
+                "SHALL contain exactly one [1..1] effectiveTime"
+            )
+
+        return self
+
+    @model_validator(mode='after')
     def validate_allergy_concern_act(self) -> 'Act':
         """Validate Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30).
 

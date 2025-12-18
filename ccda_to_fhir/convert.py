@@ -230,6 +230,17 @@ class DocumentConverter:
             )
         )
 
+        # Procedure Activity Acts (also map to FHIR Procedure)
+        self.procedure_act_processor = SectionProcessor(
+            SectionConfig(
+                template_id=TemplateIds.PROCEDURE_ACTIVITY_ACT,
+                entry_type="act",
+                converter=self.procedure_converter.convert,
+                error_message="procedure act",
+                include_section_code=False,
+            )
+        )
+
         # Encounters (Encounter Activities)
         self.encounter_processor = SectionProcessor(
             SectionConfig(
@@ -1300,8 +1311,8 @@ class DocumentConverter:
     def _extract_procedures(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Procedures from the structured body.
 
-        Processes both Procedure Activity Procedure and Procedure Activity Observation
-        templates, as both map to FHIR Procedure resource.
+        Processes Procedure Activity Procedure, Procedure Activity Observation,
+        and Procedure Activity Act templates, as all map to FHIR Procedure resource.
 
         Args:
             structured_body: The structuredBody element
@@ -1315,6 +1326,10 @@ class DocumentConverter:
         # Process Procedure Activity Observations (also map to Procedure)
         procedure_observations = self.procedure_observation_processor.process(structured_body)
         procedures.extend(procedure_observations)
+
+        # Process Procedure Activity Acts (also map to Procedure)
+        procedure_acts = self.procedure_act_processor.process(structured_body)
+        procedures.extend(procedure_acts)
 
         # Store author metadata for each procedure
         # Note: We need to re-traverse to get the C-CDA elements for metadata
@@ -1387,6 +1402,29 @@ class DocumentConverter:
                                             resource_type="Procedure",
                                             resource_id=procedure_id,
                                             ccda_element=entry.observation,
+                                            concern_act=None,
+                                        )
+                                        # Remove from tracking set
+                                        procedure_ids_needing_metadata.discard(procedure_id)
+                                break
+
+                    # Check for Procedure Activity Act
+                    if entry.act and entry.act.template_id:
+                        for template in entry.act.template_id:
+                            if template.root == TemplateIds.PROCEDURE_ACTIVITY_ACT:
+                                # Generate the same ID the converter would use
+                                if entry.act.id and len(entry.act.id) > 0:
+                                    first_id = entry.act.id[0]
+                                    procedure_id = self.procedure_converter._generate_procedure_id(
+                                        first_id.root, first_id.extension
+                                    )
+
+                                    # If this procedure is in our list, store metadata
+                                    if procedure_id in procedure_ids_needing_metadata:
+                                        self._store_author_metadata(
+                                            resource_type="Procedure",
+                                            resource_id=procedure_id,
+                                            ccda_element=entry.act,
                                             concern_act=None,
                                         )
                                         # Remove from tracking set

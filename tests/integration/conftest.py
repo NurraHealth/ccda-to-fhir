@@ -757,3 +757,9 @@ def ccda_medication_with_sig_and_patient_instruction() -> str:
 def ccda_procedure_multiple_authors() -> str:
     """Load C-CDA procedure with multiple authors at different times."""
     return (CCDA_FIXTURES_DIR / "procedure_multiple_authors.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_activity_act() -> str:
+    """Load C-CDA Procedure Activity Act fixture."""
+    return (CCDA_FIXTURES_DIR / "procedure_activity_act.xml").read_text()

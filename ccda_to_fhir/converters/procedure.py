@@ -7,6 +7,7 @@ from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.ccda.models.datatypes import CD, II, IVL_TS
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.ccda.models.observation import Observation as CCDAObservation
+from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.constants import (
     PROCEDURE_STATUS_TO_FHIR,
     FHIRCodes,
@@ -17,7 +18,7 @@ from ccda_to_fhir.constants import (
 from .base import BaseConverter
 
 
-class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation]):
+class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct]):
     """Convert C-CDA Procedure Activity to FHIR Procedure resource.
 
     This converter handles the mapping from C-CDA Procedure Activity templates
@@ -26,18 +27,19 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation]):
     Supports:
     - Procedure Activity Procedure (2.16.840.1.113883.10.20.22.4.14)
     - Procedure Activity Observation (2.16.840.1.113883.10.20.22.4.13)
+    - Procedure Activity Act (2.16.840.1.113883.10.20.22.4.12)
 
     Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-ProcedureActivityProcedure.html
     """
 
-    def convert(self, procedure: CCDAProcedure | CCDAObservation, section=None) -> FHIRResourceDict:
+    def convert(self, procedure: CCDAProcedure | CCDAObservation | CCDAAct, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Procedure Activity to a FHIR Procedure resource.
 
-        Accepts both Procedure Activity Procedure and Procedure Activity Observation
-        templates, as both map to FHIR Procedure resource.
+        Accepts Procedure Activity Procedure, Procedure Activity Observation,
+        and Procedure Activity Act templates, as all map to FHIR Procedure resource.
 
         Args:
-            procedure: The C-CDA Procedure Activity (Procedure or Observation element)
+            procedure: The C-CDA Procedure Activity (Procedure, Observation, or Act element)
             section: The C-CDA Section containing this procedure (for narrative)
 
         Returns:
@@ -91,8 +93,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation]):
                 else:
                     fhir_procedure["performedDateTime"] = performed
 
-        # Body site
-        if procedure.target_site_code:
+        # Body site (only available in Procedure, not in Act or Observation)
+        if hasattr(procedure, "target_site_code") and procedure.target_site_code:
             body_sites = []
             for site_code in procedure.target_site_code:
                 if site_code.code:
