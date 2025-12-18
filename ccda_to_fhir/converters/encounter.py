@@ -98,6 +98,8 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         # Diagnosis - Extract from encounter diagnosis entry relationships
         diagnoses = self._extract_diagnoses(encounter.entry_relationship)
         if diagnoses:
+            # Apply intelligent diagnosis role detection based on encounter context
+            self._apply_diagnosis_roles(diagnoses, encounter)
             fhir_encounter["diagnosis"] = diagnoses
 
         # Location - Extract from location participants
@@ -508,13 +510,13 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
     def _extract_diagnoses(self, entry_relationships: list[EntryRelationship] | None) -> list[JSONObject]:
         """Extract FHIR diagnoses from encounter diagnosis entry relationships.
 
-        Creates condition references instead of reasonCode.
+        Creates condition references with intelligent diagnosis role detection.
 
         Args:
             entry_relationships: List of entry relationships
 
         Returns:
-            List of FHIR diagnosis objects with condition references
+            List of FHIR diagnosis objects with condition references and use codes
         """
         diagnoses = []
 
@@ -545,17 +547,13 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                         }
                                     }
 
-                                    # Default to "AD" (admission diagnosis)
-                                    # NOTE: C-CDA on FHIR spec provides no guidance for mapping
-                                    # entryRelationship/@typeCode to Encounter.diagnosis.use.
-                                    # The binding is "Preferred" (not required), so defaulting to
-                                    # AD is a safe, conservative approach.
-                                    # See: https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-encounters.html
+                                    # Add diagnosis use/role - will be set by _determine_diagnosis_role
+                                    # when the encounter context is available
                                     diagnosis["use"] = {
                                         "coding": [{
                                             "system": "http://terminology.hl7.org/CodeSystem/diagnosis-role",
-                                            "code": "AD",
-                                            "display": "Admission diagnosis"
+                                            "code": "billing",
+                                            "display": "Billing"
                                         }]
                                     }
 
@@ -563,6 +561,109 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                         break
 
         return diagnoses
+
+    def _apply_diagnosis_roles(self, diagnoses: list[JSONObject], encounter: CCDAEncounter) -> None:
+        """Apply intelligent diagnosis role detection to diagnoses based on encounter context.
+
+        Updates diagnosis.use codes in place based on encounter characteristics:
+        - Encounters with discharge disposition → DD (discharge diagnosis)
+        - Inpatient encounters (IMP/ACUTE) without discharge → AD (admission diagnosis)
+        - Emergency encounters (EMER) → AD (admission diagnosis)
+        - All other encounters → billing (general documentation/billing)
+
+        Args:
+            diagnoses: List of diagnosis objects to update (modified in place)
+            encounter: The C-CDA encounter providing context
+        """
+        if not diagnoses:
+            return
+
+        # Determine the appropriate diagnosis role based on encounter context
+        diagnosis_role = self._determine_diagnosis_role(encounter)
+
+        # Apply the determined role to all diagnoses in this encounter
+        for diagnosis in diagnoses:
+            if "use" in diagnosis and "coding" in diagnosis["use"]:
+                diagnosis["use"]["coding"][0]["code"] = diagnosis_role["code"]
+                diagnosis["use"]["coding"][0]["display"] = diagnosis_role["display"]
+
+    def _determine_diagnosis_role(self, encounter: CCDAEncounter) -> dict[str, str]:
+        """Determine the appropriate diagnosis role based on encounter context.
+
+        C-CDA Encounter Diagnosis Act does not explicitly encode diagnosis roles
+        (admission, discharge, billing, etc.). This method infers the role from
+        encounter characteristics:
+
+        1. Discharge disposition present → Discharge diagnosis (DD)
+           Rationale: If discharge info exists, diagnosis is documented at discharge
+
+        2. Inpatient encounter (IMP/ACUTE) → Admission diagnosis (AD)
+           Rationale: Inpatient encounters typically document admission diagnoses
+
+        3. Emergency encounter (EMER) → Admission diagnosis (AD)
+           Rationale: Emergency diagnoses are documented at presentation/admission
+
+        4. All other cases → Billing diagnosis (billing)
+           Rationale: Most encounters document diagnoses for billing/general purposes
+
+        Reference: http://terminology.hl7.org/CodeSystem/diagnosis-role
+
+        Args:
+            encounter: The C-CDA encounter
+
+        Returns:
+            Dict with 'code' and 'display' keys for the diagnosis role
+        """
+        # Check for discharge disposition - indicates discharge diagnosis
+        if encounter.sdtc_discharge_disposition_code and encounter.sdtc_discharge_disposition_code.code:
+            return {
+                "code": "DD",
+                "display": "Discharge diagnosis"
+            }
+
+        # Check encounter class for inpatient or emergency
+        if encounter.code and encounter.code.code:
+            encounter_class = None
+
+            # Extract class from code or translation
+            if encounter.code.code_system == V3_ACT_CODE_SYSTEM:
+                encounter_class = encounter.code.code
+            elif hasattr(encounter.code, "translation") and encounter.code.translation:
+                for trans in encounter.code.translation:
+                    trans_system = None
+                    trans_code = None
+
+                    if isinstance(trans, dict):
+                        trans_system = trans.get("code_system")
+                        trans_code = trans.get("code")
+                    elif hasattr(trans, "code_system"):
+                        trans_system = trans.code_system
+                        trans_code = trans.code if hasattr(trans, "code") else None
+
+                    if trans_system == V3_ACT_CODE_SYSTEM and trans_code:
+                        encounter_class = trans_code
+                        break
+
+            # Inpatient encounters → admission diagnosis
+            if encounter_class in ["IMP", "ACUTE", "NONAC"]:
+                return {
+                    "code": "AD",
+                    "display": "Admission diagnosis"
+                }
+
+            # Emergency encounters → admission diagnosis
+            if encounter_class == "EMER":
+                return {
+                    "code": "AD",
+                    "display": "Admission diagnosis"
+                }
+
+        # Default to billing diagnosis for all other encounters
+        # This is the most general-purpose role for outpatient, ambulatory, etc.
+        return {
+            "code": "billing",
+            "display": "Billing"
+        }
 
     def _extract_reasons(self, entry_relationships: list[EntryRelationship] | None) -> dict[str, list]:
         """Extract FHIR reason codes and references from C-CDA entry relationships.

@@ -330,6 +330,33 @@ If the indication references a problem that was converted to a Condition:
 }
 ```
 
+#### Diagnosis Role Detection
+
+C-CDA Encounter Diagnosis Act does not explicitly encode diagnosis roles (admission, discharge, billing, etc.). The converter infers the appropriate `diagnosis.use` code from encounter context:
+
+**Detection Logic:**
+
+| Encounter Context | Diagnosis Role | Code | Rationale |
+|-------------------|----------------|------|-----------|
+| Has discharge disposition | Discharge diagnosis | `DD` | Discharge info indicates diagnosis documented at discharge |
+| Inpatient class (IMP/ACUTE/NONAC) | Admission diagnosis | `AD` | Inpatient encounters document admission diagnoses |
+| Emergency class (EMER) | Admission diagnosis | `AD` | Emergency diagnoses documented at presentation |
+| All other encounters | Billing | `billing` | Default for outpatient/ambulatory encounters |
+
+**Available Diagnosis Role Codes:**
+
+| Code | Display | Use Case |
+|------|---------|----------|
+| `AD` | Admission diagnosis | Hospital/facility admission diagnosis |
+| `DD` | Discharge diagnosis | Final diagnosis at discharge |
+| `billing` | Billing | General documentation/billing diagnosis |
+| `CC` | Chief complaint | Primary presenting complaint |
+| `CM` | Comorbidity diagnosis | Comorbid condition |
+| `pre-op` | Pre-op diagnosis | Pre-operative diagnosis |
+| `post-op` | Post-op diagnosis | Post-operative diagnosis |
+
+Reference: [DiagnosisRole CodeSystem](http://terminology.hl7.org/CodeSystem/diagnosis-role)
+
 **FHIR Condition:**
 The encounter diagnosis maps identically to problem conversion, with category set to `encounter-diagnosis`:
 

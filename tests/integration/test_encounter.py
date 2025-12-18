@@ -1272,3 +1272,156 @@ class TestEncounterConversion:
         # Translation should take precedence
         assert encounter["class"]["code"] == "EMER", "Explicit translation EMER should take precedence over CPT mapping (IMP)"
         assert encounter["class"]["display"] == "Emergency"
+
+    def test_ambulatory_encounter_diagnosis_uses_billing_role(self) -> None:
+        """Test that ambulatory encounters with diagnosis use 'billing' role."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-amb-diag"/>
+                <code code="AMB" codeSystem="2.16.840.1.113883.5.4" displayName="Ambulatory"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <entryRelationship typeCode="REFR">
+                    <act classCode="ACT" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.80"/>
+                        <code code="29308-4" codeSystem="2.16.840.1.113883.6.1" displayName="Diagnosis"/>
+                        <entryRelationship typeCode="SUBJ">
+                            <observation classCode="OBS" moodCode="EVN">
+                                <templateId root="2.16.840.1.113883.10.20.22.4.4"/>
+                                <id root="test-diagnosis" extension="dx-1"/>
+                                <code code="282291009" codeSystem="2.16.840.1.113883.6.96" displayName="Diagnosis"/>
+                                <statusCode code="completed"/>
+                                <effectiveTime><low value="20230101"/></effectiveTime>
+                                <value xsi:type="CD" code="J18.9" codeSystem="2.16.840.1.113883.6.90" displayName="Pneumonia"/>
+                            </observation>
+                        </entryRelationship>
+                    </act>
+                </entryRelationship>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "diagnosis" in encounter
+        assert len(encounter["diagnosis"]) == 1
+        assert "use" in encounter["diagnosis"][0]
+        assert encounter["diagnosis"][0]["use"]["coding"][0]["code"] == "billing"
+        assert encounter["diagnosis"][0]["use"]["coding"][0]["display"] == "Billing"
+
+    def test_inpatient_encounter_diagnosis_uses_admission_role(self) -> None:
+        """Test that inpatient encounters with diagnosis use 'AD' (admission) role."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-imp-diag"/>
+                <code code="IMP" codeSystem="2.16.840.1.113883.5.4" displayName="Inpatient"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <entryRelationship typeCode="REFR">
+                    <act classCode="ACT" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.80"/>
+                        <code code="29308-4" codeSystem="2.16.840.1.113883.6.1" displayName="Diagnosis"/>
+                        <entryRelationship typeCode="SUBJ">
+                            <observation classCode="OBS" moodCode="EVN">
+                                <templateId root="2.16.840.1.113883.10.20.22.4.4"/>
+                                <id root="test-diagnosis" extension="dx-2"/>
+                                <code code="282291009" codeSystem="2.16.840.1.113883.6.96" displayName="Diagnosis"/>
+                                <statusCode code="completed"/>
+                                <effectiveTime><low value="20230101"/></effectiveTime>
+                                <value xsi:type="CD" code="I21.9" codeSystem="2.16.840.1.113883.6.90" displayName="Acute MI"/>
+                            </observation>
+                        </entryRelationship>
+                    </act>
+                </entryRelationship>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "diagnosis" in encounter
+        assert len(encounter["diagnosis"]) == 1
+        assert "use" in encounter["diagnosis"][0]
+        assert encounter["diagnosis"][0]["use"]["coding"][0]["code"] == "AD"
+        assert encounter["diagnosis"][0]["use"]["coding"][0]["display"] == "Admission diagnosis"
+
+    def test_emergency_encounter_diagnosis_uses_admission_role(self) -> None:
+        """Test that emergency encounters with diagnosis use 'AD' (admission) role."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-emer-diag"/>
+                <code code="EMER" codeSystem="2.16.840.1.113883.5.4" displayName="Emergency"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <entryRelationship typeCode="REFR">
+                    <act classCode="ACT" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.80"/>
+                        <code code="29308-4" codeSystem="2.16.840.1.113883.6.1" displayName="Diagnosis"/>
+                        <entryRelationship typeCode="SUBJ">
+                            <observation classCode="OBS" moodCode="EVN">
+                                <templateId root="2.16.840.1.113883.10.20.22.4.4"/>
+                                <id root="test-diagnosis" extension="dx-3"/>
+                                <code code="282291009" codeSystem="2.16.840.1.113883.6.96" displayName="Diagnosis"/>
+                                <statusCode code="completed"/>
+                                <effectiveTime><low value="20230101"/></effectiveTime>
+                                <value xsi:type="CD" code="S06.0" codeSystem="2.16.840.1.113883.6.90" displayName="Concussion"/>
+                            </observation>
+                        </entryRelationship>
+                    </act>
+                </entryRelationship>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "diagnosis" in encounter
+        assert len(encounter["diagnosis"]) == 1
+        assert "use" in encounter["diagnosis"][0]
+        assert encounter["diagnosis"][0]["use"]["coding"][0]["code"] == "AD"
+        assert encounter["diagnosis"][0]["use"]["coding"][0]["display"] == "Admission diagnosis"
+
+    def test_encounter_with_discharge_uses_discharge_diagnosis_role(self) -> None:
+        """Test that encounters with discharge disposition use 'DD' (discharge diagnosis) role."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN" xmlns:sdtc="urn:hl7-org:sdtc">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-discharge-diag"/>
+                <code code="IMP" codeSystem="2.16.840.1.113883.5.4" displayName="Inpatient"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <sdtc:dischargeDispositionCode code="01" codeSystem="2.16.840.1.113883.12.112" displayName="Home"/>
+                <entryRelationship typeCode="REFR">
+                    <act classCode="ACT" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.80"/>
+                        <code code="29308-4" codeSystem="2.16.840.1.113883.6.1" displayName="Diagnosis"/>
+                        <entryRelationship typeCode="SUBJ">
+                            <observation classCode="OBS" moodCode="EVN">
+                                <templateId root="2.16.840.1.113883.10.20.22.4.4"/>
+                                <id root="test-diagnosis" extension="dx-4"/>
+                                <code code="282291009" codeSystem="2.16.840.1.113883.6.96" displayName="Diagnosis"/>
+                                <statusCode code="completed"/>
+                                <effectiveTime><low value="20230101"/></effectiveTime>
+                                <value xsi:type="CD" code="I50.9" codeSystem="2.16.840.1.113883.6.90" displayName="Heart failure"/>
+                            </observation>
+                        </entryRelationship>
+                    </act>
+                </entryRelationship>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "diagnosis" in encounter
+        assert len(encounter["diagnosis"]) == 1
+        assert "use" in encounter["diagnosis"][0]
+        assert encounter["diagnosis"][0]["use"]["coding"][0]["code"] == "DD"
+        assert encounter["diagnosis"][0]["use"]["coding"][0]["display"] == "Discharge diagnosis"

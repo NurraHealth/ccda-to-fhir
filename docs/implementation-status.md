@@ -966,6 +966,7 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - Location mapping (participant typeCode="LOC")
 - **Reason handling** ✅ **FULLY IMPLEMENTED** - Conditional mapping: reasonReference if Condition exists, reasonCode otherwise (6 tests, 100% C-CDA on FHIR compliant)
 - Diagnosis references (Condition references)
+- **Encounter Diagnosis Act details** ✅ **FULLY IMPLEMENTED** - Intelligent diagnosis role detection based on encounter context: discharge disposition → DD, inpatient → AD, emergency → AD, other → billing (contextual inference from C-CDA data)
 - Discharge disposition (SDTC extension)
 - **CPT to ActCode mapping** ✅ - Complete mapping per C-CDA on FHIR IG: 99201-99215 → AMB, 99221-99223 → IMP, 99281-99285 → EMER, 99341-99350 → HH (7 comprehensive tests)
 - **Encompassing encounter (document header encounter)** ✅ **NEW** - Complete implementation with CPT to ActCode mapping, deduplication, participant mapping, location, discharge disposition, and author metadata (5 comprehensive tests)
@@ -974,7 +975,6 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - (None)
 
 #### ❌ Not Implemented
-- Encounter Diagnosis Act details (admission vs discharge vs encounter diagnosis use)
 - Location status details
 - Custom V3 ActCode mapping
 - Hospitalization details beyond discharge disposition
