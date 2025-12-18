@@ -30,6 +30,7 @@ Duplicate encounters referenced in both header and body should consolidate into 
 | `encounter/statusCode` | `Encounter.status` | [Status Mapping](#status-mapping) |
 | `encounter/effectiveTime/@value` or `/low/@value` | `Encounter.period.start` | Date conversion |
 | `encounter/effectiveTime/high/@value` | `Encounter.period.end` | Date conversion |
+| `encounter/code` + `priorityCode` (inferred) | `Encounter.hospitalization.admitSource` | [Admission Source Detection](#admission-source) |
 | `encounter/dischargeDispositionCode` | `Encounter.hospitalization.dischargeDisposition` | CodeableConcept |
 | `encounter/performer` or `encounterParticipant` | `Encounter.participant` | [Participant Mapping](#participant-mapping) |
 | `encounter/performer/functionCode` | `Encounter.participant.type` | CodeableConcept |
@@ -481,6 +482,87 @@ The encounter diagnosis maps identically to problem conversion, with category se
 | 05 | `oth` | Other |
 | 06 | `exp` | Expired |
 
+### Admission Source
+
+**Admission source** indicates where the patient came from before admission (e.g., emergency department, physician referral, transfer). C-CDA does not explicitly encode admission source, but it can be intelligently inferred from encounter characteristics:
+
+**Detection Logic:**
+
+| Encounter Characteristic | Admission Source | Code | Rationale |
+|-------------------------|------------------|------|-----------|
+| Emergency class (EMER) | From emergency department | `emd` | Emergency encounters originate from ED |
+| priorityCode = "EM" (Emergency) | From emergency department | `emd` | Emergency priority indicates ED admission |
+| Inpatient class without priority | Other | `other` | General inpatient admission |
+| Ambulatory/Outpatient | — | — | No admission source for outpatient encounters |
+
+**C-CDA (Emergency encounter):**
+```xml
+<encounter classCode="ENC" moodCode="EVN">
+  <code code="EMER" codeSystem="2.16.840.1.113883.5.4" displayName="Emergency"/>
+  <statusCode code="completed"/>
+  <effectiveTime value="20230101"/>
+</encounter>
+```
+
+**FHIR:**
+```json
+{
+  "hospitalization": {
+    "admitSource": {
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/admit-source",
+        "code": "emd",
+        "display": "From accident/emergency department"
+      }]
+    }
+  }
+}
+```
+
+**C-CDA (Emergency priority):**
+```xml
+<encounter classCode="ENC" moodCode="EVN">
+  <code code="IMP" codeSystem="2.16.840.1.113883.5.4" displayName="Inpatient"/>
+  <priorityCode code="EM" codeSystem="2.16.840.1.113883.5.7" displayName="Emergency"/>
+  <statusCode code="completed"/>
+  <effectiveTime value="20230101"/>
+</encounter>
+```
+
+**FHIR:**
+```json
+{
+  "hospitalization": {
+    "admitSource": {
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/admit-source",
+        "code": "emd",
+        "display": "From accident/emergency department"
+      }]
+    }
+  }
+}
+```
+
+**Available Admission Source Codes:**
+
+| Code | Display | Use Case |
+|------|---------|----------|
+| `emd` | From accident/emergency department | Patient transferred from hospital's ED |
+| `hosp-trans` | Transferred from other hospital | Inter-hospital transfer |
+| `outp` | From outpatient department | Outpatient to inpatient transition |
+| `born` | Born in hospital | Newborn |
+| `gp` | General Practitioner referral | GP referral |
+| `mp` | Medical Practitioner/physician referral | Specialist referral |
+| `nursing` | From nursing home | Nursing home transfer |
+| `psych` | From psychiatric hospital | Psychiatric facility transfer |
+| `rehab` | From rehabilitation facility | Rehab facility transfer |
+| `other` | Other | Source not specified |
+
+Reference: [AdmitSource CodeSystem](http://terminology.hl7.org/CodeSystem/admit-source)
+
+**Note:** Admission source is only applicable for inpatient/hospital encounters. Outpatient encounters typically do not have an admission source.
+
 ## Document Header Encounter
 
 The `encompassingEncounter` in the document header can also create an Encounter:
@@ -532,6 +614,7 @@ Maps similarly to Encounter Activity.
 | `Encounter.reasonCode` | Indication observation | Create entryRelationship |
 | `Encounter.reasonReference` | Indication observation | Reference to problem |
 | `Encounter.diagnosis` | Encounter Diagnosis Act | Create entryRelationship |
+| `Encounter.hospitalization.admitSource` | `encounter/code` + `priorityCode` (inferred) | Intelligent inference |
 | `Encounter.hospitalization.dischargeDisposition` | `sdtc:dischargeDispositionCode` | CodeableConcept → CE |
 
 ### FHIR Status to CDA

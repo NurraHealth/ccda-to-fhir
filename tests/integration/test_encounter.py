@@ -313,6 +313,170 @@ class TestEncounterConversion:
         assert discharge_disp["coding"][0]["code"] == "home"
         assert discharge_disp["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/discharge-disposition"
 
+    def test_emergency_encounter_has_admit_source_emd(self) -> None:
+        """Test that emergency encounters map to 'emd' (from emergency department) admit source."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-emergency"/>
+                <code code="EMER" codeSystem="2.16.840.1.113883.5.4" displayName="Emergency"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "hospitalization" in encounter
+        assert "admitSource" in encounter["hospitalization"]
+
+        admit_source = encounter["hospitalization"]["admitSource"]
+        assert "coding" in admit_source
+        assert len(admit_source["coding"]) == 1
+        assert admit_source["coding"][0]["code"] == "emd"
+        assert admit_source["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/admit-source"
+        assert admit_source["coding"][0]["display"] == "From accident/emergency department"
+
+    def test_emergency_priority_has_admit_source_emd(self) -> None:
+        """Test that encounters with emergency priority map to 'emd' admit source."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-priority-emergency"/>
+                <code code="IMP" codeSystem="2.16.840.1.113883.5.4" displayName="Inpatient"/>
+                <priorityCode code="EM" codeSystem="2.16.840.1.113883.5.7" displayName="Emergency"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "hospitalization" in encounter
+        assert "admitSource" in encounter["hospitalization"]
+
+        admit_source = encounter["hospitalization"]["admitSource"]
+        assert admit_source["coding"][0]["code"] == "emd"
+        assert admit_source["coding"][0]["display"] == "From accident/emergency department"
+
+    def test_inpatient_encounter_has_admit_source_other(self) -> None:
+        """Test that inpatient encounters map to 'other' admit source."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-inpatient"/>
+                <code code="IMP" codeSystem="2.16.840.1.113883.5.4" displayName="Inpatient"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "hospitalization" in encounter
+        assert "admitSource" in encounter["hospitalization"]
+
+        admit_source = encounter["hospitalization"]["admitSource"]
+        assert admit_source["coding"][0]["code"] == "other"
+        assert admit_source["coding"][0]["display"] == "Other"
+
+    def test_acute_inpatient_has_admit_source_other(self) -> None:
+        """Test that acute inpatient encounters map to 'other' admit source."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-acute"/>
+                <code code="ACUTE" codeSystem="2.16.840.1.113883.5.4" displayName="Inpatient acute"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "hospitalization" in encounter
+        assert "admitSource" in encounter["hospitalization"]
+        assert encounter["hospitalization"]["admitSource"]["coding"][0]["code"] == "other"
+
+    def test_ambulatory_encounter_no_admit_source(self) -> None:
+        """Test that ambulatory/outpatient encounters do not have admit source."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-ambulatory"/>
+                <code code="AMB" codeSystem="2.16.840.1.113883.5.4" displayName="Ambulatory"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        # Ambulatory encounters should not have hospitalization or should not have admitSource
+        if "hospitalization" in encounter:
+            assert "admitSource" not in encounter["hospitalization"]
+
+    def test_inpatient_with_discharge_has_both_admit_and_discharge(self) -> None:
+        """Test that inpatient encounters can have both admitSource and dischargeDisposition."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN" xmlns:sdtc="urn:hl7-org:sdtc">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-complete-hosp"/>
+                <code code="IMP" codeSystem="2.16.840.1.113883.5.4" displayName="Inpatient"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <sdtc:dischargeDispositionCode code="01" codeSystem="2.16.840.1.113883.12.112" displayName="Home"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "hospitalization" in encounter
+
+        # Should have both admitSource and dischargeDisposition
+        assert "admitSource" in encounter["hospitalization"]
+        assert "dischargeDisposition" in encounter["hospitalization"]
+
+        # Verify admitSource
+        assert encounter["hospitalization"]["admitSource"]["coding"][0]["code"] == "other"
+
+        # Verify dischargeDisposition
+        assert encounter["hospitalization"]["dischargeDisposition"]["coding"][0]["code"] == "home"
+
+    def test_emergency_with_translation_has_admit_source_emd(self) -> None:
+        """Test that encounters with EMER in translation map to 'emd' admit source."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-translation"/>
+                <code code="99283" codeSystem="2.16.840.1.113883.6.12" displayName="Emergency visit">
+                    <translation code="EMER" codeSystem="2.16.840.1.113883.5.4" displayName="Emergency"/>
+                </code>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "hospitalization" in encounter
+        assert "admitSource" in encounter["hospitalization"]
+        assert encounter["hospitalization"]["admitSource"]["coding"][0]["code"] == "emd"
+
     def test_maps_attphys_function_code(self) -> None:
         """Test that ATTPHYS function code maps to ATND (attender)."""
         ccda_doc = wrap_in_ccda_document(

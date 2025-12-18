@@ -542,8 +542,94 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             # Default to completed for documented encounters
             return "completed"
 
+    def _determine_admit_source(self, encounter: CCDAEncounter) -> JSONObject | None:
+        """Determine FHIR admission source from C-CDA encounter characteristics.
+
+        C-CDA does not explicitly encode admission source, but it can be intelligently
+        inferred from encounter characteristics:
+
+        1. Emergency encounter class (EMER) → "emd" (from emergency department)
+           Rationale: Emergency encounters originate from the hospital's ED
+
+        2. priorityCode = "EM" (Emergency) → "emd" (from emergency department)
+           Rationale: Emergency priority indicates admission via ED
+
+        3. Inpatient encounters (IMP, ACUTE, NONAC) → "other"
+           Rationale: General hospital admission without specific source
+
+        4. Outpatient/Ambulatory encounters → No admission source
+           Rationale: Admission source only applies to inpatient admissions
+
+        Reference: http://terminology.hl7.org/CodeSystem/admit-source
+
+        Args:
+            encounter: The C-CDA encounter
+
+        Returns:
+            FHIR CodeableConcept for admission source, or None
+        """
+        # Extract encounter class from code or translation
+        encounter_class = None
+        if encounter.code and encounter.code.code:
+            if encounter.code.code_system == V3_ACT_CODE_SYSTEM:
+                encounter_class = encounter.code.code
+            elif hasattr(encounter.code, "translation") and encounter.code.translation:
+                for trans in encounter.code.translation:
+                    trans_system = None
+                    trans_code = None
+
+                    if isinstance(trans, dict):
+                        trans_system = trans.get("code_system")
+                        trans_code = trans.get("code")
+                    elif hasattr(trans, "code_system"):
+                        trans_system = trans.code_system
+                        trans_code = trans.code if hasattr(trans, "code") else None
+
+                    if trans_system == V3_ACT_CODE_SYSTEM and trans_code:
+                        encounter_class = trans_code
+                        break
+
+        # 1. Emergency encounter class → from emergency department
+        if encounter_class == "EMER":
+            return {
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/admit-source",
+                    "code": "emd",
+                    "display": "From accident/emergency department"
+                }]
+            }
+
+        # 2. Emergency priority code → from emergency department
+        if encounter.priority_code and encounter.priority_code.code == "EM":
+            return {
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/admit-source",
+                    "code": "emd",
+                    "display": "From accident/emergency department"
+                }]
+            }
+
+        # 3. Inpatient encounters → other (general admission)
+        # Only assign "other" for inpatient encounters, not outpatient
+        if encounter_class in ["IMP", "ACUTE", "NONAC"]:
+            return {
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/admit-source",
+                    "code": "other",
+                    "display": "Other"
+                }]
+            }
+
+        # 4. Outpatient/Ambulatory → No admission source
+        # Don't assign admission source for non-inpatient encounters
+        return None
+
     def _extract_hospitalization(self, encounter: CCDAEncounter) -> JSONObject | None:
-        """Extract FHIR hospitalization from C-CDA discharge disposition.
+        """Extract FHIR hospitalization from C-CDA encounter.
+
+        Extracts:
+        - admitSource: Intelligently inferred from encounter characteristics
+        - dischargeDisposition: Mapped from sdtc:dischargeDispositionCode
 
         Args:
             encounter: The C-CDA encounter
@@ -551,30 +637,32 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         Returns:
             FHIR hospitalization object or None
         """
-        if not encounter.sdtc_discharge_disposition_code:
-            return None
+        hospitalization: JSONObject = {}
 
-        disposition = encounter.sdtc_discharge_disposition_code
-        if not disposition.code:
-            return None
+        # Extract admission source (intelligently inferred)
+        admit_source = self._determine_admit_source(encounter)
+        if admit_source:
+            hospitalization["admitSource"] = admit_source
 
-        # Map discharge disposition code to FHIR
-        fhir_code = DISCHARGE_DISPOSITION_TO_FHIR.get(disposition.code)
-        if not fhir_code:
-            # Use original code if not in mapping
-            fhir_code = disposition.code
+        # Extract discharge disposition
+        if encounter.sdtc_discharge_disposition_code:
+            disposition = encounter.sdtc_discharge_disposition_code
+            if disposition.code:
+                # Map discharge disposition code to FHIR
+                fhir_code = DISCHARGE_DISPOSITION_TO_FHIR.get(disposition.code)
+                if not fhir_code:
+                    # Use original code if not in mapping
+                    fhir_code = disposition.code
 
-        hospitalization: JSONObject = {
-            "dischargeDisposition": {
-                "coding": [{
-                    "system": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
-                    "code": fhir_code,
-                    "display": disposition.display_name if hasattr(disposition, "display_name") and disposition.display_name else None,
-                }]
-            }
-        }
+                hospitalization["dischargeDisposition"] = {
+                    "coding": [{
+                        "system": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
+                        "code": fhir_code,
+                        "display": disposition.display_name if hasattr(disposition, "display_name") and disposition.display_name else None,
+                    }]
+                }
 
-        return hospitalization
+        return hospitalization if hospitalization else None
 
     def _extract_diagnoses(self, entry_relationships: list[EntryRelationship] | None) -> list[JSONObject]:
         """Extract FHIR diagnoses from encounter diagnosis entry relationships.

@@ -967,11 +967,11 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### 8. Encounter (08-encounter.md vs encounter.py)
 
-**Status**: 🟢 **Excellent** (15 fully / 0 partial / 1 missing)
+**Status**: 🟢 **Excellent** (16 fully / 0 partial / 0 missing)
 **Recent Updates**:
+- ✅ **Comprehensive hospitalization details completed** (2025-12-18) - Intelligent admission source detection (admitSource) + discharge disposition
 - ✅ **Custom V3 ActCode mapping completed** (2025-12-18) - Standard display names for all 11 V3 ActEncounterCode values
 - ✅ **Location status details completed** (2025-12-18) - Intelligent status determination with period extraction
-- ✅ Header encounter CPT to ActCode mapping completed (2025-12-17)
 
 #### ✅ Fully Implemented
 - Core encounter mapping (status, class, type, period)
@@ -985,7 +985,7 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - **Reason handling** ✅ **FULLY IMPLEMENTED** - Conditional mapping: reasonReference if Condition exists, reasonCode otherwise (6 tests, 100% C-CDA on FHIR compliant)
 - Diagnosis references (Condition references)
 - **Encounter Diagnosis Act details** ✅ **FULLY IMPLEMENTED** - Intelligent diagnosis role detection based on encounter context: discharge disposition → DD, inpatient → AD, emergency → AD, other → billing (contextual inference from C-CDA data)
-- Discharge disposition (SDTC extension)
+- **Comprehensive hospitalization details** ✅ **FULLY IMPLEMENTED** - Intelligent admission source detection (EMER → emd, priorityCode=EM → emd, IMP/ACUTE/NONAC → other), discharge disposition (SDTC extension mapping), both fields coexist for complete hospitalization documentation (8 comprehensive tests)
 - **CPT to ActCode mapping** ✅ - Complete mapping per C-CDA on FHIR IG: 99201-99215 → AMB, 99221-99223 → IMP, 99281-99285 → EMER, 99341-99350 → HH (7 comprehensive tests)
 - **Encompassing encounter (document header encounter)** ✅ **NEW** - Complete implementation with CPT to ActCode mapping, deduplication, participant mapping, location, discharge disposition, and author metadata (5 comprehensive tests)
 - **Custom V3 ActCode mapping** ✅ **NEW** - Standard display name mapping for all 11 V3 ActEncounterCode values (AMB, EMER, FLD, HH, IMP, ACUTE, NONAC, OBSENC, PRENC, SS, VR) per FHIR R4 specification, with fallback to C-CDA display for unknown codes (13 comprehensive tests)
@@ -994,7 +994,7 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - (None)
 
 #### ❌ Not Implemented
-- Hospitalization details beyond discharge disposition
+- (None)
 
 ---
 
