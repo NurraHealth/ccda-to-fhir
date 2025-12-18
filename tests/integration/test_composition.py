@@ -302,6 +302,78 @@ class TestCompositionConversion:
         # Should NOT have attester field
         assert "attester" not in composition
 
+    def test_custodian_required_even_when_missing(self) -> None:
+        """Test that custodian is always present to satisfy US Realm Header 1..1 cardinality.
+
+        Per US Realm Header Profile, Composition.custodian has cardinality 1..1 (required).
+        When C-CDA document lacks custodian but doesn't claim US Realm Header conformance,
+        we must create a placeholder Organization resource to maintain FHIR compliance.
+
+        Note: Documents claiming US Realm Header conformance (template 2.16.840.1.113883.10.20.22.1.1)
+        are validated at parse time via Pydantic @model_validator and will fail if custodian is missing.
+        """
+        # Create a document without US Realm Header template (non-conformant document)
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="1.2.3.4.5"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <title>Test Section</title>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Custodian MUST be present (1..1 cardinality)
+        assert "custodian" in composition
+
+        # Should have a proper reference (not just display-only)
+        assert "reference" in composition["custodian"]
+        assert composition["custodian"]["reference"] == "Organization/unknown-custodian-org"
+        assert composition["custodian"]["display"] == "Unknown Organization"
+
+        # Verify placeholder Organization resource was created in bundle
+        placeholder_org = _find_resource_in_bundle(bundle, "Organization")
+        assert placeholder_org is not None
+        assert placeholder_org["id"] == "unknown-custodian-org"
+        assert placeholder_org["name"] == "Unknown Organization"
+        assert placeholder_org["active"] is True
+
 
 class TestCompositionSections:
     """Tests for Composition section creation."""

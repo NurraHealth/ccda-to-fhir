@@ -171,11 +171,26 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if confidentiality:
                 composition["confidentiality"] = confidentiality
 
-        # Custodian (optional) - organization maintaining the composition
+        # Custodian - REQUIRED (1..1 per US Realm Header Profile)
+        # Organization maintaining the composition
+        #
+        # Note: US Realm Header documents (template 2.16.840.1.113883.10.20.22.1.1) are
+        # validated at parse time and WILL FAIL if custodian is missing. This code handles
+        # non-US Realm Header documents that may lack custodian.
         if clinical_document.custodian:
             custodian_ref = self._create_custodian_reference(clinical_document.custodian)
             if custodian_ref:
                 composition["custodian"] = custodian_ref
+            else:
+                # Custodian element present but couldn't extract reference
+                # Create placeholder Organization resource to maintain FHIR 1..1 cardinality
+                custodian_ref = self._create_placeholder_custodian_org()
+                composition["custodian"] = custodian_ref
+        else:
+            # Custodian missing - likely a non-US Realm Header document
+            # Create placeholder Organization resource to maintain FHIR 1..1 cardinality
+            custodian_ref = self._create_placeholder_custodian_org()
+            composition["custodian"] = custodian_ref
 
         # Sections - convert structured body to Composition sections
         if clinical_document.component and clinical_document.component.structured_body:
@@ -483,6 +498,36 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 return {"display": custodian_org.name.value}
 
         return None
+
+    def _create_placeholder_custodian_org(self) -> JSONObject:
+        """Create placeholder custodian organization when C-CDA lacks one.
+
+        This handles non-US Realm Header documents that may not include custodian.
+        Creates a proper Organization resource (not just display-only reference) to
+        satisfy US Realm Header Profile requirements.
+
+        Returns:
+            FHIR Reference to placeholder Organization
+        """
+        org_id = "unknown-custodian-org"
+
+        # Create Organization resource and register it
+        organization: JSONObject = {
+            "resourceType": "Organization",
+            "id": org_id,
+            "name": "Unknown Organization",
+            "active": True
+        }
+
+        # Register with reference registry (will be included in bundle)
+        if self.reference_registry:
+            self.reference_registry.register_resource(organization)
+
+        # Return reference to the organization
+        return {
+            "reference": f"Organization/{org_id}",
+            "display": "Unknown Organization"
+        }
 
     def _convert_sections(self, structured_body: StructuredBody) -> list[JSONObject]:
         """Convert C-CDA structured body to FHIR Composition sections.

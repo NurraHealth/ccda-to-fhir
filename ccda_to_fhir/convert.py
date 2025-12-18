@@ -769,7 +769,19 @@ class DocumentConverter:
             reference_registry=self.reference_registry,
         )
         try:
+            # Track resources before composition creation
+            resources_before = set((r["resourceType"], r["id"]) for r in resources if "resourceType" in r and "id" in r)
+
             composition = composition_converter.convert(ccda_doc)
+
+            # Check if composition converter registered any additional resources (e.g., placeholder custodian)
+            all_registered = self.reference_registry.get_all_resources()
+            for resource in all_registered:
+                resource_key = (resource.get("resourceType"), resource.get("id"))
+                if resource_key[0] and resource_key[1] and resource_key not in resources_before:
+                    # New resource registered during composition creation
+                    if resource not in resources:
+                        resources.append(resource)
 
             # Validate Composition
             if self._validate_resource(composition):

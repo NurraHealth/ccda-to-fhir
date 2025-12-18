@@ -17,23 +17,28 @@ This is a living document that captures known issues, ambiguities, and limitatio
 
 ## Critical Issues
 
-### 1. Custodian Cardinality Not Enforced 🔴 📋
+### 1. Custodian Cardinality Not Enforced ⚠️ PARTIALLY RESOLVED
 
-**Issue**: US Realm Header Profile requires `Composition.custodian` with cardinality 1..1, but current implementation doesn't enforce this.
+**Issue**: US Realm Header Profile requires `Composition.custodian` with cardinality 1..1, but implementation didn't enforce this.
 
 **Impact**:
 - Non-compliant FHIR output when C-CDA document lacks custodian
 - Validation failures against US Core profiles
 
+**Resolution** (Partially Completed):
+- ✅ C-CDA parser validates custodian for US Realm Header documents (template 2.16.840.1.113883.10.20.22.1.1) via Pydantic `@model_validator`
+- ✅ Documents claiming US Realm Header conformance will fail at parse time if custodian is missing
+- ✅ Composition converter ensures `custodian` is always present in FHIR output
+- ✅ Added test coverage for missing custodian scenario
+
 **Current Behavior**:
-- If `custodian` is missing in C-CDA, Composition is created without `custodian` element
-- No error or warning generated
+- US Realm Header documents (template 2.16.840.1.113883.10.20.22.1.1): Validation enforced automatically by Pydantic model validator - parse fails if custodian missing
+- Non-US Realm Header documents: Parse succeeds, converter creates placeholder custodian Organization resource
+- Placeholder includes proper Organization resource with reference (not just display-only)
 
-**Workaround**:
-- Ensure all input C-CDA documents include custodian element
-- Validate C-CDA documents before conversion
-
-**Planned Fix**: Version 0.3.0 - Add validation and default custodian creation
+**Remaining Work**:
+- Consider explicit validation call for clarity (currently relies on Pydantic's implicit `@model_validator`)
+- Document validator behavior more clearly in code comments
 
 **Official IG Guidance**: [US Realm Header Profile](https://build.fhir.org/ig/HL7/ccda-on-fhir/StructureDefinition-CF-usrealmheader.html)
 
