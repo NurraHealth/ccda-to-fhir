@@ -15,6 +15,7 @@ from ccda_to_fhir.constants import (
 )
 
 from .base import BaseConverter
+from .medication_request import MedicationRequestConverter
 
 
 class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
@@ -703,6 +704,9 @@ def convert_immunization_activity(
 
     This is a convenience function that creates a converter and performs the conversion.
 
+    For historical immunizations (moodCode="EVN"), creates FHIR Immunization resources.
+    For planned immunizations (moodCode="INT"), creates FHIR MedicationRequest resources.
+
     Args:
         substance_admin: The C-CDA SubstanceAdministration (Immunization Activity)
         code_system_mapper: Optional CodeSystemMapper instance
@@ -710,21 +714,45 @@ def convert_immunization_activity(
         section: The C-CDA Section containing this immunization (for narrative)
 
     Returns:
-        List of FHIR resources: [Immunization, Observation, ...]
-        - First element is always the Immunization resource
-        - Subsequent elements are Observation resources for reactions (if any)
+        List of FHIR resources:
+        - For moodCode="EVN": [Immunization, Observation, ...]
+          - First element is the Immunization resource
+          - Subsequent elements are Observation resources for reactions (if any)
+        - For moodCode="INT": [MedicationRequest]
+          - Single MedicationRequest resource for planned immunization
     """
-    converter = ImmunizationConverter(code_system_mapper=code_system_mapper)
-    immunization, reaction_observations = converter.convert(substance_admin, section=section)
+    # Check moodCode to determine resource type
+    # Per C-CDA on FHIR IG: INT (planned) → MedicationRequest, EVN (historical) → Immunization
+    mood_code = substance_admin.mood_code or "EVN"
 
-    # Store author metadata if callback provided
-    if metadata_callback and immunization.get("id"):
-        metadata_callback(
-            resource_type="Immunization",
-            resource_id=immunization["id"],
-            ccda_element=substance_admin,
-            concern_act=None,
-        )
+    if mood_code.upper() == "INT":
+        # Planned immunization - convert to MedicationRequest
+        converter = MedicationRequestConverter(code_system_mapper=code_system_mapper)
+        medication_request = converter.convert(substance_admin, section=section)
 
-    # Return all resources as a list
-    return [immunization] + reaction_observations
+        # Store author metadata if callback provided
+        if metadata_callback and medication_request.get("id"):
+            metadata_callback(
+                resource_type="MedicationRequest",
+                resource_id=medication_request["id"],
+                ccda_element=substance_admin,
+                concern_act=None,
+            )
+
+        return [medication_request]
+    else:
+        # Historical immunization - convert to Immunization resource
+        converter = ImmunizationConverter(code_system_mapper=code_system_mapper)
+        immunization, reaction_observations = converter.convert(substance_admin, section=section)
+
+        # Store author metadata if callback provided
+        if metadata_callback and immunization.get("id"):
+            metadata_callback(
+                resource_type="Immunization",
+                resource_id=immunization["id"],
+                ccda_element=substance_admin,
+                concern_act=None,
+            )
+
+        # Return all resources as a list
+        return [immunization] + reaction_observations

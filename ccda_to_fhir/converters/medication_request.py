@@ -207,12 +207,24 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         med_code = manufactured_material.code
 
+        # Extract translations - convert CD objects to dictionaries
+        translations = None
+        if hasattr(med_code, 'translation') and med_code.translation:
+            translations = []
+            for trans in med_code.translation:
+                if trans.code and trans.code_system:
+                    translations.append({
+                        "code": trans.code,
+                        "code_system": trans.code_system,
+                        "display_name": trans.display_name,
+                    })
+
         return self.create_codeable_concept(
             code=med_code.code,
             code_system=med_code.code_system,
             display_name=med_code.display_name,
             original_text=self.extract_original_text(med_code.original_text) if med_code.original_text else None,
-            translations=med_code.translation if hasattr(med_code, 'translation') else None,
+            translations=translations,
         )
 
     def _extract_authored_on(self, substance_admin: SubstanceAdministration) -> str | None:

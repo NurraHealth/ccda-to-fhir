@@ -676,6 +676,12 @@ def ccda_immunization_multiple_authors() -> str:
 
 
 @pytest.fixture
+def ccda_immunization_planned() -> str:
+    """Load C-CDA planned immunization (moodCode='INT')."""
+    return (CCDA_FIXTURES_DIR / "immunization_planned.xml").read_text()
+
+
+@pytest.fixture
 def ccda_observation_ivl_pq() -> str:
     """Load C-CDA observation with IVL_PQ value."""
     return (CCDA_FIXTURES_DIR / "observation_ivl_pq.xml").read_text()

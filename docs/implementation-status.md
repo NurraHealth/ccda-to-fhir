@@ -874,8 +874,8 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### 6. Immunization (06-immunization.md vs immunization.py)
 
-**Status**: 🟢 **Excellent** (12 fully / 0 partial / 3 missing)
-**Recent Update**: ✅ Reaction detail completed - ZERO partials achievement! (2025-12-16)
+**Status**: 🟢 **Excellent** (13 fully / 0 partial / 2 missing)
+**Recent Update**: ✅ Planned immunizations (moodCode="INT") implemented - Maps to MedicationRequest! (2025-12-18)
 
 #### ✅ Fully Implemented
 - Core immunization mapping (vaccine code, status, occurrence date)
@@ -892,12 +892,12 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - **Primary source with data-absent-reason extension** ✅ - Uses `_primarySource` with extension per C-CDA on FHIR IG (valueCode: "unsupported")
 - **Status reason** ✅ - Not given reason (template 2.16.840.1.113883.10.20.22.4.53) → statusReason when negated
 - **Reaction detail** ✅ **NEW** - Creates separate Observation resources referenced via reaction.detail (FHIR R4 compliant, 7 comprehensive tests)
+- **Planned immunizations** ✅ **NEW** - moodCode="INT" → MedicationRequest (10 comprehensive tests, includes vaccine code, dosage instructions, reason codes)
 
 #### ⚠️ Partially Implemented
 - (None)
 
 #### ❌ Not Implemented
-- Planned immunizations (moodCode="INT" → MedicationRequest)
 - Complex not-given reason mappings
 - Comprehensive entry relationship parsing
 
