@@ -961,3 +961,197 @@ class TestRepresentedOrganization:
             # If provenance exists, verify agent has no onBehalfOf
             agent = procedure_provenance["agent"][0]
             assert "onBehalfOf" not in agent, "onBehalfOf should not exist when no representedOrganization"
+
+
+class TestProcedureActivityObservation:
+    """E2E tests for C-CDA Procedure Activity Observation to FHIR Procedure conversion.
+
+    Procedure Activity Observation (template 2.16.840.1.113883.10.20.22.4.13) is used for
+    procedures that result in information about the patient (e.g., diagnostic tests) but do
+    not alter the patient's physical state. These also map to FHIR Procedure resource.
+    """
+
+    def test_converts_procedure_observation_to_procedure_resource(
+        self, ccda_procedure_observation: str
+    ) -> None:
+        """Test that Procedure Activity Observation is converted to FHIR Procedure."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert procedure["resourceType"] == "Procedure"
+
+    def test_converts_observation_code(
+        self, ccda_procedure_observation: str
+    ) -> None:
+        """Test that observation code is correctly converted to Procedure.code."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert "code" in procedure
+        snomed = next(
+            (c for c in procedure["code"]["coding"]
+             if c.get("system") == "http://snomed.info/sct"),
+            None
+        )
+        assert snomed is not None
+        assert snomed["code"] == "24623002"
+        assert snomed["display"] == "Screening colonoscopy"
+
+    def test_converts_observation_status(
+        self, ccda_procedure_observation: str
+    ) -> None:
+        """Test that observation status is correctly mapped to Procedure.status."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert procedure["status"] == "completed"
+
+    def test_converts_observation_effective_time(
+        self, ccda_procedure_observation: str
+    ) -> None:
+        """Test that observation effectiveTime is converted to performedDateTime."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert "performedDateTime" in procedure
+        assert procedure["performedDateTime"] == "2023-03-15"
+
+    def test_converts_observation_identifier(
+        self, ccda_procedure_observation: str
+    ) -> None:
+        """Test that observation identifiers are correctly converted."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert "identifier" in procedure
+        assert len(procedure["identifier"]) >= 1
+        assert procedure["identifier"][0]["value"] == "proc-obs-001"
+
+    def test_converts_observation_with_body_site(
+        self, ccda_procedure_observation_with_details: str
+    ) -> None:
+        """Test that observation targetSiteCode is converted to bodySite."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert "bodySite" in procedure
+        assert len(procedure["bodySite"]) >= 1
+        body_site = procedure["bodySite"][0]
+        snomed_coding = next(
+            (c for c in body_site["coding"]
+             if c.get("system") == "http://snomed.info/sct"),
+            None
+        )
+        assert snomed_coding is not None
+        assert snomed_coding["code"] == "416949008"
+        assert snomed_coding["display"] == "Abdomen and pelvis"
+
+    def test_converts_observation_with_performer(
+        self, ccda_procedure_observation_with_details: str
+    ) -> None:
+        """Test that observation performer is correctly converted."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert "performer" in procedure
+        assert len(procedure["performer"]) >= 1
+        performer = procedure["performer"][0]
+        assert "actor" in performer
+        assert "Practitioner/" in performer["actor"]["reference"]
+
+    def test_converts_observation_with_location(
+        self, ccda_procedure_observation_with_details: str
+    ) -> None:
+        """Test that observation location participant is correctly converted."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert "location" in procedure
+        assert "Location/" in procedure["location"]["reference"]
+        # Display is optional, only check if present
+        if "display" in procedure["location"]:
+            assert procedure["location"]["display"] == "Endoscopy Suite 1"
+
+    def test_converts_observation_with_author(
+        self, ccda_procedure_observation_with_details: str
+    ) -> None:
+        """Test that observation author is converted to recorder."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert "recorder" in procedure
+        assert "Practitioner/" in procedure["recorder"]["reference"]
+
+    def test_converts_observation_with_reason(
+        self, ccda_procedure_observation_with_details: str
+    ) -> None:
+        """Test that observation reason is correctly converted to reasonCode."""
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert "reasonCode" in procedure
+        assert len(procedure["reasonCode"]) >= 1
+        reason = procedure["reasonCode"][0]
+        snomed_coding = next(
+            (c for c in reason["coding"]
+             if c.get("system") == "http://snomed.info/sct"),
+            None
+        )
+        assert snomed_coding is not None
+        assert snomed_coding["code"] == "162004"
+        assert snomed_coding["display"] == "Gastrointestinal hemorrhage"
+
+    def test_mixed_procedure_and_observation_entries(self) -> None:
+        """Test that both Procedure Activity Procedure and Observation can coexist in same section."""
+        ccda_doc = wrap_in_ccda_document(
+            """<procedure classCode="PROC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.14"/>
+                <id root="test-proc-001"/>
+                <code code="80146002" codeSystem="2.16.840.1.113883.6.96" displayName="Appendectomy"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </procedure>
+            <observation classCode="OBS" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.13"/>
+                <id root="test-obs-001"/>
+                <code code="24623002" codeSystem="2.16.840.1.113883.6.96" displayName="Screening colonoscopy"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230315"/>
+                <value xsi:type="CD" nullFlavor="NA"/>
+            </observation>""",
+            PROCEDURES_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        procedures = _find_all_resources_in_bundle(bundle, "Procedure")
+        assert len(procedures) == 2, "Should convert both Procedure and Observation to Procedure resources"
+
+        # Verify both were converted
+        procedure_codes = {
+            coding["code"]
+            for proc in procedures
+            for coding in proc["code"]["coding"]
+            if coding.get("system") == "http://snomed.info/sct"
+        }
+        assert "80146002" in procedure_codes, "Appendectomy should be present"
+        assert "24623002" in procedure_codes, "Screening colonoscopy should be present"

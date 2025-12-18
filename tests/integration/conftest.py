@@ -337,6 +337,18 @@ def ccda_procedure_with_notes() -> str:
 
 
 @pytest.fixture
+def ccda_procedure_observation() -> str:
+    """Load C-CDA Procedure Activity Observation fixture."""
+    return (CCDA_FIXTURES_DIR / "procedure_observation.xml").read_text()
+
+
+@pytest.fixture
+def ccda_procedure_observation_with_details() -> str:
+    """Load C-CDA Procedure Activity Observation with full details."""
+    return (CCDA_FIXTURES_DIR / "procedure_observation_with_details.xml").read_text()
+
+
+@pytest.fixture
 def ccda_result() -> str:
     """Load C-CDA result/lab fixture."""
     return (CCDA_FIXTURES_DIR / "result.xml").read_text()

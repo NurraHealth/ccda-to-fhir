@@ -820,8 +820,8 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### 5. Procedure (05-procedure.md vs procedure.py)
 
-**Status**: 🟢 **Excellent** (10 fully / 0 partial / 3 missing)
-**Recent Update**: ✅ Reason handling fully implemented (2025-12-16)
+**Status**: 🟢 **Excellent** (11 fully / 0 partial / 2 missing)
+**Recent Update**: ✅ Procedure Activity Observation fully implemented (2025-12-18)
 
 #### ✅ Fully Implemented
 - Core procedure conversion (code, status, performer)
@@ -835,15 +835,15 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - Procedure outcomes
 - **Location mapping** ✅ **VERIFIED** - Participant typeCode="LOC" → location reference with display name
 - **Reason handling** ✅ **FULLY IMPLEMENTED** - Conditional mapping: reasonReference if Condition exists, reasonCode otherwise (6 tests, 100% C-CDA on FHIR compliant)
+- **Procedure Activity Observation** ✅ **NEW** (2025-12-18) - Complete implementation of Procedure Activity Observation template (2.16.840.1.113883.10.20.22.4.13) → FHIR Procedure: observation entries with procedure template ID now map to Procedure resource; supports all standard attributes (code, status, effectiveTime, targetSiteCode, performer, location, author, reason); 11 comprehensive integration tests passing (basic conversion, code, status, effective time, identifier, body site, performer, location, author, reason, mixed entries)
 
 #### ⚠️ Partially Implemented
 - (None)
 
 #### ❌ Not Implemented
-- Procedure Observation or Procedure Act variants (only Procedure Activity Procedure)
+- Procedure Activity Act variant (template 2.16.840.1.113883.10.20.22.4.12)
 - Missing effective time data-absent-reason
 - Body site qualifier (laterality)
-- Entry relationships for diagnosis/indications
 
 ---
 

@@ -6,6 +6,7 @@ from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from ccda_to_fhir.ccda.models.datatypes import CD, II, IVL_TS
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
+from ccda_to_fhir.ccda.models.observation import Observation as CCDAObservation
 from ccda_to_fhir.constants import (
     PROCEDURE_STATUS_TO_FHIR,
     FHIRCodes,
@@ -16,20 +17,27 @@ from ccda_to_fhir.constants import (
 from .base import BaseConverter
 
 
-class ProcedureConverter(BaseConverter[CCDAProcedure]):
+class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation]):
     """Convert C-CDA Procedure Activity to FHIR Procedure resource.
 
-    This converter handles the mapping from C-CDA Procedure Activity Procedure
+    This converter handles the mapping from C-CDA Procedure Activity templates
     to a FHIR R4B Procedure resource, including status, code, and performed date.
+
+    Supports:
+    - Procedure Activity Procedure (2.16.840.1.113883.10.20.22.4.14)
+    - Procedure Activity Observation (2.16.840.1.113883.10.20.22.4.13)
 
     Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-ProcedureActivityProcedure.html
     """
 
-    def convert(self, procedure: CCDAProcedure, section=None) -> FHIRResourceDict:
+    def convert(self, procedure: CCDAProcedure | CCDAObservation, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Procedure Activity to a FHIR Procedure resource.
 
+        Accepts both Procedure Activity Procedure and Procedure Activity Observation
+        templates, as both map to FHIR Procedure resource.
+
         Args:
-            procedure: The C-CDA Procedure Activity
+            procedure: The C-CDA Procedure Activity (Procedure or Observation element)
             section: The C-CDA Section containing this procedure (for narrative)
 
         Returns:
