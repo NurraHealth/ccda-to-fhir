@@ -409,6 +409,30 @@ def ccda_encounter_with_location() -> str:
 
 
 @pytest.fixture
+def ccda_encounter_location_with_time_period() -> str:
+    """Load C-CDA encounter with location participant with complete time period."""
+    return (CCDA_FIXTURES_DIR / "encounter_location_with_time_period.xml").read_text()
+
+
+@pytest.fixture
+def ccda_encounter_location_active() -> str:
+    """Load C-CDA encounter with location participant with only start time (active)."""
+    return (CCDA_FIXTURES_DIR / "encounter_location_active.xml").read_text()
+
+
+@pytest.fixture
+def ccda_encounter_location_no_time_in_progress() -> str:
+    """Load C-CDA encounter with location participant without time (in-progress encounter)."""
+    return (CCDA_FIXTURES_DIR / "encounter_location_no_time_in_progress.xml").read_text()
+
+
+@pytest.fixture
+def ccda_encounter_location_planned() -> str:
+    """Load C-CDA encounter with location participant (planned encounter)."""
+    return (CCDA_FIXTURES_DIR / "encounter_location_planned.xml").read_text()
+
+
+@pytest.fixture
 def ccda_encounter_with_discharge() -> str:
     """Load C-CDA encounter with discharge disposition."""
     return (CCDA_FIXTURES_DIR / "encounter_with_discharge.xml").read_text()

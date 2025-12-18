@@ -227,6 +227,10 @@ If `statusCode` is missing or unclear, derive from `effectiveTime`:
 **C-CDA:**
 ```xml
 <participant typeCode="LOC">
+  <time>
+    <low value="202003151030-0500"/>
+    <high value="202003151200-0500"/>
+  </time>
   <participantRole classCode="SDLOC">
     <id root="2.16.840.1.113883.19.5" extension="ROOM-101"/>
     <code code="1160-1" codeSystem="2.16.840.1.113883.6.259"
@@ -246,10 +250,74 @@ If `statusCode` is missing or unclear, derive from `effectiveTime`:
       "reference": "Location/location-urgent-care",
       "display": "City Urgent Care"
     },
+    "period": {
+      "start": "2020-03-15T10:30:00-05:00",
+      "end": "2020-03-15T12:00:00-05:00"
+    },
     "status": "completed"
   }]
 }
 ```
+
+#### Location Status Determination
+
+The location `status` indicates the patient's presence at the location and is determined using intelligent mapping:
+
+**Status Values:**
+- `completed`: Patient was at location during the specified period (has end time)
+- `active`: Patient is currently at location (no end time, or encounter in progress)
+- `planned`: Patient is planned to be at location (planned encounter)
+- `reserved`: Location held empty (rarely used)
+
+**Determination Logic:**
+
+1. **If participant.time is present:**
+   - Both start and end times → `completed`
+   - Only start time (no end) → `active`
+
+2. **If no participant.time, derive from encounter status:**
+   - Encounter `finished` → `completed`
+   - Encounter `in-progress` → `active`
+   - Encounter `planned` → `planned`
+   - Encounter `cancelled` → `completed` (location was assigned)
+
+**Examples:**
+
+**Location with time period (completed):**
+```xml
+<participant typeCode="LOC">
+  <time>
+    <low value="202003151030-0500"/>
+    <high value="202003151200-0500"/>
+  </time>
+  <participantRole>...</participantRole>
+</participant>
+```
+→ `status`: `"completed"`, `period`: `{"start": "...", "end": "..."}`
+
+**Location with only start time (active):**
+```xml
+<participant typeCode="LOC">
+  <time>
+    <low value="202003151030-0500"/>
+  </time>
+  <participantRole>...</participantRole>
+</participant>
+```
+→ `status`: `"active"`, `period`: `{"start": "..."}`
+
+**Location without time (derives from encounter):**
+```xml
+<encounter>
+  <statusCode code="active"/>
+  <participant typeCode="LOC">
+    <participantRole>...</participantRole>
+  </participant>
+</encounter>
+```
+→ `status`: `"active"`, no period
+
+Reference: [EncounterLocationStatus Value Set](http://hl7.org/fhir/R4/valueset-encounter-location-status.html)
 
 ### Reason Mapping
 

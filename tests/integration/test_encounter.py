@@ -212,6 +212,89 @@ class TestEncounterConversion:
         assert "status" in location
         assert location["status"] == "completed"
 
+    def test_location_status_completed_with_time_period(
+        self, ccda_encounter_location_with_time_period: str
+    ) -> None:
+        """Test location status is 'completed' when participant.time has both start and end."""
+        ccda_doc = wrap_in_ccda_document(ccda_encounter_location_with_time_period, ENCOUNTERS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+        assert "location" in encounter
+        assert len(encounter["location"]) == 1
+
+        location = encounter["location"][0]
+        assert "status" in location
+        assert location["status"] == "completed", "Location with complete time period (start+end) should be 'completed'"
+
+        # Verify period is extracted from participant.time
+        assert "period" in location
+        assert "start" in location["period"]
+        assert "end" in location["period"]
+        assert location["period"]["start"] == "2020-03-15T10:30:00-05:00"
+        assert location["period"]["end"] == "2020-03-15T12:00:00-05:00"
+
+    def test_location_status_active_with_start_time_only(
+        self, ccda_encounter_location_active: str
+    ) -> None:
+        """Test location status is 'active' when participant.time has only start (no end)."""
+        ccda_doc = wrap_in_ccda_document(ccda_encounter_location_active, ENCOUNTERS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+        assert "location" in encounter
+        assert len(encounter["location"]) == 1
+
+        location = encounter["location"][0]
+        assert "status" in location
+        assert location["status"] == "active", "Location with only start time (no end) should be 'active'"
+
+        # Verify period has only start
+        assert "period" in location
+        assert "start" in location["period"]
+        assert "end" not in location["period"]
+        assert location["period"]["start"] == "2020-03-15T10:30:00-05:00"
+
+    def test_location_status_active_from_encounter_status(
+        self, ccda_encounter_location_no_time_in_progress: str
+    ) -> None:
+        """Test location status falls back to 'active' when no time and encounter is in-progress."""
+        ccda_doc = wrap_in_ccda_document(ccda_encounter_location_no_time_in_progress, ENCOUNTERS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+        assert "location" in encounter
+        assert len(encounter["location"]) == 1
+
+        location = encounter["location"][0]
+        assert "status" in location
+        assert location["status"] == "active", "Location without time should derive 'active' from in-progress encounter"
+
+        # Verify no period since participant.time is not present
+        assert "period" not in location
+
+    def test_location_status_planned_from_encounter_status(
+        self, ccda_encounter_location_planned: str
+    ) -> None:
+        """Test location status is 'planned' for planned encounters."""
+        ccda_doc = wrap_in_ccda_document(ccda_encounter_location_planned, ENCOUNTERS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+        assert encounter is not None
+        assert "location" in encounter
+        assert len(encounter["location"]) == 1
+
+        location = encounter["location"][0]
+        assert "status" in location
+        assert location["status"] == "planned", "Location should be 'planned' for planned encounters"
+
+        # Verify encounter is planned
+        assert encounter["status"] == "planned"
+
     def test_converts_discharge_disposition(
         self, ccda_encounter_with_discharge: str
     ) -> None:

@@ -464,14 +464,79 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                     if display:
                         location["location"]["display"] = display
 
-                # Set status based on encounter status
-                # For completed encounters, location status is also completed
-                location["status"] = "completed"
+                # Extract period from participant time
+                period = None
+                if hasattr(participant, "time") and participant.time:
+                    period = self._convert_period(participant.time)
+                    if period:
+                        location["period"] = period
+
+                # Determine status based on participant time and encounter status
+                location["status"] = self._determine_location_status(participant, period, encounter)
 
                 if location:
                     locations.append(location)
 
         return locations
+
+    def _determine_location_status(
+        self,
+        participant,
+        period: JSONObject | None,
+        encounter: CCDAEncounter
+    ) -> str:
+        """Determine FHIR location status from C-CDA participant time and encounter context.
+
+        The location status indicates the patient's presence at the location:
+        - completed: Patient was at location during the period (has end time)
+        - active: Patient is/was at location (no end time, or ongoing)
+        - planned: Patient is planned to be at location
+        - reserved: Location is held empty (rarely used in C-CDA)
+
+        Determination logic:
+        1. If participant.time has both start and end → "completed"
+        2. If participant.time has only start (no end) → "active"
+        3. If no participant.time, derive from encounter status:
+           - encounter "finished" → "completed"
+           - encounter "in-progress" → "active"
+           - encounter "planned" → "planned"
+           - encounter "cancelled" → "completed" (was assigned)
+
+        Reference: http://hl7.org/fhir/R4/valueset-encounter-location-status.html
+
+        Args:
+            participant: The C-CDA participant with typeCode="LOC"
+            period: The converted FHIR period from participant.time (if any)
+            encounter: The C-CDA encounter providing context
+
+        Returns:
+            FHIR EncounterLocationStatus code
+        """
+        # If participant has time information, use it to determine status
+        if period:
+            # If period has both start and end, location assignment is completed
+            if "end" in period:
+                return "completed"
+            # If period has only start (no end), location is active
+            elif "start" in period:
+                return "active"
+
+        # Fall back to encounter status
+        encounter_status = self._extract_status(encounter)
+
+        # Map encounter status to location status
+        if encounter_status == FHIRCodes.EncounterStatus.FINISHED:
+            return "completed"
+        elif encounter_status == FHIRCodes.EncounterStatus.IN_PROGRESS:
+            return "active"
+        elif encounter_status == FHIRCodes.EncounterStatus.PLANNED:
+            return "planned"
+        elif encounter_status == FHIRCodes.EncounterStatus.CANCELLED:
+            # Location was assigned but encounter cancelled
+            return "completed"
+        else:
+            # Default to completed for documented encounters
+            return "completed"
 
     def _extract_hospitalization(self, encounter: CCDAEncounter) -> JSONObject | None:
         """Extract FHIR hospitalization from C-CDA discharge disposition.

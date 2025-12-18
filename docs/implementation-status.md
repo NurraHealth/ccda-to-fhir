@@ -953,8 +953,10 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### 8. Encounter (08-encounter.md vs encounter.py)
 
-**Status**: 🟢 **Excellent** (13 fully / 0 partial / 4 missing)
-**Recent Update**: ✅ Header encounter CPT to ActCode mapping completed (2025-12-17)
+**Status**: 🟢 **Excellent** (14 fully / 0 partial / 2 missing)
+**Recent Updates**:
+- ✅ **Location status details completed** (2025-12-18) - Intelligent status determination with period extraction
+- ✅ Header encounter CPT to ActCode mapping completed (2025-12-17)
 
 #### ✅ Fully Implemented
 - Core encounter mapping (status, class, type, period)
@@ -964,6 +966,7 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - Period conversion (effectiveTime → period)
 - Participant extraction (performer with function codes)
 - Location mapping (participant typeCode="LOC")
+- **Location status details** ✅ **FULLY IMPLEMENTED** - Intelligent location status determination: participant.time with end → completed, participant.time with only start → active, fallback to encounter status (finished → completed, in-progress → active, planned → planned). Also extracts location.period from participant.time (4 comprehensive tests)
 - **Reason handling** ✅ **FULLY IMPLEMENTED** - Conditional mapping: reasonReference if Condition exists, reasonCode otherwise (6 tests, 100% C-CDA on FHIR compliant)
 - Diagnosis references (Condition references)
 - **Encounter Diagnosis Act details** ✅ **FULLY IMPLEMENTED** - Intelligent diagnosis role detection based on encounter context: discharge disposition → DD, inpatient → AD, emergency → AD, other → billing (contextual inference from C-CDA data)
@@ -975,7 +978,6 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - (None)
 
 #### ❌ Not Implemented
-- Location status details
 - Custom V3 ActCode mapping
 - Hospitalization details beyond discharge disposition
 
