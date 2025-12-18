@@ -148,6 +148,43 @@ class TestProcedureConversion:
         assert snomed_coding["code"] == "71854001"
         assert snomed_coding["display"] == "Colon structure"
 
+    def test_converts_body_site_with_laterality_qualifier(self, ccda_procedure_with_body_site: str) -> None:
+        """Test that targetSiteCode with laterality qualifier is converted correctly.
+
+        The fixture procedure_with_body_site.xml includes a laterality qualifier
+        (Left - code 7771000) which should be added as an additional coding in bodySite.
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_procedure_with_body_site, PROCEDURES_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None
+        assert "bodySite" in procedure
+        assert len(procedure["bodySite"]) >= 1
+        body_site = procedure["bodySite"][0]
+
+        # Check that the body site code is present
+        site_coding = next(
+            (c for c in body_site["coding"]
+             if c.get("system") == "http://snomed.info/sct" and c.get("code") == "71854001"),
+            None
+        )
+        assert site_coding is not None
+        assert site_coding["display"] == "Colon structure"
+
+        # Check that laterality qualifier is present as additional coding
+        laterality_coding = next(
+            (c for c in body_site["coding"]
+             if c.get("system") == "http://snomed.info/sct" and c.get("code") == "7771000"),
+            None
+        )
+        assert laterality_coding is not None, "Laterality qualifier should be added as additional coding"
+        assert laterality_coding["display"] == "Left"
+
+        # Check that text field combines laterality and site
+        assert "text" in body_site
+        assert body_site["text"] == "Left Colon structure"
+
     def test_converts_performer(self, ccda_procedure_with_performer: str) -> None:
         """Test that performer is converted to performer.actor."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_performer, PROCEDURES_TEMPLATE_ID)

@@ -109,12 +109,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             body_sites = []
             for site_code in procedure.target_site_code:
                 if site_code.code:
-                    body_site = self.create_codeable_concept(
-                        code=site_code.code,
-                        code_system=site_code.code_system,
-                        display_name=site_code.display_name,
-                        original_text=site_code.original_text if hasattr(site_code, "original_text") else None,
-                    )
+                    # Use specialized method that handles laterality qualifiers
+                    body_site = self._convert_body_site_with_qualifiers(site_code)
                     if body_site:
                         body_sites.append(body_site)
             if body_sites:
@@ -729,3 +725,104 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             root_suffix = root.replace('.', '-').replace('urn:oid:', '')[-16:]
             return f"device-{root_suffix}"
         return "device-unknown"
+
+    def _convert_body_site_with_qualifiers(
+        self, code: CD
+    ) -> JSONObject | None:
+        """Convert C-CDA targetSiteCode with qualifiers to FHIR bodySite CodeableConcept.
+
+        This method handles body site codes with laterality qualifiers. Per C-CDA standard,
+        laterality (left/right) can be specified using qualifier elements within targetSiteCode.
+
+        Example C-CDA:
+            <targetSiteCode code="71854001" displayName="Colon structure"
+                           codeSystem="2.16.840.1.113883.6.96">
+              <qualifier>
+                <name code="272741003" displayName="Laterality"
+                      codeSystem="2.16.840.1.113883.6.96"/>
+                <value code="7771000" displayName="Left"
+                       codeSystem="2.16.840.1.113883.6.96"/>
+              </qualifier>
+            </targetSiteCode>
+
+        Args:
+            code: The C-CDA targetSiteCode element (CD type)
+
+        Returns:
+            FHIR CodeableConcept with bodySite and laterality coding, or None
+        """
+        if not code:
+            return None
+
+        # Start with basic code conversion using existing method
+        # Extract translations if present
+        translations = []
+        if hasattr(code, "translation") and code.translation:
+            for trans in code.translation:
+                if isinstance(trans, (CD, dict)):
+                    trans_code = trans.code if hasattr(trans, "code") else trans.get("code")
+                    trans_system = trans.code_system if hasattr(trans, "code_system") else trans.get("code_system")
+                    trans_display = trans.display_name if hasattr(trans, "display_name") else trans.get("display_name")
+
+                    if trans_code and trans_system:
+                        translations.append({
+                            "code": trans_code,
+                            "code_system": trans_system,
+                            "display_name": trans_display,
+                        })
+
+        # Get original text if present
+        original_text = None
+        if hasattr(code, "original_text") and code.original_text:
+            original_text = self.extract_original_text(code.original_text, section=None)
+
+        # Use display_name as text if original_text not available
+        if not original_text and code.display_name:
+            original_text = code.display_name
+
+        codeable_concept = self.create_codeable_concept(
+            code=code.code,
+            code_system=code.code_system,
+            display_name=code.display_name,
+            original_text=original_text,
+            translations=translations,
+        )
+
+        if not codeable_concept:
+            return None
+
+        # Check for laterality qualifiers
+        # Per C-CDA: laterality is specified using qualifier with name code 272741003 or 78615007
+        laterality_qualifier_codes = ["272741003", "78615007"]  # "Laterality" and "with laterality"
+        laterality_value = None
+
+        if hasattr(code, "qualifier") and code.qualifier:
+            for qualifier in code.qualifier:
+                # Check if this is a laterality qualifier
+                if qualifier.name and qualifier.name.code in laterality_qualifier_codes:
+                    if qualifier.value and qualifier.value.code and qualifier.value.code_system:
+                        laterality_value = qualifier.value
+                        break
+
+        # If we found a laterality qualifier, add it as additional coding
+        if laterality_value:
+            laterality_coding: JSONObject = {
+                "system": self.map_oid_to_uri(laterality_value.code_system),
+                "code": laterality_value.code,
+            }
+            if laterality_value.display_name:
+                laterality_coding["display"] = laterality_value.display_name
+
+            # Add laterality as additional coding
+            if "coding" not in codeable_concept:
+                codeable_concept["coding"] = []
+            codeable_concept["coding"].append(laterality_coding)
+
+            # Update text to include laterality for human readability
+            # Format: "{laterality} {site}" (e.g., "Left Colon structure")
+            if laterality_value.display_name and code.display_name:
+                codeable_concept["text"] = f"{laterality_value.display_name} {code.display_name}"
+            elif laterality_value.display_name and "text" in codeable_concept:
+                codeable_concept["text"] = f"{laterality_value.display_name} {codeable_concept['text']}"
+
+        return codeable_concept

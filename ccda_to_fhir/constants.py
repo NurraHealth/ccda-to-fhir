@@ -700,6 +700,7 @@ class FHIRCodes:
 # Codes from v3-ActReason code system that represent reasons for not administering an immunization
 # These should map to Immunization.statusReason when negationInd="true"
 # Reference: http://terminology.hl7.org/CodeSystem/v3-ActReason
+# This value set contains exactly the codes from the _ActNoImmunizationReason hierarchy
 NO_IMMUNIZATION_REASON_CODES = frozenset({
     "IMMUNE",      # Immunity - patient already immune
     "MEDPREC",     # Medical precaution - medical condition or precaution
