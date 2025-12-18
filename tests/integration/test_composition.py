@@ -302,17 +302,21 @@ class TestCompositionConversion:
         # Should NOT have attester field
         assert "attester" not in composition
 
-    def test_custodian_required_even_when_missing(self) -> None:
-        """Test that custodian is always present to satisfy US Realm Header 1..1 cardinality.
+    def test_custodian_missing_fails(self) -> None:
+        """Test that CompositionConverter fails fast when custodian is missing.
 
         Per US Realm Header Profile, Composition.custodian has cardinality 1..1 (required).
-        When C-CDA document lacks custodian but doesn't claim US Realm Header conformance,
-        we must create a placeholder Organization resource to maintain FHIR compliance.
+        The Composition converter should raise ValueError (fail-fast approach, no placeholders).
 
-        Note: Documents claiming US Realm Header conformance (template 2.16.840.1.113883.10.20.22.1.1)
-        are validated at parse time via Pydantic @model_validator and will fail if custodian is missing.
+        Note: This tests the converter directly since convert_document() catches these errors
+        and creates a collection bundle instead of propagating them.
         """
-        # Create a document without US Realm Header template (non-conformant document)
+        import pytest
+        from ccda_to_fhir.ccda.parser import parse_ccda
+        from ccda_to_fhir.converters.composition import CompositionConverter
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Document without custodian (non-US Realm Header to bypass parse-time validation)
         ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
 <ClinicalDocument xmlns="urn:hl7-org:v3">
     <realmCode code="US"/>
@@ -343,6 +347,80 @@ class TestCompositionConversion:
             </assignedPerson>
         </assignedAuthor>
     </author>
+    <!-- NO CUSTODIAN - should trigger fail-fast -->
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <title>Test Section</title>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        # Parse document
+        parsed = parse_ccda(ccda_doc)
+
+        # Create reference registry and register a patient (so subject validation passes)
+        registry = ReferenceRegistry()
+        registry.register_resource({"resourceType": "Patient", "id": "test-patient"})
+
+        # Test CompositionConverter directly
+        converter = CompositionConverter(reference_registry=registry)
+
+        # Should raise ValueError with clear message about custodian
+        with pytest.raises(ValueError, match="Cannot create Composition without custodian"):
+            converter.convert(parsed)
+
+    def test_subject_required_always_present(self) -> None:
+        """Test that subject is always present when recordTarget exists.
+
+        Per US Realm Header Profile, Composition.subject has cardinality 1..1 (required).
+        When recordTarget exists (which it MUST for US Realm Header docs), patient
+        conversion should succeed and subject should reference the actual Patient resource.
+
+        Reference: https://hl7.org/fhir/us/ccda/2016Sep/StructureDefinition-ccda-us-realm-header-composition.html
+        """
+        # Document has valid recordTarget with patient data
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
     <component>
         <structuredBody>
             <component>
@@ -359,20 +437,50 @@ class TestCompositionConversion:
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
-        # Custodian MUST be present (1..1 cardinality)
-        assert "custodian" in composition
+        # Subject MUST be present (1..1 cardinality)
+        assert "subject" in composition, "Composition.subject is required (cardinality 1..1)"
 
-        # Should have a proper reference (not just display-only)
-        assert "reference" in composition["custodian"]
-        assert composition["custodian"]["reference"] == "Organization/unknown-custodian-org"
-        assert composition["custodian"]["display"] == "Unknown Organization"
+        # Should reference the actual Patient resource
+        assert "reference" in composition["subject"]
+        assert composition["subject"]["reference"].startswith("Patient/")
 
-        # Verify placeholder Organization resource was created in bundle
-        placeholder_org = _find_resource_in_bundle(bundle, "Organization")
-        assert placeholder_org is not None
-        assert placeholder_org["id"] == "unknown-custodian-org"
-        assert placeholder_org["name"] == "Unknown Organization"
-        assert placeholder_org["active"] is True
+        # Verify the actual Patient resource exists in the bundle
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None, "Patient resource must exist in bundle"
+        assert "id" in patient
+        assert patient["name"][0]["given"] == ["Test"]
+        assert patient["name"][0]["family"] == "Patient"
+
+    def test_subject_missing_recordTarget_fails(self) -> None:
+        """Test that missing recordTarget causes conversion to fail with clear error.
+
+        Per US Realm Header Profile requirements, recordTarget is mandatory.
+        The C-CDA parser validates this for US Realm Header docs, but if somehow
+        a document without recordTarget reaches the Composition converter, it should
+        fail with a clear error message.
+        """
+        import pytest
+        from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
+        from ccda_to_fhir.converters.composition import CompositionConverter
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create a ClinicalDocument without recordTarget
+        ccda_doc = ClinicalDocument(
+            id=None,
+            code=None,
+            title="Test",
+            effective_time=None,
+            confidentiality_code=None,
+            record_target=None,  # Missing recordTarget
+            author=None,
+            custodian=None,
+        )
+
+        converter = CompositionConverter(reference_registry=ReferenceRegistry())
+
+        # Should raise ValueError with clear message
+        with pytest.raises(ValueError, match="Cannot create Composition without recordTarget"):
+            converter.convert(ccda_doc)
 
 
 class TestCompositionSections:

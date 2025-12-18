@@ -127,11 +127,30 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 "text": "Clinical Document",
             }
 
-        # Subject - patient reference (SHOULD be present)
+        # Subject - patient reference - REQUIRED (1..1 per US Realm Header Profile)
+        # Per C-CDA on FHIR IG, Composition.subject has cardinality 1..1 (exactly one required).
+        # Reference: https://hl7.org/fhir/us/ccda/2016Sep/StructureDefinition-ccda-us-realm-header-composition.html
+        #
+        # Note: US Realm Header documents (template 2.16.840.1.113883.10.20.22.1.1) are
+        # validated at parse time to ensure recordTarget exists. Patient conversion should
+        # always succeed when recordTarget is present.
         if clinical_document.record_target and len(clinical_document.record_target) > 0:
             subject_ref = self._create_subject_reference(clinical_document.record_target[0])
             if subject_ref:
                 composition["subject"] = subject_ref
+            else:
+                # Patient conversion failed despite recordTarget existing - this is an error
+                raise ValueError(
+                    "Failed to create Composition.subject reference. "
+                    "US Realm Header Profile requires subject with cardinality 1..1. "
+                    "Patient resource was not successfully created from recordTarget."
+                )
+        else:
+            # No recordTarget - validation should have caught this for US Realm Header docs
+            raise ValueError(
+                "Cannot create Composition without recordTarget. "
+                "US Realm Header Profile requires subject with cardinality 1..1."
+            )
 
         # Date - REQUIRED (composition editing time)
         if clinical_document.effective_time:
@@ -175,22 +194,25 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         # Organization maintaining the composition
         #
         # Note: US Realm Header documents (template 2.16.840.1.113883.10.20.22.1.1) are
-        # validated at parse time and WILL FAIL if custodian is missing. This code handles
-        # non-US Realm Header documents that may lack custodian.
+        # validated at parse time and WILL FAIL if custodian is missing. Custodian conversion
+        # should always succeed when custodian is present.
         if clinical_document.custodian:
             custodian_ref = self._create_custodian_reference(clinical_document.custodian)
             if custodian_ref:
                 composition["custodian"] = custodian_ref
             else:
-                # Custodian element present but couldn't extract reference
-                # Create placeholder Organization resource to maintain FHIR 1..1 cardinality
-                custodian_ref = self._create_placeholder_custodian_org()
-                composition["custodian"] = custodian_ref
+                # Custodian element present but couldn't extract reference - this is an error
+                raise ValueError(
+                    "Failed to create Composition.custodian reference. "
+                    "US Realm Header Profile requires custodian with cardinality 1..1. "
+                    "Custodian organization could not be extracted from C-CDA."
+                )
         else:
-            # Custodian missing - likely a non-US Realm Header document
-            # Create placeholder Organization resource to maintain FHIR 1..1 cardinality
-            custodian_ref = self._create_placeholder_custodian_org()
-            composition["custodian"] = custodian_ref
+            # No custodian - validation should have caught this for US Realm Header docs
+            raise ValueError(
+                "Cannot create Composition without custodian. "
+                "US Realm Header Profile requires custodian with cardinality 1..1."
+            )
 
         # Sections - convert structured body to Composition sections
         if clinical_document.component and clinical_document.component.structured_body:
@@ -252,14 +274,18 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             record_target: RecordTarget element from clinical document
 
         Returns:
-            FHIR Reference or None
+            FHIR Reference or None if patient not available
         """
         if not record_target or not record_target.patient_role:
             return None
 
         # Patient reference (from recordTarget in document header)
         if self.reference_registry:
-            return self.reference_registry.get_patient_reference()
+            try:
+                return self.reference_registry.get_patient_reference()
+            except Exception:
+                # Patient not registered (conversion failed) - return None to trigger fail-fast
+                return None
         else:
             # Fallback for unit tests without registry
             return {"reference": "Patient/patient-unknown"}
@@ -498,36 +524,6 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 return {"display": custodian_org.name.value}
 
         return None
-
-    def _create_placeholder_custodian_org(self) -> JSONObject:
-        """Create placeholder custodian organization when C-CDA lacks one.
-
-        This handles non-US Realm Header documents that may not include custodian.
-        Creates a proper Organization resource (not just display-only reference) to
-        satisfy US Realm Header Profile requirements.
-
-        Returns:
-            FHIR Reference to placeholder Organization
-        """
-        org_id = "unknown-custodian-org"
-
-        # Create Organization resource and register it
-        organization: JSONObject = {
-            "resourceType": "Organization",
-            "id": org_id,
-            "name": "Unknown Organization",
-            "active": True
-        }
-
-        # Register with reference registry (will be included in bundle)
-        if self.reference_registry:
-            self.reference_registry.register_resource(organization)
-
-        # Return reference to the organization
-        return {
-            "reference": f"Organization/{org_id}",
-            "display": "Unknown Organization"
-        }
 
     def _convert_sections(self, structured_body: StructuredBody) -> list[JSONObject]:
         """Convert C-CDA structured body to FHIR Composition sections.

@@ -17,7 +17,7 @@ This is a living document that captures known issues, ambiguities, and limitatio
 
 ## Critical Issues
 
-### 1. Custodian Cardinality Not Enforced ⚠️ PARTIALLY RESOLVED
+### 1. Custodian Cardinality Not Enforced ✅ RESOLVED
 
 **Issue**: US Realm Header Profile requires `Composition.custodian` with cardinality 1..1, but implementation didn't enforce this.
 
@@ -25,42 +25,45 @@ This is a living document that captures known issues, ambiguities, and limitatio
 - Non-compliant FHIR output when C-CDA document lacks custodian
 - Validation failures against US Core profiles
 
-**Resolution** (Partially Completed):
+**Resolution** (Completed):
 - ✅ C-CDA parser validates custodian for US Realm Header documents (template 2.16.840.1.113883.10.20.22.1.1) via Pydantic `@model_validator`
 - ✅ Documents claiming US Realm Header conformance will fail at parse time if custodian is missing
-- ✅ Composition converter ensures `custodian` is always present in FHIR output
-- ✅ Added test coverage for missing custodian scenario
+- ✅ Composition converter now enforces fail-fast: raises `ValueError` if custodian missing or extraction fails
+- ✅ No placeholder organizations created - all failures are explicit errors
+- ✅ Added test coverage: `test_custodian_missing_fails`
 
 **Current Behavior**:
-- US Realm Header documents (template 2.16.840.1.113883.10.20.22.1.1): Validation enforced automatically by Pydantic model validator - parse fails if custodian missing
-- Non-US Realm Header documents: Parse succeeds, converter creates placeholder custodian Organization resource
-- Placeholder includes proper Organization resource with reference (not just display-only)
-
-**Remaining Work**:
-- Consider explicit validation call for clarity (currently relies on Pydantic's implicit `@model_validator`)
-- Document validator behavior more clearly in code comments
+- US Realm Header documents: Validated at parse-time (will fail if custodian missing)
+- When custodian exists and extraction succeeds: references actual Organization resource
+- When custodian is missing: raises ValueError (parse-time validation should prevent this)
+- When custodian extraction fails: raises ValueError with clear error message
+- No placeholder/unknown organization resources - all Organizations are real conversions from C-CDA data
 
 **Official IG Guidance**: [US Realm Header Profile](https://build.fhir.org/ig/HL7/ccda-on-fhir/StructureDefinition-CF-usrealmheader.html)
 
 ---
 
-### 2. Subject Cardinality Not Enforced 🔴 📋
+### 2. Subject Cardinality Not Enforced ✅ RESOLVED
 
-**Issue**: US Realm Header Profile requires `Composition.subject` with cardinality 1..1, but current implementation doesn't enforce this.
+**Issue**: US Realm Header Profile requires `Composition.subject` with cardinality 1..1, but implementation didn't enforce this.
 
 **Impact**:
 - Non-compliant FHIR output when patient reference cannot be created
 - Validation failures against US Core profiles
 
+**Resolution** (Completed):
+- ✅ Composition converter now validates that `subject` is present before creating Composition
+- ✅ Raises `ValueError` if recordTarget is missing (should be caught by C-CDA validation for US Realm Header docs)
+- ✅ Raises `ValueError` if patient conversion fails despite recordTarget existing
+- ✅ Added test coverage for subject cardinality enforcement (`test_subject_required_always_present`)
+
 **Current Behavior**:
-- If patient conversion fails, Composition might be created without `subject`
-- No error or warning for missing subject
+- When recordTarget exists and patient conversion succeeds: subject references the actual Patient resource
+- When recordTarget is missing: raises ValueError (US Realm Header validation should prevent this)
+- When patient conversion fails: raises ValueError with clear error message
+- No placeholder/unknown patient resources are created - all Patient resources are real conversions from C-CDA data
 
-**Workaround**:
-- Validate that Patient resource is successfully created before creating Composition
-- Check conversion logs for patient conversion errors
-
-**Planned Fix**: Version 0.3.0 - Add validation requiring successful patient conversion
+**Official IG Guidance**: [US Realm Header Profile - Composition.subject](https://hl7.org/fhir/us/ccda/2016Sep/StructureDefinition-ccda-us-realm-header-composition.html)
 
 ---
 
