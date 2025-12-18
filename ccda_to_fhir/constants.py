@@ -971,6 +971,23 @@ ENCOUNTER_STATUS_TO_FHIR = {
 # Map C-CDA V3 ActCode encounter class codes
 V3_ACT_CODE_SYSTEM = "2.16.840.1.113883.5.4"
 
+# V3 ActEncounterCode standard display names (all lowercase per FHIR R4 specification)
+# Reference: https://terminology.hl7.org/ValueSet-v3-ActEncounterCode.html
+# Reference: https://www.hl7.org/fhir/R4/v3/ActCode/vs.html
+V3_ACTCODE_DISPLAY_NAMES = {
+    "AMB": "ambulatory",
+    "EMER": "emergency",
+    "FLD": "field",
+    "HH": "home health",
+    "IMP": "inpatient encounter",
+    "ACUTE": "inpatient acute",
+    "NONAC": "inpatient non-acute",
+    "OBSENC": "observation encounter",
+    "PRENC": "pre-admission",
+    "SS": "short stay",
+    "VR": "virtual",
+}
+
 # CPT code system OID
 CPT_CODE_SYSTEM = "2.16.840.1.113883.6.12"
 

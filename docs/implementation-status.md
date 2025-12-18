@@ -14,6 +14,20 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### Recent Updates
 
+**2025-12-18**: ✅ **Custom V3 ActCode Mapping Completed** - Full Standards-Compliant Display Names! 🎉
+- Implemented comprehensive V3 ActCode to standard display name mapping per FHIR R4 specification
+- **All 11 codes covered**: AMB→"ambulatory", EMER→"emergency", FLD→"field", HH→"home health", IMP→"inpatient encounter", ACUTE→"inpatient acute", NONAC→"inpatient non-acute", OBSENC→"observation encounter", PRENC→"pre-admission", SS→"short stay", VR→"virtual"
+- **Fallback behavior**: Unknown V3 ActCode values gracefully fall back to C-CDA display name
+- **Translation support**: Standard display names apply to V3 ActCodes in both main code and translation elements
+- **Header encounters**: Encompassing encounter CPT mapping also uses standard display names
+- **Standards reference**: Per FHIR R4 ActEncounterCode value set (https://terminology.hl7.org/ValueSet-v3-ActEncounterCode.html)
+- 13 comprehensive integration tests passing (all 11 codes + translation + fallback)
+- All 852 tests passing (13 new V3 ActCode display tests added)
+- Improved Encounter from 14 fully / 0 partial / 2 missing → 15 fully / 0 partial / 1 missing
+- Encounter coverage improved to ~88% (was ~84%)
+- **🎉 Encounter is now the 5th resource with ZERO partial implementations (15 fully / 0 partial / 1 missing)!**
+- **100% standards-compliant with FHIR R4 ActEncounterCode display names**
+
 **2025-12-18**: ✅ **Immunization Comment Activity (Notes) Completed** - Full Entry Relationship Support! 🎉
 - Implemented Comment Activity parsing (template 2.16.840.1.113883.10.20.22.4.64) → Immunization.note
 - **Template recognition**: Identifies Comment Activity by template ID in entryRelationship/act
@@ -953,8 +967,9 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 
 ### 8. Encounter (08-encounter.md vs encounter.py)
 
-**Status**: 🟢 **Excellent** (14 fully / 0 partial / 2 missing)
+**Status**: 🟢 **Excellent** (15 fully / 0 partial / 1 missing)
 **Recent Updates**:
+- ✅ **Custom V3 ActCode mapping completed** (2025-12-18) - Standard display names for all 11 V3 ActEncounterCode values
 - ✅ **Location status details completed** (2025-12-18) - Intelligent status determination with period extraction
 - ✅ Header encounter CPT to ActCode mapping completed (2025-12-17)
 
@@ -973,12 +988,12 @@ This report compares the detailed mappings documented in `docs/mapping/` against
 - Discharge disposition (SDTC extension)
 - **CPT to ActCode mapping** ✅ - Complete mapping per C-CDA on FHIR IG: 99201-99215 → AMB, 99221-99223 → IMP, 99281-99285 → EMER, 99341-99350 → HH (7 comprehensive tests)
 - **Encompassing encounter (document header encounter)** ✅ **NEW** - Complete implementation with CPT to ActCode mapping, deduplication, participant mapping, location, discharge disposition, and author metadata (5 comprehensive tests)
+- **Custom V3 ActCode mapping** ✅ **NEW** - Standard display name mapping for all 11 V3 ActEncounterCode values (AMB, EMER, FLD, HH, IMP, ACUTE, NONAC, OBSENC, PRENC, SS, VR) per FHIR R4 specification, with fallback to C-CDA display for unknown codes (13 comprehensive tests)
 
 #### ⚠️ Partially Implemented
 - (None)
 
 #### ❌ Not Implemented
-- Custom V3 ActCode mapping
 - Hospitalization details beyond discharge disposition
 
 ---

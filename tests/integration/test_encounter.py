@@ -1354,7 +1354,7 @@ class TestEncounterConversion:
         # CPT 99221 would normally map to IMP, but explicit translation is EMER
         # Translation should take precedence
         assert encounter["class"]["code"] == "EMER", "Explicit translation EMER should take precedence over CPT mapping (IMP)"
-        assert encounter["class"]["display"] == "Emergency"
+        assert encounter["class"]["display"] == "emergency"
 
     def test_ambulatory_encounter_diagnosis_uses_billing_role(self) -> None:
         """Test that ambulatory encounters with diagnosis use 'billing' role."""
@@ -1508,3 +1508,264 @@ class TestEncounterConversion:
         assert "use" in encounter["diagnosis"][0]
         assert encounter["diagnosis"][0]["use"]["coding"][0]["code"] == "DD"
         assert encounter["diagnosis"][0]["use"]["coding"][0]["display"] == "Discharge diagnosis"
+
+
+class TestV3ActCodeStandardDisplayNames:
+    """Tests for V3 ActCode standard display name mapping.
+
+    Verifies that all V3 ActEncounterCode values are mapped to their
+    official standard display names as defined in the FHIR R4 specification.
+
+    Reference: https://terminology.hl7.org/ValueSet-v3-ActEncounterCode.html
+    """
+
+    def test_ambulatory_code_uses_standard_display(self) -> None:
+        """Test that AMB (ambulatory) uses standard display name 'ambulatory'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-amb"/>
+                <code code="AMB" codeSystem="2.16.840.1.113883.5.4" displayName="AMBULATORY"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "AMB"
+        assert encounter["class"]["display"] == "ambulatory", "AMB should have standard display 'ambulatory'"
+
+    def test_emergency_code_uses_standard_display(self) -> None:
+        """Test that EMER (emergency) uses standard display name 'emergency'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-emer"/>
+                <code code="EMER" codeSystem="2.16.840.1.113883.5.4" displayName="Emergency Room"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "EMER"
+        assert encounter["class"]["display"] == "emergency", "EMER should have standard display 'emergency'"
+
+    def test_field_code_uses_standard_display(self) -> None:
+        """Test that FLD (field) uses standard display name 'field'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-fld"/>
+                <code code="FLD" codeSystem="2.16.840.1.113883.5.4" displayName="Field Visit"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "FLD"
+        assert encounter["class"]["display"] == "field", "FLD should have standard display 'field'"
+
+    def test_home_health_code_uses_standard_display(self) -> None:
+        """Test that HH (home health) uses standard display name 'home health'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-hh"/>
+                <code code="HH" codeSystem="2.16.840.1.113883.5.4" displayName="Home Healthcare"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "HH"
+        assert encounter["class"]["display"] == "home health", "HH should have standard display 'home health'"
+
+    def test_inpatient_code_uses_standard_display(self) -> None:
+        """Test that IMP (inpatient encounter) uses standard display name 'inpatient encounter'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-imp"/>
+                <code code="IMP" codeSystem="2.16.840.1.113883.5.4" displayName="Inpatient"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "IMP"
+        assert encounter["class"]["display"] == "inpatient encounter", "IMP should have standard display 'inpatient encounter'"
+
+    def test_inpatient_acute_code_uses_standard_display(self) -> None:
+        """Test that ACUTE (inpatient acute) uses standard display name 'inpatient acute'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-acute"/>
+                <code code="ACUTE" codeSystem="2.16.840.1.113883.5.4" displayName="Acute Inpatient"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "ACUTE"
+        assert encounter["class"]["display"] == "inpatient acute", "ACUTE should have standard display 'inpatient acute'"
+
+    def test_inpatient_non_acute_code_uses_standard_display(self) -> None:
+        """Test that NONAC (inpatient non-acute) uses standard display name 'inpatient non-acute'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-nonac"/>
+                <code code="NONAC" codeSystem="2.16.840.1.113883.5.4" displayName="Non-Acute Inpatient"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "NONAC"
+        assert encounter["class"]["display"] == "inpatient non-acute", "NONAC should have standard display 'inpatient non-acute'"
+
+    def test_observation_encounter_code_uses_standard_display(self) -> None:
+        """Test that OBSENC (observation encounter) uses standard display name 'observation encounter'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-obsenc"/>
+                <code code="OBSENC" codeSystem="2.16.840.1.113883.5.4" displayName="Observation"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "OBSENC"
+        assert encounter["class"]["display"] == "observation encounter", "OBSENC should have standard display 'observation encounter'"
+
+    def test_preadmission_code_uses_standard_display(self) -> None:
+        """Test that PRENC (pre-admission) uses standard display name 'pre-admission'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-prenc"/>
+                <code code="PRENC" codeSystem="2.16.840.1.113883.5.4" displayName="Pre-Admission"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "PRENC"
+        assert encounter["class"]["display"] == "pre-admission", "PRENC should have standard display 'pre-admission'"
+
+    def test_short_stay_code_uses_standard_display(self) -> None:
+        """Test that SS (short stay) uses standard display name 'short stay'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-ss"/>
+                <code code="SS" codeSystem="2.16.840.1.113883.5.4" displayName="Short Stay"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "SS"
+        assert encounter["class"]["display"] == "short stay", "SS should have standard display 'short stay'"
+
+    def test_virtual_code_uses_standard_display(self) -> None:
+        """Test that VR (virtual) uses standard display name 'virtual'."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-vr"/>
+                <code code="VR" codeSystem="2.16.840.1.113883.5.4" displayName="Virtual Visit"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "VR"
+        assert encounter["class"]["display"] == "virtual", "VR should have standard display 'virtual'"
+
+    def test_v3_actcode_in_translation_uses_standard_display(self) -> None:
+        """Test that V3 ActCode in translation element uses standard display name."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-translation"/>
+                <code code="99213" codeSystem="2.16.840.1.113883.6.12" displayName="Office visit">
+                    <translation code="AMB" codeSystem="2.16.840.1.113883.5.4" displayName="OUTPATIENT"/>
+                </code>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "AMB"
+        # Should use standard display 'ambulatory' even though translation had 'OUTPATIENT'
+        assert encounter["class"]["display"] == "ambulatory", "Translation should use standard display 'ambulatory'"
+
+    def test_unknown_v3_actcode_uses_ccda_display(self) -> None:
+        """Test that unknown V3 ActCode values fall back to C-CDA display name."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="test-encounter-unknown"/>
+                <code code="CUSTOM" codeSystem="2.16.840.1.113883.5.4" displayName="Custom Encounter Type"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert encounter["class"]["code"] == "CUSTOM"
+        # Should fall back to C-CDA display name when code not in mapping
+        assert encounter["class"]["display"] == "Custom Encounter Type"

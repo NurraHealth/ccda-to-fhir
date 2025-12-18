@@ -1648,28 +1648,25 @@ class DocumentConverter:
             # FIRST: Check translations for V3 ActCode (highest priority)
             # Per C-CDA on FHIR IG, explicit V3 ActCode translations should be preferred
             if encompassing_encounter.code.translation:
+                from ccda_to_fhir.constants import V3_ACTCODE_DISPLAY_NAMES
                 for trans in encompassing_encounter.code.translation:
                     if trans.code_system == "2.16.840.1.113883.5.4":  # V3 ActCode
                         class_code = trans.code
-                        class_display = trans.display_name if hasattr(trans, "display_name") and trans.display_name else None
+                        # Use standard display name from mapping if available
+                        standard_display = V3_ACTCODE_DISPLAY_NAMES.get(trans.code)
+                        class_display = standard_display if standard_display else (trans.display_name if hasattr(trans, "display_name") else None)
                         break
 
             # SECOND: If no V3 ActCode translation, check if main code is CPT and map it
             # Only applies if no V3 ActCode translation was found above
             # Reference: docs/mapping/08-encounter.md lines 77-86
             if not class_code and encompassing_encounter.code.code_system == "2.16.840.1.113883.6.12":  # CPT
-                from ccda_to_fhir.constants import map_cpt_to_actcode
+                from ccda_to_fhir.constants import map_cpt_to_actcode, V3_ACTCODE_DISPLAY_NAMES
                 mapped_actcode = map_cpt_to_actcode(encompassing_encounter.code.code)
                 if mapped_actcode:
                     class_code = mapped_actcode
-                    # Map CPT code display names to V3 ActCode display names
-                    display_map = {
-                        "AMB": "ambulatory",
-                        "IMP": "inpatient encounter",
-                        "EMER": "emergency",
-                        "HH": "home health",
-                    }
-                    class_display = display_map.get(mapped_actcode)
+                    # Use standard display name from mapping
+                    class_display = V3_ACTCODE_DISPLAY_NAMES.get(mapped_actcode)
 
             if class_code:
                 fhir_encounter["class"] = {

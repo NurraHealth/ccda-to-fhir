@@ -12,6 +12,7 @@ from ccda_to_fhir.constants import (
     PARTICIPATION_FUNCTION_CODE_MAP,
     ENCOUNTER_STATUS_TO_FHIR,
     V3_ACT_CODE_SYSTEM,
+    V3_ACTCODE_DISPLAY_NAMES,
     FHIRCodes,
     FHIRSystems,
     TemplateIds,
@@ -184,10 +185,14 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         if encounter.code and encounter.code.code:
             # Check if code is from V3 ActCode system
             if encounter.code.code_system == V3_ACT_CODE_SYSTEM:
+                # Use standard display name from mapping if available, otherwise fall back to C-CDA display
+                standard_display = V3_ACTCODE_DISPLAY_NAMES.get(encounter.code.code)
+                display = standard_display if standard_display else encounter.code.display_name
+
                 return {
                     "system": FHIRSystems.V3_ACT_CODE,
                     "code": encounter.code.code,
-                    "display": encounter.code.display_name if encounter.code.display_name else None,
+                    "display": display,
                 }
 
             # Check translations for V3 ActCode FIRST (before CPT mapping)
@@ -208,10 +213,14 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                         trans_display = trans.display_name if hasattr(trans, "display_name") else None
 
                     if trans_system == V3_ACT_CODE_SYSTEM and trans_code:
+                        # Use standard display name from mapping if available
+                        standard_display = V3_ACTCODE_DISPLAY_NAMES.get(trans_code)
+                        display = standard_display if standard_display else trans_display
+
                         return {
                             "system": FHIRSystems.V3_ACT_CODE,
                             "code": trans_code,
-                            "display": trans_display,
+                            "display": display,
                         }
 
             # Check if code is CPT and map to V3 ActCode
@@ -220,17 +229,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             if encounter.code.code_system == CPT_CODE_SYSTEM:
                 mapped_actcode = map_cpt_to_actcode(encounter.code.code)
                 if mapped_actcode:
-                    # Map CPT code display names to V3 ActCode display names
-                    display_map = {
-                        "AMB": "ambulatory",
-                        "IMP": "inpatient encounter",
-                        "EMER": "emergency",
-                        "HH": "home health",
-                    }
+                    # Use standard display name from mapping
+                    display = V3_ACTCODE_DISPLAY_NAMES.get(mapped_actcode)
                     return {
                         "system": FHIRSystems.V3_ACT_CODE,
                         "code": mapped_actcode,
-                        "display": display_map.get(mapped_actcode),
+                        "display": display,
                     }
 
         # Default to ambulatory
