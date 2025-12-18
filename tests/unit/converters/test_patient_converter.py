@@ -868,6 +868,9 @@ class TestPatientIDGeneration:
 
     def test_generates_id_from_mrn(self, basic_patient):
         """Test ID generation from MRN extension."""
+        import re
+        import uuid
+
         record_target = RecordTarget(
             patient_role=PatientRole(
                 id=[II(
@@ -881,9 +884,14 @@ class TestPatientIDGeneration:
         converter = PatientConverter()
         result = converter.convert(record_target)
 
-        # ID should be based on extension
-        assert result["id"].startswith("patient-")
-        assert "mrn12345" in result["id"].lower()
+        # ID should be a valid UUID v4
+        assert "id" in result
+        assert result["id"]
+        # Validate UUID format
+        try:
+            uuid.UUID(result["id"], version=4)
+        except ValueError:
+            pytest.fail(f"ID {result['id']} is not a valid UUID v4")
 
     def test_generates_deterministic_id(self, basic_patient):
         """Test that same input produces same ID."""

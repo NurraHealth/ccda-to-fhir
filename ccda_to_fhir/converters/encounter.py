@@ -69,9 +69,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         fhir_encounter["class"] = self._extract_class(encounter)
 
         # Subject (patient reference)
-        fhir_encounter["subject"] = {
-            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
-        }
+        # Patient reference (from recordTarget in document header)
+        if self.reference_registry:
+            fhir_encounter["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            fhir_encounter["subject"] = {"reference": "Patient/patient-unknown"}
 
         # Type - Convert encounter code to type (if not used for class)
         encounter_type = self._extract_type(encounter)
@@ -445,41 +448,43 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                     role = participant.participant_role
 
                     # Generate location ID from role ID
-                    location_id = "location-unknown"
+                    location_id = None
                     if hasattr(role, "id") and role.id:
                         for id_elem in role.id:
                             if id_elem.root:
                                 location_id = self._generate_location_id(id_elem.root, id_elem.extension)
                                 break
 
-                    # Extract location name from playingEntity
-                    display = None
-                    if hasattr(role, "playing_entity") and role.playing_entity:
-                        entity = role.playing_entity
-                        if hasattr(entity, "name"):
-                            if isinstance(entity.name, str):
-                                display = entity.name
-                            elif hasattr(entity.name, "value"):
-                                display = entity.name.value
+                    # Only create location reference if we have a valid ID
+                    if location_id:
+                        # Extract location name from playingEntity
+                        display = None
+                        if hasattr(role, "playing_entity") and role.playing_entity:
+                            entity = role.playing_entity
+                            if hasattr(entity, "name"):
+                                if isinstance(entity.name, str):
+                                    display = entity.name
+                                elif hasattr(entity.name, "value"):
+                                    display = entity.name.value
 
-                    location["location"] = {
-                        "reference": f"Location/{location_id}"
-                    }
-                    if display:
-                        location["location"]["display"] = display
+                        location["location"] = {
+                            "reference": f"Location/{location_id}"
+                        }
+                        if display:
+                            location["location"]["display"] = display
 
-                # Extract period from participant time
-                period = None
-                if hasattr(participant, "time") and participant.time:
-                    period = self._convert_period(participant.time)
-                    if period:
-                        location["period"] = period
+                        # Extract period from participant time
+                        period = None
+                        if hasattr(participant, "time") and participant.time:
+                            period = self._convert_period(participant.time)
+                            if period:
+                                location["period"] = period
 
-                # Determine status based on participant time and encounter status
-                location["status"] = self._determine_location_status(participant, period, encounter)
+                        # Determine status based on participant time and encounter status
+                        location["status"] = self._determine_location_status(participant, period, encounter)
 
-                if location:
-                    locations.append(location)
+                        if location:
+                            locations.append(location)
 
         return locations
 
@@ -915,38 +920,32 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         )
 
     def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a FHIR Practitioner ID from C-CDA identifiers.
+        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifiers.
 
         Args:
             root: The OID or UUID root
             extension: The extension value
 
         Returns:
-            A FHIR-compliant ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        if extension:
-            return f"practitioner-{extension.replace(' ', '-').replace('.', '-')}"
-        elif root:
-            return f"practitioner-{root.replace('.', '-').replace(':', '-')}"
-        else:
-            return "practitioner-unknown"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Practitioner", root, extension)
 
     def _generate_location_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a FHIR Location ID from C-CDA identifiers.
+        """Generate FHIR Location ID using cached UUID v4 from C-CDA identifiers.
 
         Args:
             root: The OID or UUID root
             extension: The extension value
 
         Returns:
-            A FHIR-compliant ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        if extension:
-            return extension.replace(" ", "-").replace(".", "-")
-        elif root:
-            return root.replace(".", "-").replace(":", "-")
-        else:
-            return "location-unknown"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Location", root, extension)
 
     def _generate_condition_id_from_observation(self, observation) -> str:
         """Generate a Condition resource ID from a Problem Observation.
@@ -968,7 +967,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         return "condition-unknown"
 
     def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a FHIR Condition ID from C-CDA identifiers.
+        """Generate FHIR Condition ID using cached UUID v4 from C-CDA identifiers.
 
         Matches the ID generation logic in ConditionConverter for consistency.
 
@@ -977,13 +976,39 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             extension: The extension value
 
         Returns:
-            A FHIR-compliant ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        if extension:
-            clean_ext = extension.lower().replace(" ", "-").replace(".", "-")
-            return f"condition-{clean_ext}"
-        elif root:
-            root_suffix = root.replace(".", "").replace("-", "")[-16:]
-            return f"condition-{root_suffix}"
-        else:
-            return "condition-unknown"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Condition", root, extension)
+
+    def extract_diagnosis_observations(self, encounter: CCDAEncounter) -> list:
+        """Extract diagnosis observations from Encounter Diagnosis Acts.
+
+        These observations should be converted to Condition resources with
+        category="encounter-diagnosis" to match the Encounter.diagnosis references.
+
+        Args:
+            encounter: The C-CDA Encounter Activity
+
+        Returns:
+            List of diagnosis observations to convert to Condition resources
+        """
+        observations = []
+
+        if not encounter.entry_relationship:
+            return observations
+
+        for entry_rel in encounter.entry_relationship:
+            # Look for Encounter Diagnosis act (template 2.16.840.1.113883.10.20.22.4.80)
+            if entry_rel.act and entry_rel.act.template_id:
+                for template in entry_rel.act.template_id:
+                    if template.root == TemplateIds.ENCOUNTER_DIAGNOSIS:
+                        # Extract diagnosis from nested observation
+                        if entry_rel.act.entry_relationship:
+                            for nested_entry in entry_rel.act.entry_relationship:
+                                if nested_entry.observation:
+                                    observations.append(nested_entry.observation)
+                        break
+
+        return observations

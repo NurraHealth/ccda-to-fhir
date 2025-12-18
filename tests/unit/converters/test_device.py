@@ -57,16 +57,24 @@ class TestDeviceConverter:
     def test_generates_id_from_identifier(
         self, device_converter: DeviceConverter, sample_assigned_author_with_device: AssignedAuthor
     ) -> None:
-        """Test that ID is generated from identifier extension."""
+        """Test that ID is generated from identifier as UUID v4."""
+        import uuid as uuid_module
+
         device = device_converter.convert(sample_assigned_author_with_device)
 
         assert "id" in device
-        assert device["id"] == "device-DEVICE-001"
+        # Validate UUID format
+        try:
+            uuid_module.UUID(device["id"], version=4)
+        except ValueError:
+            pytest.fail(f"ID {device['id']} is not a valid UUID v4")
 
     def test_generates_id_from_root_when_no_extension(
         self, device_converter: DeviceConverter, sample_device: AssignedAuthoringDevice
     ) -> None:
-        """Test ID generation fallback to root OID when no extension."""
+        """Test ID generation from root OID when no extension (UUID v4)."""
+        import uuid as uuid_module
+
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension=None)],
             assigned_authoring_device=sample_device
@@ -75,9 +83,11 @@ class TestDeviceConverter:
         device = device_converter.convert(assigned_author)
 
         assert "id" in device
-        # Should use last 16 chars of root OID (removing dots)
-        assert device["id"].startswith("device-")
-        assert len(device["id"]) > 7  # device- + some hash
+        # Validate UUID format
+        try:
+            uuid_module.UUID(device["id"], version=4)
+        except ValueError:
+            pytest.fail(f"ID {device['id']} is not a valid UUID v4")
 
     # ============================================================================
     # B. Identifier Mapping (3 tests)
@@ -248,6 +258,8 @@ class TestDeviceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test device with all fields None/empty."""
+        import uuid as uuid_module
+
         device_empty = AssignedAuthoringDevice(
             manufacturer_model_name=None,
             software_name=None,
@@ -262,7 +274,11 @@ class TestDeviceConverter:
 
         # Should still create valid Device resource
         assert device["resourceType"] == FHIRCodes.ResourceTypes.DEVICE
-        assert device["id"] == "device-DEVICE-001"
+        # Validate UUID format
+        try:
+            uuid_module.UUID(device["id"], version=4)
+        except ValueError:
+            pytest.fail(f"ID {device['id']} is not a valid UUID v4")
         assert len(device["deviceName"]) == 0
 
     def test_ignores_as_maintained_entity(

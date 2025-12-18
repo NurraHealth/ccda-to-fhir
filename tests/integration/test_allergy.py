@@ -385,10 +385,24 @@ class TestAllergyConversion:
         assert allergy is not None
         assert "recorder" in allergy
 
-        # Latest author is LATEST-ALLERGY-DOC (time: 20231120)
-        # Not EARLY-ALLERGY-DOC (time: 20230301)
-        assert "LATEST-ALLERGY-DOC" in allergy["recorder"]["reference"]
-        assert "EARLY-ALLERGY-DOC" not in allergy["recorder"]["reference"]
+        # Recorder should reference a Practitioner (UUID v4 format)
+        assert allergy["recorder"]["reference"].startswith("Practitioner/")
+        recorder_id = allergy["recorder"]["reference"].split("/")[1]
+
+        # Verify the referenced Practitioner exists in bundle
+        # Latest author is LATEST-ALLERGY-DOC (time: 20231120), not EARLY-ALLERGY-DOC (time: 20230301)
+        practitioners = [e["resource"] for e in bundle.get("entry", [])
+                        if e["resource"]["resourceType"] == "Practitioner" and e["resource"]["id"] == recorder_id]
+        assert len(practitioners) == 1
+        practitioner = practitioners[0]
+
+        # Check practitioner has identifier with LATEST-ALLERGY-DOC
+        latest_found = False
+        for ident in practitioner.get("identifier", []):
+            if "LATEST-ALLERGY-DOC" in ident.get("value", ""):
+                latest_found = True
+                break
+        assert latest_found, "Latest author (LATEST-ALLERGY-DOC) should be selected for recorder"
 
         # recordedDate should still use earliest time
         assert allergy["recordedDate"] == "2023-03-01"

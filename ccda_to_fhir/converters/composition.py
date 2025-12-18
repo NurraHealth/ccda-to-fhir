@@ -242,8 +242,12 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         if not record_target or not record_target.patient_role:
             return None
 
-        # For now, use placeholder - actual reference resolution happens in convert.py
-        return {"reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"}
+        # Patient reference (from recordTarget in document header)
+        if self.reference_registry:
+            return self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            return {"reference": "Patient/patient-unknown"}
 
     def _convert_author_references(self, authors: list) -> list[JSONObject]:
         """Convert C-CDA authors to FHIR Practitioner or Device references.
@@ -421,29 +425,21 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         return None
 
     def _generate_practitioner_id(self, identifiers: list[II]) -> str:
-        """Generate FHIR Practitioner ID from C-CDA identifiers.
+        """Generate FHIR Practitioner ID using cached UUID v4.
 
         Args:
             identifiers: List of C-CDA II identifiers
 
         Returns:
-            Generated ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        from ccda_to_fhir.constants import CodeSystemOIDs
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        # Prefer NPI if present
-        for identifier in identifiers:
-            if identifier.root == CodeSystemOIDs.NPI and identifier.extension:
-                return f"npi-{identifier.extension}"
+        # Use first identifier for cache key
+        root = identifiers[0].root if identifiers and identifiers[0].root else None
+        extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
 
-        # Otherwise use first identifier
-        if identifiers and identifiers[0].extension:
-            return identifiers[0].extension.replace(" ", "-").replace(".", "-")
-        elif identifiers and identifiers[0].root:
-            # Use last 16 chars of root OID
-            return identifiers[0].root.replace(".", "")[-16:]
-        else:
-            return "practitioner-unknown"
+        return generate_id_from_identifiers("Practitioner", root, extension)
 
     def _convert_confidentiality(self, conf_code) -> str | None:
         """Convert confidentiality code to FHIR value.

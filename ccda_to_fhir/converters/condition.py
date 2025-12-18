@@ -158,8 +158,12 @@ class ConditionConverter(BaseConverter[Observation]):
             if body_sites:
                 condition["bodySite"] = body_sites
 
-        # Subject (patient reference - will be set by DocumentConverter)
-        condition["subject"] = {"reference": "Patient/patient-placeholder"}
+        # Patient reference (from recordTarget in document header)
+        if self.reference_registry:
+            condition["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            condition["subject"] = {"reference": "Patient/patient-unknown"}
 
         # Onset and abatement
         onset, abatement = self._convert_effective_time(observation)
@@ -264,23 +268,18 @@ class ConditionConverter(BaseConverter[Observation]):
         return None
 
     def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a condition resource ID.
+        """Generate FHIR Condition ID using cached UUID v4 from C-CDA identifiers.
 
         Args:
             root: The OID or UUID root
             extension: The extension value
 
         Returns:
-            A resource ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        if extension:
-            clean_ext = extension.lower().replace(" ", "-").replace(".", "-")
-            return f"condition-{clean_ext}"
-        elif root:
-            root_suffix = root.replace(".", "").replace("-", "")[-16:]
-            return f"condition-{root_suffix}"
-        else:
-            return "condition-unknown"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Condition", root, extension)
 
     def _determine_clinical_status(self, observation: Observation) -> str | None:
         """Determine the clinical status from observation and concern act.
@@ -696,6 +695,7 @@ def convert_problem_concern_act(
     code_system_mapper=None,
     metadata_callback=None,
     section=None,
+    reference_registry=None,
 ) -> list[FHIRResourceDict]:
     """Convert a Problem Concern Act to a list of FHIR Condition resources.
 
@@ -715,7 +715,11 @@ def convert_problem_concern_act(
         return conditions
 
     converter = ConditionConverter(
-        code_system_mapper=code_system_mapper, section_code=section_code, concern_act=act, section=section
+        code_system_mapper=code_system_mapper,
+        section_code=section_code,
+        concern_act=act,
+        section=section,
+        reference_registry=reference_registry,
     )
 
     for rel in act.entry_relationship:

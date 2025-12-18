@@ -42,6 +42,17 @@ def _find_all_resources_in_bundle(
     return resources
 
 
+def _find_device_by_identifier(bundle: JSONObject, identifier_value: str) -> JSONObject | None:
+    """Find a Device resource by its identifier value."""
+    devices = _find_all_resources_in_bundle(bundle, "Device")
+    for device in devices:
+        if "identifier" in device:
+            for ident in device["identifier"]:
+                if ident.get("value") == identifier_value:
+                    return device
+    return None
+
+
 class TestDeviceEntryAuthors:
     """Test Device resource creation from entry-level device authors."""
 
@@ -118,8 +129,15 @@ class TestDeviceEntryAuthors:
         bundle = convert_document(ccda_xml)
 
         # Should have a Device resource for the device author
-        device = _find_resource_in_bundle(bundle, "Device", "device-DEVICE-ROBOT")
+        device = _find_device_by_identifier(bundle, "DEVICE-ROBOT")
         assert device is not None, "Device resource should be created for entry-level device author"
+
+        # Validate ID is UUID v4
+        import uuid as uuid_module
+        try:
+            uuid_module.UUID(device["id"], version=4)
+        except ValueError:
+            raise AssertionError(f"Device ID {device['id']} is not a valid UUID v4")
 
     def test_device_from_entry_has_correct_fields(self) -> None:
         """Test that Device resource from entry-level author has correct fields."""
@@ -193,8 +211,15 @@ class TestDeviceEntryAuthors:
 
         bundle = convert_document(ccda_xml)
 
-        device = _find_resource_in_bundle(bundle, "Device", "device-DEVICE-ROBOT")
+        device = _find_device_by_identifier(bundle, "DEVICE-ROBOT")
         assert device is not None
+
+        # Validate ID is UUID v4
+        import uuid as uuid_module
+        try:
+            uuid_module.UUID(device["id"], version=4)
+        except ValueError:
+            raise AssertionError(f"Device ID {device['id']} is not a valid UUID v4")
 
         # Check identifier
         assert "identifier" in device
@@ -284,18 +309,26 @@ class TestDeviceEntryAuthors:
         bundle = convert_document(ccda_xml)
 
         # Check that both Device and Provenance exist
-        device = _find_resource_in_bundle(bundle, "Device", "device-DEVICE-ROBOT")
+        device = _find_device_by_identifier(bundle, "DEVICE-ROBOT")
         provenance = _find_resource_in_bundle(bundle, "Provenance", "provenance-procedure-proc-1")
 
         assert device is not None, "Device should exist"
         assert provenance is not None, "Provenance should exist"
+
+        # Validate device ID is UUID v4
+        import uuid as uuid_module
+        try:
+            uuid_module.UUID(device["id"], version=4)
+        except ValueError:
+            raise AssertionError(f"Device ID {device['id']} is not a valid UUID v4")
 
         # Check that Provenance correctly references the Device
         assert "agent" in provenance
         assert len(provenance["agent"]) > 0
 
         device_agent = [a for a in provenance["agent"] if "Device" in a.get("who", {}).get("reference", "")][0]
-        assert device_agent["who"]["reference"] == "Device/device-DEVICE-ROBOT"
+        expected_reference = f"Device/{device['id']}"
+        assert device_agent["who"]["reference"] == expected_reference
 
     def test_multiple_entry_device_authors_deduplicated(self) -> None:
         """Test that same device author on multiple entries creates only one Device resource."""
@@ -391,4 +424,14 @@ class TestDeviceEntryAuthors:
         # Should have exactly 1 Device resource (deduplicated)
         devices = _find_all_resources_in_bundle(bundle, "Device")
         assert len(devices) == 1
-        assert devices[0]["id"] == "device-DEVICE-ROBOT"
+
+        # Validate ID is UUID v4
+        import uuid as uuid_module
+        try:
+            uuid_module.UUID(devices[0]["id"], version=4)
+        except ValueError:
+            raise AssertionError(f"Device ID {devices[0]['id']} is not a valid UUID v4")
+
+        # Verify it has the correct identifier
+        assert "identifier" in devices[0]
+        assert devices[0]["identifier"][0]["value"] == "DEVICE-ROBOT"

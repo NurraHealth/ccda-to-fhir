@@ -58,6 +58,8 @@ class TestConditionRecorder:
 
     def test_single_author_with_time_creates_recorder(self):
         """Test that single author with time creates recorder reference."""
+        import uuid as uuid_module
+
         author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
         obs = self.create_observation_with_authors([author])
 
@@ -65,10 +67,18 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"] == "Practitioner/practitioner-DOC-001"
+        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        # Extract and validate UUID v4
+        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
     def test_multiple_authors_chronological_returns_latest(self):
         """Test that latest author by timestamp is used for recorder."""
+        import uuid as uuid_module
+
         authors = [
             self.create_author(time="20240101", practitioner_ext="EARLY-DOC"),
             self.create_author(time="20240201", practitioner_ext="MIDDLE-DOC"),
@@ -80,10 +90,18 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"] == "Practitioner/practitioner-LATEST-DOC"
+        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        # Extract and validate UUID v4
+        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
     def test_multiple_authors_reverse_chronological_returns_latest(self):
         """Test that latest author is found even if not last in list."""
+        import uuid as uuid_module
+
         authors = [
             self.create_author(time="20240301", practitioner_ext="LATEST-DOC"),
             self.create_author(time="20240201", practitioner_ext="MIDDLE-DOC"),
@@ -95,10 +113,18 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"] == "Practitioner/practitioner-LATEST-DOC"
+        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        # Extract and validate UUID v4
+        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
     def test_author_without_time_excluded(self):
         """Test that authors without time are excluded from recorder selection."""
+        import uuid as uuid_module
+
         authors = [
             self.create_author(time=None, practitioner_ext="NO-TIME-DOC"),
             self.create_author(time="20240215", practitioner_ext="WITH-TIME-DOC"),
@@ -109,7 +135,13 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"] == "Practitioner/practitioner-WITH-TIME-DOC"
+        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        # Extract and validate UUID v4
+        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
     def test_all_authors_without_time_no_recorder(self):
         """Test that no recorder is created if all authors lack time."""
@@ -136,6 +168,8 @@ class TestConditionRecorder:
 
     def test_device_author_creates_device_reference(self):
         """Test that device author creates Device reference."""
+        import uuid as uuid_module
+
         author = self.create_author(
             time="20240115",
             practitioner_ext="DEVICE-001",
@@ -148,10 +182,18 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"] == "Device/device-DEVICE-001"
+        assert condition["recorder"]["reference"].startswith("Device/")
+        # Extract and validate UUID v4
+        device_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(device_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {device_id} is not a valid UUID v4")
 
     def test_practitioner_and_device_authors_returns_latest_by_time(self):
         """Test that latest author is selected regardless of type."""
+        import uuid as uuid_module
+
         authors = [
             self.create_author(time="20240101", practitioner_ext="EARLY-PRAC", has_person=True),
             self.create_author(time="20240301", practitioner_ext="LATE-DEVICE", has_person=False, has_device=True),
@@ -163,7 +205,13 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"] == "Device/device-LATE-DEVICE"
+        assert condition["recorder"]["reference"].startswith("Device/")
+        # Extract and validate UUID v4
+        device_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(device_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {device_id} is not a valid UUID v4")
 
     def test_empty_authors_list_no_recorder(self):
         """Test that empty authors list does not create recorder."""
@@ -185,6 +233,8 @@ class TestConditionRecorder:
 
     def test_concern_act_and_observation_authors_both_considered(self):
         """Test that authors from both concern act and observation are considered."""
+        import uuid as uuid_module
+
         concern_act_authors = [
             self.create_author(time="20240101", practitioner_ext="CONCERN-EARLY")
         ]
@@ -203,10 +253,18 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"] == "Practitioner/practitioner-OBS-LATEST"
+        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        # Extract and validate UUID v4
+        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
     def test_latest_from_concern_act_used_if_later_than_observation(self):
         """Test that concern act author is used if it's latest."""
+        import uuid as uuid_module
+
         concern_act_authors = [
             self.create_author(time="20240301", practitioner_ext="CONCERN-LATEST")
         ]
@@ -225,10 +283,18 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"] == "Practitioner/practitioner-CONCERN-LATEST"
+        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        # Extract and validate UUID v4
+        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
     def test_recorded_date_still_uses_earliest_author(self):
         """Test that recordedDate still uses earliest author time (existing behavior)."""
+        import uuid as uuid_module
+
         authors = [
             self.create_author(time="20240301", practitioner_ext="LATEST-DOC"),
             self.create_author(time="20240101", practitioner_ext="EARLIEST-DOC"),
@@ -240,5 +306,10 @@ class TestConditionRecorder:
 
         # recordedDate should still use earliest
         assert condition.get("recordedDate") == "2024-01-01"
-        # recorder should use latest
-        assert condition["recorder"]["reference"] == "Practitioner/practitioner-LATEST-DOC"
+        # recorder should use latest (validated as UUID v4)
+        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")

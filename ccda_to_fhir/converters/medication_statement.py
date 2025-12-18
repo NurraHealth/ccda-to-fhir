@@ -89,7 +89,12 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             med_statement["medicationCodeableConcept"] = medication
 
         # 5. Subject (patient reference) - required
-        med_statement["subject"] = {"reference": "Patient/patient-placeholder"}
+        # Patient reference (from recordTarget in document header)
+        if self.reference_registry:
+            med_statement["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            med_statement["subject"] = {"reference": "Patient/patient-unknown"}
 
         # 6. Effective[x] (from effectiveTime)
         effective = self._extract_effective_time(substance_admin)
@@ -407,14 +412,20 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         # Handle IVL_PQ (range)
         if isinstance(period, IVL_PQ):
             if period.low:
-                repeat["period"] = self._extract_period_value(period.low)
-                repeat["periodUnit"] = self._map_ucum_to_fhir_unit(period.low.unit)
+                period_value = self._extract_period_value(period.low)
+                if period_value is not None:
+                    repeat["period"] = period_value
+                    repeat["periodUnit"] = self._map_ucum_to_fhir_unit(period.low.unit)
             if period.high:
-                repeat["periodMax"] = self._extract_period_value(period.high)
+                period_max = self._extract_period_value(period.high)
+                if period_max is not None:
+                    repeat["periodMax"] = period_max
         # Handle PQ (single value)
         elif isinstance(period, PQ):
-            repeat["period"] = self._extract_period_value(period)
-            repeat["periodUnit"] = self._map_ucum_to_fhir_unit(period.unit)
+            period_value = self._extract_period_value(period)
+            if period_value is not None:
+                repeat["period"] = period_value
+                repeat["periodUnit"] = self._map_ucum_to_fhir_unit(period.unit)
 
         return repeat if repeat else None
 
@@ -473,12 +484,22 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         except (ValueError, TypeError, AttributeError):
             return None
 
-    def _extract_period_value(self, pq: PQ) -> int | float:
-        """Extract numeric value from PQ."""
+    def _extract_period_value(self, pq: PQ) -> int | float | None:
+        """Extract numeric value from PQ with validation.
+
+        Returns None if the value is unreasonably large (likely data error).
+        """
         if pq.value is None:
             return 1
         try:
             value = float(pq.value)
+            # Validate: reject absurdly large periods (> 10 years in any unit)
+            # 10 years = 3650 days = 87600 hours = 5256000 minutes = 315360000 seconds
+            # In months: 10 years = 120 months
+            max_reasonable_value = 120 if (hasattr(pq, 'unit') and pq.unit in ['mo', 'm']) else 3650
+            if value > max_reasonable_value:
+                # Invalid period - return None to skip this timing info
+                return None
             return int(value) if value.is_integer() else value
         except (ValueError, TypeError, AttributeError):
             return 1
@@ -607,24 +628,32 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         return notes
 
     def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
-        """Generate consistent Practitioner ID from C-CDA identifiers."""
-        if extension:
-            clean_ext = extension.replace(' ', '-').replace('.', '-')
-            return f"practitioner-{clean_ext}"
-        elif root:
-            root_suffix = root.replace('.', '-').replace('urn:oid:', '')[-16:]
-            return f"practitioner-{root_suffix}"
-        return "practitioner-unknown"
+        """Generate consistent Practitioner ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Practitioner", root, extension)
 
     def _generate_device_id(self, root: str | None, extension: str | None) -> str:
-        """Generate consistent Device ID from C-CDA identifiers."""
-        if extension:
-            clean_ext = extension.replace(' ', '-').replace('.', '-')
-            return f"device-{clean_ext}"
-        elif root:
-            root_suffix = root.replace('.', '-').replace('urn:oid:', '')[-16:]
-            return f"device-{root_suffix}"
-        return "device-unknown"
+        """Generate consistent Device ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Device", root, extension)
 
 
 def convert_medication_statement(
@@ -632,6 +661,7 @@ def convert_medication_statement(
     code_system_mapper=None,
     metadata_callback=None,
     section=None,
+    reference_registry=None,
 ) -> FHIRResourceDict:
     """Convert a Medication Activity to a FHIR MedicationStatement resource.
 
@@ -644,7 +674,10 @@ def convert_medication_statement(
     Returns:
         FHIR MedicationStatement resource as a dictionary
     """
-    converter = MedicationStatementConverter(code_system_mapper=code_system_mapper)
+    converter = MedicationStatementConverter(
+        code_system_mapper=code_system_mapper,
+        reference_registry=reference_registry,
+    )
 
     try:
         medication_statement = converter.convert(substance_admin, section=section)

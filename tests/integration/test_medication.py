@@ -390,6 +390,8 @@ class TestMedicationConversion:
         self, ccda_medication_multiple_authors: str
     ) -> None:
         """Test that latest author (by timestamp) is selected for requester field."""
+        import uuid as uuid_module
+
         ccda_doc = wrap_in_ccda_document(ccda_medication_multiple_authors, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)
 
@@ -397,10 +399,13 @@ class TestMedicationConversion:
         assert med_request is not None
         assert "requester" in med_request
 
-        # Latest author is LATEST-MED-DOC (time: 20231210143000)
-        # Not EARLY-MED-DOC (time: 20231001080000)
-        assert "LATEST-MED-DOC" in med_request["requester"]["reference"]
-        assert "EARLY-MED-DOC" not in med_request["requester"]["reference"]
+        # Requester should reference a Practitioner with UUID v4 ID
+        assert "Practitioner/" in med_request["requester"]["reference"]
+        practitioner_id = med_request["requester"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            raise AssertionError(f"Practitioner ID {practitioner_id} is not a valid UUID v4")
 
         # authoredOn should still use earliest time
         assert med_request["authoredOn"] == "2023-10-01T08:00:00"

@@ -81,35 +81,21 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         return device
 
     def _generate_device_id(self, identifiers: list[II]) -> str:
-        """Generate FHIR ID from C-CDA identifiers.
-
-        Strategy:
-        1. Use first identifier extension if available
-        2. Fall back to hash of root OID
-        3. Ultimate fallback: "device-unknown"
+        """Generate FHIR Device ID using cached UUID v4 from C-CDA identifiers.
 
         Args:
             identifiers: List of C-CDA II identifiers
 
         Returns:
-            Generated ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        if not identifiers:
-            return "device-unknown"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        # Prefer first identifier with extension
-        for identifier in identifiers:
-            if identifier.extension:
-                # Sanitize extension for use in ID
-                sanitized = identifier.extension.replace(" ", "-").replace(".", "-")
-                return f"device-{sanitized}"
+        # Use first identifier for cache key
+        root = identifiers[0].root if identifiers and identifiers[0].root else None
+        extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
 
-        # Fallback: Use last 16 chars of root OID (without dots)
-        if identifiers and identifiers[0].root:
-            root_hash = identifiers[0].root.replace(".", "")[-16:]
-            return f"device-{root_hash}"
-
-        return "device-unknown"
+        return generate_id_from_identifiers("Device", root, extension)
 
     def _convert_device_names(
         self,

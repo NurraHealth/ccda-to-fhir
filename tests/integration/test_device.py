@@ -368,7 +368,18 @@ class TestDeviceConversion:
         devices = _find_all_resources_in_bundle(bundle, "Device")
         # Should have only 1 device (deduplicated)
         assert len(devices) == 1
-        assert devices[0]["id"] == "device-DEVICE-001"
+
+        # Validate device ID is UUID v4
+        import uuid as uuid_module
+        device_id = devices[0]["id"]
+        try:
+            uuid_module.UUID(device_id, version=4)
+        except ValueError:
+            raise AssertionError(f"Device ID {device_id} is not a valid UUID v4")
+
+        # Verify device has correct identifier
+        assert "identifier" in devices[0]
+        assert devices[0]["identifier"][0]["value"] == "DEVICE-001"
 
     # ============================================================================
     # C. Composition Integration (2 tests)

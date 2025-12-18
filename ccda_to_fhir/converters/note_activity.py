@@ -48,10 +48,9 @@ class NoteActivityConverter(BaseConverter[Act]):
         }
 
         # Generate ID from note activity identifiers
-        if note_act.id and len(note_act.id) > 0:
-            note_id = self._generate_note_id(note_act.id[0])
-            if note_id:
-                doc_ref["id"] = note_id
+        doc_ref["id"] = self._generate_note_id(
+            note_act.id[0] if (note_act.id and len(note_act.id) > 0) else None
+        )
 
         # Status (required) - map from statusCode
         status = self._extract_status(note_act)
@@ -82,7 +81,12 @@ class NoteActivityConverter(BaseConverter[Act]):
         ]
 
         # Subject (patient reference) - placeholder that will be resolved later
-        doc_ref["subject"] = {"reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"}
+        # Patient reference (from recordTarget in document header)
+        if self.reference_registry:
+            doc_ref["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            doc_ref["subject"] = {"reference": "Patient/patient-unknown"}
 
         # Date - from author/time (first author's time)
         if note_act.author and len(note_act.author) > 0:
@@ -131,28 +135,26 @@ class NoteActivityConverter(BaseConverter[Act]):
 
         return doc_ref
 
-    def _generate_note_id(self, identifier) -> str | None:
+    def _generate_note_id(self, identifier) -> str:
         """Generate a FHIR resource ID from the note identifier.
 
         Args:
             identifier: Note II identifier
 
         Returns:
-            Generated ID string or None
+            Generated ID string (never None - generates UUID fallback if needed)
         """
         if not identifier:
-            return None
+            # No identifier - generate UUID fallback
+            from ccda_to_fhir.id_generator import generate_id
+            return generate_id()
 
-        # Use extension if present
-        if identifier.extension:
-            clean_ext = identifier.extension.replace(" ", "-").replace(".", "-").lower()
-            return f"note-{clean_ext}"
-        elif identifier.root:
-            # Use hash of root if no extension
-            hash_val = hashlib.sha256(identifier.root.encode()).hexdigest()[:16]
-            return f"note-{hash_val}"
+        # Use ID generator with caching for consistency
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        root = identifier.root if hasattr(identifier, 'root') and identifier.root else None
+        extension = identifier.extension if hasattr(identifier, 'extension') and identifier.extension else None
 
-        return None
+        return generate_id_from_identifiers("DocumentReference", root, extension)
 
     def _extract_status(self, note_act: Act) -> str:
         """Extract FHIR status from C-CDA note activity statusCode.
@@ -296,29 +298,20 @@ class NoteActivityConverter(BaseConverter[Act]):
         return author_refs
 
     def _generate_practitioner_id(self, identifier) -> str:
-        """Generate practitioner ID from identifier.
+        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifier.
 
         Args:
-            identifier: Practitioner identifier
+            identifier: Practitioner identifier (C-CDA II type)
 
         Returns:
-            Generated ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        from ccda_to_fhir.constants import CodeSystemOIDs
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        # Check for NPI
-        if identifier.root == CodeSystemOIDs.NPI and identifier.extension:
-            return f"npi-{identifier.extension}"
+        root = identifier.root if identifier.root else None
+        extension = identifier.extension if identifier.extension else None
 
-        # Use extension if present
-        if identifier.extension:
-            return identifier.extension.replace(" ", "-").replace(".", "-").lower()
-
-        # Use last 16 chars of root
-        if identifier.root:
-            return identifier.root.replace(".", "")[-16:]
-
-        return "practitioner-unknown"
+        return generate_id_from_identifiers("Practitioner", root, extension)
 
     def _create_content_list(self, text, section=None) -> list[JSONObject]:
         """Create list of content elements with attachments from note text.
@@ -690,6 +683,7 @@ def convert_note_activity(
     note_act: Act,
     code_system_mapper=None,
     section=None,
+    reference_registry=None,
 ) -> FHIRResourceDict:
     """Convert a C-CDA Note Activity Act to a FHIR DocumentReference resource.
 
@@ -699,9 +693,13 @@ def convert_note_activity(
         note_act: The C-CDA Note Activity Act
         code_system_mapper: Optional code system mapper
         section: Optional containing section (for text reference resolution)
+        reference_registry: Optional reference registry for resource references
 
     Returns:
         FHIR DocumentReference resource
     """
-    converter = NoteActivityConverter(code_system_mapper=code_system_mapper)
+    converter = NoteActivityConverter(
+        code_system_mapper=code_system_mapper,
+        reference_registry=reference_registry,
+    )
     return converter.convert(note_act, section=section)

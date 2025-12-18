@@ -72,13 +72,17 @@ class ReferenceRegistry:
 
         # Check for duplicates
         if resource_id in self._resources[resource_type]:
-            logger.warning(
-                f"Duplicate resource ID: {resource_type}/{resource_id}",
+            # Resource already registered - this is expected with ID caching where
+            # the same C-CDA identifiers generate the same UUID across multiple uses.
+            # Silently skip re-registration since the resource is already tracked.
+            logger.debug(
+                f"Resource already registered, skipping: {resource_type}/{resource_id}",
                 extra={
                     "resource_type": resource_type,
                     "resource_id": resource_id,
                 }
             )
+            return
 
         # Register the resource
         self._resources[resource_type][resource_id] = resource
@@ -184,6 +188,55 @@ class ReferenceRegistry:
             Dictionary with stats: registered, resolved, failed
         """
         return self._stats.copy()
+
+    def has_patient(self) -> bool:
+        """Check if a patient has been registered.
+
+        Per C-CDA specification, recordTarget is required (SHALL, cardinality 1..*).
+        For full C-CDA documents, patient should be extracted from recordTarget in
+        the document header before clinical resources are processed.
+
+        Returns:
+            True if at least one patient is registered, False otherwise
+        """
+        return "Patient" in self._resources and bool(self._resources["Patient"])
+
+    def get_patient_reference(self) -> JSONObject:
+        """Get reference to the document's patient.
+
+        Per C-CDA specification, recordTarget is required (SHALL, cardinality 1..*).
+        For full C-CDA documents, patient is extracted from recordTarget in the
+        document header before clinical resources are processed.
+
+        This method returns a reference to the first registered patient. For the
+        rare cases of multiple recordTargets (group encounters, conjoined twins),
+        this returns the first patient.
+
+        Returns:
+            Reference object {"reference": "Patient/id"}
+
+        Raises:
+            MissingReferenceError: If no patient is registered (architectural violation)
+
+        Example:
+            >>> registry = ReferenceRegistry()
+            >>> patient = {"resourceType": "Patient", "id": "patient-123"}
+            >>> registry.register_resource(patient)
+            >>> ref = registry.get_patient_reference()
+            >>> # Returns: {"reference": "Patient/patient-123"}
+        """
+        if not self.has_patient():
+            raise MissingReferenceError(
+                resource_type="Patient",
+                resource_id="(any)",
+                context="Patient must be extracted from recordTarget before clinical resources. "
+                        "This indicates a C-CDA document structure violation or extraction order error."
+            )
+
+        # Get first patient (for most C-CDA documents, there's only one)
+        patient_id = next(iter(self._resources["Patient"].keys()))
+        self._stats["resolved"] += 1
+        return {"reference": f"Patient/{patient_id}"}
 
     def clear(self) -> None:
         """Clear all registered resources and reset stats."""

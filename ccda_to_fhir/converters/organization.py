@@ -96,25 +96,21 @@ class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganiz
         return org
 
     def _generate_organization_id(self, identifiers: list[II]) -> str:
-        """Generate FHIR ID from C-CDA identifiers.
+        """Generate FHIR ID using cached UUID v4 from C-CDA identifiers.
 
         Args:
             identifiers: List of C-CDA II identifiers
 
         Returns:
-            Generated ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        # Use first identifier with extension
-        for identifier in identifiers:
-            if identifier.extension:
-                return f"org-{identifier.extension.replace(' ', '-').replace('.', '-')}"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        # Otherwise use root OID
-        if identifiers and identifiers[0].root:
-            # Use last 16 chars of root OID
-            return f"org-{identifiers[0].root.replace('.', '')[-16:]}"
-        else:
-            return "organization-unknown"
+        # Use first identifier for cache key
+        root = identifiers[0].root if identifiers and identifiers[0].root else None
+        extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
+
+        return generate_id_from_identifiers("Organization", root, extension)
 
     def _extract_name(self, names: list[ON | str] | ON | str) -> str | None:
         """Extract organization name from C-CDA name list or single name.

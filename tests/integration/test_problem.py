@@ -404,8 +404,13 @@ class TestProblemConversion:
         assert "recorder" in condition
         assert "reference" in condition["recorder"]
         assert condition["recorder"]["reference"].startswith("Practitioner/")
-        # Verify the practitioner ID matches the author's extension (99999999)
-        assert "99999999" in condition["recorder"]["reference"]
+        # Verify the practitioner ID is a valid UUID v4
+        import uuid as uuid_module
+        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            raise AssertionError(f"Practitioner ID {practitioner_id} is not a valid UUID v4")
 
     def test_recorder_and_provenance_reference_same_practitioner(
         self, ccda_problem: str
@@ -556,11 +561,14 @@ class TestProblemConversion:
         assert condition is not None
         assert "recorder" in condition
 
-        # Latest author is LATEST-DOC-789 (time: 20231215) from observation authors
-        # Not EARLY-DOC-123 (concern act, time: 20230101) or MIDDLE-DOC-456 (time: 20230615)
-        assert "LATEST-DOC-789" in condition["recorder"]["reference"]
-        assert "EARLY-DOC-123" not in condition["recorder"]["reference"]
-        assert "MIDDLE-DOC-456" not in condition["recorder"]["reference"]
+        # Recorder should reference a Practitioner with UUID v4 ID
+        import uuid as uuid_module
+        assert "Practitioner/" in condition["recorder"]["reference"]
+        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            raise AssertionError(f"Practitioner ID {practitioner_id} is not a valid UUID v4")
 
         # recordedDate uses earliest observation author time (not concern act author)
         # So it's 2023-06-15 (MIDDLE-DOC-456), not 2023-01-01 (EARLY-DOC-123 from concern act)

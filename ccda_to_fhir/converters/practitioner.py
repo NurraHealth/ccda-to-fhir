@@ -94,27 +94,21 @@ class PractitionerConverter(BaseConverter["AssignedAuthor | AssignedEntity"]):
         return practitioner
 
     def _generate_practitioner_id(self, identifiers: list[II]) -> str:
-        """Generate FHIR ID from C-CDA identifiers.
+        """Generate FHIR ID using cached UUID v4 from C-CDA identifiers.
 
         Args:
             identifiers: List of C-CDA II identifiers
 
         Returns:
-            Generated ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        # Prefer NPI if present
-        for identifier in identifiers:
-            if identifier.root == CodeSystemOIDs.NPI and identifier.extension:
-                return f"npi-{identifier.extension}"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        # Otherwise use first identifier
-        if identifiers and identifiers[0].extension:
-            return identifiers[0].extension.replace(" ", "-").replace(".", "-")
-        elif identifiers and identifiers[0].root:
-            # Use last 16 chars of root OID
-            return identifiers[0].root.replace(".", "")[-16:]
-        else:
-            return "practitioner-unknown"
+        # Use first identifier for cache key
+        root = identifiers[0].root if identifiers and identifiers[0].root else None
+        extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
+
+        return generate_id_from_identifiers("Practitioner", root, extension)
 
     def _convert_names(self, names: list[PN]) -> list[dict[str, str | list[str]]]:
         """Convert C-CDA person names to FHIR HumanName.

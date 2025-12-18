@@ -115,16 +115,24 @@ class SectionProcessor:
                                 # Found a match - convert it
                                 try:
                                     # Build converter arguments
-                                    kwargs = converter_kwargs.copy()
-                                    if self.config.include_section_code:
-                                        kwargs["section_code"] = section_code
-
-                                    # Pass section only for converters that accept it
-                                    # Check if converter accepts 'section' parameter
+                                    # Inspect converter signature to only pass supported parameters
                                     import inspect
                                     converter_sig = inspect.signature(self.config.converter)
+
+                                    kwargs = {}
+
+                                    # Pass section_code if needed and supported
+                                    if self.config.include_section_code and "section_code" in converter_sig.parameters:
+                                        kwargs["section_code"] = section_code
+
+                                    # Pass section if supported
                                     if "section" in converter_sig.parameters:
                                         kwargs["section"] = section
+
+                                    # Pass any additional kwargs from converter_kwargs if supported
+                                    for key, value in converter_kwargs.items():
+                                        if key in converter_sig.parameters:
+                                            kwargs[key] = value
 
                                     # Call converter
                                     result = self.config.converter(

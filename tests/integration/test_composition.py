@@ -208,19 +208,25 @@ class TestCompositionConversion:
         assert "party" in attester
         assert attester["party"]["reference"].startswith("Practitioner/")
 
-        # Verify practitioner was created in bundle with correct ID
-        expected_id = attester["party"]["reference"].split("/")[1]
-        assert expected_id == "npi-1234567890"
+        # Capture the generated UUID and verify it's consistent
+        import uuid as uuid_module
+        practitioner_id = attester["party"]["reference"].split("/")[1]
 
-        # Find the legal authenticator's practitioner (not the author's)
+        # Validate UUID v4 format
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            raise AssertionError(f"Practitioner ID {practitioner_id} is not a valid UUID v4")
+
+        # Find the legal authenticator's practitioner using the captured ID
         legal_auth_practitioner = None
         for entry in bundle.get("entry", []):
             resource = entry.get("resource", {})
-            if resource.get("resourceType") == "Practitioner" and resource.get("id") == "npi-1234567890":
+            if resource.get("resourceType") == "Practitioner" and resource.get("id") == practitioner_id:
                 legal_auth_practitioner = resource
                 break
 
-        assert legal_auth_practitioner is not None
+        assert legal_auth_practitioner is not None, f"Practitioner {practitioner_id} should exist in bundle"
         assert "identifier" in legal_auth_practitioner
         # Verify NPI identifier
         npi_identifier = next(

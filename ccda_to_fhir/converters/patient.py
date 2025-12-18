@@ -183,6 +183,22 @@ class PatientConverter(BaseConverter[RecordTarget]):
         return patient
 
     def _generate_patient_id(self, identifier: II) -> str:
+        """Generate FHIR Patient ID using cached UUID v4 from C-CDA identifier.
+
+        Args:
+            identifier: C-CDA II identifier
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        root = identifier.root if identifier.root else None
+        extension = identifier.extension if identifier.extension else None
+
+        return generate_id_from_identifiers("Patient", root, extension)
+
+    def _generate_patient_id_OLD(self, identifier: II) -> str:
         """Generate a patient resource ID from an identifier.
 
         Args:

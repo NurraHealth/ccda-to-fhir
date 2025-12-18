@@ -179,8 +179,12 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             # Extract allergen from participant
             allergy["code"] = self._extract_allergen_code(observation)
 
-        # Patient reference (will be set by DocumentConverter)
-        allergy["patient"] = {"reference": "Patient/patient-placeholder"}
+        # Patient reference (from recordTarget in document header)
+        if self.reference_registry:
+            allergy["patient"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            allergy["patient"] = {"reference": "Patient/patient-unknown"}
 
         # Onset date
         if observation.effective_time and observation.effective_time.low:
@@ -754,7 +758,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
 
 
 def convert_allergy_concern_act(
-    act: Act, code_system_mapper=None, metadata_callback=None, section=None
+    act: Act, code_system_mapper=None, metadata_callback=None, section=None, reference_registry=None
 ) -> list[FHIRResourceDict]:
     """Convert an Allergy Concern Act to a list of FHIR AllergyIntolerance resources.
 
@@ -773,7 +777,10 @@ def convert_allergy_concern_act(
         return allergies
 
     converter = AllergyIntoleranceConverter(
-        code_system_mapper=code_system_mapper, concern_act=act, section=section
+        code_system_mapper=code_system_mapper,
+        concern_act=act,
+        section=section,
+        reference_registry=reference_registry,
     )
 
     for rel in act.entry_relationship:

@@ -93,9 +93,11 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             immunization["vaccineCode"] = vaccine_code
 
         # 5. Patient (subject reference)
-        immunization["patient"] = {
-            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
-        }
+        if self.reference_registry:
+            immunization["patient"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            immunization["patient"] = {"reference": "Patient/patient-unknown"}
 
         # 6. OccurrenceDateTime - from effectiveTime
         occurrence_date = self._extract_occurrence_date(substance_admin)
@@ -613,10 +615,12 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             "code": code,
         }
 
-        # Add patient reference (will be updated by main converter)
-        observation_resource["subject"] = {
-            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
-        }
+        # Add patient reference
+        if self.reference_registry:
+            observation_resource["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            observation_resource["subject"] = {"reference": "Patient/patient-unknown"}
 
         # Extract effectiveDateTime if available
         if observation.effective_time:
@@ -714,10 +718,12 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             "code": code,
         }
 
-        # Add patient reference (will be updated by main converter)
-        observation_resource["subject"] = {
-            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
-        }
+        # Add patient reference
+        if self.reference_registry:
+            observation_resource["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            observation_resource["subject"] = {"reference": "Patient/patient-unknown"}
 
         # Extract effectiveDateTime if available
         if observation.effective_time:
@@ -850,10 +856,12 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             "valueCodeableConcept": value_code,
         }
 
-        # Add patient reference (will be updated by main converter)
-        observation_resource["subject"] = {
-            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
-        }
+        # Add patient reference
+        if self.reference_registry:
+            observation_resource["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            observation_resource["subject"] = {"reference": "Patient/patient-unknown"}
 
         # Extract effectiveDateTime if available (usually has low value for when complication started)
         if observation.effective_time:
@@ -1021,6 +1029,7 @@ def convert_immunization_activity(
     code_system_mapper=None,
     metadata_callback=None,
     section=None,
+    reference_registry=None,
 ) -> list[FHIRResourceDict]:
     """Convert a C-CDA Immunization Activity to FHIR resources.
 
@@ -1064,7 +1073,10 @@ def convert_immunization_activity(
         return [medication_request]
     else:
         # Historical immunization - convert to Immunization resource
-        converter = ImmunizationConverter(code_system_mapper=code_system_mapper)
+        converter = ImmunizationConverter(
+            code_system_mapper=code_system_mapper,
+            reference_registry=reference_registry,
+        )
         immunization, reaction_observations = converter.convert(substance_admin, section=section)
 
         # Store author metadata if callback provided

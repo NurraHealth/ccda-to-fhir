@@ -91,59 +91,46 @@ class AuthorInfo:
             self.role_code = self.author.function_code.code
 
     def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a FHIR Practitioner ID from C-CDA identifiers.
+        """Generate a FHIR Practitioner ID using cached UUID v4.
+
+        The same (root, extension) combination will always generate the same UUID
+        within a document conversion, ensuring references resolve correctly.
 
         Args:
             root: The OID or UUID root
             extension: The extension value
 
         Returns:
-            A practitioner resource ID string
+            A cached UUID v4 string
         """
-        if extension:
-            clean_ext = extension.replace(" ", "-").replace(".", "-")
-            return f"practitioner-{clean_ext}"
-        elif root:
-            # Use last 16 chars of root (without dots) as fallback
-            root_suffix = root.replace(".", "").replace("-", "")[-16:]
-            return f"practitioner-{root_suffix}"
-        return "practitioner-unknown"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        return generate_id_from_identifiers("Practitioner", root, extension)
 
     def _generate_device_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a FHIR Device ID from C-CDA identifiers.
+        """Generate a FHIR Device ID using cached UUID v4.
 
         Args:
             root: The OID or UUID root
             extension: The extension value
 
         Returns:
-            A device resource ID string
+            A cached UUID v4 string
         """
-        if extension:
-            clean_ext = extension.replace(" ", "-").replace(".", "-")
-            return f"device-{clean_ext}"
-        elif root:
-            root_suffix = root.replace(".", "").replace("-", "")[-16:]
-            return f"device-{root_suffix}"
-        return "device-unknown"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        return generate_id_from_identifiers("Device", root, extension)
 
     def _generate_organization_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a FHIR Organization ID from C-CDA identifiers.
+        """Generate a FHIR Organization ID using cached UUID v4.
 
         Args:
             root: The OID or UUID root
             extension: The extension value
 
         Returns:
-            An organization resource ID string
+            A cached UUID v4 string
         """
-        if extension:
-            clean_ext = extension.replace(" ", "-").replace(".", "-")
-            return f"org-{clean_ext}"
-        elif root:
-            root_suffix = root.replace(".", "").replace("-", "")[-16:]
-            return f"org-{root_suffix}"
-        return "org-unknown"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        return generate_id_from_identifiers("Organization", root, extension)
 
 
 class AuthorExtractor:

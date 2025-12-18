@@ -101,9 +101,11 @@ class ObservationConverter(BaseConverter[Observation]):
                 fhir_obs["code"] = code_cc
 
         # 6. Subject (patient reference)
-        fhir_obs["subject"] = {
-            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
-        }
+        if self.reference_registry:
+            fhir_obs["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            fhir_obs["subject"] = {"reference": "Patient/patient-unknown"}
 
         # 7. Effective time (effectiveDateTime or effectivePeriod)
         effective_time = self._extract_effective_time(observation)
@@ -258,9 +260,11 @@ class ObservationConverter(BaseConverter[Observation]):
         }
 
         # 6. Subject (patient reference)
-        panel["subject"] = {
-            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
-        }
+        if self.reference_registry:
+            panel["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            panel["subject"] = {"reference": "Patient/patient-unknown"}
 
         # 7. Effective time from organizer
         if organizer.effective_time:
@@ -1181,9 +1185,13 @@ class ObservationConverter(BaseConverter[Observation]):
         }
 
         # Subject
-        bp_obs["subject"] = systolic_obs.get("subject", {
-            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
-        })
+        if "subject" in systolic_obs:
+            bp_obs["subject"] = systolic_obs["subject"]
+        elif self.reference_registry:
+            bp_obs["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            bp_obs["subject"] = {"reference": "Patient/patient-unknown"}
 
         # Effective time (use from systolic or diastolic)
         effective_time = systolic_obs.get("effectiveDateTime") or diastolic_obs.get("effectiveDateTime")

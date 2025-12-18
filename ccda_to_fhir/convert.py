@@ -40,7 +40,7 @@ from .converters.allergy_intolerance import convert_allergy_concern_act
 from .converters.author_extractor import AuthorExtractor, AuthorInfo
 from .converters.code_systems import CodeSystemMapper
 from .converters.composition import CompositionConverter
-from .converters.condition import convert_problem_concern_act
+from .converters.condition import convert_problem_concern_act, ConditionConverter
 from .converters.device import DeviceConverter
 from .converters.diagnostic_report import DiagnosticReportConverter
 from .converters.document_reference import DocumentReferenceConverter
@@ -94,6 +94,7 @@ def convert_medication(
     code_system_mapper=None,
     metadata_callback=None,
     section=None,
+    reference_registry=None,
 ) -> FHIRResourceDict:
     """Route medication activity to appropriate converter based on moodCode.
 
@@ -121,6 +122,7 @@ def convert_medication(
             code_system_mapper=code_system_mapper,
             metadata_callback=metadata_callback,
             section=section,
+            reference_registry=reference_registry,
         )
 
     # Route based on moodCode
@@ -131,6 +133,7 @@ def convert_medication(
             code_system_mapper=code_system_mapper,
             metadata_callback=metadata_callback,
             section=section,
+            reference_registry=reference_registry,
         )
     else:
         # Intent/order/proposal → MedicationRequest
@@ -139,6 +142,7 @@ def convert_medication(
             code_system_mapper=code_system_mapper,
             metadata_callback=metadata_callback,
             section=section,
+            reference_registry=reference_registry,
         )
 
 
@@ -193,12 +197,15 @@ class DocumentConverter:
         self.document_reference_converter = DocumentReferenceConverter(
             code_system_mapper=self.code_system_mapper,
             original_xml=original_xml,
+            reference_registry=self.reference_registry,
         )
         self.observation_converter = ObservationConverter(
-            code_system_mapper=self.code_system_mapper
+            code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
         )
         self.diagnostic_report_converter = DiagnosticReportConverter(
-            code_system_mapper=self.code_system_mapper
+            code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
         )
         self.procedure_converter = ProcedureConverter(
             code_system_mapper=self.code_system_mapper,
@@ -421,11 +428,16 @@ class DocumentConverter:
         # Clear medication registry at start of conversion
         clear_medication_registry()
 
+        # Reset ID cache for this document to ensure consistency within document
+        from ccda_to_fhir.id_generator import reset_id_cache
+        reset_id_cache()
+
         resources = []
         # Section→resource mapping for Composition.section[].entry references
         section_resource_map: dict[str, list[FHIRResourceDict]] = {}
 
         # Convert Patient (from recordTarget)
+        # Patient is extracted first so we can replace placeholders in clinical resources
         if ccda_doc.record_target:
             for record_target in ccda_doc.record_target:
                 try:
@@ -686,6 +698,14 @@ class DocumentConverter:
             if encounters:
                 section_resource_map[TemplateIds.ENCOUNTERS_SECTION] = encounters
 
+            # Extract and convert Encounter Diagnosis observations to Condition resources
+            encounter_diagnoses = self._extract_encounter_diagnosis_conditions(
+                ccda_doc.component.structured_body
+            )
+            resources.extend(encounter_diagnoses)
+            for diagnosis in encounter_diagnoses:
+                self.reference_registry.register_resource(diagnosis)
+
             # Notes (from Notes sections)
             notes = self._extract_notes(ccda_doc.component.structured_body)
             resources.extend(notes)
@@ -768,33 +788,6 @@ class DocumentConverter:
             # Fall back to collection bundle type
             logger.warning("Creating collection bundle instead of document bundle (Composition failed)")
 
-        # Update patient references in all resources (after Composition is created)
-        patient_id = None
-        if resources and len(resources) > 1:
-            # Patient is typically the second resource (after Composition)
-            for resource in resources:
-                if resource.get("resourceType") == "Patient":
-                    patient_id = resource.get("id")
-                    break
-
-        if patient_id:
-            # Validate that patient exists in registry and update references
-            try:
-                patient_ref = self.reference_registry.resolve_reference("Patient", patient_id)
-                for resource in resources:
-                    # Update subject references in all resources (including Composition)
-                    if "subject" in resource:
-                        resource["subject"] = patient_ref
-            except CCDAConversionError as e:
-                # Patient not in registry - this is a critical error
-                # The bundle would have broken references
-                logger.error(
-                    f"Cannot create valid bundle: {e}",
-                    exc_info=True,
-                    extra={"patient_id": patient_id}
-                )
-                raise
-
         # Create document bundle
         # A document bundle MUST have a Composition as the first entry
         bundle: JSONObject = {
@@ -841,6 +834,7 @@ class DocumentConverter:
             structured_body,
             code_system_mapper=self.code_system_mapper,
             metadata_callback=self._store_author_metadata,
+            reference_registry=self.reference_registry,
         )
 
     def _extract_allergies(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
@@ -855,6 +849,7 @@ class DocumentConverter:
         return self.allergy_processor.process(
             structured_body,
             code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
             metadata_callback=self._store_author_metadata,
         )
 
@@ -874,6 +869,7 @@ class DocumentConverter:
             structured_body,
             code_system_mapper=self.code_system_mapper,
             metadata_callback=self._store_author_metadata,
+            reference_registry=self.reference_registry,
         )
 
     def _extract_immunizations(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
@@ -889,6 +885,7 @@ class DocumentConverter:
             structured_body,
             code_system_mapper=self.code_system_mapper,
             metadata_callback=self._store_author_metadata,
+            reference_registry=self.reference_registry,
         )
 
     def _extract_vital_signs(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
@@ -1598,14 +1595,23 @@ class DocumentConverter:
             List of FHIR Procedure resources
         """
         # Process Procedure Activity Procedures
-        procedures = self.procedure_processor.process(structured_body)
+        procedures = self.procedure_processor.process(
+            structured_body,
+            reference_registry=self.reference_registry,
+        )
 
         # Process Procedure Activity Observations (also map to Procedure)
-        procedure_observations = self.procedure_observation_processor.process(structured_body)
+        procedure_observations = self.procedure_observation_processor.process(
+            structured_body,
+            reference_registry=self.reference_registry,
+        )
         procedures.extend(procedure_observations)
 
         # Process Procedure Activity Acts (also map to Procedure)
-        procedure_acts = self.procedure_act_processor.process(structured_body)
+        procedure_acts = self.procedure_act_processor.process(
+            structured_body,
+            reference_registry=self.reference_registry,
+        )
         procedures.extend(procedure_acts)
 
         # Store author metadata for each procedure
@@ -1725,7 +1731,10 @@ class DocumentConverter:
             List of FHIR Encounter resources
         """
         # Process encounters using the section processor
-        encounters = self.encounter_processor.process(structured_body)
+        encounters = self.encounter_processor.process(
+            structured_body,
+            reference_registry=self.reference_registry,
+        )
 
         # Store author metadata for each encounter
         # Note: We need to re-traverse to get the C-CDA elements for metadata
@@ -1786,6 +1795,70 @@ class DocumentConverter:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
                         self._store_encounter_metadata(temp_body, encounters)
+
+    def _extract_encounter_diagnosis_conditions(
+        self, structured_body: StructuredBody
+    ) -> list[FHIRResourceDict]:
+        """Extract Encounter Diagnosis observations and convert to Condition resources.
+
+        Per the mapping docs, Encounter Diagnosis observations should be converted to
+        Condition resources with category="encounter-diagnosis".
+
+        Args:
+            structured_body: The C-CDA structured body
+
+        Returns:
+            List of Condition resources from encounter diagnoses
+        """
+        conditions = []
+
+        if not structured_body.component:
+            return conditions
+
+        for comp in structured_body.component:
+            if not comp.section:
+                continue
+
+            section = comp.section
+
+            # Process encounters section
+            if section.entry:
+                for entry in section.entry:
+                    if hasattr(entry, "encounter") and entry.encounter:
+                        # Extract diagnosis observations from this encounter
+                        diagnosis_observations = self.encounter_converter.extract_diagnosis_observations(
+                            entry.encounter
+                        )
+
+                        # Convert each observation to a Condition with category="encounter-diagnosis"
+                        for obs in diagnosis_observations:
+                            try:
+                                # Use a special section code to trigger encounter-diagnosis category
+                                # The ConditionConverter maps section code "46240-8" to encounter-diagnosis
+                                condition_converter = ConditionConverter(
+                                    section_code="46240-8",  # Encounters section LOINC code
+                                    concern_act=None,
+                                    section=None,
+                                    code_system_mapper=self.code_system_mapper,
+                                    reference_registry=self.reference_registry,
+                                )
+                                condition = condition_converter.convert(obs)
+                                conditions.append(condition)
+                            except Exception as e:
+                                logger.error(
+                                    f"Error converting encounter diagnosis observation: {e}",
+                                    exc_info=True
+                                )
+
+            # Process nested sections
+            if section.component:
+                for nested_comp in section.component:
+                    if nested_comp.section:
+                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        nested_conditions = self._extract_encounter_diagnosis_conditions(temp_body)
+                        conditions.extend(nested_conditions)
+
+        return conditions
 
     def _extract_header_encounter(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict | None:
         """Extract and convert encompassingEncounter from document header.
@@ -1953,72 +2026,70 @@ class DocumentConverter:
             assigned_entity = encompassing_encounter.responsible_party.assigned_entity
             if assigned_entity.id and len(assigned_entity.id) > 0:
                 first_pract_id = assigned_entity.id[0]
-                # Generate practitioner ID from extension or root
-                if first_pract_id.extension:
-                    practitioner_id = first_pract_id.extension.replace(" ", "-").replace(".", "-")
-                elif first_pract_id.root:
-                    practitioner_id = first_pract_id.root.replace(".", "-").replace(":", "-")
-                else:
-                    practitioner_id = None
+                # Generate practitioner ID using cached UUID v4
+                from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                practitioner_id = generate_id_from_identifiers(
+                    "Practitioner",
+                    first_pract_id.root,
+                    first_pract_id.extension
+                )
 
-                if practitioner_id:
-                    participants.append({
-                        "type": [{
-                            "coding": [{
-                                "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                                "code": "PPRF",
-                                "display": "primary performer",
-                            }]
-                        }],
-                        "individual": {
-                            "reference": f"Practitioner/{practitioner_id}"
-                        }
-                    })
+                participants.append({
+                    "type": [{
+                        "coding": [{
+                            "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                            "code": "PPRF",
+                            "display": "primary performer",
+                        }]
+                    }],
+                    "individual": {
+                        "reference": f"Practitioner/{practitioner_id}"
+                    }
+                })
 
         # Encounter participants
         if encompassing_encounter.encounter_participant:
             for participant in encompassing_encounter.encounter_participant:
                 if participant.assigned_entity and participant.assigned_entity.id:
                     first_pract_id = participant.assigned_entity.id[0]
-                    # Generate practitioner ID from extension or root
-                    if first_pract_id.extension:
-                        practitioner_id = first_pract_id.extension.replace(" ", "-").replace(".", "-")
-                    elif first_pract_id.root:
-                        practitioner_id = first_pract_id.root.replace(".", "-").replace(":", "-")
-                    else:
-                        practitioner_id = None
+                    # Generate practitioner ID using cached UUID v4
+                    from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                    practitioner_id = generate_id_from_identifiers(
+                        "Practitioner",
+                        first_pract_id.root,
+                        first_pract_id.extension
+                    )
 
-                    if practitioner_id:
-                        part_dict = {
-                            "individual": {
-                                "reference": f"Practitioner/{practitioner_id}"
-                            }
+                    part_dict = {
+                        "individual": {
+                            "reference": f"Practitioner/{practitioner_id}"
                         }
-                        # Add type code - map C-CDA ParticipationFunction codes to FHIR ParticipationType codes
-                        # Reference: docs/mapping/08-encounter.md lines 217-223
-                        # Reference: docs/mapping/09-participations.md lines 217-232
-                        if participant.type_code:
-                            # Map known function codes (PCP→PPRF, ATTPHYS→ATND, ANEST→SPRF, etc.)
-                            mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(
-                                participant.type_code,
-                                participant.type_code  # Pass through if not in map
-                            )
-                            part_dict["type"] = [{
-                                "coding": [{
-                                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                                    "code": mapped_code,
-                                }]
+                    }
+                    # Add type code - map C-CDA ParticipationFunction codes to FHIR ParticipationType codes
+                    # Reference: docs/mapping/08-encounter.md lines 217-223
+                    # Reference: docs/mapping/09-participations.md lines 217-232
+                    if participant.type_code:
+                        # Map known function codes (PCP→PPRF, ATTPHYS→ATND, ANEST→SPRF, etc.)
+                        mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(
+                            participant.type_code,
+                            participant.type_code  # Pass through if not in map
+                        )
+                        part_dict["type"] = [{
+                            "coding": [{
+                                "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                                "code": mapped_code,
                             }]
-                        else:
-                            # Default to PART (participant) if no type code specified
-                            part_dict["type"] = [{
-                                "coding": [{
-                                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                                    "code": "PART",
-                                    "display": "participant",
-                                }]
+                        }]
+                    else:
+                        # Default to PART (participant) if no type code specified
+                        part_dict["type"] = [{
+                            "coding": [{
+                                "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                                "code": "PART",
+                                "display": "participant",
                             }]
-                        participants.append(part_dict)
+                        }]
+                    participants.append(part_dict)
 
         if participants:
             fhir_encounter["participant"] = participants
@@ -2055,8 +2126,11 @@ class DocumentConverter:
                         "status": "completed"  # Header encounters are completed
                     }]
 
-        # Subject: Patient reference (will be updated later with actual patient ID)
-        fhir_encounter["subject"] = {"reference": "Patient/patient-placeholder"}
+        # Patient reference (from recordTarget in document header)
+        if self.reference_registry:
+            fhir_encounter["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            fhir_encounter["subject"] = {"reference": "Patient/patient-unknown"}
 
         return fhir_encounter
 
@@ -2111,28 +2185,25 @@ class DocumentConverter:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
                         self._store_note_metadata(temp_body, notes)
 
-    def _generate_note_id_from_identifier(self, identifier) -> str | None:
+    def _generate_note_id_from_identifier(self, identifier) -> str:
         """Generate a note ID matching NoteActivityConverter logic.
 
         Args:
             identifier: Note II identifier
 
         Returns:
-            Generated ID string or None
+            Generated ID string (matches NoteActivityConverter._generate_note_id)
         """
+        # Must match the exact logic in NoteActivityConverter._generate_note_id
+        from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
+
         if not identifier:
-            return None
+            return generate_id()
 
-        # Use extension if present
-        if identifier.extension:
-            clean_ext = identifier.extension.replace(" ", "-").replace(".", "-").lower()
-            return f"note-{clean_ext}"
-        elif identifier.root:
-            # Use hash of root if no extension (matching NoteActivityConverter)
-            hash_val = hashlib.sha256(identifier.root.encode()).hexdigest()[:16]
-            return f"note-{hash_val}"
+        root = identifier.root if hasattr(identifier, 'root') and identifier.root else None
+        extension = identifier.extension if hasattr(identifier, 'extension') and identifier.extension else None
 
-        return None
+        return generate_id_from_identifiers("DocumentReference", root, extension)
 
     def _extract_notes(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Note Activities from the structured body.
@@ -2146,6 +2217,7 @@ class DocumentConverter:
         notes = self.note_processor.process(
             structured_body,
             code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
         )
 
         # Store author metadata for Provenance generation
@@ -2320,11 +2392,16 @@ class DocumentConverter:
         Returns:
             Tuple of (devices, practitioners, organizations) lists
         """
+        logger.info(f"_create_resources_from_author_info called with {len(author_info_list)} authors")
+        logger.info(f"Already seen: {len(seen_practitioners)} practitioners, {len(seen_organizations)} organizations")
+
         devices = []
         practitioners = []
         organizations = []
 
         for author_info in author_info_list:
+            logger.debug(f"Processing author: pract_id={author_info.practitioner_id}, org_id={author_info.organization_id}, device_id={author_info.device_id}")
+
             # Create Device resource if needed
             if author_info.device_id and author_info.device_id not in seen_devices:
                 # Reconstruct AssignedAuthor from the original Author
@@ -2362,6 +2439,10 @@ class DocumentConverter:
                                 logger.warning("Practitioner failed validation, skipping", practitioner_id=practitioner_id)
                         except Exception as e:
                             logger.error("Error converting practitioner from entry author", exc_info=True)
+                    else:
+                        logger.debug(f"Skipping practitioner {author_info.practitioner_id} - no assigned_person in C-CDA")
+                else:
+                    logger.debug(f"Skipping practitioner {author_info.practitioner_id} - no author.assigned_author in metadata")
 
             # Create Organization resource if needed
             if author_info.organization_id and author_info.organization_id not in seen_organizations:
@@ -2383,6 +2464,10 @@ class DocumentConverter:
                                 logger.warning("Organization failed validation, skipping", org_id=org_id)
                         except Exception as e:
                             logger.error("Error converting organization from entry author", exc_info=True)
+                    else:
+                        logger.debug(f"Skipping organization {author_info.organization_id} - no represented_organization in C-CDA")
+                else:
+                    logger.debug(f"Skipping organization {author_info.organization_id} - no author.assigned_author in metadata")
 
         return (devices, practitioners, organizations)
 

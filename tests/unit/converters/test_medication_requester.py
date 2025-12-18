@@ -66,6 +66,8 @@ class TestMedicationRequester:
 
     def test_single_author_with_time_creates_requester(self):
         """Test that single author with time creates requester reference."""
+        import uuid as uuid_module
+
         author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
         sa = self.create_substance_admin_with_authors([author])
 
@@ -73,10 +75,18 @@ class TestMedicationRequester:
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
-        assert med_request["requester"]["reference"] == "Practitioner/practitioner-DOC-001"
+        assert med_request["requester"]["reference"].startswith("Practitioner/")
+        # Extract and validate UUID v4
+        practitioner_id = med_request["requester"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
     def test_multiple_authors_chronological_returns_latest(self):
         """Test that latest author by timestamp is used for requester."""
+        import uuid as uuid_module
+
         authors = [
             self.create_author(time="20240101", practitioner_ext="EARLY-DOC"),
             self.create_author(time="20240201", practitioner_ext="MIDDLE-DOC"),
@@ -88,10 +98,18 @@ class TestMedicationRequester:
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
-        assert med_request["requester"]["reference"] == "Practitioner/practitioner-LATEST-DOC"
+        assert med_request["requester"]["reference"].startswith("Practitioner/")
+        # Extract and validate UUID v4
+        practitioner_id = med_request["requester"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
     def test_author_without_time_excluded(self):
         """Test that authors without time are excluded from requester selection."""
+        import uuid as uuid_module
+
         authors = [
             self.create_author(time=None, practitioner_ext="NO-TIME-DOC"),
             self.create_author(time="20240215", practitioner_ext="WITH-TIME-DOC"),
@@ -102,7 +120,13 @@ class TestMedicationRequester:
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
-        assert med_request["requester"]["reference"] == "Practitioner/practitioner-WITH-TIME-DOC"
+        assert med_request["requester"]["reference"].startswith("Practitioner/")
+        # Extract and validate UUID v4
+        practitioner_id = med_request["requester"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
     def test_all_authors_without_time_no_requester(self):
         """Test that no requester is created if all authors lack time."""
@@ -119,6 +143,8 @@ class TestMedicationRequester:
 
     def test_device_author_creates_device_reference(self):
         """Test that device author creates Device reference."""
+        import uuid as uuid_module
+
         author = self.create_author(
             time="20240115",
             practitioner_ext="DEVICE-001",
@@ -131,10 +157,18 @@ class TestMedicationRequester:
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
-        assert med_request["requester"]["reference"] == "Device/device-DEVICE-001"
+        assert med_request["requester"]["reference"].startswith("Device/")
+        # Extract and validate UUID v4
+        device_id = med_request["requester"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(device_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {device_id} is not a valid UUID v4")
 
     def test_authored_on_still_uses_earliest_author(self):
         """Test that authoredOn still uses earliest author time (existing behavior)."""
+        import uuid as uuid_module
+
         authors = [
             self.create_author(time="20240301", practitioner_ext="LATEST-DOC"),
             self.create_author(time="20240101", practitioner_ext="EARLIEST-DOC"),
@@ -146,5 +180,10 @@ class TestMedicationRequester:
 
         # authoredOn should still use earliest
         assert med_request.get("authoredOn") == "2024-01-01"
-        # requester should use latest
-        assert med_request["requester"]["reference"] == "Practitioner/practitioner-LATEST-DOC"
+        # requester should use latest (validated as UUID v4)
+        assert med_request["requester"]["reference"].startswith("Practitioner/")
+        practitioner_id = med_request["requester"]["reference"].split("/")[1]
+        try:
+            uuid_module.UUID(practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")

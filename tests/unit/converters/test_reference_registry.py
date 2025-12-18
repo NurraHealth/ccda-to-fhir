@@ -115,9 +115,9 @@ class TestResourceRegistration:
         registry.register_resource(patient1)
         registry.register_resource(patient2)
 
-        # Should log warning about duplicate
-        assert "Duplicate resource ID" in caplog.text
-        assert "Patient/patient-123" in caplog.text
+        # Should silently skip duplicate (expected with ID caching)
+        # Second registration is ignored, first one wins
+        assert registry.get_resource("Patient", "patient-123") == patient1
 
     def test_ignores_resource_without_resource_type(self, caplog):
         """Test that resources without resourceType are rejected."""

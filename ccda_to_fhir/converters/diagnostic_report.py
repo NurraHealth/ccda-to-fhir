@@ -31,7 +31,10 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
     def __init__(self, *args, **kwargs):
         """Initialize the diagnostic report converter."""
         super().__init__(*args, **kwargs)
-        self.observation_converter = ObservationConverter()
+        self.observation_converter = ObservationConverter(
+            code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
+        )
 
     def convert(self, organizer: Organizer, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
         """Convert a C-CDA Result Organizer to a FHIR DiagnosticReport and Observations.
@@ -90,9 +93,12 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
                 report["code"] = code_cc
 
         # 6. Subject (patient reference)
-        report["subject"] = {
-            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
-        }
+        # Patient reference (from recordTarget in document header)
+        if self.reference_registry:
+            report["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            report["subject"] = {"reference": "Patient/patient-unknown"}
 
         # 7. Effective time
         effective_time = self._extract_effective_time(organizer)

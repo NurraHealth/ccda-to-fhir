@@ -51,6 +51,13 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if not procedure.code:
             raise ValueError("Procedure Activity must have a code")
 
+        # Check if code has null flavor (no actual code value)
+        # Per C-CDA spec, code is required but may have nullFlavor
+        has_valid_code = (
+            hasattr(procedure.code, "code") and procedure.code.code
+            and not (hasattr(procedure.code, "null_flavor") and procedure.code.null_flavor)
+        )
+
         fhir_procedure: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.PROCEDURE,
         }
@@ -76,12 +83,37 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         fhir_procedure["status"] = status
 
         # Code (required)
-        fhir_procedure["code"] = self._convert_code(procedure.code)
+        # If code has nullFlavor, try to extract text from narrative
+        if has_valid_code:
+            fhir_procedure["code"] = self._convert_code(procedure.code)
+        else:
+            # Code has nullFlavor - extract text from narrative if available
+            code_text = None
+            if hasattr(procedure, "text") and procedure.text:
+                # Try to resolve text reference to section narrative
+                code_text = self.extract_original_text(procedure.text, section=section)
 
-        # Subject (patient reference)
-        fhir_procedure["subject"] = {
-            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
-        }
+            if code_text:
+                # Create CodeableConcept with only text
+                fhir_procedure["code"] = {"text": code_text}
+            else:
+                # No text available - use data-absent-reason extension
+                fhir_procedure["code"] = {
+                    "text": "Procedure code not specified"
+                }
+                fhir_procedure["_code"] = {
+                    "extension": [{
+                        "url": FHIRSystems.DATA_ABSENT_REASON,
+                        "valueCode": "unknown"
+                    }]
+                }
+
+        # Patient reference (from recordTarget in document header)
+        if self.reference_registry:
+            fhir_procedure["subject"] = self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            fhir_procedure["subject"] = {"reference": "Patient/patient-unknown"}
 
         # Performed date/time
         if procedure.effective_time:
@@ -539,7 +571,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         return "condition-unknown"
 
     def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a condition resource ID.
+        """Generate FHIR Condition ID using cached UUID v4 from C-CDA identifiers.
 
         Matches the ID generation logic in ConditionConverter for consistency.
 
@@ -548,16 +580,11 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             extension: The extension value
 
         Returns:
-            A resource ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        if extension:
-            clean_ext = extension.lower().replace(" ", "-").replace(".", "-")
-            return f"condition-{clean_ext}"
-        elif root:
-            root_suffix = root.replace(".", "").replace("-", "")[-16:]
-            return f"condition-{root_suffix}"
-        else:
-            return "condition-unknown"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Condition", root, extension)
 
     def _extract_outcomes(self, entry_relationships: list) -> JSONObject | None:
         """Extract FHIR outcome from C-CDA entry relationships.
@@ -690,41 +717,60 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         return notes
 
     def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a FHIR Practitioner ID from C-CDA identifiers."""
-        if extension:
-            return f"practitioner-{extension.replace(' ', '-').replace('.', '-')}"
-        elif root:
-            return f"practitioner-{root.replace('.', '-')}"
-        else:
-            return "practitioner-unknown"
+        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Practitioner", root, extension)
 
     def _generate_organization_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a FHIR Organization ID from C-CDA identifiers."""
-        if extension:
-            return f"organization-{extension.replace(' ', '-').replace('.', '-')}"
-        elif root:
-            return f"organization-{root.replace('.', '-')}"
-        else:
-            return "organization-unknown"
+        """Generate FHIR Organization ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Organization", root, extension)
 
     def _generate_location_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a FHIR Location ID from C-CDA identifiers."""
-        if extension:
-            return extension.replace(" ", "-").replace(".", "-")
-        elif root:
-            return root.replace(".", "-")
-        else:
-            return "location-unknown"
+        """Generate FHIR Location ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Location", root, extension)
 
     def _generate_device_id(self, root: str | None, extension: str | None) -> str:
-        """Generate consistent Device ID from C-CDA identifiers."""
-        if extension:
-            clean_ext = extension.replace(' ', '-').replace('.', '-')
-            return f"device-{clean_ext}"
-        elif root:
-            root_suffix = root.replace('.', '-').replace('urn:oid:', '')[-16:]
-            return f"device-{root_suffix}"
-        return "device-unknown"
+        """Generate FHIR Device ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Device", root, extension)
 
     def _convert_body_site_with_qualifiers(
         self, code: CD

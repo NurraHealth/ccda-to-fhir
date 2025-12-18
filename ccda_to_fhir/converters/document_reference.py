@@ -55,10 +55,9 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         }
 
         # Generate ID from document identifier
-        if clinical_document.id:
-            doc_id = self._generate_document_reference_id(clinical_document.id)
-            if doc_id:
-                document_ref["id"] = doc_id
+        document_ref["id"] = self._generate_document_reference_id(
+            clinical_document.id if clinical_document.id else None
+        )
 
         # Master identifier (document's unique identifier)
         if clinical_document.id:
@@ -142,29 +141,26 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
 
         return document_ref
 
-    def _generate_document_reference_id(self, document_id: II) -> str | None:
+    def _generate_document_reference_id(self, document_id: II) -> str:
         """Generate a FHIR resource ID from the document identifier.
 
         Args:
             document_id: Document II identifier
 
         Returns:
-            Generated ID string or None
+            Generated ID string (never None - generates UUID fallback if needed)
         """
         if not document_id:
-            return None
+            # No document ID - generate UUID fallback
+            from ccda_to_fhir.id_generator import generate_id
+            return generate_id()
 
-        # Use document root and extension to create deterministic ID
-        if document_id.extension:
-            # Clean extension for use in ID
-            clean_ext = document_id.extension.replace(" ", "-").replace(".", "-").lower()
-            return f"doc-{clean_ext}"
-        elif document_id.root:
-            # Use hash of root if no extension
-            hash_val = hashlib.sha256(document_id.root.encode()).hexdigest()[:16]
-            return f"doc-{hash_val}"
+        # Use document root and extension to create ID via cached UUID generator
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        root = document_id.root if hasattr(document_id, 'root') and document_id.root else None
+        extension = document_id.extension if hasattr(document_id, 'extension') and document_id.extension else None
 
-        return None
+        return generate_id_from_identifiers("DocumentReference", root, extension)
 
     def _convert_master_identifier(self, document_id: II) -> JSONObject | None:
         """Convert document ID to masterIdentifier.
@@ -296,8 +292,12 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         Returns:
             FHIR Reference
         """
-        # Use placeholder pattern that will be resolved later
-        return {"reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"}
+        # Patient reference (from recordTarget in document header)
+        if self.reference_registry:
+            return self.reference_registry.get_patient_reference()
+        else:
+            # Fallback for unit tests without registry
+            return {"reference": "Patient/patient-unknown"}
 
     def _convert_author_references(self, authors: list) -> list[JSONObject]:
         """Convert document authors to FHIR references.
@@ -340,47 +340,36 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         return author_refs
 
     def _generate_practitioner_id(self, identifier: II) -> str:
-        """Generate practitioner ID from identifier.
+        """Generate practitioner ID using cached UUID v4.
 
         Args:
             identifier: Practitioner identifier
 
         Returns:
-            Generated ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        # Check for NPI
-        from ccda_to_fhir.constants import CodeSystemOIDs
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        if identifier.root == CodeSystemOIDs.NPI and identifier.extension:
-            return f"npi-{identifier.extension}"
+        root = identifier.root if identifier.root else None
+        extension = identifier.extension if identifier.extension else None
 
-        # Use extension if present
-        if identifier.extension:
-            return identifier.extension.replace(" ", "-").replace(".", "-").lower()
-
-        # Use last 16 chars of root
-        if identifier.root:
-            return identifier.root.replace(".", "")[-16:]
-
-        return "practitioner-unknown"
+        return generate_id_from_identifiers("Practitioner", root, extension)
 
     def _generate_organization_id(self, identifier: II) -> str:
-        """Generate organization ID from identifier.
+        """Generate organization ID using cached UUID v4.
 
         Args:
             identifier: Organization identifier
 
         Returns:
-            Generated ID string
+            Generated UUID v4 string (cached for consistency)
         """
-        if identifier.extension:
-            clean_ext = identifier.extension.replace(" ", "-").replace(".", "-").lower()
-            return f"org-{clean_ext}"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        if identifier.root:
-            return f"org-{identifier.root.replace('.', '')[-16:]}"
+        root = identifier.root if identifier.root else None
+        extension = identifier.extension if identifier.extension else None
 
-        return "organization-unknown"
+        return generate_id_from_identifiers("Organization", root, extension)
 
     def _convert_authenticator_reference(self, legal_authenticator) -> JSONObject | None:
         """Convert legal authenticator to FHIR reference.

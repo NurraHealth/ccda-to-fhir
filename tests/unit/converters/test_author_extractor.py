@@ -147,16 +147,24 @@ class TestExtractFromConcernAct:
         sample_concern_act_with_author: Act,
     ) -> None:
         """Test extracting practitioner author from concern act."""
+        import uuid as uuid_module
+
         authors = author_extractor.extract_from_concern_act(sample_concern_act_with_author)
 
         assert len(authors) == 1
         assert authors[0].practitioner_id is not None
-        assert authors[0].practitioner_id.startswith("practitioner-")
+        # Validate UUID v4 format
+        try:
+            uuid_module.UUID(authors[0].practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {authors[0].practitioner_id} is not a valid UUID v4")
 
     def test_extract_from_concern_act_with_device(
         self, author_extractor: AuthorExtractor, sample_device_author: Author
     ) -> None:
         """Test extracting device author from concern act."""
+        import uuid as uuid_module
+
         act = Act()
         act.author = [sample_device_author]
 
@@ -164,7 +172,11 @@ class TestExtractFromConcernAct:
 
         assert len(authors) == 1
         assert authors[0].device_id is not None
-        assert authors[0].device_id.startswith("device-")
+        # Validate UUID v4 format
+        try:
+            uuid_module.UUID(authors[0].device_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {authors[0].device_id} is not a valid UUID v4")
         assert authors[0].practitioner_id is None
 
     def test_extract_from_concern_act_no_author(
@@ -236,35 +248,56 @@ class TestIDGeneration:
     def test_extract_practitioner_id_generation(
         self, author_extractor: AuthorExtractor, sample_practitioner_author: Author
     ) -> None:
-        """Test that practitioner IDs are generated from assignedAuthor.id."""
+        """Test that practitioner IDs are generated from assignedAuthor.id as UUID v4."""
+        import uuid as uuid_module
+
         observation = Observation()
         observation.author = [sample_practitioner_author]
 
         authors = author_extractor.extract_from_observation(observation)
 
-        assert authors[0].practitioner_id == "practitioner-1234567890"
+        assert authors[0].practitioner_id is not None
+        # Validate UUID v4 format
+        try:
+            uuid_module.UUID(authors[0].practitioner_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {authors[0].practitioner_id} is not a valid UUID v4")
 
     def test_extract_device_id_generation(
         self, author_extractor: AuthorExtractor, sample_device_author: Author
     ) -> None:
-        """Test that device IDs are generated from assignedAuthor.id."""
+        """Test that device IDs are generated from assignedAuthor.id as UUID v4."""
+        import uuid as uuid_module
+
         observation = Observation()
         observation.author = [sample_device_author]
 
         authors = author_extractor.extract_from_observation(observation)
 
-        assert authors[0].device_id == "device-DEVICE-001"
+        assert authors[0].device_id is not None
+        # Validate UUID v4 format
+        try:
+            uuid_module.UUID(authors[0].device_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {authors[0].device_id} is not a valid UUID v4")
 
     def test_extract_organization_id_from_represented_org(
         self, author_extractor: AuthorExtractor, sample_practitioner_author: Author
     ) -> None:
-        """Test that organization IDs are extracted from representedOrganization."""
+        """Test that organization IDs are extracted from representedOrganization as UUID v4."""
+        import uuid as uuid_module
+
         observation = Observation()
         observation.author = [sample_practitioner_author]
 
         authors = author_extractor.extract_from_observation(observation)
 
-        assert authors[0].organization_id == "org-ORG-001"
+        assert authors[0].organization_id is not None
+        # Validate UUID v4 format
+        try:
+            uuid_module.UUID(authors[0].organization_id, version=4)
+        except ValueError:
+            pytest.fail(f"ID {authors[0].organization_id} is not a valid UUID v4")
 
 
 # ============================================================================
