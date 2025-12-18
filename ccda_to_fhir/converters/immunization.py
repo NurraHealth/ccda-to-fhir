@@ -151,12 +151,20 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if reactions:
             immunization["reaction"] = reactions
 
-        # 15. Performer - from performer
+        # 15. Supporting observations - from SPRT entryRelationship
+        # Returns Observation resources for evidence/supporting observations
+        supporting_observations = self._extract_supporting_observations(substance_admin, immunization_id)
+
+        # 16. Component observations - from COMP entryRelationship
+        # Returns Observation resources for complications/adverse events
+        component_observations = self._extract_component_observations(substance_admin, immunization_id)
+
+        # 17. Performer - from performer
         performers = self._extract_performers(substance_admin)
         if performers:
             immunization["performer"] = performers
 
-        # 16. Notes - from Comment Activity entryRelationship
+        # 18. Notes - from Comment Activity entryRelationship
         notes = self._extract_notes(substance_admin)
         if notes:
             immunization["note"] = notes
@@ -177,7 +185,10 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if narrative:
             immunization["text"] = narrative
 
-        return immunization, reaction_observations
+        # Collect all additional observations (reactions, supporting, and component observations)
+        all_observations = reaction_observations + supporting_observations + component_observations
+
+        return immunization, all_observations
 
     def _generate_immunization_id(self, root: str | None, extension: str | None) -> str:
         """Generate a FHIR Immunization ID from C-CDA identifier.
@@ -636,6 +647,229 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             return self.convert_date(effective_time.value)
 
         return None
+
+    def _extract_supporting_observations(
+        self, substance_admin: SubstanceAdministration, immunization_id: str
+    ) -> list[JSONObject]:
+        """Extract supporting observations from SPRT entry relationships.
+
+        Creates separate Observation resources for supporting observations (evidence)
+        such as antibody titers, immunity tests, etc.
+
+        Args:
+            substance_admin: The C-CDA SubstanceAdministration
+            immunization_id: The ID of the parent Immunization resource
+
+        Returns:
+            List of FHIR Observation resources
+        """
+        observations = []
+
+        if not substance_admin.entry_relationship:
+            return observations
+
+        # Find SPRT (supporting) observations
+        for idx, entry_rel in enumerate(substance_admin.entry_relationship):
+            if entry_rel.type_code == TypeCodes.SPRT and entry_rel.observation:
+                observation = entry_rel.observation
+
+                # Create Observation resource for this supporting observation
+                observation_resource = self._create_supporting_observation(
+                    observation, immunization_id, idx
+                )
+
+                if observation_resource:
+                    observations.append(observation_resource)
+
+        return observations
+
+    def _create_supporting_observation(
+        self, observation, immunization_id: str, idx: int
+    ) -> JSONObject | None:
+        """Create an Observation resource for a supporting observation.
+
+        Args:
+            observation: The C-CDA Observation
+            immunization_id: The ID of the parent Immunization resource
+            idx: Index of this observation (for unique ID generation)
+
+        Returns:
+            FHIR Observation resource or None
+        """
+        # Extract code from observation.code
+        if not observation.code:
+            return None
+
+        code = self._convert_code_to_codeable_concept(observation.code)
+        if not code:
+            return None
+
+        # Generate unique ID for the supporting observation
+        observation_id = f"{immunization_id}-supporting-{idx}"
+
+        observation_resource: JSONObject = {
+            "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
+            "id": observation_id,
+            "status": "final",
+            "code": code,
+        }
+
+        # Add patient reference (will be updated by main converter)
+        observation_resource["subject"] = {
+            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
+        }
+
+        # Extract effectiveDateTime if available
+        if observation.effective_time:
+            # Try to get the value from effective_time
+            if hasattr(observation.effective_time, 'value') and observation.effective_time.value:
+                date = self.convert_date(observation.effective_time.value)
+                if date:
+                    observation_resource["effectiveDateTime"] = date
+            # Try low value for IVL_TS
+            elif hasattr(observation.effective_time, 'low') and observation.effective_time.low:
+                if hasattr(observation.effective_time.low, 'value') and observation.effective_time.low.value:
+                    date = self.convert_date(observation.effective_time.low.value)
+                    if date:
+                        observation_resource["effectiveDateTime"] = date
+
+        # Extract value based on type
+        if observation.value:
+            # Check for PQ (physical quantity)
+            if hasattr(observation.value, 'value') and hasattr(observation.value, 'unit'):
+                quantity: JSONObject = {}
+                if observation.value.value is not None:
+                    # Ensure value is a number (float or int)
+                    try:
+                        value = float(observation.value.value) if isinstance(observation.value.value, str) else observation.value.value
+                        # Convert to int if it's a whole number
+                        if value == int(value):
+                            quantity["value"] = int(value)
+                        else:
+                            quantity["value"] = value
+                    except (ValueError, TypeError):
+                        quantity["value"] = observation.value.value
+                if observation.value.unit:
+                    quantity["unit"] = observation.value.unit
+                    # Map common UCUM units
+                    if observation.value.unit == ":{titer}":
+                        quantity["system"] = "http://unitsofmeasure.org"
+                        quantity["code"] = "{titer}"
+                if quantity:
+                    observation_resource["valueQuantity"] = quantity
+            # Check for CD/CE (coded value)
+            elif isinstance(observation.value, (CD, CE)):
+                value_code = self._convert_code_to_codeable_concept(observation.value)
+                if value_code:
+                    observation_resource["valueCodeableConcept"] = value_code
+
+        # Extract interpretation code if available
+        if observation.interpretation_code and len(observation.interpretation_code) > 0:
+            interpretations = []
+            for interp_code in observation.interpretation_code:
+                interpretation = self._convert_code_to_codeable_concept(interp_code)
+                if interpretation:
+                    interpretations.append(interpretation)
+            if interpretations:
+                observation_resource["interpretation"] = interpretations
+
+        return observation_resource
+
+    def _extract_component_observations(
+        self, substance_admin: SubstanceAdministration, immunization_id: str
+    ) -> list[JSONObject]:
+        """Extract component observations from COMP entry relationships.
+
+        Creates separate Observation resources for component observations (complications)
+        such as injection site infections, adverse events, etc.
+
+        Args:
+            substance_admin: The C-CDA SubstanceAdministration
+            immunization_id: The ID of the parent Immunization resource
+
+        Returns:
+            List of FHIR Observation resources
+        """
+        observations = []
+
+        if not substance_admin.entry_relationship:
+            return observations
+
+        # Find COMP (component) observations
+        for idx, entry_rel in enumerate(substance_admin.entry_relationship):
+            if entry_rel.type_code == TypeCodes.COMP and entry_rel.observation:
+                observation = entry_rel.observation
+
+                # Create Observation resource for this component observation
+                observation_resource = self._create_component_observation(
+                    observation, immunization_id, idx
+                )
+
+                if observation_resource:
+                    observations.append(observation_resource)
+
+        return observations
+
+    def _create_component_observation(
+        self, observation, immunization_id: str, idx: int
+    ) -> JSONObject | None:
+        """Create an Observation resource for a component observation (complication).
+
+        Args:
+            observation: The C-CDA Observation
+            immunization_id: The ID of the parent Immunization resource
+            idx: Index of this observation (for unique ID generation)
+
+        Returns:
+            FHIR Observation resource or None
+        """
+        # Extract code from observation.code (usually "Problem" or similar)
+        if not observation.code:
+            return None
+
+        code = self._convert_code_to_codeable_concept(observation.code)
+        if not code:
+            return None
+
+        # Extract value from observation.value (this is the actual complication/problem)
+        if not observation.value or not isinstance(observation.value, (CD, CE)):
+            return None
+
+        value_code = self._convert_code_to_codeable_concept(observation.value)
+        if not value_code:
+            return None
+
+        # Generate unique ID for the component observation
+        observation_id = f"{immunization_id}-complication-{idx}"
+
+        observation_resource: JSONObject = {
+            "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
+            "id": observation_id,
+            "status": "final",
+            "code": code,
+            "valueCodeableConcept": value_code,
+        }
+
+        # Add patient reference (will be updated by main converter)
+        observation_resource["subject"] = {
+            "reference": f"{FHIRCodes.ResourceTypes.PATIENT}/patient-placeholder"
+        }
+
+        # Extract effectiveDateTime if available (usually has low value for when complication started)
+        if observation.effective_time:
+            # Try low value for IVL_TS (when the complication started)
+            if hasattr(observation.effective_time, 'low') and observation.effective_time.low:
+                if hasattr(observation.effective_time.low, 'value') and observation.effective_time.low.value:
+                    date = self.convert_date(observation.effective_time.low.value)
+                    if date:
+                        observation_resource["effectiveDateTime"] = date
+            # Try direct value from TS
+            elif hasattr(observation.effective_time, 'value') and observation.effective_time.value:
+                date = self.convert_date(observation.effective_time.value)
+                if date:
+                    observation_resource["effectiveDateTime"] = date
+
+        return observation_resource
 
     def _extract_performers(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
         """Extract performer information.

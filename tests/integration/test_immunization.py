@@ -476,3 +476,149 @@ class TestImmunizationConversion:
         note = immunization["note"][0]
         assert "text" in note
         assert note["text"] == "Patient tolerated the vaccine well. No immediate adverse reactions observed."
+
+    def test_supporting_observations_create_separate_resources(
+        self, ccda_immunization_with_supporting_observations: str
+    ) -> None:
+        """Test that SPRT entry relationships create separate Observation resources."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_immunization_with_supporting_observations, IMMUNIZATIONS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        immunization = _find_resource_in_bundle(bundle, "Immunization")
+        assert immunization is not None
+
+        # Find all observations in the bundle
+        observations = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Observation"
+        ]
+
+        # Should have at least 2 supporting observations (SPRT) and 1 complication (COMP)
+        assert len(observations) >= 3
+
+        # Check that we have supporting observations with correct codes
+        supporting_codes = [
+            obs["code"]["coding"][0]["code"]
+            for obs in observations
+            if "code" in obs and "coding" in obs["code"]
+        ]
+
+        # Should include antibody titer (22600-1) and immunity test (94661-0)
+        assert "22600-1" in supporting_codes  # Influenza virus A Ab [Titer]
+        assert "94661-0" in supporting_codes  # SARS-CoV-2 stimulated gamma interferon
+
+    def test_component_observations_create_separate_resources(
+        self, ccda_immunization_with_supporting_observations: str
+    ) -> None:
+        """Test that COMP entry relationships create separate Observation resources for complications."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_immunization_with_supporting_observations, IMMUNIZATIONS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        immunization = _find_resource_in_bundle(bundle, "Immunization")
+        assert immunization is not None
+
+        # Find all observations in the bundle
+        observations = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Observation"
+        ]
+
+        # Should have complication observation
+        complication_obs = None
+        for obs in observations:
+            if "code" in obs and "coding" in obs["code"]:
+                for coding in obs["code"]["coding"]:
+                    # Injection site infection: 40983000
+                    if "valueCodeableConcept" in obs:
+                        value_codings = obs["valueCodeableConcept"].get("coding", [])
+                        for value_coding in value_codings:
+                            if value_coding.get("code") == "40983000":
+                                complication_obs = obs
+                                break
+
+        assert complication_obs is not None
+        assert complication_obs["status"] == "final"
+
+    def test_supporting_observation_has_correct_structure(
+        self, ccda_immunization_with_supporting_observations: str
+    ) -> None:
+        """Test that supporting observations have correct FHIR structure."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_immunization_with_supporting_observations, IMMUNIZATIONS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        # Find observations with LOINC code 22600-1 (Influenza virus A Ab [Titer])
+        observations = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Observation"
+        ]
+
+        titer_obs = None
+        for obs in observations:
+            if "code" in obs and "coding" in obs["code"]:
+                for coding in obs["code"]["coding"]:
+                    if coding.get("code") == "22600-1":
+                        titer_obs = obs
+                        break
+
+        assert titer_obs is not None
+        assert titer_obs["resourceType"] == "Observation"
+        assert titer_obs["status"] == "final"
+
+        # Should have code from observation.code
+        assert "code" in titer_obs
+        assert titer_obs["code"]["coding"][0]["code"] == "22600-1"
+        assert "Influenza" in titer_obs["code"]["coding"][0]["display"]
+
+        # Should have value (PQ value="1" unit=":{titer}")
+        assert "valueQuantity" in titer_obs
+        assert titer_obs["valueQuantity"]["value"] == 1
+
+        # Should have interpretation code (POS = Positive)
+        assert "interpretation" in titer_obs
+        assert titer_obs["interpretation"][0]["coding"][0]["code"] == "POS"
+
+    def test_component_observation_has_correct_structure(
+        self, ccda_immunization_with_supporting_observations: str
+    ) -> None:
+        """Test that component observations (complications) have correct FHIR structure."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_immunization_with_supporting_observations, IMMUNIZATIONS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+
+        # Find observations with value code 40983000 (Injection site infection)
+        observations = [
+            entry["resource"]
+            for entry in bundle.get("entry", [])
+            if entry.get("resource", {}).get("resourceType") == "Observation"
+        ]
+
+        infection_obs = None
+        for obs in observations:
+            if "valueCodeableConcept" in obs and "coding" in obs["valueCodeableConcept"]:
+                for coding in obs["valueCodeableConcept"]["coding"]:
+                    if coding.get("code") == "40983000":
+                        infection_obs = obs
+                        break
+
+        assert infection_obs is not None
+        assert infection_obs["resourceType"] == "Observation"
+        assert infection_obs["status"] == "final"
+
+        # Should have code (Problem: 55607006)
+        assert "code" in infection_obs
+        assert infection_obs["code"]["coding"][0]["code"] == "55607006"
+
+        # Should have value (Injection site infection: 40983000)
+        assert "valueCodeableConcept" in infection_obs
+        assert infection_obs["valueCodeableConcept"]["coding"][0]["code"] == "40983000"
+        assert "infection" in infection_obs["valueCodeableConcept"]["coding"][0]["display"].lower()

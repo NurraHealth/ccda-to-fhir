@@ -712,6 +712,12 @@ def ccda_immunization_with_comment() -> str:
 
 
 @pytest.fixture
+def ccda_immunization_with_supporting_observations() -> str:
+    """Load C-CDA immunization with SPRT/COMP entry relationships."""
+    return (CCDA_FIXTURES_DIR / "immunization_with_supporting_observations.xml").read_text()
+
+
+@pytest.fixture
 def ccda_observation_ivl_pq() -> str:
     """Load C-CDA observation with IVL_PQ value."""
     return (CCDA_FIXTURES_DIR / "observation_ivl_pq.xml").read_text()
