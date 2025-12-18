@@ -1251,3 +1251,362 @@ class TestEmptySectionsWithNullFlavor:
         # Should map lowercase "nask" to "notasked"
         assert "emptyReason" in section
         assert section["emptyReason"]["coding"][0]["code"] == "notasked"
+
+
+class TestParticipantExtensions:
+    """Tests for C-CDA on FHIR participant extensions.
+
+    Tests the implementation of seven required participant extensions per C-CDA on FHIR IG:
+    1. DataEnterer
+    2. Informant
+    3. InformationRecipient
+    4. Participant
+    5. Performer
+    6. Authorization
+    7. InFulfillmentOfOrder (Order)
+
+    Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-participations.html
+    """
+
+    def test_data_enterer_extension(self) -> None:
+        """Test that dataEnterer maps to DataEnterer extension."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            data_enterer="""
+            <dataEnterer>
+                <time value="20200301"/>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="1111111111"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Data</given>
+                            <family>Entry</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </dataEnterer>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Should have extension array
+        assert "extension" in composition
+        assert len(composition["extension"]) >= 1
+
+        # Find DataEnterer extension
+        data_enterer_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"),
+            None
+        )
+        assert data_enterer_ext is not None
+        assert "valueReference" in data_enterer_ext
+        assert data_enterer_ext["valueReference"]["reference"].startswith("Practitioner/")
+
+    def test_informant_extension_with_assigned_entity(self) -> None:
+        """Test that informant with assignedEntity maps to Informant extension."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            informant="""
+            <informant>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="2222222222"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Info</given>
+                            <family>Source</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </informant>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Find Informant extension
+        assert "extension" in composition
+        informant_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension"),
+            None
+        )
+        assert informant_ext is not None
+        assert "valueReference" in informant_ext
+        assert informant_ext["valueReference"]["reference"].startswith("Practitioner/")
+
+    def test_informant_extension_with_related_entity(self) -> None:
+        """Test that informant with relatedEntity maps to Informant extension."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            informant="""
+            <informant>
+                <relatedEntity classCode="PRS">
+                    <code code="MTH" codeSystem="2.16.840.1.113883.5.111" displayName="Mother"/>
+                    <relatedPerson>
+                        <name>
+                            <given>Martha</given>
+                            <family>Ross</family>
+                        </name>
+                    </relatedPerson>
+                </relatedEntity>
+            </informant>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Find Informant extension
+        assert "extension" in composition
+        informant_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension"),
+            None
+        )
+        assert informant_ext is not None
+        assert "valueReference" in informant_ext
+        # Should have display with name and relationship
+        assert "display" in informant_ext["valueReference"]
+        assert "Martha Ross" in informant_ext["valueReference"]["display"]
+
+    def test_information_recipient_extension(self) -> None:
+        """Test that informationRecipient maps to InformationRecipient extension."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            information_recipient="""
+            <informationRecipient>
+                <intendedRecipient>
+                    <id root="2.16.840.1.113883.4.6" extension="3333333333"/>
+                    <informationRecipient>
+                        <name>
+                            <given>John</given>
+                            <family>Recipient</family>
+                        </name>
+                    </informationRecipient>
+                </intendedRecipient>
+            </informationRecipient>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Find InformationRecipient extension
+        assert "extension" in composition
+        recipient_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformationRecipientExtension"),
+            None
+        )
+        assert recipient_ext is not None
+        assert "valueReference" in recipient_ext
+        # Should have display with recipient name
+        assert "display" in recipient_ext["valueReference"]
+        assert "John Recipient" in recipient_ext["valueReference"]["display"]
+
+    def test_participant_extension(self) -> None:
+        """Test that participant maps to Participant extension."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            participant="""
+            <participant typeCode="IND">
+                <associatedEntity classCode="NOK">
+                    <code code="GUARD" codeSystem="2.16.840.1.113883.5.111" displayName="Guardian"/>
+                    <id root="2.16.840.1.113883.19.5" extension="4444444444"/>
+                    <associatedPerson>
+                        <name>
+                            <given>Jane</given>
+                            <family>Guardian</family>
+                        </name>
+                    </associatedPerson>
+                </associatedEntity>
+            </participant>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Find Participant extension
+        assert "extension" in composition
+        participant_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/ParticipantExtension"),
+            None
+        )
+        assert participant_ext is not None
+        assert "valueReference" in participant_ext
+        # Should have display with participant name
+        assert "display" in participant_ext["valueReference"]
+        assert "Jane Guardian" in participant_ext["valueReference"]["display"]
+
+    def test_performer_extension(self) -> None:
+        """Test that documentationOf/serviceEvent/performer maps to Performer extension."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            documentation_of="""
+            <documentationOf>
+                <serviceEvent classCode="PCPR">
+                    <effectiveTime>
+                        <low value="20200101"/>
+                        <high value="20200301"/>
+                    </effectiveTime>
+                    <performer typeCode="PRF">
+                        <functionCode code="PCP" codeSystem="2.16.840.1.113883.5.88" displayName="Primary Care Provider"/>
+                        <assignedEntity>
+                            <id root="2.16.840.1.113883.4.6" extension="5555555555"/>
+                            <assignedPerson>
+                                <name>
+                                    <given>Primary</given>
+                                    <family>Doctor</family>
+                                </name>
+                            </assignedPerson>
+                        </assignedEntity>
+                    </performer>
+                </serviceEvent>
+            </documentationOf>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Find Performer extension
+        assert "extension" in composition
+        performer_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/PerformerExtension"),
+            None
+        )
+        assert performer_ext is not None
+        assert "valueReference" in performer_ext
+        assert performer_ext["valueReference"]["reference"].startswith("Practitioner/")
+
+    def test_authorization_extension(self) -> None:
+        """Test that authorization maps to Authorization extension."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            authorization="""
+            <authorization>
+                <consent>
+                    <id root="2.16.840.1.113883.19.5" extension="CONSENT-001"/>
+                    <code code="425691002" codeSystem="2.16.840.1.113883.6.96" displayName="Consent given for electronic record sharing"/>
+                    <statusCode code="completed"/>
+                </consent>
+            </authorization>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Find Authorization extension
+        assert "extension" in composition
+        auth_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/AuthorizationExtension"),
+            None
+        )
+        assert auth_ext is not None
+        assert "valueReference" in auth_ext
+        assert auth_ext["valueReference"]["reference"].startswith("Consent/")
+
+    def test_order_extension(self) -> None:
+        """Test that inFulfillmentOf maps to Order extension."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            in_fulfillment_of="""
+            <inFulfillmentOf>
+                <order>
+                    <id root="2.16.840.1.113883.19.5" extension="ORDER-12345"/>
+                    <code code="24610-8" codeSystem="2.16.840.1.113883.6.1" displayName="Radiology Report"/>
+                    <priorityCode code="R" codeSystem="2.16.840.1.113883.5.7" displayName="Routine"/>
+                </order>
+            </inFulfillmentOf>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Find Order extension
+        assert "extension" in composition
+        order_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/OrderExtension"),
+            None
+        )
+        assert order_ext is not None
+        assert "valueReference" in order_ext
+        assert order_ext["valueReference"]["reference"].startswith("ServiceRequest/")
+
+    def test_multiple_extensions_in_same_document(self) -> None:
+        """Test that multiple participant extensions can coexist in the same document."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            data_enterer="""
+            <dataEnterer>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="1111111111"/>
+                    <assignedPerson>
+                        <name><given>Data</given><family>Entry</family></name>
+                    </assignedPerson>
+                </assignedEntity>
+            </dataEnterer>
+            """,
+            informant="""
+            <informant>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="2222222222"/>
+                    <assignedPerson>
+                        <name><given>Info</given><family>Source</family></name>
+                    </assignedPerson>
+                </assignedEntity>
+            </informant>
+            """,
+            information_recipient="""
+            <informationRecipient>
+                <intendedRecipient>
+                    <id root="2.16.840.1.113883.4.6" extension="3333333333"/>
+                    <informationRecipient>
+                        <name><given>John</given><family>Recipient</family></name>
+                    </informationRecipient>
+                </intendedRecipient>
+            </informationRecipient>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Should have all three extensions
+        assert "extension" in composition
+        assert len(composition["extension"]) >= 3
+
+        # Check for DataEnterer
+        data_enterer_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"),
+            None
+        )
+        assert data_enterer_ext is not None
+
+        # Check for Informant
+        informant_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension"),
+            None
+        )
+        assert informant_ext is not None
+
+        # Check for InformationRecipient
+        recipient_ext = next(
+            (ext for ext in composition["extension"]
+             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformationRecipientExtension"),
+            None
+        )
+        assert recipient_ext is not None

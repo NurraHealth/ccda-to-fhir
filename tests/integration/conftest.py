@@ -77,6 +77,12 @@ def wrap_in_ccda_document(
     custodian: str | None = None,
     legal_authenticator: str | None = None,
     data_enterer: str | None = None,
+    informant: str | None = None,
+    information_recipient: str | None = None,
+    participant: str | None = None,
+    documentation_of: str | None = None,
+    authorization: str | None = None,
+    in_fulfillment_of: str | None = None,
 ) -> str:
     """Create a minimal valid C-CDA document for testing.
 
@@ -92,6 +98,12 @@ def wrap_in_ccda_document(
         custodian: Custodian XML. Uses default minimal custodian if not provided.
         legal_authenticator: Legal authenticator XML. Optional.
         data_enterer: Data enterer XML. Optional.
+        informant: Informant XML. Optional.
+        information_recipient: InformationRecipient XML. Optional.
+        participant: Participant XML. Optional.
+        documentation_of: DocumentationOf XML. Optional.
+        authorization: Authorization XML. Optional.
+        in_fulfillment_of: InFulfillmentOf XML. Optional.
     """
     # Strip XML declaration if present in section_content
     import re
@@ -103,6 +115,12 @@ def wrap_in_ccda_document(
     custodian_xml = custodian if custodian is not None else DEFAULT_CUSTODIAN
     legal_auth_xml = legal_authenticator if legal_authenticator is not None else ""
     data_enterer_xml = data_enterer if data_enterer is not None else ""
+    informant_xml = informant if informant is not None else ""
+    information_recipient_xml = information_recipient if information_recipient is not None else ""
+    participant_xml = participant if participant is not None else ""
+    documentation_of_xml = documentation_of if documentation_of is not None else ""
+    authorization_xml = authorization if authorization is not None else ""
+    in_fulfillment_of_xml = in_fulfillment_of if in_fulfillment_of is not None else ""
 
     # Strip XML declarations from all parameters
     patient_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', patient_xml)
@@ -110,6 +128,12 @@ def wrap_in_ccda_document(
     custodian_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', custodian_xml)
     legal_auth_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', legal_auth_xml)
     data_enterer_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', data_enterer_xml)
+    informant_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', informant_xml)
+    information_recipient_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', information_recipient_xml)
+    participant_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', participant_xml)
+    documentation_of_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', documentation_of_xml)
+    authorization_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', authorization_xml)
+    in_fulfillment_of_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', in_fulfillment_of_xml)
 
     section_template = ""
     if section_template_id:
@@ -138,8 +162,14 @@ def wrap_in_ccda_document(
     {patient_xml}
     {author_xml}
     {data_enterer_xml}
+    {informant_xml}
     {custodian_xml}
+    {information_recipient_xml}
     {legal_auth_xml}
+    {participant_xml}
+    {in_fulfillment_of_xml}
+    {documentation_of_xml}
+    {authorization_xml}
     <component>
         <structuredBody>
             <component>

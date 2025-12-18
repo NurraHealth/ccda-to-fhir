@@ -67,41 +67,35 @@ This is a living document that captures known issues, ambiguities, and limitatio
 
 ---
 
-### 3. Missing C-CDA on FHIR Participant Extensions 🔴 📋
+### 3. Missing C-CDA on FHIR Participant Extensions ✅ RESOLVED
 
-**Issue**: Seven required participant extensions from C-CDA on FHIR IG are not implemented:
+**Issue**: Seven required participant extensions from C-CDA on FHIR IG were not implemented:
 1. DataEnterer
 2. Informant
 3. InformationRecipient
 4. Participant
 5. Performer
 6. Authorization
-7. InFulfillmentOfOrder
+7. InFulfillmentOfOrder (Order)
 
-**Impact**:
-- Document-level participation information is lost
-- Non-compliant with C-CDA on FHIR IG
-- Cannot round-trip these participants
+**Resolution** (Completed):
+- ✅ All seven participant extensions now implemented in `CompositionConverter`
+- ✅ DataEnterer: Maps to `DataEntererExtension` with Practitioner/PractitionerRole reference
+- ✅ Informant: Maps to `InformantExtension` - supports both assignedEntity (practitioner) and relatedEntity (family member)
+- ✅ InformationRecipient: Maps to `InformationRecipientExtension` with Practitioner reference
+- ✅ Participant: Maps to `ParticipantExtension` with reference to associated persons/caregivers
+- ✅ Performer: Maps to `PerformerExtension` from documentationOf/serviceEvent/performer
+- ✅ Authorization: Maps to `AuthorizationExtension` with Consent resource reference
+- ✅ Order: Maps to `OrderExtension` (from inFulfillmentOf) with ServiceRequest reference
+- ✅ Added comprehensive test coverage for all extensions
 
 **Current Behavior**:
-- Only `author`, `custodian`, and `legalAuthenticator` are mapped
-- Other participants are silently dropped
+- All document-level participants are now preserved in FHIR Composition extensions
+- Extensions follow official C-CDA on FHIR IG v2.0.0 structure definitions
+- Multiple participants of the same type are supported (e.g., multiple informants)
+- Display-only references used where actual resource conversion not yet implemented (e.g., RelatedPerson)
 
-**Example Missing Data**:
-```xml
-<dataEnterer>
-  <assignedEntity>
-    <id root="2.16.840.1.113883.4.6" extension="9999999999"/>
-    <!-- Lost in conversion -->
-  </assignedEntity>
-</dataEnterer>
-```
-
-**Workaround**: None - data is lost
-
-**Planned Fix**: Version 0.3.0 - Implement all 7 standard extensions
-
-**Reference**: [C-CDA on FHIR Participations](https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-participations.html)
+**Official IG Guidance**: [C-CDA on FHIR Participations](https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-participations.html)
 
 ---
 

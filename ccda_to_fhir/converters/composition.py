@@ -101,6 +101,50 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if data_enterer_ext:
                 extensions.append(data_enterer_ext)
 
+        # Informant extensions
+        if clinical_document.informant:
+            for informant in clinical_document.informant:
+                informant_ext = self._extract_informant_extension(informant)
+                if informant_ext:
+                    extensions.append(informant_ext)
+
+        # Information Recipient extensions
+        if clinical_document.information_recipient:
+            for recipient in clinical_document.information_recipient:
+                recipient_ext = self._extract_information_recipient_extension(recipient)
+                if recipient_ext:
+                    extensions.append(recipient_ext)
+
+        # Participant extensions
+        if clinical_document.participant:
+            for participant in clinical_document.participant:
+                participant_ext = self._extract_participant_extension(participant)
+                if participant_ext:
+                    extensions.append(participant_ext)
+
+        # Performer extensions (from documentationOf/serviceEvent)
+        if clinical_document.documentation_of:
+            for doc_of in clinical_document.documentation_of:
+                if doc_of.service_event and doc_of.service_event.performer:
+                    for performer in doc_of.service_event.performer:
+                        performer_ext = self._extract_performer_extension(performer)
+                        if performer_ext:
+                            extensions.append(performer_ext)
+
+        # Authorization extensions
+        if clinical_document.authorization:
+            for auth in clinical_document.authorization:
+                auth_ext = self._extract_authorization_extension(auth)
+                if auth_ext:
+                    extensions.append(auth_ext)
+
+        # Order extensions (inFulfillmentOf)
+        if clinical_document.in_fulfillment_of:
+            for fulfillment in clinical_document.in_fulfillment_of:
+                order_ext = self._extract_order_extension(fulfillment)
+                if order_ext:
+                    extensions.append(order_ext)
+
         # Add all extensions to composition if any exist
         if extensions:
             composition["extension"] = extensions
@@ -356,15 +400,15 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             for given in name.given:
                 if isinstance(given, str):
                     parts.append(given)
-                elif hasattr(given, "text") and given.text:
-                    parts.append(given.text)
+                elif hasattr(given, "value") and given.value:
+                    parts.append(given.value)
 
         # Extract family name (handle ENXP object)
         if name.family:
             if isinstance(name.family, str):
                 parts.append(name.family)
-            elif hasattr(name.family, "text") and name.family.text:
-                parts.append(name.family.text)
+            elif hasattr(name.family, "value") and name.family.value:
+                parts.append(name.family.value)
 
         return " ".join(parts) if parts else None
 
@@ -462,6 +506,266 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                     }
                 }
                 return extension
+
+        return None
+
+    def _extract_informant_extension(self, informant) -> JSONObject | None:
+        """Extract Informant extension from C-CDA informant.
+
+        Maps to: http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension
+
+        Informant can be either:
+        - assignedEntity (healthcare provider) -> Practitioner/PractitionerRole
+        - relatedEntity (family member, etc.) -> RelatedPerson or Patient
+
+        Args:
+            informant: C-CDA Informant element
+
+        Returns:
+            FHIR extension object or None
+        """
+        if not informant:
+            return None
+
+        extension: JSONObject = {
+            "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension"
+        }
+
+        # Check for assignedEntity (healthcare provider)
+        if informant.assigned_entity and informant.assigned_entity.id:
+            practitioner_id = self._generate_practitioner_id(informant.assigned_entity.id)
+            if practitioner_id:
+                extension["valueReference"] = {
+                    "reference": f"Practitioner/{practitioner_id}"
+                }
+                return extension
+
+        # Check for relatedEntity (family member, caregiver, etc.)
+        if informant.related_entity:
+            # For now, create a display-only reference since we don't convert RelatedPerson resources yet
+            display = self._format_related_entity_display(informant.related_entity)
+            if display:
+                extension["valueReference"] = {
+                    "display": display
+                }
+                return extension
+
+        return None
+
+    def _extract_information_recipient_extension(self, recipient) -> JSONObject | None:
+        """Extract InformationRecipient extension from C-CDA informationRecipient.
+
+        Maps to: http://hl7.org/fhir/us/ccda/StructureDefinition/InformationRecipientExtension
+
+        Args:
+            recipient: C-CDA InformationRecipient element
+
+        Returns:
+            FHIR extension object or None
+        """
+        if not recipient or not recipient.intended_recipient:
+            return None
+
+        extension: JSONObject = {
+            "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/InformationRecipientExtension"
+        }
+
+        intended = recipient.intended_recipient
+
+        # Check for information recipient person
+        if intended.information_recipient and intended.information_recipient.name and len(intended.information_recipient.name) > 0:
+            # Create display-only reference
+            name = intended.information_recipient.name[0]
+            display = self._format_name_for_display(name)
+            if display:
+                extension["valueReference"] = {
+                    "display": display
+                }
+                return extension
+
+        # Fallback to ID-based reference if available
+        if intended.id:
+            practitioner_id = self._generate_practitioner_id(intended.id)
+            if practitioner_id:
+                extension["valueReference"] = {
+                    "reference": f"Practitioner/{practitioner_id}"
+                }
+                return extension
+
+        return None
+
+    def _extract_participant_extension(self, participant) -> JSONObject | None:
+        """Extract Participant extension from C-CDA participant.
+
+        Maps to: http://hl7.org/fhir/us/ccda/StructureDefinition/ParticipantExtension
+
+        Represents supporting entities like parents, relatives, caregivers, etc.
+
+        Args:
+            participant: C-CDA DocumentParticipant element
+
+        Returns:
+            FHIR extension object or None
+        """
+        if not participant or not participant.associated_entity:
+            return None
+
+        extension: JSONObject = {
+            "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/ParticipantExtension"
+        }
+
+        associated = participant.associated_entity
+
+        # Check for associated person
+        if associated.associated_person and associated.associated_person.name and len(associated.associated_person.name) > 0:
+            # Create display-only reference for now
+            name = associated.associated_person.name[0]
+            display = self._format_name_for_display(name)
+            if display:
+                extension["valueReference"] = {
+                    "display": display
+                }
+                return extension
+
+        # Fallback to ID-based reference if available
+        if associated.id:
+            practitioner_id = self._generate_practitioner_id(associated.id)
+            if practitioner_id:
+                extension["valueReference"] = {
+                    "reference": f"Practitioner/{practitioner_id}"
+                }
+                return extension
+
+        return None
+
+    def _extract_performer_extension(self, performer) -> JSONObject | None:
+        """Extract Performer extension from C-CDA documentationOf/serviceEvent/performer.
+
+        Maps to: http://hl7.org/fhir/us/ccda/StructureDefinition/PerformerExtension
+
+        Represents clinicians who actually carried out clinical services.
+
+        Args:
+            performer: C-CDA ServiceEventPerformer element
+
+        Returns:
+            FHIR extension object or None
+        """
+        if not performer or not performer.assigned_entity:
+            return None
+
+        if not performer.assigned_entity.id:
+            return None
+
+        practitioner_id = self._generate_practitioner_id(performer.assigned_entity.id)
+        if practitioner_id:
+            extension: JSONObject = {
+                "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/PerformerExtension",
+                "valueReference": {
+                    "reference": f"Practitioner/{practitioner_id}"
+                }
+            }
+            return extension
+
+        return None
+
+    def _extract_authorization_extension(self, authorization) -> JSONObject | None:
+        """Extract Authorization extension from C-CDA authorization.
+
+        Maps to: http://hl7.org/fhir/us/ccda/StructureDefinition/AuthorizationExtension
+
+        Contains consent information as a reference to a Consent resource.
+
+        Args:
+            authorization: C-CDA Authorization element
+
+        Returns:
+            FHIR extension object or None
+        """
+        if not authorization or not authorization.consent:
+            return None
+
+        consent = authorization.consent
+
+        # Generate Consent resource ID from consent identifier
+        if consent.id:
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+            root = consent.id[0].root if consent.id[0].root else None
+            extension_val = consent.id[0].extension if consent.id[0].extension else None
+            consent_id = generate_id_from_identifiers("Consent", root, extension_val)
+
+            extension: JSONObject = {
+                "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/AuthorizationExtension",
+                "valueReference": {
+                    "reference": f"Consent/{consent_id}"
+                }
+            }
+            return extension
+
+        return None
+
+    def _extract_order_extension(self, in_fulfillment_of) -> JSONObject | None:
+        """Extract Order extension from C-CDA inFulfillmentOf.
+
+        Maps to: http://hl7.org/fhir/us/ccda/StructureDefinition/OrderExtension
+
+        Represents orders that are fulfilled by this document.
+
+        Args:
+            in_fulfillment_of: C-CDA InFulfillmentOf element
+
+        Returns:
+            FHIR extension object or None
+        """
+        if not in_fulfillment_of or not in_fulfillment_of.order:
+            return None
+
+        order = in_fulfillment_of.order
+
+        # Generate ServiceRequest resource ID from order identifier
+        if order.id:
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+            root = order.id[0].root if order.id[0].root else None
+            extension_val = order.id[0].extension if order.id[0].extension else None
+            service_request_id = generate_id_from_identifiers("ServiceRequest", root, extension_val)
+
+            extension: JSONObject = {
+                "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/OrderExtension",
+                "valueReference": {
+                    "reference": f"ServiceRequest/{service_request_id}"
+                }
+            }
+            return extension
+
+        return None
+
+    def _format_related_entity_display(self, related_entity) -> str | None:
+        """Format a RelatedEntity for display.
+
+        Args:
+            related_entity: C-CDA RelatedEntity element
+
+        Returns:
+            Formatted display string or None
+        """
+        if not related_entity:
+            return None
+
+        # Try to get name from related person
+        if related_entity.related_person and related_entity.related_person.name and len(related_entity.related_person.name) > 0:
+            name = related_entity.related_person.name[0]
+            display = self._format_name_for_display(name)
+            if display:
+                # Add relationship if available
+                if related_entity.code and related_entity.code.display_name:
+                    return f"{display} ({related_entity.code.display_name})"
+                return display
+
+        # Fallback to relationship code only
+        if related_entity.code and related_entity.code.display_name:
+            return related_entity.code.display_name
 
         return None
 
