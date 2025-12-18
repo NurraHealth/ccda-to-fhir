@@ -344,7 +344,7 @@ The custodian organization is referenced from `Composition.custodian`.
 </legalAuthenticator>
 ```
 
-Maps to `Composition.attester`:
+Maps to `Composition.attester` with mode="legal":
 
 ```json
 {
@@ -357,6 +357,71 @@ Maps to `Composition.attester`:
   }]
 }
 ```
+
+## Authenticator Mapping
+
+Per C-CDA R2, the authenticator represents "a participant who has attested to the accuracy of the document, but who does not have privileges to legally authenticate the document." Example: a resident physician who sees a patient and dictates a note, then later signs it.
+
+**C-CDA:**
+```xml
+<authenticator>
+  <time value="20200302"/>
+  <signatureCode code="S"/>
+  <assignedEntity>
+    <id root="2.16.840.1.113883.4.6" extension="5555555555"/>
+    <assignedPerson>
+      <name>
+        <given>Jane</given>
+        <family>Resident</family>
+      </name>
+    </assignedPerson>
+  </assignedEntity>
+</authenticator>
+```
+
+Maps to `Composition.attester` with mode="professional":
+
+```json
+{
+  "attester": [{
+    "mode": "professional",
+    "time": "2020-03-02",
+    "party": {
+      "reference": "Practitioner/practitioner-resident"
+    }
+  }]
+}
+```
+
+### Multiple Attesters
+
+A document can have both legal and professional attesters:
+
+```json
+{
+  "attester": [
+    {
+      "mode": "legal",
+      "time": "2020-03-01",
+      "party": {
+        "reference": "Practitioner/practitioner-careful"
+      }
+    },
+    {
+      "mode": "professional",
+      "time": "2020-03-02",
+      "party": {
+        "reference": "Practitioner/practitioner-resident"
+      }
+    }
+  ]
+}
+```
+
+Per US Realm Header Profile:
+- Legal attester (0..1 cardinality)
+- Professional attester (0..* cardinality) - multiple authenticators supported
+- Personal attester (0..* cardinality) - not commonly used in C-CDA documents
 
 ## Provenance Resource
 

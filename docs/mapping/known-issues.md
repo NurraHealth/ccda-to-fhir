@@ -101,23 +101,32 @@ This is a living document that captures known issues, ambiguities, and limitatio
 
 ## Moderate Issues
 
-### 4. Attester Slicing Incomplete 🟡 📋
+### 4. Attester Slicing Incomplete ✅ RESOLVED
 
-**Issue**: Only legal attester is implemented. Professional and personal attester slices are missing.
+**Issue**: Only legal attester was implemented. Professional and personal attester slices were missing.
 
 **Impact**:
-- Cannot map `authenticator` (professional attester)
-- Cannot map certain `participant` elements (personal attester)
+- Could not map `authenticator` (professional attester)
+- Could not map certain `participant` elements (personal attester)
 - Partial compliance with US Realm Header Profile
+
+**Resolution** (Completed):
+- ✅ Legal attester from `legalAuthenticator` → `Composition.attester` with mode="legal"
+- ✅ Professional attester from `authenticator` → `Composition.attester` with mode="professional"
+- ✅ Multiple authenticators supported (0..* cardinality per US Realm Header Profile)
+- ✅ Both legal and professional attesters can coexist in same document
+- ✅ Added comprehensive test coverage for all attester scenarios
+- ℹ️  Personal attester slice (mode="personal") supported by profile but not commonly used in C-CDA documents
 
 **Current Behavior**:
 - `legalAuthenticator` → `Composition.attester` with mode="legal" ✅
-- `authenticator` → Not mapped ❌
-- Personal attestation participants → Not mapped ❌
+- `authenticator` → `Composition.attester` with mode="professional" ✅
+- Personal attestation → Supported by profile structure but no standard C-CDA source element
 
-**Workaround**: Use legalAuthenticator for critical attestations
+**Note on Personal Attestation**:
+Per US Realm Header Profile, personal attestation (mode="personal") references Patient or RelatedPerson. In standard C-CDA documents, there is no common element representing a patient or family member attesting to document accuracy in a personal capacity. The `participant` element is used for support persons, not attestation. If needed in the future, this could be populated from specific participant elements with appropriate typeCode.
 
-**Planned Fix**: Version 0.3.0 - Implement professional and personal attester slices
+**Official IG Guidance**: [US Realm Header Profile - Attester Slicing](https://build.fhir.org/ig/HL7/ccda-on-fhir/StructureDefinition-US-Realm-Header.html)
 
 ---
 

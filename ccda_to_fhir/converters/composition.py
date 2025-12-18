@@ -86,11 +86,25 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         # See: https://build.fhir.org/ig/HL7/ccda-on-fhir/
         composition["status"] = FHIRCodes.CompositionStatus.FINAL
 
-        # Attester from legalAuthenticator (if present)
+        # Attesters from legalAuthenticator and authenticator
+        attesters = []
+
+        # Legal attester from legalAuthenticator (if present)
         if clinical_document.legal_authenticator:
-            attester = self._extract_attester(clinical_document.legal_authenticator)
-            if attester:
-                composition["attester"] = [attester]
+            legal_attester = self._extract_legal_attester(clinical_document.legal_authenticator)
+            if legal_attester:
+                attesters.append(legal_attester)
+
+        # Professional attesters from authenticator elements (if present)
+        if clinical_document.authenticator:
+            for authenticator in clinical_document.authenticator:
+                professional_attester = self._extract_professional_attester(authenticator)
+                if professional_attester:
+                    attesters.append(professional_attester)
+
+        # Add attesters to composition if any exist
+        if attesters:
+            composition["attester"] = attesters
 
         # Extensions array for C-CDA on FHIR participant extensions
         extensions = []
@@ -438,32 +452,34 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         else:
             return None
 
-    def _extract_attester(self, legal_authenticator) -> JSONObject | None:
-        """Extract attester from legalAuthenticator.
+    def _extract_legal_attester(self, legal_authenticator) -> JSONObject | None:
+        """Extract legal attester from legalAuthenticator.
 
         Maps C-CDA legal authentication to FHIR Composition.attester
         with mode="legal".
+
+        Per C-CDA R2: legalAuthenticator represents a participant who has
+        legally authenticated the document and accepts legal responsibility.
+
+        Per US Realm Header Profile: legal_attester slice with mode fixed to "legal"
+        and party referencing US Core Practitioner or PractitionerRole (1..1 cardinality).
+
+        IMPORTANT: Per US Realm Header Profile, party is REQUIRED (1..1). This function
+        returns None if party cannot be created, ensuring strict profile compliance.
 
         Args:
             legal_authenticator: C-CDA legalAuthenticator element
 
         Returns:
-            FHIR attester object or None
+            FHIR attester object or None if party reference cannot be created
+
+        Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/StructureDefinition-US-Realm-Header.html
         """
         if not legal_authenticator:
             return None
 
-        attester: JSONObject = {
-            "mode": "legal"  # Legal attestation
-        }
-
-        # Extract time
-        if legal_authenticator.time and legal_authenticator.time.value:
-            time_str = self.convert_date(legal_authenticator.time.value)
-            if time_str:
-                attester["time"] = time_str
-
-        # Extract party reference (Practitioner)
+        # Try to create party reference first (REQUIRED per US Realm Header Profile)
+        party_ref = None
         if legal_authenticator.assigned_entity:
             assigned = legal_authenticator.assigned_entity
 
@@ -471,9 +487,82 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if assigned.id:
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
-                    attester["party"] = {
+                    party_ref = {
                         "reference": f"Practitioner/{practitioner_id}"
                     }
+
+        # If we can't create party, don't create attester (US Realm Header requires party 1..1)
+        if not party_ref:
+            return None
+
+        attester: JSONObject = {
+            "mode": "legal",  # Legal attestation
+            "party": party_ref  # Required per US Realm Header Profile
+        }
+
+        # Extract time (optional)
+        if legal_authenticator.time and legal_authenticator.time.value:
+            time_str = self.convert_date(legal_authenticator.time.value)
+            if time_str:
+                attester["time"] = time_str
+
+        return attester
+
+    def _extract_professional_attester(self, authenticator) -> JSONObject | None:
+        """Extract professional attester from authenticator.
+
+        Maps C-CDA authenticator to FHIR Composition.attester with mode="professional".
+
+        Per C-CDA R2: authenticator represents a participant who has attested to the
+        accuracy of the document, but who does not have privileges to legally authenticate
+        the document. Example: a resident physician who sees a patient and dictates a note,
+        then later signs it.
+
+        Per US Realm Header Profile: professional_attester slice with mode fixed to "professional"
+        and party referencing US Core Practitioner or PractitionerRole (1..1 cardinality).
+
+        IMPORTANT: Per US Realm Header Profile, party is REQUIRED (1..1). This function
+        returns None if party cannot be created, ensuring strict profile compliance.
+
+        Args:
+            authenticator: C-CDA Authenticator element
+
+        Returns:
+            FHIR attester object or None if party reference cannot be created
+
+        Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/StructureDefinition-US-Realm-Header.html
+        Reference: https://build.fhir.org/ig/HL7/CDA-core-2.0/StructureDefinition-Authenticator.html
+        """
+        if not authenticator:
+            return None
+
+        # Try to create party reference first (REQUIRED per US Realm Header Profile)
+        party_ref = None
+        if authenticator.assigned_entity:
+            assigned = authenticator.assigned_entity
+
+            # Generate practitioner ID from identifiers
+            if assigned.id:
+                practitioner_id = self._generate_practitioner_id(assigned.id)
+                if practitioner_id:
+                    party_ref = {
+                        "reference": f"Practitioner/{practitioner_id}"
+                    }
+
+        # If we can't create party, don't create attester (US Realm Header requires party 1..1)
+        if not party_ref:
+            return None
+
+        attester: JSONObject = {
+            "mode": "professional",  # Professional attestation
+            "party": party_ref  # Required per US Realm Header Profile
+        }
+
+        # Extract time (optional)
+        if authenticator.time and authenticator.time.value:
+            time_str = self.convert_date(authenticator.time.value)
+            if time_str:
+                attester["time"] = time_str
 
         return attester
 

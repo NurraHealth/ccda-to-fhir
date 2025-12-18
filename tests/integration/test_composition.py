@@ -270,7 +270,12 @@ class TestCompositionConversion:
         assert "party" in attester
 
     def test_converts_legal_authenticator_without_assigned_entity(self) -> None:
-        """Test that legalAuthenticator without assignedEntity creates attester with mode only."""
+        """Test that legalAuthenticator without assignedEntity does not create attester.
+
+        Per US Realm Header Profile, legal_attester.party is REQUIRED (1..1 cardinality).
+        If we cannot create a party reference, we should not create the attester at all
+        to ensure strict profile compliance.
+        """
         ccda_doc = wrap_in_ccda_document(
             "",
             legal_authenticator="""
@@ -284,13 +289,8 @@ class TestCompositionConversion:
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
-        assert "attester" in composition
-
-        attester = composition["attester"][0]
-        assert attester["mode"] == "legal"
-        assert attester["time"] == "2020-03-01"
-        # Should NOT have party when assignedEntity is missing
-        assert "party" not in attester
+        # Should NOT have attester field when party cannot be created
+        assert "attester" not in composition
 
     def test_no_attester_without_legal_authenticator(self) -> None:
         """Test that no attester is created when legalAuthenticator is absent."""
@@ -300,6 +300,207 @@ class TestCompositionConversion:
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         # Should NOT have attester field
+        assert "attester" not in composition
+
+    def test_converts_authenticator_to_professional_attester(self) -> None:
+        """Test that authenticator maps to Composition.attester with mode='professional'."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            authenticator="""
+            <authenticator>
+                <time value="20200302"/>
+                <signatureCode code="S"/>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="5555555555"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Jane</given>
+                            <family>Resident</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </authenticator>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Should have attester array
+        assert "attester" in composition
+        assert len(composition["attester"]) == 1
+
+        attester = composition["attester"][0]
+
+        # Mode should be "professional"
+        assert attester["mode"] == "professional"
+
+        # Should have time
+        assert "time" in attester
+        assert attester["time"] == "2020-03-02"
+
+        # Should reference practitioner
+        assert "party" in attester
+        assert attester["party"]["reference"].startswith("Practitioner/")
+
+    def test_converts_multiple_authenticators_to_professional_attesters(self) -> None:
+        """Test that multiple authenticators create multiple professional attesters."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            authenticator="""
+            <authenticator>
+                <time value="20200302"/>
+                <signatureCode code="S"/>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="5555555555"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Jane</given>
+                            <family>Resident</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </authenticator>
+            <authenticator>
+                <time value="20200303"/>
+                <signatureCode code="S"/>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="6666666666"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Bob</given>
+                            <family>Intern</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </authenticator>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Should have attester array with 2 professional attesters
+        assert "attester" in composition
+        assert len(composition["attester"]) == 2
+
+        # Both should be professional mode
+        assert composition["attester"][0]["mode"] == "professional"
+        assert composition["attester"][1]["mode"] == "professional"
+
+        # Different times
+        assert composition["attester"][0]["time"] == "2020-03-02"
+        assert composition["attester"][1]["time"] == "2020-03-03"
+
+    def test_converts_both_legal_and_professional_attesters(self) -> None:
+        """Test that both legalAuthenticator and authenticator create respective attesters."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            legal_authenticator="""
+            <legalAuthenticator>
+                <time value="20200301"/>
+                <signatureCode code="S"/>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Adam</given>
+                            <family>Careful</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </legalAuthenticator>
+            """,
+            authenticator="""
+            <authenticator>
+                <time value="20200302"/>
+                <signatureCode code="S"/>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="5555555555"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Jane</given>
+                            <family>Resident</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </authenticator>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Should have attester array with both legal and professional
+        assert "attester" in composition
+        assert len(composition["attester"]) == 2
+
+        # Find legal and professional attesters
+        legal_attester = next((a for a in composition["attester"] if a["mode"] == "legal"), None)
+        professional_attester = next((a for a in composition["attester"] if a["mode"] == "professional"), None)
+
+        assert legal_attester is not None
+        assert legal_attester["time"] == "2020-03-01"
+
+        assert professional_attester is not None
+        assert professional_attester["time"] == "2020-03-02"
+
+    def test_converts_authenticator_without_time(self) -> None:
+        """Test that authenticator without time still creates professional attester."""
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            authenticator="""
+            <authenticator>
+                <signatureCode code="S"/>
+                <assignedEntity>
+                    <id root="2.16.840.1.113883.4.6" extension="5555555555"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Jane</given>
+                            <family>Resident</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </authenticator>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert "attester" in composition
+
+        attester = composition["attester"][0]
+        assert attester["mode"] == "professional"
+        # Should NOT have time when not provided
+        assert "time" not in attester
+        # Should still have party reference
+        assert "party" in attester
+
+    def test_converts_authenticator_without_assigned_entity(self) -> None:
+        """Test that authenticator without assignedEntity does not create attester.
+
+        Per US Realm Header Profile, professional_attester.party is REQUIRED (1..1 cardinality).
+        If we cannot create a party reference, we should not create the attester at all
+        to ensure strict profile compliance.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            "",
+            authenticator="""
+            <authenticator>
+                <time value="20200302"/>
+                <signatureCode code="S"/>
+            </authenticator>
+            """
+        )
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        # Should NOT have attester field when party cannot be created
         assert "attester" not in composition
 
     def test_custodian_missing_fails(self) -> None:

@@ -76,6 +76,7 @@ def wrap_in_ccda_document(
     author: str | None = None,
     custodian: str | None = None,
     legal_authenticator: str | None = None,
+    authenticator: str | None = None,
     data_enterer: str | None = None,
     informant: str | None = None,
     information_recipient: str | None = None,
@@ -97,6 +98,7 @@ def wrap_in_ccda_document(
         author: Author XML. Uses default minimal author if not provided.
         custodian: Custodian XML. Uses default minimal custodian if not provided.
         legal_authenticator: Legal authenticator XML. Optional.
+        authenticator: Authenticator XML. Optional.
         data_enterer: Data enterer XML. Optional.
         informant: Informant XML. Optional.
         information_recipient: InformationRecipient XML. Optional.
@@ -114,6 +116,7 @@ def wrap_in_ccda_document(
     author_xml = author if author is not None else DEFAULT_AUTHOR
     custodian_xml = custodian if custodian is not None else DEFAULT_CUSTODIAN
     legal_auth_xml = legal_authenticator if legal_authenticator is not None else ""
+    authenticator_xml = authenticator if authenticator is not None else ""
     data_enterer_xml = data_enterer if data_enterer is not None else ""
     informant_xml = informant if informant is not None else ""
     information_recipient_xml = information_recipient if information_recipient is not None else ""
@@ -127,6 +130,7 @@ def wrap_in_ccda_document(
     author_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', author_xml)
     custodian_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', custodian_xml)
     legal_auth_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', legal_auth_xml)
+    authenticator_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', authenticator_xml)
     data_enterer_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', data_enterer_xml)
     informant_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', informant_xml)
     information_recipient_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', information_recipient_xml)
@@ -166,6 +170,7 @@ def wrap_in_ccda_document(
     {custodian_xml}
     {information_recipient_xml}
     {legal_auth_xml}
+    {authenticator_xml}
     {participant_xml}
     {in_fulfillment_of_xml}
     {documentation_of_xml}
