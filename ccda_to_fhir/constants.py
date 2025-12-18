@@ -332,6 +332,7 @@ class FHIRSystems:
 
     # Observation
     OBSERVATION_CATEGORY = "http://terminology.hl7.org/CodeSystem/observation-category"
+    SDOH_CATEGORY = "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes"
 
     # DiagnosticReport
     V2_0074 = "http://terminology.hl7.org/CodeSystem/v2-0074"  # Diagnostic service section ID
@@ -564,6 +565,32 @@ class FHIRCodes:
         SURVEY = "survey"
         THERAPY = "therapy"
         ACTIVITY = "activity"
+
+    # SDOH categories (from SDOHCC ValueSet)
+    class SDOHCategory:
+        FOOD_INSECURITY = "food-insecurity"
+        HOUSING_INSTABILITY = "housing-instability"
+        HOMELESSNESS = "homelessness"
+        INADEQUATE_HOUSING = "inadequate-housing"
+        TRANSPORTATION_INSECURITY = "transportation-insecurity"
+        FINANCIAL_INSECURITY = "financial-insecurity"
+        MATERIAL_HARDSHIP = "material-hardship"
+        EDUCATIONAL_ATTAINMENT = "educational-attainment"
+        EMPLOYMENT_STATUS = "employment-status"
+        VETERAN_STATUS = "veteran-status"
+        STRESS = "stress"
+        SOCIAL_CONNECTION = "social-connection"
+        INTIMATE_PARTNER_VIOLENCE = "intimate-partner-violence"
+        ELDER_ABUSE = "elder-abuse"
+        PERSONAL_HEALTH_LITERACY = "personal-health-literacy"
+        HEALTH_INSURANCE_COVERAGE_STATUS = "health-insurance-coverage-status"
+        MEDICAL_COST_BURDEN = "medical-cost-burden"
+        DIGITAL_LITERACY = "digital-literacy"
+        DIGITAL_ACCESS = "digital-access"
+        UTILITY_INSECURITY = "utility-insecurity"
+        INCARCERATION_STATUS = "incarceration-status"
+        LANGUAGE_ACCESS = "language-access"
+        SDOH_CATEGORY_UNSPECIFIED = "sdoh-category-unspecified"
 
     # DiagnosticReport status
     class DiagnosticReportStatus:
@@ -1156,4 +1183,110 @@ CCDA_ROLE_TO_PROVENANCE_AGENT = {
     "ENT": FHIRCodes.ProvenanceAgent.ENTERER,
     "LA": FHIRCodes.ProvenanceAgent.ATTESTER,
     "CST": FHIRCodes.ProvenanceAgent.CUSTODIAN,
+}
+
+# =============================================================================
+# SDOH Category Mappings
+# =============================================================================
+
+# Map LOINC codes to SDOH categories
+# Based on US Core Common SDOH Assessments and SDOHCC ValueSet
+# Reference: https://www.hl7.org/fhir/us/core/ValueSet-us-core-common-sdoh-assessments.html
+LOINC_TO_SDOH_CATEGORY = {
+    # Food Insecurity
+    "88121-9": FHIRCodes.SDOHCategory.FOOD_INSECURITY,  # Hunger Vital Sign [HVS]
+    "88124-3": FHIRCodes.SDOHCategory.FOOD_INSECURITY,  # Food insecurity risk [HVS]
+    "88123-5": FHIRCodes.SDOHCategory.FOOD_INSECURITY,  # Food didn't last
+    "88122-7": FHIRCodes.SDOHCategory.FOOD_INSECURITY,  # Worried food would run out
+    "103982-5": FHIRCodes.SDOHCategory.FOOD_INSECURITY,  # Do you have food insecurity
+    "99122-7": FHIRCodes.SDOHCategory.FOOD_INSECURITY,  # Food insecurity - worried food will run out
+
+    # Housing Instability
+    "93033-9": FHIRCodes.SDOHCategory.HOUSING_INSTABILITY,  # Worried about losing housing [PRAPARE]
+    "71802-3": FHIRCodes.SDOHCategory.HOUSING_INSTABILITY,  # Housing status
+    "103983-3": FHIRCodes.SDOHCategory.HOUSING_INSTABILITY,  # Do you have housing insecurity
+
+    # Inadequate Housing
+    "93026-3": FHIRCodes.SDOHCategory.INADEQUATE_HOUSING,  # Feel physically/emotionally safe at home
+
+    # Utility Insecurity
+    "96779-4": FHIRCodes.SDOHCategory.UTILITY_INSECURITY,  # Utility company threatened shut off
+
+    # Employment Status
+    "67875-5": FHIRCodes.SDOHCategory.EMPLOYMENT_STATUS,  # Employment status - current
+    "96780-2": FHIRCodes.SDOHCategory.EMPLOYMENT_STATUS,  # Wants help finding/keeping job
+    "93035-4": FHIRCodes.SDOHCategory.EMPLOYMENT_STATUS,  # Season/migrant farm work
+
+    # Transportation Insecurity
+    "93030-5": FHIRCodes.SDOHCategory.TRANSPORTATION_INSECURITY,  # Lack of transportation kept from appointments
+
+    # Financial Insecurity
+    "76513-1": FHIRCodes.SDOHCategory.FINANCIAL_INSECURITY,  # How hard to pay for basics
+    "63586-2": FHIRCodes.SDOHCategory.FINANCIAL_INSECURITY,  # Total family income estimate
+
+    # Incarceration Status
+    "93028-9": FHIRCodes.SDOHCategory.INCARCERATION_STATUS,  # Spent >2 nights in jail/prison
+
+    # Legal
+    "93677-3": FHIRCodes.SDOHCategory.SDOH_CATEGORY_UNSPECIFIED,  # Need help with legal issues (no specific legal category)
+
+    # Social Connection
+    "93029-7": FHIRCodes.SDOHCategory.SOCIAL_CONNECTION,  # How often see/talk to people you care about
+    "93159-2": FHIRCodes.SDOHCategory.SOCIAL_CONNECTION,  # Feel lonely or isolated
+
+    # Stress
+    "93038-8": FHIRCodes.SDOHCategory.STRESS,  # Stress level
+    "44250-9": FHIRCodes.SDOHCategory.STRESS,  # Little interest or pleasure
+    "44255-8": FHIRCodes.SDOHCategory.STRESS,  # Feeling down/depressed/hopeless
+
+    # Educational Attainment
+    "82589-3": FHIRCodes.SDOHCategory.EDUCATIONAL_ATTAINMENT,  # Highest level of education
+    "96782-8": FHIRCodes.SDOHCategory.EDUCATIONAL_ATTAINMENT,  # Wants help with school/training
+
+    # Material Hardship
+    "93031-3": FHIRCodes.SDOHCategory.MATERIAL_HARDSHIP,  # Unable to get necessities
+    "96781-0": FHIRCodes.SDOHCategory.MATERIAL_HARDSHIP,  # Able to get help with daily activities
+    "69861-3": FHIRCodes.SDOHCategory.MATERIAL_HARDSHIP,  # Difficulty with daily activities (physical/mental)
+    "69858-9": FHIRCodes.SDOHCategory.MATERIAL_HARDSHIP,  # Serious difficulty (physical/mental)
+
+    # Language Access
+    "54899-0": FHIRCodes.SDOHCategory.LANGUAGE_ACCESS,  # Preferred language
+    "97027-7": FHIRCodes.SDOHCategory.LANGUAGE_ACCESS,  # Speaks language other than English at home
+
+    # Health Insurance Coverage Status
+    "76437-3": FHIRCodes.SDOHCategory.HEALTH_INSURANCE_COVERAGE_STATUS,  # Primary insurance
+
+    # Veteran Status
+    "93034-7": FHIRCodes.SDOHCategory.VETERAN_STATUS,  # Discharged from armed forces
+
+    # Intimate Partner Violence
+    "76501-6": FHIRCodes.SDOHCategory.INTIMATE_PARTNER_VIOLENCE,  # Afraid of partner/ex-partner
+    "95618-5": FHIRCodes.SDOHCategory.INTIMATE_PARTNER_VIOLENCE,  # Physically hurt you [HITS]
+}
+
+# Display names for SDOH categories
+SDOH_CATEGORY_DISPLAY = {
+    FHIRCodes.SDOHCategory.FOOD_INSECURITY: "Food Insecurity",
+    FHIRCodes.SDOHCategory.HOUSING_INSTABILITY: "Housing Instability",
+    FHIRCodes.SDOHCategory.HOMELESSNESS: "Homelessness",
+    FHIRCodes.SDOHCategory.INADEQUATE_HOUSING: "Inadequate Housing",
+    FHIRCodes.SDOHCategory.TRANSPORTATION_INSECURITY: "Transportation Insecurity",
+    FHIRCodes.SDOHCategory.FINANCIAL_INSECURITY: "Financial Insecurity",
+    FHIRCodes.SDOHCategory.MATERIAL_HARDSHIP: "Material Hardship",
+    FHIRCodes.SDOHCategory.EDUCATIONAL_ATTAINMENT: "Educational Attainment",
+    FHIRCodes.SDOHCategory.EMPLOYMENT_STATUS: "Employment Status",
+    FHIRCodes.SDOHCategory.VETERAN_STATUS: "Veteran Status",
+    FHIRCodes.SDOHCategory.STRESS: "Stress",
+    FHIRCodes.SDOHCategory.SOCIAL_CONNECTION: "Social Connection",
+    FHIRCodes.SDOHCategory.INTIMATE_PARTNER_VIOLENCE: "Intimate Partner Violence",
+    FHIRCodes.SDOHCategory.ELDER_ABUSE: "Elder Abuse",
+    FHIRCodes.SDOHCategory.PERSONAL_HEALTH_LITERACY: "Personal Health Literacy",
+    FHIRCodes.SDOHCategory.HEALTH_INSURANCE_COVERAGE_STATUS: "Health Insurance Coverage Status",
+    FHIRCodes.SDOHCategory.MEDICAL_COST_BURDEN: "Medical Cost Burden",
+    FHIRCodes.SDOHCategory.DIGITAL_LITERACY: "Digital Literacy",
+    FHIRCodes.SDOHCategory.DIGITAL_ACCESS: "Digital Access",
+    FHIRCodes.SDOHCategory.UTILITY_INSECURITY: "Utility Insecurity",
+    FHIRCodes.SDOHCategory.INCARCERATION_STATUS: "Incarceration Status",
+    FHIRCodes.SDOHCategory.LANGUAGE_ACCESS: "Language Status",
+    FHIRCodes.SDOHCategory.SDOH_CATEGORY_UNSPECIFIED: "SDOH Category Unspecified",
 }

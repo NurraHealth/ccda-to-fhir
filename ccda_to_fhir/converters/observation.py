@@ -16,6 +16,7 @@ from ccda_to_fhir.constants import (
     BP_SYSTOLIC_DISPLAY,
     FHIRCodes,
     FHIRSystems,
+    LOINC_TO_SDOH_CATEGORY,
     O2_CONCENTRATION_CODE,
     O2_CONCENTRATION_DISPLAY,
     O2_FLOW_RATE_CODE,
@@ -23,6 +24,7 @@ from ccda_to_fhir.constants import (
     OBSERVATION_STATUS_TO_FHIR,
     PULSE_OX_ALT_CODE,
     PULSE_OX_PRIMARY_CODE,
+    SDOH_CATEGORY_DISPLAY,
     TemplateIds,
     VITAL_SIGNS_PANEL_CODE,
     VITAL_SIGNS_PANEL_DISPLAY,
@@ -87,10 +89,10 @@ class ObservationConverter(BaseConverter[Observation]):
         status = self._determine_status(observation)
         fhir_obs["status"] = status
 
-        # 4. Category - determine based on template ID
-        category = self._determine_category(observation)
-        if category:
-            fhir_obs["category"] = [category]
+        # 4. Category - determine based on template ID and observation code
+        categories = self._determine_category(observation)
+        if categories:
+            fhir_obs["category"] = categories
 
         # 5. Code (required) - observation type code
         if observation.code:
@@ -411,22 +413,29 @@ class ObservationConverter(BaseConverter[Observation]):
             status_code, FHIRCodes.ObservationStatus.FINAL
         )
 
-    def _determine_category(self, observation: Observation) -> JSONObject | None:
-        """Determine observation category based on template ID.
+    def _determine_category(self, observation: Observation) -> list[JSONObject] | None:
+        """Determine observation categories based on template ID and observation code.
+
+        For social history observations, this includes:
+        1. Base category "social-history"
+        2. Additional SDOH categories based on the observation's LOINC code
 
         Args:
             observation: The C-CDA Observation
 
         Returns:
-            FHIR CodeableConcept for category, or None
+            List of FHIR CodeableConcept for categories, or None
         """
         if not observation.template_id:
             return None
 
-        # Check template IDs to determine category
+        categories: list[JSONObject] = []
+
+        # Check template IDs to determine base category
+        is_social_history = False
         for template in observation.template_id:
             if template.root == TemplateIds.VITAL_SIGN_OBSERVATION:
-                return {
+                categories.append({
                     "coding": [
                         {
                             "system": FHIRSystems.OBSERVATION_CATEGORY,
@@ -434,9 +443,10 @@ class ObservationConverter(BaseConverter[Observation]):
                             "display": "Vital Signs",
                         }
                     ]
-                }
+                })
+                break
             elif template.root == TemplateIds.RESULT_OBSERVATION:
-                return {
+                categories.append({
                     "coding": [
                         {
                             "system": FHIRSystems.OBSERVATION_CATEGORY,
@@ -444,13 +454,14 @@ class ObservationConverter(BaseConverter[Observation]):
                             "display": "Laboratory",
                         }
                     ]
-                }
+                })
+                break
             elif template.root in (
                 TemplateIds.SMOKING_STATUS_OBSERVATION,
                 TemplateIds.SOCIAL_HISTORY_OBSERVATION,
                 TemplateIds.PREGNANCY_OBSERVATION,
             ):
-                return {
+                categories.append({
                     "coding": [
                         {
                             "system": FHIRSystems.OBSERVATION_CATEGORY,
@@ -458,7 +469,43 @@ class ObservationConverter(BaseConverter[Observation]):
                             "display": "Social History",
                         }
                     ]
-                }
+                })
+                is_social_history = True
+                break
+
+        # For social history observations, add SDOH category based on LOINC code
+        if is_social_history and observation.code:
+            loinc_code = self._get_loinc_code_from_cd(observation.code)
+            if loinc_code and loinc_code in LOINC_TO_SDOH_CATEGORY:
+                sdoh_category_code = LOINC_TO_SDOH_CATEGORY[loinc_code]
+                sdoh_display = SDOH_CATEGORY_DISPLAY.get(sdoh_category_code, sdoh_category_code)
+                categories.append({
+                    "coding": [
+                        {
+                            "system": FHIRSystems.SDOH_CATEGORY,
+                            "code": sdoh_category_code,
+                            "display": sdoh_display,
+                        }
+                    ]
+                })
+
+        return categories if categories else None
+
+    def _get_loinc_code_from_cd(self, code: CD | CE | None) -> str | None:
+        """Extract LOINC code from a CD/CE element.
+
+        Args:
+            code: The C-CDA CD or CE code element
+
+        Returns:
+            LOINC code string, or None if not a LOINC code
+        """
+        if not code:
+            return None
+
+        # Check if this is a LOINC code (codeSystem = 2.16.840.1.113883.6.1)
+        if code.code_system == "2.16.840.1.113883.6.1" and code.code:
+            return code.code
 
         return None
 
