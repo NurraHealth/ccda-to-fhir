@@ -19,8 +19,13 @@ from ccda_to_fhir.constants import (
 from ccda_to_fhir.logging_config import get_logger
 
 from .base import BaseConverter
+from .medication import MedicationConverter
 
 logger = get_logger(__name__)
+
+# Global registry for storing created Medication resources
+# This will be populated during conversion and extracted by the DocumentConverter
+_medication_registry: dict[str, FHIRResourceDict] = {}
 
 
 class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
@@ -89,10 +94,13 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         if substance_admin.negation_ind:
             med_request["doNotPerform"] = True
 
-        # 6. Medication (required) - use medicationCodeableConcept for simple cases
-        medication = self._extract_medication(substance_admin)
-        if medication:
-            med_request["medicationCodeableConcept"] = medication
+        # 6. Medication (required) - use medicationReference for complex cases, medicationCodeableConcept for simple
+        medication_data = self._extract_medication(substance_admin)
+        if medication_data:
+            if "medicationReference" in medication_data:
+                med_request["medicationReference"] = medication_data["medicationReference"]
+            elif "medicationCodeableConcept" in medication_data:
+                med_request["medicationCodeableConcept"] = medication_data["medicationCodeableConcept"]
 
         # 6. Subject (patient reference)
         med_request["subject"] = {"reference": "Patient/patient-placeholder"}
@@ -189,7 +197,15 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         )
 
     def _extract_medication(self, substance_admin: SubstanceAdministration) -> JSONObject | None:
-        """Extract medication code as medicationCodeableConcept."""
+        """Extract medication as medicationReference or medicationCodeableConcept.
+
+        Per C-CDA on FHIR IG: When additional medication details need to be conveyed
+        (manufacturer, drug vehicle, form, lot number), a Medication resource should
+        be created and referenced. Otherwise, use medicationCodeableConcept.
+
+        Returns:
+            Dict with either "medicationReference" or "medicationCodeableConcept" key
+        """
         if not substance_admin.consumable:
             return None
 
@@ -205,27 +221,87 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         if not manufactured_material.code:
             return None
 
-        med_code = manufactured_material.code
+        # Check if we need to create a Medication resource (complex medication info)
+        has_complex_info = self._has_complex_medication_info(substance_admin, manufactured_product)
 
-        # Extract translations - convert CD objects to dictionaries
-        translations = None
-        if hasattr(med_code, 'translation') and med_code.translation:
-            translations = []
-            for trans in med_code.translation:
-                if trans.code and trans.code_system:
-                    translations.append({
-                        "code": trans.code,
-                        "code_system": trans.code_system,
-                        "display_name": trans.display_name,
-                    })
+        if has_complex_info:
+            # Create Medication resource and return reference
+            medication_converter = MedicationConverter(code_system_mapper=self.code_system_mapper)
+            medication = medication_converter.convert(manufactured_product, substance_admin)
 
-        return self.create_codeable_concept(
-            code=med_code.code,
-            code_system=med_code.code_system,
-            display_name=med_code.display_name,
-            original_text=self.extract_original_text(med_code.original_text) if med_code.original_text else None,
-            translations=translations,
-        )
+            # Store in registry for later extraction by DocumentConverter
+            medication_id = medication["id"]
+            _medication_registry[medication_id] = medication
+
+            return {"medicationReference": {"reference": f"Medication/{medication_id}"}}
+        else:
+            # Simple case - use medicationCodeableConcept
+            med_code = manufactured_material.code
+
+            # Extract translations - convert CD objects to dictionaries
+            translations = None
+            if hasattr(med_code, 'translation') and med_code.translation:
+                translations = []
+                for trans in med_code.translation:
+                    if trans.code and trans.code_system:
+                        translations.append({
+                            "code": trans.code,
+                            "code_system": trans.code_system,
+                            "display_name": trans.display_name,
+                        })
+
+            codeable_concept = self.create_codeable_concept(
+                code=med_code.code,
+                code_system=med_code.code_system,
+                display_name=med_code.display_name,
+                original_text=(
+                    self.extract_original_text(med_code.original_text)
+                    if med_code.original_text
+                    else None
+                ),
+                translations=translations,
+            )
+
+            return {"medicationCodeableConcept": codeable_concept}
+
+    def _has_complex_medication_info(
+        self, substance_admin: SubstanceAdministration, manufactured_product
+    ) -> bool:
+        """Check if medication has complex information requiring a Medication resource.
+
+        Complex information includes:
+        - Manufacturer organization
+        - Drug vehicle participant (ingredient)
+        - Administration unit code (form)
+        - Lot number (batch)
+
+        Args:
+            substance_admin: The substance administration
+            manufactured_product: The manufactured product
+
+        Returns:
+            True if complex information exists, False otherwise
+        """
+        # Check for manufacturer
+        if manufactured_product.manufacturer_organization:
+            if manufactured_product.manufacturer_organization.name:
+                return True
+
+        # Check for drug vehicle (participant with typeCode="CSM")
+        if substance_admin.participant:
+            for participant in substance_admin.participant:
+                if participant.type_code and participant.type_code.upper() == "CSM":
+                    return True
+
+        # Check for administration unit code (form)
+        if substance_admin.administration_unit_code:
+            return True
+
+        # Check for lot number (batch)
+        if manufactured_product.manufactured_material.lot_number_text:
+            return True
+
+        return False
 
     def _extract_authored_on(self, substance_admin: SubstanceAdministration) -> str | None:
         """Extract authoredOn date from author time."""
@@ -793,3 +869,20 @@ def convert_medication_activity(
         # Log error
         logger.error(f"Error converting medication activity", exc_info=True)
         raise
+
+
+def get_medication_resources() -> list[FHIRResourceDict]:
+    """Get all Medication resources created during conversion.
+
+    Returns:
+        List of FHIR Medication resources
+    """
+    return list(_medication_registry.values())
+
+
+def clear_medication_registry() -> None:
+    """Clear the medication registry.
+
+    Should be called at the start of each document conversion.
+    """
+    _medication_registry.clear()

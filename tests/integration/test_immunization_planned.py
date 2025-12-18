@@ -65,23 +65,45 @@ class TestPlannedImmunizationConversion:
     def test_planned_immunization_has_vaccine_code(
         self, ccda_immunization_planned: str
     ) -> None:
-        """Test that vaccine code is correctly converted in MedicationRequest."""
+        """Test that vaccine code is correctly converted in MedicationRequest.
+
+        Note: The fixture has manufacturer organization, so it uses medicationReference.
+        The code is in the Medication resource.
+        """
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)
 
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert medication_request is not None
-        assert "medicationCodeableConcept" in medication_request
 
-        # Check for CVX code
-        cvx = next(
-            (c for c in medication_request["medicationCodeableConcept"]["coding"]
-             if c.get("system") == "http://hl7.org/fhir/sid/cvx"),
-            None
-        )
-        assert cvx is not None
-        assert cvx["code"] == "140"
-        assert cvx["display"] == "Influenza, seasonal, injectable, preservative free"
+        # For complex medications (with manufacturer), check medicationReference
+        if "medicationReference" in medication_request:
+            medication = _find_resource_in_bundle(bundle, "Medication")
+            assert medication is not None
+            assert "code" in medication
+
+            # Check for CVX code
+            cvx = next(
+                (c for c in medication["code"]["coding"]
+                 if c.get("system") == "http://hl7.org/fhir/sid/cvx"),
+                None
+            )
+            assert cvx is not None
+            assert cvx["code"] == "140"
+            assert cvx["display"] == "Influenza, seasonal, injectable, preservative free"
+        # For simple medications, check medicationCodeableConcept
+        elif "medicationCodeableConcept" in medication_request:
+            # Check for CVX code
+            cvx = next(
+                (c for c in medication_request["medicationCodeableConcept"]["coding"]
+                 if c.get("system") == "http://hl7.org/fhir/sid/cvx"),
+                None
+            )
+            assert cvx is not None
+            assert cvx["code"] == "140"
+            assert cvx["display"] == "Influenza, seasonal, injectable, preservative free"
+        else:
+            assert False, "MedicationRequest must have either medicationReference or medicationCodeableConcept"
 
     def test_planned_immunization_has_ndc_translation(
         self, ccda_immunization_planned: str
@@ -93,14 +115,31 @@ class TestPlannedImmunizationConversion:
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert medication_request is not None
 
-        # Check for NDC code
-        ndc = next(
-            (c for c in medication_request["medicationCodeableConcept"]["coding"]
-             if c.get("system") == "http://hl7.org/fhir/sid/ndc"),
-            None
-        )
-        assert ndc is not None
-        assert ndc["code"] == "49281-0400-10"
+        # For complex medications, check in Medication resource
+        if "medicationReference" in medication_request:
+            medication = _find_resource_in_bundle(bundle, "Medication")
+            assert medication is not None
+
+            # Check for NDC code
+            ndc = next(
+                (c for c in medication["code"]["coding"]
+                 if c.get("system") == "http://hl7.org/fhir/sid/ndc"),
+                None
+            )
+            assert ndc is not None
+            assert ndc["code"] == "49281-0400-10"
+        # For simple medications, check in MedicationRequest
+        elif "medicationCodeableConcept" in medication_request:
+            # Check for NDC code
+            ndc = next(
+                (c for c in medication_request["medicationCodeableConcept"]["coding"]
+                 if c.get("system") == "http://hl7.org/fhir/sid/ndc"),
+                None
+            )
+            assert ndc is not None
+            assert ndc["code"] == "49281-0400-10"
+        else:
+            assert False, "MedicationRequest must have either medicationReference or medicationCodeableConcept"
 
     def test_planned_immunization_has_authored_on(
         self, ccda_immunization_planned: str

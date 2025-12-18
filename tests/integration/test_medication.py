@@ -26,20 +26,41 @@ class TestMedicationConversion:
     def test_converts_medication_code(
         self, ccda_medication: str, fhir_medication: JSONObject
     ) -> None:
-        """Test that medication code is correctly converted."""
+        """Test that medication code is correctly converted.
+
+        Note: The ccda_medication fixture has complex medication info (manufacturer,
+        drug vehicle, form), so it uses medicationReference. The code is in the
+        Medication resource.
+        """
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
-        assert "medicationCodeableConcept" in med_request
-        rxnorm = next(
-            (c for c in med_request["medicationCodeableConcept"]["coding"]
-             if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"),
-            None
-        )
-        assert rxnorm is not None
-        assert rxnorm["code"] == "1190220"
+
+        # For complex medications, check medicationReference
+        if "medicationReference" in med_request:
+            medication = _find_resource_in_bundle(bundle, "Medication")
+            assert medication is not None
+            assert "code" in medication
+            rxnorm = next(
+                (c for c in medication["code"]["coding"]
+                 if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"),
+                None
+            )
+            assert rxnorm is not None
+            assert rxnorm["code"] == "1190220"
+        # For simple medications, check medicationCodeableConcept
+        elif "medicationCodeableConcept" in med_request:
+            rxnorm = next(
+                (c for c in med_request["medicationCodeableConcept"]["coding"]
+                 if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"),
+                None
+            )
+            assert rxnorm is not None
+            assert rxnorm["code"] == "1190220"
+        else:
+            assert False, "MedicationRequest must have either medicationReference or medicationCodeableConcept"
 
     def test_converts_status(
         self, ccda_medication: str, fhir_medication: JSONObject
@@ -609,3 +630,126 @@ class TestDosageInstructionText:
         # Text should be in dosageInstruction.text instead
         assert "dosageInstruction" in med_request
         assert "text" in med_request["dosageInstruction"][0]
+
+    def test_creates_medication_resource_for_complex_medication(
+        self, ccda_medication: str
+    ) -> None:
+        """Test that a Medication resource is created when complex medication info exists.
+
+        Per C-CDA on FHIR IG: When additional medication details need to be conveyed
+        (manufacturer, drug vehicle, form, lot number), a Medication resource should
+        be created and referenced by the MedicationRequest.
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Should have a Medication resource
+        medication = _find_resource_in_bundle(bundle, "Medication")
+        assert medication is not None
+        assert medication["resourceType"] == "Medication"
+
+        # Should have an ID
+        assert "id" in medication
+        assert medication["id"].startswith("medication-")
+
+    def test_medication_request_references_medication_resource(
+        self, ccda_medication: str
+    ) -> None:
+        """Test that MedicationRequest uses medicationReference for complex medication."""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
+        assert med_request is not None
+
+        # Should have medicationReference, NOT medicationCodeableConcept
+        assert "medicationReference" in med_request
+        assert "medicationCodeableConcept" not in med_request
+
+        # Reference should point to a Medication resource
+        assert "reference" in med_request["medicationReference"]
+        med_ref = med_request["medicationReference"]["reference"]
+        assert med_ref.startswith("Medication/")
+
+        # The referenced Medication should exist in the bundle
+        medication_id = med_ref.split("/")[1]
+        medication = _find_resource_in_bundle(bundle, "Medication")
+        assert medication is not None
+        assert medication["id"] == medication_id
+
+    def test_medication_resource_has_code(self, ccda_medication: str) -> None:
+        """Test that Medication resource has medication code."""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        medication = _find_resource_in_bundle(bundle, "Medication")
+        assert medication is not None
+
+        # Should have code from manufacturedMaterial.code
+        assert "code" in medication
+        assert "coding" in medication["code"]
+        rxnorm = next(
+            (c for c in medication["code"]["coding"]
+             if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"),
+            None
+        )
+        assert rxnorm is not None
+        assert rxnorm["code"] == "1190220"
+
+    def test_medication_resource_has_manufacturer(self, ccda_medication: str) -> None:
+        """Test that Medication resource has manufacturer from manufacturerOrganization."""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        medication = _find_resource_in_bundle(bundle, "Medication")
+        assert medication is not None
+
+        # Should have manufacturer from manufacturerOrganization
+        assert "manufacturer" in medication
+        assert "display" in medication["manufacturer"]
+        assert medication["manufacturer"]["display"] == "Good Vaccines Inc"
+
+    def test_medication_resource_has_form(self, ccda_medication: str) -> None:
+        """Test that Medication resource has form from administrationUnitCode."""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        medication = _find_resource_in_bundle(bundle, "Medication")
+        assert medication is not None
+
+        # Should have form from administrationUnitCode
+        assert "form" in medication
+        assert "coding" in medication["form"]
+        assert len(medication["form"]["coding"]) > 0
+        assert medication["form"]["coding"][0]["code"] == "C48501"
+        assert "Inhalation dosing unit" in medication["form"]["coding"][0]["display"]
+
+    def test_medication_resource_has_ingredient(self, ccda_medication: str) -> None:
+        """Test that Medication resource has ingredient from drug vehicle participant."""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        medication = _find_resource_in_bundle(bundle, "Medication")
+        assert medication is not None
+
+        # Should have ingredient from participant (drug vehicle)
+        assert "ingredient" in medication
+        assert len(medication["ingredient"]) > 0
+
+        ingredient = medication["ingredient"][0]
+        assert "itemCodeableConcept" in ingredient
+        assert "coding" in ingredient["itemCodeableConcept"]
+
+        # Should be sodium chloride (the drug vehicle)
+        snomed_code = next(
+            (c for c in ingredient["itemCodeableConcept"]["coding"]
+             if c.get("system") == "http://snomed.info/sct"),
+            None
+        )
+        assert snomed_code is not None
+        assert snomed_code["code"] == "387390002"
+        assert "sodium chloride" in snomed_code["display"].lower()
+
+        # Drug vehicle should be inactive ingredient
+        assert "isActive" in ingredient
+        assert ingredient["isActive"] is False

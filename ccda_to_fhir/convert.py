@@ -14,6 +14,7 @@ from fhir.resources.R4B.diagnosticreport import DiagnosticReport
 from fhir.resources.R4B.documentreference import DocumentReference
 from fhir.resources.R4B.encounter import Encounter
 from fhir.resources.R4B.immunization import Immunization
+from fhir.resources.R4B.medication import Medication
 from fhir.resources.R4B.medicationrequest import MedicationRequest
 from fhir.resources.R4B.medicationstatement import MedicationStatement
 from fhir.resources.R4B.observation import Observation
@@ -45,7 +46,11 @@ from .converters.diagnostic_report import DiagnosticReportConverter
 from .converters.document_reference import DocumentReferenceConverter
 from .converters.encounter import EncounterConverter
 from .converters.immunization import convert_immunization_activity
-from .converters.medication_request import convert_medication_activity
+from .converters.medication_request import (
+    convert_medication_activity,
+    get_medication_resources,
+    clear_medication_registry,
+)
 from .converters.medication_statement import convert_medication_statement
 from .converters.note_activity import convert_note_activity
 from .converters.section_processor import SectionConfig, SectionProcessor
@@ -71,6 +76,7 @@ RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
     "DocumentReference": DocumentReference,
     "Condition": Condition,
     "AllergyIntolerance": AllergyIntolerance,
+    "Medication": Medication,
     "MedicationRequest": MedicationRequest,
     "MedicationStatement": MedicationStatement,
     "Immunization": Immunization,
@@ -412,6 +418,9 @@ class DocumentConverter:
         Returns:
             FHIR Bundle as a dict with Composition as first entry
         """
+        # Clear medication registry at start of conversion
+        clear_medication_registry()
+
         resources = []
         # Section→resource mapping for Composition.section[].entry references
         section_resource_map: dict[str, list[FHIRResourceDict]] = {}
@@ -706,6 +715,19 @@ class DocumentConverter:
         resources.extend(provenances)
         for provenance in provenances:
             self.reference_registry.register_resource(provenance)
+
+        # Add Medication resources (created during MedicationRequest conversion)
+        medications = get_medication_resources()
+        for medication in medications:
+            # Validate medication
+            if self._validate_resource(medication):
+                resources.append(medication)
+                self.reference_registry.register_resource(medication)
+            else:
+                logger.warning(
+                    f"Medication resource failed validation, skipping",
+                    resource_id=medication.get("id")
+                )
 
         # Generate Practitioner and RelatedPerson resources from informants
         informant_practitioners, related_persons = self._generate_informant_resources()
