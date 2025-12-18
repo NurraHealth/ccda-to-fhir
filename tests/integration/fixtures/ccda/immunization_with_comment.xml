@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="EVN" negationInd="false" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.52"/>
+  <templateId root="2.16.840.1.113883.10.20.22.4.52" extension="2015-08-01"/>
+  <id root="e6f1ba43-c0ed-4b9b-9f12-f435d8ad8f92"/>
+  <statusCode code="completed"/>
+  <effectiveTime xsi:type="TS" value="20100815"/>
+  <repeatNumber value="1"/>
+  <routeCode code="C28161" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="Intramuscular Route of Administration"/>
+  <approachSiteCode code="700022004" codeSystem="2.16.840.1.113883.6.96" displayName="Muscle and/or tendon structure of upper limb"/>
+  <doseQuantity value="60" unit="ug"/>
+  <consumable>
+    <manufacturedProduct classCode="MANU">
+      <templateId root="2.16.840.1.113883.10.20.22.4.54"/>
+      <manufacturedMaterial>
+        <code code="88" codeSystem="2.16.840.1.113883.12.292" displayName="Influenza virus vaccine">
+          <translation code="49281-0422-50" codeSystem="2.16.840.1.113883.6.69" displayName="Influenza vaccine"/>
+        </code>
+        <lotNumberText>1</lotNumberText>
+      </manufacturedMaterial>
+      <manufacturerOrganization>
+        <name>Health LS - Immuno Inc.</name>
+      </manufacturerOrganization>
+    </manufacturedProduct>
+  </consumable>
+  <performer>
+    <assignedEntity>
+      <id root="2.16.840.1.113883.19.5.9999.456" extension="2981824"/>
+      <assignedPerson>
+        <name>
+          <given>Amanda</given>
+          <family>Assigned</family>
+        </name>
+      </assignedPerson>
+    </assignedEntity>
+  </performer>
+  <author>
+    <time value="20100815"/>
+    <assignedAuthor>
+      <id extension="99999999" root="2.16.840.1.113883.4.6"/>
+      <assignedPerson>
+        <name>
+          <given>Henry</given>
+          <family>Seven</family>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <entryRelationship typeCode="SUBJ" inversionInd="true">
+    <act classCode="ACT" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.64"/>
+      <code code="48767-8" codeSystem="2.16.840.1.113883.6.1" displayName="Annotation comment"/>
+      <text value="Patient tolerated the vaccine well. No immediate adverse reactions observed."/>
+      <statusCode code="completed"/>
+    </act>
+  </entryRelationship>
+</substanceAdministration>

@@ -457,3 +457,22 @@ class TestImmunizationConversion:
         # Should have effectiveDateTime
         assert "effectiveDateTime" in observation
         assert observation["effectiveDateTime"] == "2008-05-01"
+
+    def test_converts_comment_activity_to_note(
+        self, ccda_immunization_with_comment: str
+    ) -> None:
+        """Test that Comment Activity is converted to Immunization.note."""
+        ccda_doc = wrap_in_ccda_document(ccda_immunization_with_comment, IMMUNIZATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        immunization = _find_resource_in_bundle(bundle, "Immunization")
+        assert immunization is not None
+
+        # Should have note from Comment Activity
+        assert "note" in immunization
+        assert len(immunization["note"]) > 0
+
+        # Check note content
+        note = immunization["note"][0]
+        assert "text" in note
+        assert note["text"] == "Patient tolerated the vaccine well. No immediate adverse reactions observed."

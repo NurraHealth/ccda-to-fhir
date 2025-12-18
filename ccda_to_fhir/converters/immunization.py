@@ -156,6 +156,11 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if performers:
             immunization["performer"] = performers
 
+        # 16. Notes - from Comment Activity entryRelationship
+        notes = self._extract_notes(substance_admin)
+        if notes:
+            immunization["note"] = notes
+
         # C-CDA does not have a direct equivalent for primarySource
         # Use data-absent-reason extension per C-CDA on FHIR IG guidance
         immunization["_primarySource"] = {
@@ -677,6 +682,42 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 performers.append(performer_obj)
 
         return performers
+
+    def _extract_notes(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
+        """Extract FHIR notes from C-CDA substance administration.
+
+        Extracts notes from Comment Activity entries (template 2.16.840.1.113883.10.20.22.4.64).
+
+        Args:
+            substance_admin: The C-CDA SubstanceAdministration
+
+        Returns:
+            List of FHIR Annotation objects (as dicts with 'text' field)
+        """
+        notes = []
+
+        # Extract from Comment Activity entries
+        if substance_admin.entry_relationship:
+            for entry_rel in substance_admin.entry_relationship:
+                if hasattr(entry_rel, "act") and entry_rel.act:
+                    act = entry_rel.act
+                    # Check if it's a Comment Activity
+                    if hasattr(act, "template_id") and act.template_id:
+                        for template in act.template_id:
+                            if template.root == TemplateIds.COMMENT_ACTIVITY:
+                                # This is a Comment Activity
+                                if hasattr(act, "text") and act.text:
+                                    comment_text = None
+                                    if isinstance(act.text, str):
+                                        comment_text = act.text
+                                    elif hasattr(act.text, "value") and act.text.value:
+                                        comment_text = act.text.value
+
+                                    if comment_text:
+                                        notes.append({"text": comment_text})
+                                break
+
+        return notes
 
     def _format_name_for_display(self, name) -> str | None:
         """Format a name for display.
