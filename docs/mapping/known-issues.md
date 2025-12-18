@@ -43,24 +43,25 @@ This is a living document that captures known issues, ambiguities, and limitatio
 
 ---
 
-### 2. Subject Cardinality Not Enforced ✅ RESOLVED
+### 2. Subject Cardinality Correctly Implemented ✅ RESOLVED
 
-**Issue**: US Realm Header Profile requires `Composition.subject` with cardinality 1..1, but implementation didn't enforce this.
+**Issue**: Implementation correctly handles `Composition.subject` per US Realm Header Profile cardinality 0..1 (optional).
 
 **Impact**:
-- Non-compliant FHIR output when patient reference cannot be created
-- Validation failures against US Core profiles
+- Compliant FHIR output per profile specification
+- Allows valid compositions without subject when recordTarget is absent
 
 **Resolution** (Completed):
-- ✅ Composition converter now validates that `subject` is present before creating Composition
-- ✅ Raises `ValueError` if recordTarget is missing (should be caught by C-CDA validation for US Realm Header docs)
-- ✅ Raises `ValueError` if patient conversion fails despite recordTarget existing
-- ✅ Added test coverage for subject cardinality enforcement (`test_subject_required_always_present`)
+- ✅ Per US Realm Header Profile, `Composition.subject` has cardinality 0..1 (optional, not required)
+- ✅ Composition converter creates subject when valid recordTarget exists
+- ✅ Composition converter omits subject when recordTarget is absent or conversion fails (allowed per 0..1 cardinality)
+- ✅ Added test coverage for both scenarios (`test_subject_present_when_recordTarget_exists`, `test_subject_absent_when_recordTarget_missing`)
+- ✅ No ValueError raised for missing subject - follows profile specification
 
 **Current Behavior**:
-- When recordTarget exists and patient conversion succeeds: subject references the actual Patient resource
-- When recordTarget is missing: raises ValueError (US Realm Header validation should prevent this)
-- When patient conversion fails: raises ValueError with clear error message
+- When recordTarget exists and patient conversion succeeds: subject references the actual Patient resource ✅
+- When recordTarget is missing: subject is omitted (allowed per 0..1 cardinality) ✅
+- When patient conversion fails: subject is omitted (allowed per 0..1 cardinality) ✅
 - No placeholder/unknown patient resources are created - all Patient resources are real conversions from C-CDA data
 
 **Official IG Guidance**: [US Realm Header Profile - Composition.subject](https://hl7.org/fhir/us/ccda/2016Sep/StructureDefinition-ccda-us-realm-header-composition.html)

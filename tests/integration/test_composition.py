@@ -574,14 +574,14 @@ class TestCompositionConversion:
         with pytest.raises(ValueError, match="Cannot create Composition without custodian"):
             converter.convert(parsed)
 
-    def test_subject_required_always_present(self) -> None:
-        """Test that subject is always present when recordTarget exists.
+    def test_subject_present_when_recordTarget_exists(self) -> None:
+        """Test that subject is present when valid recordTarget exists.
 
-        Per US Realm Header Profile, Composition.subject has cardinality 1..1 (required).
-        When recordTarget exists (which it MUST for US Realm Header docs), patient
-        conversion should succeed and subject should reference the actual Patient resource.
+        Per US Realm Header Profile, Composition.subject has cardinality 0..1 (optional).
+        When recordTarget exists with valid patient data, patient conversion should succeed
+        and subject should reference the actual Patient resource.
 
-        Reference: https://hl7.org/fhir/us/ccda/2016Sep/StructureDefinition-ccda-us-realm-header-composition.html
+        Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/StructureDefinition-US-Realm-Header.html
         """
         # Document has valid recordTarget with patient data
         ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
@@ -638,8 +638,8 @@ class TestCompositionConversion:
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
-        # Subject MUST be present (1..1 cardinality)
-        assert "subject" in composition, "Composition.subject is required (cardinality 1..1)"
+        # Subject should be present when recordTarget exists (0..1 cardinality)
+        assert "subject" in composition, "Composition.subject should be present when recordTarget exists"
 
         # Should reference the actual Patient resource
         assert "reference" in composition["subject"]
@@ -652,36 +652,62 @@ class TestCompositionConversion:
         assert patient["name"][0]["given"] == ["Test"]
         assert patient["name"][0]["family"] == "Patient"
 
-    def test_subject_missing_recordTarget_fails(self) -> None:
-        """Test that missing recordTarget causes conversion to fail with clear error.
+    def test_subject_absent_when_recordTarget_missing(self) -> None:
+        """Test that Composition can be created without subject when recordTarget is absent.
 
-        Per US Realm Header Profile requirements, recordTarget is mandatory.
-        The C-CDA parser validates this for US Realm Header docs, but if somehow
-        a document without recordTarget reaches the Composition converter, it should
-        fail with a clear error message.
+        Per US Realm Header Profile, Composition.subject has cardinality 0..1 (optional).
+        While most C-CDA documents have recordTarget, the profile allows compositions
+        without a subject. The conversion should succeed and simply omit the subject field.
+
+        Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/StructureDefinition-US-Realm-Header.html
         """
-        import pytest
-        from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
-        from ccda_to_fhir.converters.composition import CompositionConverter
-        from ccda_to_fhir.converters.references import ReferenceRegistry
+        # Document without recordTarget - subject should be optional
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="1.2.3.4.5"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Test Document</title>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <title>Test Section</title>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
 
-        # Create a ClinicalDocument without recordTarget
-        ccda_doc = ClinicalDocument(
-            id=None,
-            code=None,
-            title="Test",
-            effective_time=None,
-            confidentiality_code=None,
-            record_target=None,  # Missing recordTarget
-            author=None,
-            custodian=None,
-        )
+        bundle = convert_document(ccda_doc)
 
-        converter = CompositionConverter(reference_registry=ReferenceRegistry())
-
-        # Should raise ValueError with clear message
-        with pytest.raises(ValueError, match="Cannot create Composition without recordTarget"):
-            converter.convert(ccda_doc)
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+        assert composition["resourceType"] == "Composition"
+        # Subject should be absent when recordTarget is missing (0..1 cardinality allows absence)
+        assert "subject" not in composition
 
 
 class TestCompositionSections:

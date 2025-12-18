@@ -185,30 +185,20 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 "text": "Clinical Document",
             }
 
-        # Subject - patient reference - REQUIRED (1..1 per US Realm Header Profile)
-        # Per C-CDA on FHIR IG, Composition.subject has cardinality 1..1 (exactly one required).
-        # Reference: https://hl7.org/fhir/us/ccda/2016Sep/StructureDefinition-ccda-us-realm-header-composition.html
+        # Subject - patient reference - OPTIONAL (0..1 per US Realm Header Profile)
+        # Per US Realm Header Profile, Composition.subject has cardinality 0..1 (optional).
+        # Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/StructureDefinition-US-Realm-Header.html
         #
-        # Note: US Realm Header documents (template 2.16.840.1.113883.10.20.22.1.1) are
-        # validated at parse time to ensure recordTarget exists. Patient conversion should
-        # always succeed when recordTarget is present.
+        # While subject is optional per profile, most C-CDA documents include a recordTarget.
+        # Always attempts to use first recordTarget when present. Clinical documents typically have
+        # one recordTarget representing the patient. Multiple recordTargets are rare and not yet
+        # supported in this implementation.
         if clinical_document.record_target and len(clinical_document.record_target) > 0:
             subject_ref = self._create_subject_reference(clinical_document.record_target[0])
             if subject_ref:
                 composition["subject"] = subject_ref
-            else:
-                # Patient conversion failed despite recordTarget existing - this is an error
-                raise ValueError(
-                    "Failed to create Composition.subject reference. "
-                    "US Realm Header Profile requires subject with cardinality 1..1. "
-                    "Patient resource was not successfully created from recordTarget."
-                )
-        else:
-            # No recordTarget - validation should have caught this for US Realm Header docs
-            raise ValueError(
-                "Cannot create Composition without recordTarget. "
-                "US Realm Header Profile requires subject with cardinality 1..1."
-            )
+            # If extraction fails, subject remains absent (allowed per 0..1 cardinality)
+        # else: subject remains absent (allowed per 0..1 cardinality)
 
         # Date - REQUIRED (composition editing time)
         if clinical_document.effective_time:
