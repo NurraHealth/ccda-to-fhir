@@ -649,6 +649,24 @@ class FHIRCodes:
 
 
 # =============================================================================
+# NoImmunizationReason ValueSet (2.16.840.1.113883.1.11.19717)
+# =============================================================================
+# Codes from v3-ActReason code system that represent reasons for not administering an immunization
+# These should map to Immunization.statusReason when negationInd="true"
+# Reference: http://terminology.hl7.org/CodeSystem/v3-ActReason
+NO_IMMUNIZATION_REASON_CODES = frozenset({
+    "IMMUNE",      # Immunity - patient already immune
+    "MEDPREC",     # Medical precaution - medical condition or precaution
+    "OSTOCK",      # Out of stock - vaccine not available
+    "PATOBJ",      # Patient objection - patient refused
+    "PHILISOP",    # Philosophical objection - personal beliefs
+    "RELIG",       # Religious objection - religious beliefs
+    "VACEFF",      # Vaccine efficacy concerns - doubts about effectiveness
+    "VACSAF",      # Vaccine safety concerns - safety worries
+})
+
+
+# =============================================================================
 # Age Units
 # =============================================================================
 

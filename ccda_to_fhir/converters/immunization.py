@@ -9,6 +9,7 @@ from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministr
 from ccda_to_fhir.constants import (
     FHIRCodes,
     FHIRSystems,
+    NO_IMMUNIZATION_REASON_CODES,
     TemplateIds,
     TypeCodes,
     V2ParticipationFunctionCodes,
@@ -127,13 +128,17 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             immunization["site"] = site
 
         # 12. ReasonCode / StatusReason - from indication (RSON) entryRelationship
-        # If negated (not-done), reasons map to statusReason. Otherwise, reasonCode.
-        reason_codes = self._extract_reason_codes(substance_admin)
-        if reason_codes:
-            if status == FHIRCodes.Immunization.STATUS_NOT_DONE:
-                immunization["statusReason"] = reason_codes[0]  # statusReason is single, reasonCode is list
-            else:
-                immunization["reasonCode"] = reason_codes
+        # Complex not-given reason mapping: distinguish refusal reasons from clinical indications
+        status_reasons, reason_codes = self._extract_reason_codes(substance_admin)
+
+        # If negated (not-done), use statusReason for refusal reasons
+        if status == FHIRCodes.Immunization.STATUS_NOT_DONE and status_reasons:
+            # statusReason is single CodeableConcept, use first refusal reason
+            immunization["statusReason"] = status_reasons[0]
+
+        # Clinical indications go to reasonCode (only if NOT negated)
+        if status != FHIRCodes.Immunization.STATUS_NOT_DONE and reason_codes:
+            immunization["reasonCode"] = reason_codes
 
         # 13. ProtocolApplied - from repeatNumber
         protocol_applied = self._extract_protocol_applied(substance_admin)
@@ -399,44 +404,86 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Use the first approach site
         return self._convert_code_to_codeable_concept(substance_admin.approach_site_code[0])
 
-    def _extract_reason_codes(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
-        """Extract reason codes from indication observations.
+    def _extract_reason_codes(self, substance_admin: SubstanceAdministration) -> tuple[list[JSONObject], list[JSONObject]]:
+        """Extract reason codes from RSON (reason) entry relationships.
+
+        Implements complex not-given reason mapping per C-CDA on FHIR IG:
+        - Distinguishes between refusal reasons (NoImmunizationReason ValueSet → statusReason)
+          and clinical indications (Problem Type ValueSet → reasonCode)
+        - Both use typeCode="RSON", so differentiation is by ValueSet membership
+        - Checks both observation.code and observation.value for refusal reasons
+        - Handles multiple reasons and complex nested structures
 
         Args:
             substance_admin: The C-CDA SubstanceAdministration
 
         Returns:
-            List of FHIR CodeableConcepts for reason codes
+            Tuple of (status_reasons, reason_codes):
+            - status_reasons: List of refusal reason CodeableConcepts for statusReason
+            - reason_codes: List of clinical indication CodeableConcepts for reasonCode
         """
-        reason_codes = []
+        status_reasons = []  # NoImmunizationReason codes (refusal reasons)
+        reason_codes = []    # Clinical indications
 
         if not substance_admin.entry_relationship:
-            return reason_codes
+            return status_reasons, reason_codes
 
-        # Find indication (RSON) observations
+        # Process all RSON (reason) entry relationships
         for entry_rel in substance_admin.entry_relationship:
             if entry_rel.type_code == TypeCodes.RSON and entry_rel.observation:
                 observation = entry_rel.observation
-                
-                # Check for Refusal Reason (code is in observation.code)
-                is_refusal = False
+
+                # Check if this observation has the Immunization Refusal Reason template
+                has_refusal_template = False
                 if observation.template_id:
                     for tid in observation.template_id:
                         if tid.root == TemplateIds.IMMUNIZATION_REFUSAL_REASON:
-                            is_refusal = True
-                            if observation.code:
-                                reason_code = self._convert_code_to_codeable_concept(observation.code)
-                                if reason_code:
-                                    reason_codes.append(reason_code)
+                            has_refusal_template = True
                             break
-                
-                # If not refusal, assume Indication (code is in observation.value)
-                if not is_refusal and observation.value and isinstance(observation.value, (CD, CE)):
-                    reason_code = self._convert_code_to_codeable_concept(observation.value)
-                    if reason_code:
-                        reason_codes.append(reason_code)
 
-        return reason_codes
+                # Try to extract a refusal reason from observation.code first
+                # This is the primary location per C-CDA IG for Immunization Refusal Reason template
+                refusal_found = False
+                if observation.code and observation.code.code:
+                    # Check if this code is from the NoImmunizationReason ValueSet
+                    if self._is_no_immunization_reason_code(observation.code.code):
+                        reason_code = self._convert_code_to_codeable_concept(observation.code)
+                        if reason_code:
+                            status_reasons.append(reason_code)
+                            refusal_found = True
+
+                # If no refusal reason found in observation.code, check observation.value
+                # Some C-CDA documents may place the refusal reason in value instead
+                if not refusal_found and observation.value and isinstance(observation.value, (CD, CE)):
+                    value_cd = observation.value
+                    if value_cd.code and self._is_no_immunization_reason_code(value_cd.code):
+                        reason_code = self._convert_code_to_codeable_concept(value_cd)
+                        if reason_code:
+                            status_reasons.append(reason_code)
+                            refusal_found = True
+
+                # If this is not a refusal reason, treat as clinical indication
+                # Clinical indications use Indication template (2.16.840.1.113883.10.20.22.4.19)
+                # and have the indication in observation.value
+                if not refusal_found and not has_refusal_template:
+                    if observation.value and isinstance(observation.value, (CD, CE)):
+                        # This is likely a clinical indication (e.g., Asthma as reason for flu vaccine)
+                        reason_code = self._convert_code_to_codeable_concept(observation.value)
+                        if reason_code:
+                            reason_codes.append(reason_code)
+
+        return status_reasons, reason_codes
+
+    def _is_no_immunization_reason_code(self, code: str) -> bool:
+        """Check if a code is from the NoImmunizationReason ValueSet.
+
+        Args:
+            code: The code to check
+
+        Returns:
+            True if the code is from the NoImmunizationReason ValueSet
+        """
+        return code in NO_IMMUNIZATION_REASON_CODES
 
     def _extract_protocol_applied(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
         """Extract protocol applied from repeatNumber.
