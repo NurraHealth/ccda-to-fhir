@@ -417,17 +417,138 @@ Uses LOINC Answer List LL6130-5:
 
 ---
 
-## 6. Sex (for Clinical Use) → Patient Extension
+## 6. Sex Parameter for Clinical Use → Patient Extension
 
 **⚠️ Maps to Extension, NOT Observation**
 
+### Template
+
+- Sex Parameter for Clinical Use Observation (`2.16.840.1.113883.10.20.22.4.513`)
+
 ### Mapping to Patient Extension
 
-**Target:** `Patient.extension` (US Core Sex Extension)
+**Target:** `Patient.extension` (FHIR Patient Sex Parameter for Clinical Use Extension)
 
-**Extension URL:** `http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex`
+**Extension URL:** `http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse`
 
-Complex structure with context period and supporting information.
+**Note:** This is a complex extension with multiple sub-extensions for value, period, comment, and supportingInfo.
+
+| C-CDA Path | FHIR Path | Transform |
+|------------|-----------|-----------|
+| `observation/value` | `Patient.extension:sexParameterForClinicalUse.extension:value.valueCodeableConcept` | [SPCU Values](#sex-parameter-for-clinical-use-values) |
+| `observation/effectiveTime` | `Patient.extension:sexParameterForClinicalUse.extension:period.valuePeriod.start` | Date conversion (snapshot→period start) |
+| `observation/text/reference` | `Patient.extension:sexParameterForClinicalUse.extension:comment.valueString` | Narrative text extraction |
+| `observation/entryRelationship[@typeCode='SPRT']` | `Patient.extension:sexParameterForClinicalUse.extension:supportingInfo.valueReference` | Reference to supporting Observation |
+
+### Sex Parameter for Clinical Use Values
+
+Uses FHIR CodeSystem `2.16.840.1.113883.4.642.4.2038` (from ValueSet `2.16.840.1.113883.4.642.3.3181`):
+
+| Code | System | OID | Display |
+|------|--------|-----|---------|
+| `female-typical` | http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use | 2.16.840.1.113883.4.642.4.2038 | Apply female-typical setting or reference range |
+| `male-typical` | http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use | 2.16.840.1.113883.4.642.4.2038 | Apply male-typical setting or reference range |
+| `specified` | http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use | 2.16.840.1.113883.4.642.4.2038 | Apply specified setting or reference range |
+| `unknown` | http://terminology.hl7.org/CodeSystem/data-absent-reason | 2.16.840.1.113883.4.642.4.1048 | Unknown |
+
+**Important:**
+- **CodeSystem OID** `2.16.840.1.113883.4.642.4.2038` is used in C-CDA `codeSystem` attribute ✅
+- **ValueSet OID** `2.16.840.1.113883.4.642.3.3181` is for binding/validation only (not used in C-CDA XML)
+- The `unknown` code comes from the data-absent-reason code system (OID: 2.16.840.1.113883.4.642.4.1048)
+
+### Example
+
+**C-CDA:**
+```xml
+<observation classCode="OBS" moodCode="EVN">
+  <templateId root="2.16.840.1.113883.10.20.22.4.513" extension="2025-05-01"/>
+  <id root="1.2.3.4" extension="spcu-123"/>
+  <code code="99501-9" displayName="Sex parameter for clinical use"
+        codeSystem="2.16.840.1.113883.6.1"/>
+  <statusCode code="completed"/>
+  <effectiveTime value="20240101"/>
+  <value xsi:type="CD" code="female-typical"
+         displayName="Apply female-typical setting or reference range"
+         codeSystem="2.16.840.1.113883.4.642.4.2038"/>
+  <text>
+    <reference value="#spcu-note"/>
+  </text>
+  <entryRelationship typeCode="SPRT">
+    <observation classCode="OBS" moodCode="EVN">
+      <id root="supporting-obs-id"/>
+      <!-- Supporting clinical observation -->
+    </observation>
+  </entryRelationship>
+</observation>
+```
+
+**FHIR (on Patient resource):**
+```json
+{
+  "resourceType": "Patient",
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse",
+      "extension": [
+        {
+          "url": "value",
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use",
+                "code": "female-typical",
+                "display": "Apply female-typical setting or reference range"
+              }
+            ]
+          }
+        },
+        {
+          "url": "period",
+          "valuePeriod": {
+            "start": "2024-01-01"
+          }
+        },
+        {
+          "url": "comment",
+          "valueString": "Based on current clinical presentation and recent lab results"
+        },
+        {
+          "url": "supportingInfo",
+          "valueReference": {
+            "reference": "Observation/supporting-obs-id"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+**❌ Do NOT create:**
+```json
+{
+  "resourceType": "Observation",
+  "code": {
+    "coding": [{"code": "99501-9"}]
+  }
+}
+```
+
+### Key Differences from Simple Sex Extension
+
+**Simple Sex (LOINC 46098-0):**
+- Maps to `us-core-sex` extension (deprecated) or `us-core-individual-sex` extension
+- Simple extension with just `valueCode` or `valueCoding`
+- No context information (period, supporting info)
+- Already implemented ✅
+
+**Sex Parameter for Clinical Use (LOINC 99501-9):**
+- Maps to `patient-sexParameterForClinicalUse` extension
+- Complex extension with multiple sub-extensions
+- Includes period, comment, and supportingInfo
+- Provides clinical context for decision-making
+- Uses official FHIR ValueSet codes (female-typical, male-typical, specified, unknown)
+- Implemented ✅
 
 ---
 

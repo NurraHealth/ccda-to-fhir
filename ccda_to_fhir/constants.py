@@ -59,6 +59,7 @@ class TemplateIds:
     ESTIMATED_DELIVERY_DATE_OBSERVATION = "2.16.840.1.113883.10.20.15.3.1"
     BIRTH_SEX_OBSERVATION = "2.16.840.1.113883.10.20.22.4.200"
     TRIBAL_AFFILIATION_OBSERVATION = "2.16.840.1.113883.10.20.22.4.506"
+    SEX_PARAMETER_FOR_CLINICAL_USE_OBSERVATION = "2.16.840.1.113883.10.20.22.4.513"
     # Gender Identity Observation doesn't have a standardized template ID in C-CDA
     # It's typically identified by LOINC code 76691-5
 
@@ -126,6 +127,7 @@ class CCDACodes:
     BIRTH_SEX = "76689-9"  # Sex assigned at birth
     GENDER_IDENTITY = "76691-5"  # Gender identity
     SEX = "46098-0"  # Sex (documented clinical sex)
+    SEX_PARAMETER_FOR_CLINICAL_USE = "99501-9"  # Sex parameter for clinical use
     TRIBAL_AFFILIATION = "95370-3"  # Tribal affiliation
 
     # Severity code
@@ -343,6 +345,9 @@ class FHIRSystems:
     V3_LANGUAGE_ABILITY_MODE = "http://terminology.hl7.org/CodeSystem/v3-LanguageAbilityMode"
     V3_LANGUAGE_ABILITY_PROFICIENCY = "http://terminology.hl7.org/CodeSystem/v3-LanguageAbilityProficiency"
 
+    # Sex and Gender
+    SEX_PARAMETER_FOR_CLINICAL_USE = "http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use"
+
     # Language
     BCP_47 = "urn:ietf:bcp:47"
 
@@ -365,6 +370,9 @@ class FHIRSystems:
     US_CORE_GENDER_IDENTITY = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
     US_CORE_SEX = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
     US_CORE_TRIBAL_AFFILIATION = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+
+    # FHIR Core extensions
+    PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE = "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
 
     # Units
     UCUM = "http://unitsofmeasure.org"

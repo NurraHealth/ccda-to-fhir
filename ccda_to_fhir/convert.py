@@ -1216,6 +1216,107 @@ class DocumentConverter:
                                 extensions.append(sex_ext)
                             processed = True
 
+                        # Sex Parameter for Clinical Use observation identified by LOINC 99501-9
+                        if (
+                            obs.code.code == CCDACodes.SEX_PARAMETER_FOR_CLINICAL_USE
+                            and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
+                        ):
+                            # Sex Parameter for Clinical Use Extension (FHIR Core)
+                            if obs.value:
+                                spcu_ext = {
+                                    "url": FHIRSystems.PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE,
+                                    "extension": []
+                                }
+
+                                # value sub-extension (required)
+                                value_concept = self.observation_converter.create_codeable_concept(
+                                    code=getattr(obs.value, "code", None),
+                                    code_system=getattr(obs.value, "code_system", None),
+                                    display_name=getattr(obs.value, "display_name", None),
+                                )
+                                spcu_ext["extension"].append({
+                                    "url": "value",
+                                    "valueCodeableConcept": value_concept
+                                })
+
+                                # period sub-extension (optional)
+                                # C-CDA effectiveTime is a snapshot, map to period.start
+                                if obs.effective_time:
+                                    effective_time = self.observation_converter._extract_effective_time(obs)
+                                    if effective_time:
+                                        # If it's a dict (period), use the start; otherwise use the datetime directly
+                                        if isinstance(effective_time, dict):
+                                            start_date = effective_time.get("start")
+                                        else:
+                                            start_date = effective_time
+
+                                        if start_date:
+                                            spcu_ext["extension"].append({
+                                                "url": "period",
+                                                "valuePeriod": {
+                                                    "start": start_date
+                                                }
+                                            })
+
+                                # comment sub-extension (optional)
+                                # Extract from text/reference to narrative
+                                if hasattr(obs, 'text') and obs.text:
+                                    comment_text = None
+
+                                    # Try to resolve reference first
+                                    if hasattr(obs.text, 'reference') and obs.text.reference:
+                                        ref_value = obs.text.reference.value if hasattr(
+                                            obs.text.reference, 'value'
+                                        ) else obs.text.reference
+
+                                        if ref_value and isinstance(ref_value, str) and ref_value.startswith('#'):
+                                            content_id = ref_value[1:]
+                                            if section and hasattr(section, 'text') and section.text:
+                                                comment_text = self.observation_converter._resolve_narrative_reference(
+                                                    section.text, content_id
+                                                )
+
+                                    # Fall back to direct text value if reference didn't work
+                                    if not comment_text and hasattr(obs.text, 'value') and obs.text.value:
+                                        comment_text = obs.text.value
+
+                                    if comment_text:
+                                        spcu_ext["extension"].append({
+                                            "url": "comment",
+                                            "valueString": comment_text
+                                        })
+
+                                # supportingInfo sub-extension (optional)
+                                # Extract from entryRelationship with typeCode="SPRT"
+                                if hasattr(obs, 'entry_relationship') and obs.entry_relationship:
+                                    for entry_rel in obs.entry_relationship:
+                                        if hasattr(entry_rel, 'type_code') and entry_rel.type_code == "SPRT":
+                                            # Get the supporting observation/act
+                                            supporting_entry = None
+                                            if hasattr(entry_rel, 'observation') and entry_rel.observation:
+                                                supporting_entry = entry_rel.observation
+                                            elif hasattr(entry_rel, 'act') and entry_rel.act:
+                                                supporting_entry = entry_rel.act
+
+                                            # Extract ID for reference
+                                            if supporting_entry and hasattr(supporting_entry, 'id') and supporting_entry.id:
+                                                # Use first ID
+                                                supporting_id = supporting_entry.id[0] if isinstance(
+                                                    supporting_entry.id, list
+                                                ) else supporting_entry.id
+
+                                                if hasattr(supporting_id, 'extension') and supporting_id.extension:
+                                                    ref_id = supporting_id.extension
+                                                    spcu_ext["extension"].append({
+                                                        "url": "supportingInfo",
+                                                        "valueReference": {
+                                                            "reference": f"Observation/{ref_id}"
+                                                        }
+                                                    })
+
+                                extensions.append(spcu_ext)
+                            processed = True
+
                         # Tribal Affiliation identified by LOINC 95370-3
                         if (
                             obs.code.code == CCDACodes.TRIBAL_AFFILIATION
@@ -1242,9 +1343,10 @@ class DocumentConverter:
                                 extensions.append(tribal_affiliation_ext)
                             processed = True
 
-                    # Check if it's a Tribal Affiliation observation by template ID
+                    # Check template ID for special observations
                     if not processed and obs.template_id:
                         for template in obs.template_id:
+                            # Tribal Affiliation observation
                             if template.root == TemplateIds.TRIBAL_AFFILIATION_OBSERVATION:
                                 # Tribal Affiliation Extension (US Core)
                                 if obs.value:
@@ -1262,6 +1364,99 @@ class DocumentConverter:
                                         ]
                                     }
                                     extensions.append(tribal_affiliation_ext)
+                                processed = True
+                                break
+
+                            # Sex Parameter for Clinical Use observation
+                            if template.root == TemplateIds.SEX_PARAMETER_FOR_CLINICAL_USE_OBSERVATION:
+                                # Sex Parameter for Clinical Use Extension (FHIR Core)
+                                if obs.value:
+                                    spcu_ext = {
+                                        "url": FHIRSystems.PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE,
+                                        "extension": []
+                                    }
+
+                                    # value sub-extension (required)
+                                    value_concept = self.observation_converter.create_codeable_concept(
+                                        code=getattr(obs.value, "code", None),
+                                        code_system=getattr(obs.value, "code_system", None),
+                                        display_name=getattr(obs.value, "display_name", None),
+                                    )
+                                    spcu_ext["extension"].append({
+                                        "url": "value",
+                                        "valueCodeableConcept": value_concept
+                                    })
+
+                                    # period sub-extension (optional)
+                                    if obs.effective_time:
+                                        effective_time = self.observation_converter._extract_effective_time(obs)
+                                        if effective_time:
+                                            # If it's a dict (period), use the start; otherwise use the datetime directly
+                                            if isinstance(effective_time, dict):
+                                                start_date = effective_time.get("start")
+                                            else:
+                                                start_date = effective_time
+
+                                            if start_date:
+                                                spcu_ext["extension"].append({
+                                                    "url": "period",
+                                                    "valuePeriod": {
+                                                        "start": start_date
+                                                    }
+                                                })
+
+                                    # comment sub-extension (optional)
+                                    if hasattr(obs, 'text') and obs.text:
+                                        comment_text = None
+
+                                        # Try to resolve reference first
+                                        if hasattr(obs.text, 'reference') and obs.text.reference:
+                                            ref_value = obs.text.reference.value if hasattr(
+                                                obs.text.reference, 'value'
+                                            ) else obs.text.reference
+
+                                            if ref_value and isinstance(ref_value, str) and ref_value.startswith('#'):
+                                                content_id = ref_value[1:]
+                                                if section and hasattr(section, 'text') and section.text:
+                                                    comment_text = self.observation_converter._resolve_narrative_reference(
+                                                        section.text, content_id
+                                                    )
+
+                                        # Fall back to direct text value
+                                        if not comment_text and hasattr(obs.text, 'value') and obs.text.value:
+                                            comment_text = obs.text.value
+
+                                        if comment_text:
+                                            spcu_ext["extension"].append({
+                                                "url": "comment",
+                                                "valueString": comment_text
+                                            })
+
+                                    # supportingInfo sub-extension (optional)
+                                    if hasattr(obs, 'entry_relationship') and obs.entry_relationship:
+                                        for entry_rel in obs.entry_relationship:
+                                            if hasattr(entry_rel, 'type_code') and entry_rel.type_code == "SPRT":
+                                                supporting_entry = None
+                                                if hasattr(entry_rel, 'observation') and entry_rel.observation:
+                                                    supporting_entry = entry_rel.observation
+                                                elif hasattr(entry_rel, 'act') and entry_rel.act:
+                                                    supporting_entry = entry_rel.act
+
+                                                if supporting_entry and hasattr(supporting_entry, 'id') and supporting_entry.id:
+                                                    supporting_id = supporting_entry.id[0] if isinstance(
+                                                        supporting_entry.id, list
+                                                    ) else supporting_entry.id
+
+                                                    if hasattr(supporting_id, 'extension') and supporting_id.extension:
+                                                        ref_id = supporting_id.extension
+                                                        spcu_ext["extension"].append({
+                                                            "url": "supportingInfo",
+                                                            "valueReference": {
+                                                                "reference": f"Observation/{ref_id}"
+                                                            }
+                                                        })
+
+                                    extensions.append(spcu_ext)
                                 processed = True
                                 break
 
