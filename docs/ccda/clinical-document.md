@@ -1,8 +1,16 @@
-# C-CDA: Clinical Document Header
+# C-CDA: Clinical Document
 
 ## Overview
 
-The C-CDA Clinical Document header contains metadata about the document itself, including document type, author, custodian, dates, and other administrative information. This maps to the FHIR DocumentReference resource.
+The C-CDA ClinicalDocument is the root element of all C-CDA documents and serves as a container for the entire document structure, including both document-level metadata and the clinical content organized in sections. When converting to FHIR, the ClinicalDocument maps to two complementary FHIR representations:
+
+1. **Document Bundle (Bundle + Composition)** - For structured conversion where all C-CDA content is converted to FHIR resources and packaged in a Bundle with type="document"
+2. **Document Index (DocumentReference)** - For indexing and referencing the original C-CDA document without full conversion
+
+This document focuses on the document structure and metadata elements of ClinicalDocument. For the mapping to these FHIR resources, see:
+- Bundle packaging: `docs/fhir/bundle.md` and `docs/mapping/20-bundle.md`
+- Composition structure: `docs/fhir/composition.md` and `docs/mapping/19-composition.md`
+- DocumentReference indexing: `docs/fhir/document_reference.md`
 
 ## Template Information
 
@@ -467,6 +475,74 @@ The following elements support USCDI data requirements:
 | languageCode | AllLanguages | Required |
 | realmCode | USRealmCS | Required |
 
+## FHIR Mapping Overview
+
+The ClinicalDocument maps to FHIR in two ways:
+
+### 1. Structured Document Conversion (Bundle + Composition)
+
+When performing a full conversion to FHIR:
+
+**Output:** A FHIR Bundle with `type="document"` containing:
+1. **Composition** (first entry) - Document structure and metadata
+   - Maps from: Document header elements (id, code, title, effectiveTime, author, custodian, etc.)
+   - Contains: Sections with references to converted resources
+2. **Patient** - Subject of the document
+   - Maps from: `recordTarget/patientRole`
+3. **Practitioners** - Authors, attesters
+   - Maps from: `author`, `legalAuthenticator`, `authenticator`
+4. **Organizations** - Custodian, author organizations
+   - Maps from: `custodian`, `author/representedOrganization`
+5. **Clinical Resources** - Section entries
+   - Maps from: Each `section/entry` to appropriate FHIR resources (Condition, AllergyIntolerance, MedicationRequest, etc.)
+6. **Supporting Resources** - Referenced resources
+   - Maps from: Resources referenced by clinical resources
+
+**Key Principles:**
+- ClinicalDocument → Bundle (container) + Composition (first entry)
+- Document header → Composition elements
+- Document body (sections) → Composition.section[] with entry references
+- All section entries → Individual FHIR resources in Bundle
+- Bundle.identifier matches Composition.identifier
+- Bundle is immutable and self-contained
+
+**See:**
+- `docs/fhir/bundle.md` - FHIR Bundle resource specification
+- `docs/fhir/composition.md` - FHIR Composition resource specification
+- `docs/mapping/20-bundle.md` - ClinicalDocument to Bundle mapping
+- `docs/mapping/19-composition.md` - ClinicalDocument to Composition mapping
+
+### 2. Document Indexing (DocumentReference)
+
+When indexing the C-CDA document without full conversion:
+
+**Output:** A FHIR DocumentReference that:
+- Points to the original C-CDA XML document
+- Contains document metadata (type, date, author, etc.)
+- Provides searchable index for document discovery
+- Does not include converted clinical content
+
+**Key Principles:**
+- ClinicalDocument header → DocumentReference metadata
+- Original C-CDA XML → DocumentReference.content.attachment.data or .url
+- Lightweight representation for document management
+
+**See:**
+- `docs/fhir/document_reference.md` - DocumentReference resource specification
+
+### Choosing the Approach
+
+| Scenario | Use Bundle + Composition | Use DocumentReference |
+|----------|-------------------------|----------------------|
+| Need structured FHIR resource access | ✓ | |
+| Need to query specific clinical data | ✓ | |
+| Building FHIR-native applications | ✓ | |
+| C-CDA on FHIR compliance required | ✓ | |
+| Document discovery/indexing | | ✓ |
+| Preserving original C-CDA format | | ✓ |
+| Lightweight document management | | ✓ |
+| Both structured and original needed | ✓ | ✓ (complementary) |
+
 ## References
 
 - C-CDA R2.1 Implementation Guide
@@ -474,3 +550,7 @@ The following elements support USCDI data requirements:
 - HL7 C-CDA Templates: http://www.hl7.org/ccdasearch/
 - LOINC Document Types: https://loinc.org/
 - HL7 V3 Data Types: http://www.hl7.org/implement/standards/product_brief.cfm?product_id=264
+- FHIR R4 Bundle: https://hl7.org/fhir/R4/bundle.html
+- FHIR R4 Documents: https://hl7.org/fhir/R4/documents.html
+- FHIR R4 Composition: https://hl7.org/fhir/R4/composition.html
+- C-CDA on FHIR IG: http://hl7.org/fhir/us/ccda/

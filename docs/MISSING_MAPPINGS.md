@@ -13,7 +13,7 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 7 missing mappings (5 high/medium priority, 2 low priority)
+**Current Status**: 8 missing mappings (6 high/medium priority, 2 low priority)
 
 ---
 
@@ -442,7 +442,216 @@ ccda_to_fhir/
 
 ---
 
-### 2. CarePlan ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
+### 2. Bundle (Document Packaging) ❌ **NOT IMPLEMENTED** - CRITICAL PRIORITY
+
+**Deadline**: Immediate (required for any document conversion)
+
+**Impact**: Without Bundle support, C-CDA documents cannot be packaged as proper FHIR document Bundles. The Bundle resource serves as the container that wraps the Composition and all referenced resources into a single, immutable document unit. Without this, documents cannot be exchanged or stored according to FHIR document specifications.
+
+#### Documentation
+- ✅ **FHIR Documentation**: `docs/fhir/bundle.md`
+- ✅ **C-CDA Documentation**: `docs/ccda/clinical-document.md` (includes Bundle packaging overview)
+- ✅ **Mapping Specification**: `docs/mapping/20-bundle.md`
+
+#### Standards References
+- **FHIR R4 Resource**: [Bundle](https://hl7.org/fhir/R4/bundle.html)
+- **FHIR Documents**: [FHIR Document Bundle Specification](https://hl7.org/fhir/R4/documents.html)
+- **C-CDA on FHIR IG**: [Document Profiles](http://hl7.org/fhir/us/ccda/)
+
+#### Required Implementation
+
+The Bundle resource is the container for FHIR documents, packaging the Composition and all referenced resources.
+
+##### Input: C-CDA ClinicalDocument (Entire Document)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <id root="2.16.840.1.113883.19.5.99999.1" extension="TT988"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+  <title>Continuity of Care Document</title>
+  <effectiveTime value="20200301102000-0500"/>
+  <!-- Document header elements -->
+  <!-- recordTarget, author, custodian -->
+  <component>
+    <structuredBody>
+      <!-- Document sections with entries -->
+    </structuredBody>
+  </component>
+</ClinicalDocument>
+```
+
+##### Output: FHIR Document Bundle
+
+```json
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "identifier": {
+    "system": "urn:oid:2.16.840.1.113883.19.5.99999.1",
+    "value": "TT988"
+  },
+  "timestamp": "2020-03-01T10:20:00-05:00",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:composition-1",
+      "resource": {
+        "resourceType": "Composition",
+        ...
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:patient-1",
+      "resource": {
+        "resourceType": "Patient",
+        ...
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:practitioner-1",
+      "resource": {
+        "resourceType": "Practitioner",
+        ...
+      }
+    }
+  ]
+}
+```
+
+#### Implementation Checklist
+
+##### Core Bundle Elements
+- [ ] Create Bundle with type="document"
+- [ ] Set Bundle.identifier from ClinicalDocument/id
+- [ ] Set Bundle.timestamp from ClinicalDocument/effectiveTime
+
+##### Entry Assembly
+- [ ] Add Composition as first entry (required - constraint bdl-11)
+- [ ] Add Patient resource
+- [ ] Add Practitioner/Organization resources (authors, custodian)
+- [ ] Add all section entry resources
+- [ ] Recursively include all referenced resources
+
+##### fullUrl Assignment
+- [ ] Assign unique fullUrl to each entry
+- [ ] Use UUID-based URNs (urn:uuid:...) or OID-based URNs
+- [ ] Ensure fullUrl matches resource.id
+- [ ] Ensure all fullUrl values are unique
+
+##### Reference Resolution
+- [ ] Ensure all references in Composition resolve within Bundle
+- [ ] Ensure all references in resources resolve within Bundle
+- [ ] Verify no broken references
+- [ ] Verify no external references requiring resolution
+
+##### Validation
+- [ ] Validate Bundle.type = "document"
+- [ ] Validate Bundle.identifier is present
+- [ ] Validate Bundle.timestamp is present
+- [ ] Validate Composition is first entry
+- [ ] Validate all entries have fullUrl and resource
+- [ ] Validate no duplicate resources
+
+##### Optional Features
+- [ ] Support Bundle.signature for signed documents
+- [ ] Support Binary resource for stylesheets
+
+#### Implementation Complexity: HIGH
+
+**Estimated Effort**: 2-3 weeks (dependent on Composition implementation)
+
+**Dependencies**:
+- Composition resource conversion (see #1)
+- All resource-specific converters (Patient, Practitioner, etc.)
+- Reference tracking and resolution system
+- UUID/identifier generation system
+
+**Key Challenges**:
+1. **Resource Assembly**: Tracking all resources that need to be included
+2. **Reference Resolution**: Ensuring all references resolve within Bundle
+3. **Duplicate Prevention**: Avoiding duplicate resources when multiple references exist
+4. **fullUrl Strategy**: Choosing appropriate fullUrl format (UUID vs OID)
+5. **Recursive Inclusion**: Following reference chains to include all needed resources
+6. **Circular References**: Detecting and handling circular reference chains
+7. **Large Documents**: Managing memory for large documents with 100+ resources
+
+#### Testing Requirements
+
+##### Unit Tests
+- [ ] Test Bundle creation with correct type
+- [ ] Test identifier mapping from ClinicalDocument/id
+- [ ] Test timestamp conversion
+- [ ] Test entry ordering (Composition first)
+- [ ] Test fullUrl generation strategies (UUID, OID)
+- [ ] Test duplicate resource detection
+- [ ] Test reference resolution within Bundle
+
+##### Integration Tests
+- [ ] Test complete document conversion (CCD)
+- [ ] Test with all document types (Discharge Summary, Progress Note, etc.)
+- [ ] Test with documents containing 50+ resources
+- [ ] Test with circular references
+- [ ] Test with missing optional elements
+- [ ] Test Bundle validation against FHIR schema
+- [ ] Test Bundle signature generation (optional)
+
+##### Validation Tests
+- [ ] Validate Bundle structure meets FHIR specification
+- [ ] Validate all required constraints (bdl-9, bdl-10, bdl-11)
+- [ ] Validate no broken references
+- [ ] Validate against C-CDA on FHIR profiles
+- [ ] Test with FHIR validator tool
+
+#### Key Implementation Notes
+
+**Bundle Assembly Process**:
+1. Initialize Bundle with type="document"
+2. Set identifier and timestamp from ClinicalDocument
+3. Convert and add Composition as first entry
+4. Convert and add all participant resources (Patient, Practitioner, Organization)
+5. For each section, convert and add entry resources
+6. Recursively include all referenced resources
+7. Assign fullUrl to all entries
+8. Validate all references resolve
+9. Optionally sign Bundle
+
+**Reference Resolution Strategy**:
+- Use internal Bundle references: `"reference": "Patient/patient-123"`
+- Resolution: match against `entry.fullUrl` containing the reference
+- All references SHOULD resolve within Bundle (self-contained document)
+
+**Resource Inclusion Algorithm**:
+```
+included = empty set
+queue = [Composition]
+
+while queue not empty:
+  resource = queue.pop()
+  if resource in included: continue
+
+  included.add(resource)
+
+  for each reference in resource:
+    referenced = resolve(reference)
+    if referenced not in included:
+      queue.add(referenced)
+```
+
+**fullUrl Strategy**:
+- **Recommended**: UUID-based URNs (`urn:uuid:...`)
+- Generate UUIDs for resources without stable identifiers
+- Use UUID v5 (name-based) for reproducibility if needed
+- Ensure uniqueness across all Bundle entries
+
+**Immutability**:
+- Once assembled, Bundle content cannot change
+- Bundle.identifier never reused
+- New version requires new Bundle with new identifier
+- Use Composition.relatesTo to link versions
+
+---
+
+### 3. CarePlan ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
 
 **Deadline**: December 31, 2025 (certification requirement)
 
@@ -780,7 +989,7 @@ ccda_to_fhir/
 
 ---
 
-### 3. Goal ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
+### 4. Goal ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
 
 **Deadline**: December 31, 2025 (certification requirement)
 
@@ -998,7 +1207,7 @@ ccda_to_fhir/
 
 ---
 
-### 4. MedicationDispense ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
+### 5. MedicationDispense ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
 
 **Impact**: Cannot represent actual dispensing events (vs orders/statements). Medication fill history and pharmacy dispensing records cannot be converted to FHIR.
 
@@ -1216,7 +1425,7 @@ ccda_to_fhir/
 
 ---
 
-### 5. Location ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
+### 6. Location ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
 
 **Impact**: Location data is currently embedded within Encounter resources but not extracted as separate, reusable Location resources. This limits interoperability and violates US Core recommendations to create separate Location resources.
 
@@ -1473,7 +1682,7 @@ ccda_to_fhir/
 
 ## Low Priority: USCDI Requirements
 
-### 6. CareTeam ❌ **NOT IMPLEMENTED** - LOW PRIORITY
+### 7. CareTeam ❌ **NOT IMPLEMENTED** - LOW PRIORITY
 
 **Impact:** Care team information can be extracted from document header (serviceEvent/performer) or structured Care Teams Section, but not formally converted to FHIR CareTeam resources. This limits care coordination interoperability and USCDI v4 compliance.
 
@@ -1779,7 +1988,7 @@ ccda_to_fhir/
 
 ---
 
-### 7. ServiceRequest ❌ **NOT IMPLEMENTED** - LOW PRIORITY
+### 8. ServiceRequest ❌ **NOT IMPLEMENTED** - LOW PRIORITY
 
 **Impact**: Planned procedures and ordered services are currently partially covered by Procedure resources with status=planned, but formal service requests/orders are not represented according to FHIR workflow patterns. This limits interoperability for order management and care planning workflows.
 
