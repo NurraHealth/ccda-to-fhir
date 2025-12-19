@@ -13,9 +13,9 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 7 missing mappings (5 high/medium priority, 2 low priority)
+**Current Status**: 6 missing mappings (4 high/medium priority, 2 low priority)
 
-**Recently Completed**: Composition, Bundle, and Goal (2025-12-19)
+**Recently Completed**: Composition, Bundle, Goal, and CarePlan (2025-12-19)
 
 ---
 
@@ -663,11 +663,11 @@ while queue not empty:
 
 ---
 
-### 3. CarePlan ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
+### 3. CarePlan ✅ **IMPLEMENTED** (2025-12-19)
 
-**Deadline**: December 31, 2025 (certification requirement)
+**Implementation**: Basic CarePlan resource creation for Care Plan Documents is now functional. The converter creates CarePlan resources with US Core CarePlan profile compliance, including required fields (status, intent, category, subject) and support for goals references.
 
-**Impact**: Care Plan documents cannot be converted to FHIR without CarePlan support. This is a foundational document type for care coordination. Note that Care Plan Documents also require Composition support (see #1 above).
+**Note**: Health Concerns, Interventions, and Outcomes sections are not yet fully implemented. Future enhancements needed for complete Care Plan Document support.
 
 #### Documentation
 - ✅ **FHIR Documentation**: `docs/fhir/careplan.md`

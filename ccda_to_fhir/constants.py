@@ -81,6 +81,14 @@ class TemplateIds:
     PROGRESS_TOWARD_GOAL = "2.16.840.1.113883.10.20.22.4.110"
     ENTRY_REFERENCE = "2.16.840.1.113883.10.20.22.4.122"
 
+    # Care Plan templates
+    HEALTH_CONCERN_ACT = "2.16.840.1.113883.10.20.22.4.132"
+    INTERVENTION_ACT = "2.16.840.1.113883.10.20.22.4.131"
+    PLANNED_INTERVENTION_ACT = "2.16.840.1.113883.10.20.22.4.146"
+
+    # Document templates
+    CARE_PLAN_DOCUMENT = "2.16.840.1.113883.10.20.22.1.15"
+
     # Section templates
     PROBLEM_SECTION = "2.16.840.1.113883.10.20.22.2.5.1"
     ALLERGY_SECTION = "2.16.840.1.113883.10.20.22.2.6.1"
@@ -93,6 +101,9 @@ class TemplateIds:
     ENCOUNTERS_SECTION = "2.16.840.1.113883.10.20.22.2.22.1"
     NOTES_SECTION = "2.16.840.1.113883.10.20.22.2.65"
     GOALS_SECTION = "2.16.840.1.113883.10.20.22.2.60"
+    HEALTH_CONCERNS_SECTION = "2.16.840.1.113883.10.20.22.2.58"
+    INTERVENTIONS_SECTION = "2.16.840.1.113883.10.20.21.2.3"
+    OUTCOMES_SECTION = "2.16.840.1.113883.10.20.22.2.61"
 
 
 # =============================================================================
@@ -642,6 +653,8 @@ class FHIRCodes:
         LOCATION = "Location"
         PROVENANCE = "Provenance"
         GOAL = "Goal"
+        CAREPLAN = "CarePlan"
+        SERVICE_REQUEST = "ServiceRequest"
 
     # Patient gender
     class PatientGender:

@@ -7,6 +7,7 @@ from typing import Type
 
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 from fhir.resources.R4B.allergyintolerance import AllergyIntolerance
+from fhir.resources.R4B.careplan import CarePlan
 from fhir.resources.R4B.composition import Composition
 from fhir.resources.R4B.condition import Condition
 from fhir.resources.R4B.device import Device
@@ -40,6 +41,7 @@ from ccda_to_fhir.logging_config import get_logger
 
 from .converters.allergy_intolerance import convert_allergy_concern_act
 from .converters.author_extractor import AuthorExtractor, AuthorInfo
+from .converters.careplan import CarePlanConverter
 from .converters.code_systems import CodeSystemMapper
 from .converters.composition import CompositionConverter
 from .converters.condition import convert_problem_concern_act, ConditionConverter
@@ -90,6 +92,7 @@ RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
     "Composition": Composition,
     "Provenance": Provenance,
     "Goal": Goal,
+    "CarePlan": CarePlan,
 }
 
 
@@ -936,6 +939,45 @@ class DocumentConverter:
             # Fall back to collection bundle type
             logger.warning("Creating collection bundle instead of document bundle (Composition failed)")
 
+        # Create CarePlan resource if this is a Care Plan Document
+        if self._is_care_plan_document(ccda_doc):
+            try:
+                # Collect references for CarePlan
+                goal_refs = []
+                if TemplateIds.GOALS_SECTION in section_resource_map:
+                    for goal in section_resource_map[TemplateIds.GOALS_SECTION]:
+                        if goal.get("id"):
+                            goal_refs.append({"reference": f"Goal/{goal['id']}"})
+
+                health_concern_refs = []
+                if TemplateIds.HEALTH_CONCERNS_SECTION in section_resource_map:
+                    for condition in section_resource_map[TemplateIds.HEALTH_CONCERNS_SECTION]:
+                        if condition.get("id"):
+                            health_concern_refs.append({"reference": f"Condition/{condition['id']}"})
+
+                # TODO: Add intervention_refs and outcome_refs when those sections are implemented
+
+                # Create CarePlan converter and convert
+                careplan_converter = CarePlanConverter(
+                    code_system_mapper=self.code_system_mapper,
+                    reference_registry=self.reference_registry,
+                    health_concern_refs=health_concern_refs,
+                    goal_refs=goal_refs,
+                )
+                careplan = careplan_converter.convert(ccda_doc)
+
+                # Validate and add CarePlan
+                if self._validate_resource(careplan):
+                    resources.append(careplan)
+                    self.reference_registry.register_resource(careplan)
+                else:
+                    logger.warning(
+                        "CarePlan failed validation, skipping",
+                        resource_id=careplan.get("id")
+                    )
+            except Exception as e:
+                logger.error(f"Error converting care plan: {e}", exc_info=True)
+
         # Create document bundle
         # A document bundle MUST have a Composition as the first entry
         bundle: JSONObject = {
@@ -978,6 +1020,24 @@ class DocumentConverter:
             )
 
         return bundle
+
+    def _is_care_plan_document(self, doc: ClinicalDocument) -> bool:
+        """Check if document is a Care Plan Document.
+
+        Args:
+            doc: ClinicalDocument to check
+
+        Returns:
+            True if document has Care Plan Document template ID
+        """
+        if not doc.template_id:
+            return False
+
+        return any(
+            t.root == TemplateIds.CARE_PLAN_DOCUMENT
+            for t in doc.template_id
+            if t.root
+        )
 
     def _extract_conditions(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Conditions from the structured body.
