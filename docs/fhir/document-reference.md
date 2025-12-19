@@ -783,14 +783,13 @@ Systems **SHALL** support:
 - `patient` + `status`
 - `patient` + `type` + `period`
 
-### Write Capability (REQUIRED)
+### Write Capability (OPTIONAL)
 
-**US Core Requirement:** Systems **SHALL** support writing new clinical notes via:
-```
-POST [base]/DocumentReference
-```
+**Important:** US Core does **NOT** require POST/create operations for DocumentReference. Per the US Core Clinical Notes guidance:
 
-This enables applications to create new DocumentReference resources with complete metadata including status, type, category, subject reference, and content with MIME type.
+> "Note that this guide focuses on exposing existing information, not how systems allow users to capture data."
+
+Systems **MAY** support writing new clinical notes via `POST [base]/DocumentReference`, but this is not a US Core requirement. US Core focuses exclusively on reading and querying existing documents.
 
 ### $docref Operation (REQUIRED)
 
