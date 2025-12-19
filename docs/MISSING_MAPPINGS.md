@@ -13,7 +13,7 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 5 missing mappings (4 high/medium priority, 1 low priority)
+**Current Status**: 6 missing mappings (4 high/medium priority, 2 low priority)
 
 ---
 
@@ -1353,6 +1353,315 @@ ccda_to_fhir/
 - **Team Lead**: Identified by `participant[@typeCode='PPRF']` matching member performer ID; no direct FHIR element, use ordering
 - **Combined Approach**: When both structured section and header performers exist, prefer structured section and optionally create encounter-specific team from header
 - **Not in C-CDA on FHIR IG**: CareTeam mapping not officially published in C-CDA on FHIR IG v2.0.0; this implementation fills that gap based on US Core requirements
+
+---
+
+### 6. ServiceRequest ❌ **NOT IMPLEMENTED** - LOW PRIORITY
+
+**Impact**: Planned procedures and ordered services are currently partially covered by Procedure resources with status=planned, but formal service requests/orders are not represented according to FHIR workflow patterns. This limits interoperability for order management and care planning workflows.
+
+#### Documentation
+- ✅ **FHIR Documentation**: `docs/fhir/service-request.md`
+- ✅ **C-CDA Documentation**: `docs/ccda/planned-procedure.md`
+- ✅ **Mapping Specification**: `docs/mapping/18-service-request.md`
+
+#### Standards References
+- **US Core Profile**: [US Core ServiceRequest Profile v8.0.1](http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest)
+- **C-CDA Templates**:
+  - Planned Procedure (V2): `2.16.840.1.113883.10.20.22.4.41` (extension 2022-06-01)
+  - Planned Act (V2): `2.16.840.1.113883.10.20.22.4.39` (extension 2014-06-09)
+  - Plan of Treatment Section: `2.16.840.1.113883.10.20.22.2.10` (LOINC `18776-5`)
+- **C-CDA on FHIR IG**: ❌ **NOT COVERED** - ServiceRequest mapping not included in v2.0.0
+
+#### Required Implementation
+
+ServiceRequest represents orders, proposals, or plans for procedures, diagnostic tests, therapeutic services, and referrals. Distinguished from Procedure (completed activities) by intent and status.
+
+##### Key Distinction: moodCode Validation
+
+**CRITICAL**: C-CDA uses `moodCode` to distinguish planned vs completed activities:
+
+| C-CDA moodCode | FHIR Resource | Action |
+|----------------|---------------|--------|
+| **INT** (Intent) | ServiceRequest | Convert to ServiceRequest |
+| **RQO** (Request) | ServiceRequest | Convert to ServiceRequest |
+| **PRP** (Proposal) | ServiceRequest | Convert to ServiceRequest |
+| **EVN** (Event) | **Procedure** | Use Procedure converter instead |
+| **GOL** (Goal) | **Goal** | Use Goal converter instead |
+
+##### Input: C-CDA Planned Procedure
+
+```xml
+<section>
+  <templateId root="2.16.840.1.113883.10.20.22.2.10" extension="2014-06-09"/>
+  <code code="18776-5" codeSystem="2.16.840.1.113883.6.1" displayName="Plan of care note"/>
+  <title>PLAN OF TREATMENT</title>
+
+  <entry typeCode="DRIV">
+    <procedure classCode="PROC" moodCode="RQO">
+      <templateId root="2.16.840.1.113883.10.20.22.4.41" extension="2022-06-01"/>
+      <id root="db734647-fc99-424c-a864-7e3cda82e703"/>
+      <statusCode code="active"/>
+      <effectiveTime value="20240613"/>
+
+      <code code="73761001" codeSystem="2.16.840.1.113883.6.96"
+            displayName="Colonoscopy">
+        <originalText>Screening colonoscopy</originalText>
+        <translation code="45378" codeSystem="2.16.840.1.113883.6.12"
+                     displayName="Colonoscopy, flexible"/>
+      </code>
+
+      <targetSiteCode code="71854001" codeSystem="2.16.840.1.113883.6.96"
+                      displayName="Colon structure"/>
+
+      <performer>
+        <assignedEntity>
+          <id root="2.16.840.1.113883.4.6" extension="9876543210"/>
+          <assignedPerson>
+            <name><given>John</given><family>Gastro</family></name>
+          </assignedPerson>
+        </assignedEntity>
+      </performer>
+
+      <author>
+        <time value="20240115140000-0500"/>
+        <assignedAuthor>
+          <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+          <assignedPerson>
+            <name><given>Sarah</given><family>Smith</family></name>
+          </assignedPerson>
+        </assignedAuthor>
+      </author>
+
+      <priorityCode code="R" codeSystem="2.16.840.1.113883.5.7" displayName="Routine"/>
+
+      <!-- Indication -->
+      <entryRelationship typeCode="RSON">
+        <observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.19"/>
+          <code code="404684003" codeSystem="2.16.840.1.113883.6.96"
+                displayName="Clinical finding"/>
+          <value xsi:type="CD" code="428165003" codeSystem="2.16.840.1.113883.6.96"
+                 displayName="Screening for colon cancer"/>
+        </observation>
+      </entryRelationship>
+
+      <!-- Patient Instructions -->
+      <entryRelationship typeCode="SUBJ" inversionInd="true">
+        <act classCode="ACT" moodCode="INT">
+          <templateId root="2.16.840.1.113883.10.20.22.4.20"/>
+          <code code="409073007" codeSystem="2.16.840.1.113883.6.96"
+                displayName="Instruction"/>
+          <text>Patient to follow bowel prep instructions 24 hours before procedure.</text>
+        </act>
+      </entryRelationship>
+
+    </procedure>
+  </entry>
+</section>
+```
+
+##### Output: FHIR ServiceRequest Resource
+
+```json
+{
+  "resourceType": "ServiceRequest",
+  "meta": {
+    "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest"]
+  },
+  "identifier": [{
+    "system": "urn:ietf:rfc:3986",
+    "value": "urn:uuid:db734647-fc99-424c-a864-7e3cda82e703"
+  }],
+  "status": "active",
+  "intent": "order",
+  "category": [{
+    "coding": [{
+      "system": "http://snomed.info/sct",
+      "code": "387713003",
+      "display": "Surgical procedure"
+    }]
+  }],
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "73761001",
+        "display": "Colonoscopy"
+      },
+      {
+        "system": "http://www.ama-assn.org/go/cpt",
+        "code": "45378",
+        "display": "Colonoscopy, flexible"
+      }
+    ],
+    "text": "Screening colonoscopy"
+  },
+  "subject": {
+    "reference": "Patient/patient-123"
+  },
+  "occurrenceDateTime": "2024-06-13",
+  "authoredOn": "2024-01-15T14:00:00-05:00",
+  "requester": {
+    "reference": "Practitioner/practitioner-npi-1234567890",
+    "display": "Dr. Sarah Smith"
+  },
+  "performer": [{
+    "reference": "Practitioner/practitioner-npi-9876543210",
+    "display": "Dr. John Gastro"
+  }],
+  "reasonCode": [{
+    "coding": [{
+      "system": "http://snomed.info/sct",
+      "code": "428165003",
+      "display": "Screening for colon cancer"
+    }]
+  }],
+  "bodySite": [{
+    "coding": [{
+      "system": "http://snomed.info/sct",
+      "code": "71854001",
+      "display": "Colon structure"
+    }]
+  }],
+  "priority": "routine",
+  "patientInstruction": "Patient to follow bowel prep instructions 24 hours before procedure."
+}
+```
+
+#### Implementation Checklist
+
+##### Core Converter (`ccda_to_fhir/converters/service_request.py`)
+- [ ] Create `ServiceRequestConverter` class extending `BaseConverter`
+- [ ] Implement `convert()` method accepting Planned Procedure or Planned Act element
+- [ ] **CRITICAL**: Validate moodCode ∈ {INT, RQO, PRP, ARQ, PRMS}
+- [ ] Reject moodCode=EVN (use Procedure converter) or moodCode=GOL (use Goal converter)
+- [ ] Map `id` → `ServiceRequest.identifier` (OID to Identifier conversion)
+- [ ] Map `statusCode` → `ServiceRequest.status` per ConceptMap (active, completed, revoked, on-hold, etc.)
+- [ ] Map `moodCode` → `ServiceRequest.intent` per ConceptMap (INT→plan, RQO→order, PRP→proposal)
+- [ ] Map `code` → `ServiceRequest.code` (CodeableConcept with coding array and originalText)
+- [ ] Infer `ServiceRequest.category` from code/@codeSystem (LOINC→lab, CPT radiology→imaging, etc.)
+- [ ] Extract patient reference from document `recordTarget` → `ServiceRequest.subject`
+- [ ] Extract encounter reference from document `encompassingEncounter` → `ServiceRequest.encounter`
+- [ ] Map `effectiveTime` → `ServiceRequest.occurrence[x]` (single date→dateTime, range→Period)
+- [ ] Map `author/time` → `ServiceRequest.authoredOn`
+- [ ] Map `author/assignedAuthor` → `ServiceRequest.requester` (create Practitioner/PractitionerRole)
+- [ ] Map `performer/assignedEntity` → `ServiceRequest.performer` array
+- [ ] Map `performer/functionCode` → `ServiceRequest.performerType`
+- [ ] Map `priorityCode` → `ServiceRequest.priority` per ConceptMap (R→routine, UR→urgent, EM→stat)
+- [ ] Map Priority Preference observation (template 4.143) → `ServiceRequest.priority`
+- [ ] Map `targetSiteCode` → `ServiceRequest.bodySite` array
+- [ ] Map entryRelationship[typeCode='RSON']/observation (Indication) → `ServiceRequest.reasonCode`
+- [ ] Map entryRelationship[typeCode='RSON'] (Problem Observation) → `ServiceRequest.reasonReference`
+- [ ] Map entryRelationship[typeCode='SUBJ'] (Instruction) → `ServiceRequest.patientInstruction`
+- [ ] Map `text` or narrative reference → `ServiceRequest.note`
+- [ ] Map entryRelationship Goal Observations → `ServiceRequest.supportingInfo`
+- [ ] Map entryRelationship Planned Coverage → `ServiceRequest.insurance`
+- [ ] Set `meta.profile` to US Core ServiceRequest Profile URL
+
+##### Section Processing (`ccda_to_fhir/sections/plan_of_treatment_section.py`)
+- [ ] Create `PlanOfTreatmentSectionProcessor` class
+- [ ] Identify Plan of Treatment Section by template ID `2.16.840.1.113883.10.20.22.2.10`
+- [ ] Extract entry elements
+- [ ] Filter for Planned Procedure (4.41) and Planned Act (4.39) templates
+- [ ] Validate moodCode before calling converter
+- [ ] Call `ServiceRequestConverter` for each planned entry
+- [ ] Store ServiceRequest resources in result bundle
+
+##### Model Validation (`ccda_to_fhir/models.py`)
+- [ ] Add `is_planned_procedure()` validator for template `2.16.840.1.113883.10.20.22.4.41`
+- [ ] Add `is_planned_act()` validator for template `2.16.840.1.113883.10.20.22.4.39`
+- [ ] Add `is_intervention_act()` validator for template `2.16.840.1.113883.10.20.22.4.131`
+- [ ] Add `is_plan_of_treatment_section()` validator for template `2.16.840.1.113883.10.20.22.2.10`
+- [ ] Validate moodCode attribute existence and value
+- [ ] Validate required elements: id, code, statusCode
+
+##### ConceptMaps
+- [ ] Implement statusCode ConceptMap: active→active, completed→completed, cancelled→revoked, held→on-hold
+- [ ] Implement moodCode ConceptMap: INT→plan, RQO→order, PRP→proposal, ARQ→order, PRMS→directive
+- [ ] Implement priorityCode ConceptMap: R→routine, UR→urgent, EM→stat, A→asap, EL→routine
+
+##### Tests (`tests/converters/test_service_request.py`)
+- [ ] Test Planned Procedure → ServiceRequest conversion
+- [ ] Test Planned Act → ServiceRequest conversion
+- [ ] Test moodCode validation (INT/RQO/PRP accepted; EVN/GOL rejected)
+- [ ] Test status mapping for all status codes
+- [ ] Test intent mapping for all moodCodes
+- [ ] Test category inference (LOINC→lab, CPT→imaging, SNOMED procedures→surgical)
+- [ ] Test code mapping with multiple codings and originalText
+- [ ] Test identifier mapping (OID to Identifier conversion)
+- [ ] Test occurrence[x] mapping (single date, date range, missing)
+- [ ] Test author mapping (requester and authoredOn)
+- [ ] Test performer mapping (with and without organization)
+- [ ] Test performerType from functionCode
+- [ ] Test priority mapping (priorityCode and Priority Preference observation)
+- [ ] Test bodySite mapping from targetSiteCode
+- [ ] Test reasonCode from Indication observations
+- [ ] Test reasonReference from Problem Observations
+- [ ] Test patientInstruction from Instruction acts
+- [ ] Test note from text/narrative
+- [ ] Test supportingInfo from Goal Observations (if present)
+- [ ] Test insurance from Planned Coverage
+- [ ] Test missing optional elements
+- [ ] Test minimal Planned Procedure (only required elements)
+
+##### Integration Tests (`tests/integration/test_plan_of_treatment_section.py`)
+- [ ] Test Plan of Treatment Section extraction
+- [ ] Test multiple planned procedures in one section
+- [ ] Test mixed Planned Procedure and Planned Act entries
+- [ ] Test complete Care Plan document with planned procedures
+- [ ] Test ServiceRequest references to other resources (Patient, Practitioner, Condition, Goal, Coverage)
+- [ ] Test bundle structure with all dependent resources
+
+##### US Core Conformance
+- [ ] Validate required elements: status (1..1), intent (1..1), code (1..1), subject (1..1)
+- [ ] Validate Must Support: category, code.text, encounter, occurrence[x], authoredOn, requester, reasonCode, reasonReference
+- [ ] Include US Core ServiceRequest profile in meta.profile
+- [ ] Support search parameters: patient, _id, patient+category, patient+code, patient+category+authored
+- [ ] Validate code bindings (status/intent required, category/code extensible)
+
+#### File Locations
+
+**New Files to Create:**
+```
+ccda_to_fhir/
+├── converters/
+│   └── service_request.py          # ServiceRequestConverter class
+├── sections/
+│   └── plan_of_treatment_section.py # PlanOfTreatmentSectionProcessor class
+tests/
+├── converters/
+│   └── test_service_request.py      # Unit tests
+└── integration/
+    └── test_plan_of_treatment_section.py # Integration tests
+```
+
+**Files to Modify:**
+```
+ccda_to_fhir/
+├── models.py                        # Add validators
+├── converter.py                     # Register PlanOfTreatmentSectionProcessor
+├── converters/__init__.py           # Export ServiceRequestConverter
+└── sections/__init__.py             # Export PlanOfTreatmentSectionProcessor
+```
+
+#### Related Documentation
+- See `docs/mapping/18-service-request.md` for complete mapping specification
+- See `docs/fhir/service-request.md` for FHIR ServiceRequest element definitions
+- See `docs/ccda/planned-procedure.md` for C-CDA Planned Procedure and Planned Act template specifications
+- See `docs/mapping/05-procedure.md` for Procedure mapping (completed procedures with moodCode=EVN)
+- See `docs/mapping/13-goal.md` for Goal mapping (goal observations with moodCode=GOL)
+
+#### Notes
+- **Low Priority Rationale**: Current implementation partially handles this by creating Procedure resources with status=planned. ServiceRequest provides better FHIR workflow semantics but is not blocking for basic conversion.
+- **moodCode Validation**: CRITICAL distinction between planned (ServiceRequest) and completed (Procedure) activities
+- **Not in C-CDA on FHIR IG**: ServiceRequest mapping not officially published in C-CDA on FHIR IG v2.0.0; this implementation fills that gap
+- **Category Inference**: C-CDA lacks explicit category; must infer from code system (LOINC→lab, CPT radiology codes→imaging, etc.)
+- **Request-Response Pattern**: When planned procedure is performed, create Procedure with Procedure.basedOn referencing ServiceRequest
+- **Care Plan Integration**: ServiceRequests are part of care plans; link via CarePlan.activity.reference
+- **USCDI**: Service requests not explicitly required by USCDI, but supports care planning workflows
+- **Multiple Authors**: If multiple authors exist, map first to requester, add others to note
+- **Patient Instructions**: Map from Instruction template (typeCode='SUBJ', inversionInd='true') to patientInstruction
 
 ---
 
