@@ -194,26 +194,40 @@ Per US Realm Header Profile, personal attestation (mode="personal") references P
 
 ---
 
-### 7. NullFlavor Handling Inconsistency 🟡
+### 7. NullFlavor Handling Now Standard-Compliant ✅ RESOLVED
 
-**Issue**: Some nullFlavor values map to data-absent-reason, others to specific codes, creating ambiguity.
-
-**Examples**:
-- NullFlavor="UNK" on allergy substance → Should create "unknown allergy" or use data-absent-reason?
-- NullFlavor="NA" on observation value → data-absent-reason or omit observation?
-
-**Current Behavior**:
-- Most nullFlavors → data-absent-reason extension
-- Context-specific handling for allergies, problems
-- Inconsistent across different converters
+**Issue**: nullFlavor handling was inconsistent across converters, with ad-hoc implementations creating ambiguity.
 
 **Impact**:
-- Semantics may differ slightly across resource types
-- Round-trip conversion may not preserve exact nullFlavor
+- ✅ Standardized nullFlavor mapping per official C-CDA on FHIR IG ConceptMap
+- ✅ Consistent data-absent-reason extension usage across all converters
+- ✅ Clear separation between context-specific handling (allergies) and standard mapping
 
-**Workaround**: Review nullFlavor handling for your specific use case
+**Resolution** (Completed):
+- ✅ Added official `NULL_FLAVOR_TO_DATA_ABSENT_REASON` mapping in constants.py per ConceptMap CF-NullFlavorDataAbsentReason
+- ✅ Created centralized helper methods in BaseConverter:
+  - `create_data_absent_reason_extension()` - creates FHIR extension from nullFlavor
+  - `map_null_flavor_to_data_absent_reason()` - maps nullFlavor code to data-absent-reason code
+- ✅ Updated all converters to use centralized approach:
+  - Condition converter: Unknown abatement dates
+  - Procedure converter: Missing effectiveTime
+  - Immunization converter: Missing primarySource
+  - Note Activity converter: Missing content
+- ✅ Maintained context-specific handling where appropriate:
+  - AllergyIntolerance: negated concepts for "no known allergies" (per IG guidance)
+  - Composition sections: nullFlavor → emptyReason (different use case)
 
-**Reference**: [HL7 C-CDA on FHIR Known Issues - Null Flavors](https://build.fhir.org/ig/HL7/ccda-on-fhir/mappingIssues.html#null-flavors)
+**Current Behavior**:
+- Element-level nullFlavor → data-absent-reason extension (per CF-NullFlavorDataAbsentReason ConceptMap)
+  - UNK → "unknown", ASKU → "asked-unknown", NAV → "temp-unknown", etc.
+- Section-level nullFlavor → emptyReason (custom mapping for Composition sections)
+- Context-specific: Allergy negations use negated concept codes (NO_KNOWN_ALLERGY, etc.)
+- Per US Core: Required elements use data-absent-reason; optional elements omitted when null
+
+**Official IG Guidance**:
+- [CF-NullFlavorDataAbsentReason ConceptMap](https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-NullFlavorDataAbsentReason.html)
+- [FHIR data-absent-reason Extension](http://hl7.org/fhir/R4/extension-data-absent-reason.html)
+- [C-CDA on FHIR Mapping Issues - Null Flavors](https://build.fhir.org/ig/HL7/ccda-on-fhir/mappingIssues.html#null-flavors)
 
 ---
 

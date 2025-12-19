@@ -1177,6 +1177,40 @@ NULL_FLAVOR_TO_EMPTY_REASON = {
 }
 
 # =============================================================================
+# Element-Level Data Absent Reason Mappings
+# =============================================================================
+
+# Map C-CDA element nullFlavor to FHIR data-absent-reason extension
+# Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-NullFlavorDataAbsentReason.html
+# Reference: http://hl7.org/fhir/R4/extension-data-absent-reason.html
+# Reference: http://terminology.hl7.org/CodeSystem/v3-NullFlavor
+# Reference: http://terminology.hl7.org/CodeSystem/data-absent-reason
+#
+# Official C-CDA on FHIR IG ConceptMap for element-level nullFlavor mapping.
+# Per US Core guidance: when an element is not required, omit the element rather
+# than include data-absent-reason. This mapping applies when the element IS required
+# and has a nullFlavor in C-CDA.
+#
+# Mapping relationship types from ConceptMap:
+# - "equivalent": Direct 1:1 mapping
+# - "wider": C-CDA concept maps to a broader FHIR concept
+# - "relatedto": Loose semantic relationship
+NULL_FLAVOR_TO_DATA_ABSENT_REASON = {
+    "UNK": "unknown",  # Unknown (maps to wider concept)
+    "ASKU": "asked-unknown",  # Asked but unknown (equivalent)
+    "NAV": "temp-unknown",  # Temporarily unavailable (equivalent)
+    "NASK": "not-asked",  # Not asked (equivalent)
+    "NI": "unknown",  # No information → unknown (when required per US Core; loose mapping)
+    "NA": "not-applicable",  # Not applicable (equivalent)
+    "MSK": "masked",  # Masked (equivalent)
+    "OTH": "unsupported",  # Other (maps to wider concept)
+    "NINF": "negative-infinity",  # Negative infinity (equivalent)
+    "PINF": "positive-infinity",  # Positive infinity (equivalent)
+    "TRC": "unsupported",  # Trace → unsupported (maps to wider concept)
+    "NP": "unknown",  # Not present → unknown (maps to wider concept)
+}
+
+# =============================================================================
 # Provenance Mappings
 # =============================================================================
 

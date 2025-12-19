@@ -98,14 +98,15 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 fhir_procedure["code"] = {"text": code_text}
             else:
                 # No text available - use data-absent-reason extension
+                # Per C-CDA on FHIR IG ConceptMap CF-NullFlavorDataAbsentReason
+                null_flavor = procedure.code.null_flavor if hasattr(procedure.code, "null_flavor") else None
                 fhir_procedure["code"] = {
                     "text": "Procedure code not specified"
                 }
                 fhir_procedure["_code"] = {
-                    "extension": [{
-                        "url": FHIRSystems.DATA_ABSENT_REASON,
-                        "valueCode": "unknown"
-                    }]
+                    "extension": [
+                        self.create_data_absent_reason_extension(null_flavor, default_reason="unknown")
+                    ]
                 }
 
         # Patient reference (from recordTarget in document header)
@@ -129,10 +130,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             # per C-CDA on FHIR IG guidance (docs/mapping/05-procedure.md lines 160-174)
             fhir_procedure["_performedDateTime"] = {
                 "extension": [
-                    {
-                        "url": FHIRSystems.DATA_ABSENT_REASON,
-                        "valueCode": "unknown",
-                    }
+                    self.create_data_absent_reason_extension(None, default_reason="unknown")
                 ]
             }
 

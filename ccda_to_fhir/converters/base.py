@@ -661,3 +661,79 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         # No text content at all
         return None
+
+    def create_data_absent_reason_extension(
+        self, null_flavor: str | None, default_reason: str = "unknown"
+    ) -> JSONObject:
+        """Create a FHIR data-absent-reason extension from C-CDA nullFlavor.
+
+        Per C-CDA on FHIR IG ConceptMap CF-NullFlavorDataAbsentReason, maps C-CDA nullFlavor
+        codes to FHIR data-absent-reason extension values. This should be used when a required
+        FHIR element has a nullFlavor in C-CDA.
+
+        Per US Core guidance: when an element is not required, omit the element entirely rather
+        than including data-absent-reason. This method is for required elements only.
+
+        Args:
+            null_flavor: C-CDA nullFlavor code (e.g., "UNK", "NA", "ASKU")
+            default_reason: Fallback data-absent-reason code if nullFlavor is None or unmapped
+                          (default: "unknown")
+
+        Returns:
+            FHIR extension dict with data-absent-reason
+
+        Examples:
+            >>> # Unknown abatement date
+            >>> ext = converter.create_data_absent_reason_extension("UNK")
+            >>> # Result: {"url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+            >>>          "valueCode": "unknown"}
+            >>>
+            >>> # Asked but unknown
+            >>> ext = converter.create_data_absent_reason_extension("ASKU")
+            >>> # Result: {"url": "...", "valueCode": "asked-unknown"}
+
+        Reference:
+            - Official ConceptMap: https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-NullFlavorDataAbsentReason.html
+            - FHIR Extension: http://hl7.org/fhir/R4/extension-data-absent-reason.html
+            - C-CDA NullFlavor: http://terminology.hl7.org/CodeSystem/v3-NullFlavor
+            - FHIR DataAbsentReason: http://terminology.hl7.org/CodeSystem/data-absent-reason
+        """
+        from ccda_to_fhir.constants import FHIRSystems, NULL_FLAVOR_TO_DATA_ABSENT_REASON
+
+        # Map nullFlavor to data-absent-reason code
+        if null_flavor:
+            # Case-insensitive lookup
+            null_flavor_upper = null_flavor.upper()
+            reason_code = NULL_FLAVOR_TO_DATA_ABSENT_REASON.get(null_flavor_upper, default_reason)
+        else:
+            reason_code = default_reason
+
+        return {
+            "url": FHIRSystems.DATA_ABSENT_REASON,
+            "valueCode": reason_code,
+        }
+
+    def map_null_flavor_to_data_absent_reason(
+        self, null_flavor: str | None, default: str = "unknown"
+    ) -> str:
+        """Map C-CDA nullFlavor to FHIR data-absent-reason code.
+
+        Convenience method for getting just the code value without the full extension structure.
+
+        Args:
+            null_flavor: C-CDA nullFlavor code (e.g., "UNK", "NA", "ASKU")
+            default: Fallback data-absent-reason code if nullFlavor is None or unmapped
+
+        Returns:
+            FHIR data-absent-reason code
+
+        Example:
+            >>> code = converter.map_null_flavor_to_data_absent_reason("UNK")
+            >>> # Result: "unknown"
+        """
+        from ccda_to_fhir.constants import NULL_FLAVOR_TO_DATA_ABSENT_REASON
+
+        if null_flavor:
+            null_flavor_upper = null_flavor.upper()
+            return NULL_FLAVOR_TO_DATA_ABSENT_REASON.get(null_flavor_upper, default)
+        return default

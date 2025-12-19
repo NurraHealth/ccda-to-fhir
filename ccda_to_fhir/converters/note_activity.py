@@ -359,18 +359,13 @@ class NoteActivityConverter(BaseConverter[Act]):
         Returns:
             List with single content object containing data-absent-reason extension
         """
-        from ccda_to_fhir.constants import FHIRSystems, FHIRCodes
-
         return [
             {
                 "attachment": {
                     "contentType": "text/plain",
                     "_data": {
                         "extension": [
-                            {
-                                "url": FHIRSystems.DATA_ABSENT_REASON,
-                                "valueCode": FHIRCodes.UNKNOWN,
-                            }
+                            self.create_data_absent_reason_extension(None, default_reason="unknown")
                         ]
                     },
                 }

@@ -175,10 +175,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Use data-absent-reason extension per C-CDA on FHIR IG guidance
         immunization["_primarySource"] = {
             "extension": [
-                {
-                    "url": FHIRSystems.DATA_ABSENT_REASON,
-                    "valueCode": "unsupported",
-                }
+                self.create_data_absent_reason_extension(None, default_reason="unsupported")
             ]
         }
 

@@ -502,15 +502,13 @@ class ConditionConverter(BaseConverter[Observation]):
                 abatement_date = self.convert_date(eff_time.high.value)
                 if abatement_date:
                     abatement = {"abatementDateTime": abatement_date}
-            elif eff_time.high.null_flavor == "UNK":
-                # Unknown abatement date
+            elif eff_time.high.null_flavor:
+                # Unknown abatement date - use data-absent-reason extension
+                # Per C-CDA on FHIR IG ConceptMap CF-NullFlavorDataAbsentReason
                 abatement = {
                     "_abatementDateTime": {
                         "extension": [
-                            {
-                                "url": FHIRSystems.DATA_ABSENT_REASON,
-                                "valueCode": FHIRCodes.UNKNOWN,
-                            }
+                            self.create_data_absent_reason_extension(eff_time.high.null_flavor)
                         ]
                     }
                 }
