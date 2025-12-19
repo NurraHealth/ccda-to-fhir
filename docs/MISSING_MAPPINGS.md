@@ -13,7 +13,7 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 2 missing mappings
+**Current Status**: 3 missing mappings
 
 ---
 
@@ -572,6 +572,224 @@ ccda_to_fhir/
 - **Multiple Authors**: For negotiated goals with multiple authors, map first to `expressedBy` and consider Provenance resource for others
 - **Missing Target**: Valid to have goals without measurable targets (qualitative goals)
 - **SDOH Categories**: Infer category from goal code when applicable (housing, employment, etc.)
+
+---
+
+### 3. MedicationDispense ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
+
+**Impact**: Cannot represent actual dispensing events (vs orders/statements). Medication fill history and pharmacy dispensing records cannot be converted to FHIR.
+
+#### Documentation
+- ✅ **FHIR Documentation**: `docs/fhir/medication-dispense.md`
+- ✅ **C-CDA Documentation**: `docs/ccda/medication-dispense.md`
+- ✅ **Mapping Specification**: `docs/mapping/15-medication-dispense.md`
+
+#### Standards References
+- **US Core Profile**: [US Core MedicationDispense Profile v8.0.1](http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationdispense)
+- **C-CDA Template**: Medication Dispense (`2.16.840.1.113883.10.20.22.4.18`)
+- **C-CDA on FHIR IG**: Not yet published (noted as absent from v2.0.0)
+
+#### Required Implementation
+
+MedicationDispense captures the actual supply provision of medication to a patient, including when, where, and by whom it was dispensed.
+
+##### Input: C-CDA Medication Dispense
+
+```xml
+<entryRelationship typeCode="REFR">
+  <supply classCode="SPLY" moodCode="EVN">
+    <templateId root="2.16.840.1.113883.10.20.22.4.18" extension="2014-06-09"/>
+    <id root="dispense-456"/>
+    <statusCode code="completed"/>
+    <effectiveTime value="20200301143000-0500"/>
+    <repeatNumber value="1"/>
+    <quantity value="30" unit="{tbl}"/>
+    <product>
+      <manufacturedProduct classCode="MANU">
+        <templateId root="2.16.840.1.113883.10.20.22.4.23" extension="2014-06-09"/>
+        <manufacturedMaterial>
+          <code code="314076" codeSystem="2.16.840.1.113883.6.88"
+                displayName="Lisinopril 10 MG Oral Tablet"/>
+        </manufacturedMaterial>
+      </manufacturedProduct>
+    </product>
+    <performer>
+      <assignedEntity>
+        <id root="2.16.840.1.113883.4.6" extension="9876543210"/>
+        <representedOrganization>
+          <name>Community Pharmacy</name>
+        </representedOrganization>
+      </assignedEntity>
+    </performer>
+  </supply>
+</entryRelationship>
+```
+
+##### Output: FHIR MedicationDispense Resource
+
+```json
+{
+  "resourceType": "MedicationDispense",
+  "meta": {
+    "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationdispense"]
+  },
+  "identifier": [{
+    "system": "urn:ietf:rfc:3986",
+    "value": "urn:oid:dispense-456"
+  }],
+  "status": "completed",
+  "category": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/medicationdispense-category",
+      "code": "community",
+      "display": "Community"
+    }]
+  },
+  "medicationCodeableConcept": {
+    "coding": [{
+      "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+      "code": "314076",
+      "display": "Lisinopril 10 MG Oral Tablet"
+    }]
+  },
+  "subject": {
+    "reference": "Patient/patient-123"
+  },
+  "performer": [{
+    "actor": {
+      "reference": "Organization/pharmacy-1",
+      "display": "Community Pharmacy"
+    }
+  }],
+  "authorizingPrescription": [{
+    "reference": "MedicationRequest/parent-medication-activity"
+  }],
+  "type": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/v3-ActPharmacySupplyType",
+      "code": "FF",
+      "display": "First Fill"
+    }]
+  },
+  "quantity": {
+    "value": 30,
+    "unit": "tablet",
+    "system": "http://unitsofmeasure.org",
+    "code": "{tbl}"
+  },
+  "whenHandedOver": "2020-03-01T14:30:00-05:00"
+}
+```
+
+#### Implementation Checklist
+
+##### Core Converter (`ccda_to_fhir/converters/medication_dispense.py`)
+- [ ] Create `MedicationDispenseConverter` class extending `BaseConverter`
+- [ ] Implement `convert()` method accepting Medication Dispense supply element
+- [ ] Map `id` → `MedicationDispense.identifier`
+- [ ] Map `statusCode` → `MedicationDispense.status` per ConceptMap
+- [ ] Map `effectiveTime` → `whenHandedOver` (single value) or `whenPrepared`/`whenHandedOver` (IVL_TS)
+- [ ] Map `repeatNumber` → `type` (infer FF for value=1, RF for value>1)
+- [ ] Map `quantity` → `MedicationDispense.quantity`
+- [ ] Map `product/manufacturedMaterial/code` → `medicationCodeableConcept`
+- [ ] Extract patient reference from document `recordTarget` → `subject`
+- [ ] Map `performer` → `performer.actor` (Organization or Practitioner)
+- [ ] Map `author` → Additional `performer` entry with function="packager"
+- [ ] Link to parent Medication Activity → `authorizingPrescription`
+
+##### Days Supply Processing
+- [ ] Detect nested Days Supply template (`2.16.840.1.113883.10.20.37.3.10`)
+- [ ] Map Days Supply `quantity` → `daysSupply`
+- [ ] Calculate days supply if not present (quantity / daily dose)
+
+##### Category Inference
+- [ ] Infer category from performer organization type
+- [ ] Default to "community" for retail pharmacy
+- [ ] Use "inpatient" for hospital pharmacy
+- [ ] Use "discharge" for discharge summaries
+
+##### Substitution Detection
+- [ ] Compare dispense product code with parent Medication Activity code
+- [ ] If codes differ, set `substitution.wasSubstituted = true`
+- [ ] Infer substitution type (brand vs generic, equivalent, etc.)
+
+##### Model Validation (`ccda_to_fhir/models.py`)
+- [ ] Add `is_medication_dispense()` validator for template `2.16.840.1.113883.10.20.22.4.18`
+- [ ] Validate `moodCode = "EVN"` (event, not intent)
+- [ ] Validate required elements: id, statusCode, product
+
+##### Resource Creation
+- [ ] Create Practitioner resource for pharmacist (from author or performer)
+- [ ] Create Organization resource for pharmacy (from performer)
+- [ ] Create Location resource for pharmacy location (from performer address)
+- [ ] Link MedicationDispense to parent MedicationRequest via authorizingPrescription
+
+##### Tests (`tests/converters/test_medication_dispense.py`)
+- [ ] Test basic Medication Dispense → MedicationDispense conversion
+- [ ] Test status mapping for all status codes
+- [ ] Test medication code mapping (RxNorm, NDC)
+- [ ] Test timing mapping (single timestamp and IVL_TS period)
+- [ ] Test repeatNumber → type inference (first fill vs refills)
+- [ ] Test quantity mapping with various units
+- [ ] Test days supply mapping (nested template)
+- [ ] Test performer mapping (pharmacy organization)
+- [ ] Test author mapping (pharmacist)
+- [ ] Test substitution detection (different codes)
+- [ ] Test missing effectiveTime handling
+- [ ] Test category inference from context
+- [ ] Test authorizingPrescription linking
+
+##### Integration Tests (`tests/integration/test_medication_dispense.py`)
+- [ ] Test complete Medication Activity with dispense events
+- [ ] Test multiple dispenses (original + refills)
+- [ ] Test dispense without parent activity
+- [ ] Test dispense with days supply
+- [ ] Test dispense with substitution
+
+##### US Core Conformance
+- [ ] Validate required elements: `status`, `medication[x]`, `subject`, `performer.actor`
+- [ ] Validate conditional requirement: `whenHandedOver` present if status='completed'
+- [ ] Validate Must Support: `context`, `authorizingPrescription`, `type`, `quantity`
+- [ ] Include US Core MedicationDispense profile in `meta.profile`
+
+#### File Locations
+
+**New Files to Create:**
+```
+ccda_to_fhir/
+├── converters/
+│   └── medication_dispense.py    # MedicationDispenseConverter class
+tests/
+├── converters/
+│   └── test_medication_dispense.py  # Unit tests
+└── integration/
+    └── test_medication_dispense.py  # Integration tests
+```
+
+**Files to Modify:**
+```
+ccda_to_fhir/
+├── models.py                    # Add is_medication_dispense() validator
+├── converter.py                 # Register MedicationDispenseConverter
+└── converters/__init__.py       # Export MedicationDispenseConverter
+```
+
+#### Related Documentation
+- See `docs/mapping/15-medication-dispense.md` for complete mapping specification
+- See `docs/fhir/medication-dispense.md` for FHIR MedicationDispense element definitions
+- See `docs/ccda/medication-dispense.md` for C-CDA template specifications
+- See `docs/mapping/07-medication-request.md` for MedicationRequest mapping (parent relationship)
+
+#### Notes
+- **Parent Relationship**: MedicationDispense is nested within Medication Activity (which maps to MedicationRequest)
+- **moodCode Validation**: CRITICAL - Only process supply elements with `moodCode="EVN"` (event, not intent)
+- **Medication Supply Order vs Dispense**: Template `2.16.840.1.113883.10.20.22.4.17` (moodCode=INT) is the order/prescription, while `2.16.840.1.113883.10.20.22.4.18` (moodCode=EVN) is the actual dispense
+- **repeatNumber Semantics**: In dispense context, represents fill number (1=first, 2=first refill), NOT total fills allowed
+- **Missing in C-CDA on FHIR IG**: The official IG notes "moodCode=EVN means dispense, which is not documented here" - this implementation fills that gap
+- **Multiple Dispenses**: A single Medication Activity may have multiple dispense events (refills)
+- **Substitution Detection**: Compare dispense product code with parent activity code to detect substitutions
+- **Category Inference**: C-CDA lacks explicit category; infer from performer type and document context
+- **Days Supply**: Optional nested template or calculate from quantity and dosage
 
 ---
 
