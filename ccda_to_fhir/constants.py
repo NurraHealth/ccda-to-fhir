@@ -966,17 +966,23 @@ EIVL_EVENT_TO_FHIR_WHEN = {
 # =============================================================================
 
 # Map C-CDA observation statusCode to FHIR Observation status
+# Per ConceptMap CF-ResultStatus: https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-ResultStatus.html
 OBSERVATION_STATUS_TO_FHIR = {
     "completed": FHIRCodes.ObservationStatus.FINAL,
     "active": FHIRCodes.ObservationStatus.REGISTERED,
+    "held": FHIRCodes.ObservationStatus.REGISTERED,
+    "suspended": FHIRCodes.ObservationStatus.REGISTERED,
     "aborted": FHIRCodes.ObservationStatus.CANCELLED,
     "cancelled": FHIRCodes.ObservationStatus.CANCELLED,
 }
 
 # Map C-CDA observation statusCode to FHIR DiagnosticReport status
+# Per ConceptMap CF-ResultReportStatus: https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-ResultReportStatus.html
 DIAGNOSTIC_REPORT_STATUS_TO_FHIR = {
     "completed": FHIRCodes.DiagnosticReportStatus.FINAL,
     "active": FHIRCodes.DiagnosticReportStatus.REGISTERED,
+    "held": FHIRCodes.DiagnosticReportStatus.REGISTERED,
+    "suspended": FHIRCodes.DiagnosticReportStatus.REGISTERED,
     "aborted": FHIRCodes.DiagnosticReportStatus.CANCELLED,
     "cancelled": FHIRCodes.DiagnosticReportStatus.CANCELLED,
 }

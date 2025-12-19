@@ -329,19 +329,21 @@ Maps C-CDA section codes to FHIR Condition.category
 
 Maps C-CDA Result Observation statusCode to FHIR Observation.status
 
+Per ConceptMap CF-ResultStatus: https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-ResultStatus.html
+
 | C-CDA StatusCode | FHIR Status |
 |------------------|-------------|
 | `completed` | `final` |
-| `active` | `preliminary` |
+| `active` | `registered` |
 | `held` | `registered` |
-| `new` | `registered` |
-| `cancelled` | `cancelled` |
+| `suspended` | `registered` |
 | `aborted` | `cancelled` |
-| `suspended` | `unknown` |
-| `obsolete` | `cancelled` |
+| `cancelled` | `cancelled` |
 
 **Source**: C-CDA ActStatus vocabulary
 **Target**: FHIR ObservationStatus value set
+
+**Note**: Per official ConceptMap, C-CDA codes `active`, `held`, and `suspended` all map to FHIR `registered` status (with loose/cautious mapping relationship noted in the ConceptMap).
 
 ---
 
@@ -349,18 +351,21 @@ Maps C-CDA Result Observation statusCode to FHIR Observation.status
 
 Maps C-CDA Result Organizer statusCode to FHIR DiagnosticReport.status
 
+Per ConceptMap CF-ResultReportStatus: https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-ResultReportStatus.html
+
 | C-CDA StatusCode | FHIR Status |
 |------------------|-------------|
 | `completed` | `final` |
-| `active` | `preliminary` |
+| `active` | `registered` |
 | `held` | `registered` |
-| `new` | `registered` |
-| `cancelled` | `cancelled` |
+| `suspended` | `registered` |
 | `aborted` | `cancelled` |
-| `suspended` | `partial` |
+| `cancelled` | `cancelled` |
 
 **Source**: C-CDA ActStatus vocabulary
 **Target**: FHIR DiagnosticReportStatus value set
+
+**Note**: Per official ConceptMap, C-CDA codes `active`, `held`, and `suspended` all map to FHIR `registered` status (with loose/cautious mapping relationship noted in the ConceptMap).
 
 ---
 

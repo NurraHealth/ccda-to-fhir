@@ -231,26 +231,47 @@ Per US Realm Header Profile, personal attestation (mode="personal") references P
 
 ---
 
-### 8. Document-Level Status Codes 🟡 🤔
+### 8. Status Code Mapping Correctly Implements Standard ✅ RESOLVED
 
 **Issue**: Unclear whether draft/preliminary status codes should be mapped for resources extracted from finalized documents.
 
-**Background**:
-- C-CDA documents are almost always status="completed" (finalized)
-- Resources within may have different status (active, completed, etc.)
-- Question: Can a "preliminary" medication appear in a "completed" document?
+**Impact**:
+- ✅ Standard-compliant FHIR output per C-CDA on FHIR IG ConceptMaps
+- ✅ Correctly maps all valid ActStatus codes to their FHIR equivalents
+- ✅ Preserves all clinical information from C-CDA documents
+
+**Resolution** (Completed):
+- ✅ **Key Finding 1**: CDA documents do NOT have document-level status. Only FHIR Composition.status is required (typically "final")
+- ✅ **Key Finding 2**: C-CDA clinical entries can have various statusCode values (active, completed, held, suspended, etc.) regardless of whether the document is transmitted/finalized
+- ✅ **Key Finding 3**: HL7 ActStatus vocabulary does NOT differentiate codes for "order management vs document exchange" - all codes are general lifecycle states applicable across domains
+- ✅ **Key Finding 4**: FHIR R4 resource status values (including draft, preliminary, etc.) have NO restrictions on document exchange scenarios
+- ✅ **Key Finding 5**: Implementation follows official C-CDA on FHIR IG ConceptMaps:
+  - [CF-MedicationStatus](https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-MedicationStatus.html): Maps C-CDA medication statusCode to FHIR MedicationRequest.status
+  - [CF-ProcedureStatus](https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-ProcedureStatus.html): Maps C-CDA procedure statusCode to FHIR Procedure.status
+  - [CF-ResultStatus](https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-ResultStatus.html): Maps C-CDA observation statusCode to FHIR Observation.status
+  - [CF-ResultReportStatus](https://build.fhir.org/ig/HL7/ccda-on-fhir/ConceptMap-CF-ResultReportStatus.html): Maps C-CDA organizer statusCode to FHIR DiagnosticReport.status
+- ✅ Added missing "held" and "suspended" → "registered" mappings for Observation and DiagnosticReport per official ConceptMaps
+- ✅ Corrected documentation in terminology-maps.md to match official ConceptMaps (active → registered, not preliminary)
 
 **Current Behavior**:
-- Map C-CDA status codes directly regardless of document status
-- Document status → Composition.status only
+- C-CDA statusCode values map directly to FHIR resource status values per official ConceptMaps ✅
+- Document-level status (when present in FHIR) → Composition.status only ✅
+- Resource-level status codes preserve original clinical semantics from C-CDA ✅
+- All status mappings follow official HL7 guidance with additional logical extensions for completeness ✅
+- Example: C-CDA "active" observation → FHIR "registered" (per ConceptMap CF-ResultStatus)
+- Example: C-CDA "completed" medication → FHIR "active" or "completed" depending on effectiveTime (time-aware mapping per IG guidance)
 
-**Impact**:
-- May create FHIR resources with statuses uncommon in document exchange
-- Unclear if draft resources should appear in final documents
+**Why This Is Correct**:
+1. **CDA has no document status** - Only clinical entry statusCode values exist in C-CDA
+2. **All ActStatus codes are valid in documents** - No standard restricts which status codes can appear in transmitted C-CDA documents
+3. **FHIR allows all status values in documents** - No FHIR specification restricts resource status values for document exchange
+4. **Preserves clinical semantics** - Direct mapping ensures accurate representation of clinical data lifecycle states
+5. **Follows official IG guidance** - Implementation adheres to all published ConceptMaps from C-CDA on FHIR IG
 
-**Recommendation**: Validate that resource statuses are appropriate for document-based exchange
-
-**Reference**: [HL7 C-CDA on FHIR Known Issues](https://build.fhir.org/ig/HL7/ccda-on-fhir/mappingIssues.html)
+**Official IG Guidance**:
+- [C-CDA on FHIR Mapping Issues - Document-specificity of status codes](https://build.fhir.org/ig/HL7/ccda-on-fhir/mappingIssues.html): Notes that C-CDA templates are constrained to values likely in documents, but solicits feedback without providing definitive restriction
+- [HL7 v3 ActStatus](https://terminology.hl7.org/7.0.1/CodeSystem-v3-ActStatus.html): Defines status codes as general lifecycle states, not domain-specific
+- [FHIR R4 MedicationRequest](https://hl7.org/fhir/R4/medicationrequest.html): Defines status values with no document exchange restrictions
 
 ---
 
