@@ -13,7 +13,7 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 8 missing mappings (6 high/medium priority, 2 low priority)
+**Current Status**: 9 missing mappings (7 high/medium priority, 2 low priority)
 
 ---
 
@@ -1680,9 +1680,250 @@ ccda_to_fhir/
 
 ---
 
+### 7. Device (Product Instance) ⚠️ **PARTIALLY IMPLEMENTED** - MEDIUM PRIORITY
+
+**Impact**: Only authoring devices (EHR systems, software) are converted via assignedAuthoringDevice. Medical devices used in procedures (Product Instance with typeCode="DEV") are not converted to FHIR Device resources. This prevents proper representation of implantable devices, surgical instruments, and medical equipment used in patient care, limiting compliance with US Core Implantable Device requirements.
+
+#### Documentation
+- ✅ **FHIR Documentation**: `docs/fhir/device.md`
+- ✅ **C-CDA Documentation**: `docs/ccda/product-instance.md`, `docs/ccda/assigned-authoring-device.md`
+- ✅ **Mapping Specification**: `docs/mapping/22-device.md`
+
+#### Standards References
+- **FHIR R4B Resource**: [Device](https://hl7.org/fhir/R4B/device.html)
+- **US Core Profile**: [US Core Implantable Device Profile v8.0.1](http://hl7.org/fhir/us/core/StructureDefinition/us-core-implantable-device)
+- **C-CDA Templates**:
+  - Product Instance: `2.16.840.1.113883.10.20.22.4.37`
+  - Author Participation (assignedAuthoringDevice): `2.16.840.1.113883.10.20.22.4.119`
+  - Device Identifier Observation: `2.16.840.1.113883.10.20.22.4.304`
+- **USCDI Requirement**: Unique Device Identifier (UDI) for Implantable Devices (USCDI v1+)
+
+#### Current Implementation Status
+
+✅ **Implemented**: assignedAuthoringDevice to Device (authoring systems)
+- Converts EHR systems, clinical software, and automated measurement devices
+- Maps `manufacturerModelName` and `softwareName` to FHIR `Device.deviceName`
+- Creates Device resources from document/entry authors
+- Location: `ccda_to_fhir/converters/device.py`
+
+❌ **Not Implemented**: Product Instance to Device (medical devices)
+- Product Instance template (`2.16.840.1.113883.10.20.22.4.37`) not converted
+- Participant elements with typeCode="DEV" not processed
+- Implantable devices (pacemakers, stents, prosthetics) not converted
+- Surgical instruments and medical equipment not converted
+- UDI parsing and mapping not implemented
+- Patient reference for implantable devices not added
+- US Core Implantable Device profile not applied
+
+#### Required Implementation
+
+Product Instance represents specific medical devices used in patient care, particularly implantable devices requiring UDI tracking.
+
+##### Input: C-CDA Product Instance
+
+```xml
+<procedure classCode="PROC" moodCode="EVN">
+  <code code="233174007" codeSystem="2.16.840.1.113883.6.96"
+        displayName="Pacemaker insertion"/>
+  <statusCode code="completed"/>
+  <effectiveTime value="20141231"/>
+
+  <participant typeCode="DEV">
+    <participantRole classCode="MANU">
+      <templateId root="2.16.840.1.113883.10.20.22.4.37"/>
+      <id root="2.16.840.1.113883.3.3719"
+          extension="(01)51022222233336(11)141231(17)150707(10)A213B1(21)1234"
+          assigningAuthorityName="FDA"/>
+      <playingDevice>
+        <code code="14106009" codeSystem="2.16.840.1.113883.6.96"
+              displayName="Cardiac pacemaker"/>
+        <manufacturerModelName>Model XYZ Pacemaker</manufacturerModelName>
+      </playingDevice>
+      <scopingEntity>
+        <id root="2.16.840.1.113883.3.3719"/>
+        <desc>Acme Devices, Inc</desc>
+      </scopingEntity>
+    </participantRole>
+  </participant>
+</procedure>
+```
+
+##### Output: FHIR US Core Implantable Device
+
+```json
+{
+  "resourceType": "Device",
+  "id": "device-pacemaker-1234",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/core/StructureDefinition/us-core-implantable-device"
+    ]
+  },
+  "identifier": [
+    {
+      "system": "urn:oid:2.16.840.1.113883.3.3719",
+      "value": "(01)51022222233336(11)141231(17)150707(10)A213B1(21)1234"
+    }
+  ],
+  "udiCarrier": [
+    {
+      "deviceIdentifier": "51022222233336",
+      "issuer": "http://hl7.org/fhir/NamingSystem/gs1-di",
+      "jurisdiction": "http://hl7.org/fhir/NamingSystem/fda-udi",
+      "carrierHRF": "(01)51022222233336(11)141231(17)150707(10)A213B1(21)1234",
+      "entryType": "unknown"
+    }
+  ],
+  "status": "active",
+  "manufacturer": "Acme Devices, Inc",
+  "manufactureDate": "2014-12-31",
+  "expirationDate": "2015-07-07",
+  "lotNumber": "A213B1",
+  "serialNumber": "1234",
+  "deviceName": [
+    {
+      "name": "Model XYZ Pacemaker",
+      "type": "model-name"
+    },
+    {
+      "name": "Cardiac pacemaker",
+      "type": "user-friendly-name"
+    }
+  ],
+  "modelNumber": "Model XYZ Pacemaker",
+  "type": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "14106009",
+        "display": "Cardiac pacemaker"
+      }
+    ]
+  },
+  "patient": {
+    "reference": "Patient/patient-example"
+  }
+}
+```
+
+#### Implementation Checklist
+
+##### Product Instance Converter (`ccda_to_fhir/converters/device.py`)
+- [ ] Add `convert_product_instance()` method to DeviceConverter
+- [ ] Map `participantRole/id` → Device.identifier
+- [ ] Parse UDI from `id[@root='2.16.840.1.113883.3.3719']` → Device.udiCarrier
+- [ ] Extract Device Identifier (DI) from UDI application identifier `(01)`
+- [ ] Extract production identifiers from UDI: `(11)` manufacturing date, `(17)` expiration date, `(10)` lot number, `(21)` serial number
+- [ ] Map `playingDevice/code` → Device.type
+- [ ] Map `playingDevice/manufacturerModelName` → Device.deviceName + Device.modelNumber
+- [ ] Map `scopingEntity/desc` → Device.manufacturer
+- [ ] Map `scopingEntity/id` → Device.owner (Organization reference)
+- [ ] Add patient reference from procedure/observation subject for implantable devices
+- [ ] Set Device.status based on context (procedure completed → active)
+- [ ] Apply US Core Implantable Device profile for implanted devices
+
+##### UDI Parsing Utility
+- [ ] Create UDI parser utility function
+- [ ] Support GS1 format (application identifiers: 01, 11, 17, 10, 21)
+- [ ] Extract deviceIdentifier from `(01)` application identifier
+- [ ] Parse manufacture date from `(11)` to FHIR date format (YYYYMMDD → YYYY-MM-DD)
+- [ ] Parse expiration date from `(17)` to FHIR date format
+- [ ] Extract lot number from `(10)`
+- [ ] Extract serial number from `(21)`
+- [ ] Determine issuer from OID (GS1, HIBCC, ICCBBA)
+- [ ] Set jurisdiction to FDA for US devices
+
+##### Procedure Converter Updates (`ccda_to_fhir/converters/procedure.py`)
+- [ ] Detect participant elements with typeCode="DEV"
+- [ ] Call DeviceConverter for Product Instance participants
+- [ ] Add Device resources to conversion output
+- [ ] Reference Device in Procedure.focalDevice
+- [ ] Pass patient reference to DeviceConverter for implantable devices
+
+##### Model Updates (`ccda_to_fhir/ccda/models/procedure.py`)
+- [ ] Ensure Participant model includes typeCode
+- [ ] Ensure ParticipantRole model includes playingDevice
+- [ ] Ensure PlayingDevice model includes code and manufacturerModelName
+
+##### Device Type Classification
+- [ ] Identify implantable devices by procedure code (insertion, implantation)
+- [ ] Identify implantable devices by device code (pacemaker, stent, prosthetic)
+- [ ] Apply US Core Implantable Device profile when patient reference required
+- [ ] Use base Device profile for non-implantable devices (instruments, equipment)
+
+##### Deduplication
+- [ ] Generate consistent Device IDs from UDI or identifier
+- [ ] Check for existing Device before creating new one
+- [ ] Deduplicate by UDI deviceIdentifier when available
+- [ ] Deduplicate by organization identifier + serial number for non-UDI devices
+
+##### Tests (`tests/converters/test_device.py`)
+- [x] Test assignedAuthoringDevice → Device (already implemented)
+- [ ] Test Product Instance → Device conversion
+- [ ] Test UDI parsing and mapping (GS1 format)
+- [ ] Test manufacturing/expiration date conversion
+- [ ] Test lot number and serial number extraction
+- [ ] Test device type code mapping (SNOMED CT)
+- [ ] Test manufacturer name mapping
+- [ ] Test patient reference for implantable devices
+- [ ] Test US Core Implantable Device profile application
+- [ ] Test device without UDI (organization identifier only)
+- [ ] Test multiple devices in single procedure
+- [ ] Test Device deduplication by UDI
+
+##### Integration Tests (`tests/integration/test_procedure_with_device.py`)
+- [ ] Test procedure with implanted pacemaker (complete UDI)
+- [ ] Test procedure with orthopedic implant
+- [ ] Test procedure with colonoscope (reusable device)
+- [ ] Test procedure with multiple devices
+- [ ] Test device reference in Procedure.focalDevice
+- [ ] Test Device and Procedure in Bundle
+
+#### File Locations
+
+**Files to Modify:**
+```
+ccda_to_fhir/
+├── converters/
+│   ├── device.py                # Add convert_product_instance() method
+│   └── procedure.py             # Add device participant processing
+├── utils/
+│   └── udi_parser.py            # New: UDI parsing utility
+tests/
+├── converters/
+│   └── test_device.py           # Add Product Instance tests
+└── integration/
+    └── test_procedure_with_device.py  # New: Integration tests
+```
+
+#### Related Documentation
+- See `docs/mapping/22-device.md` for complete mapping specification
+- See `docs/fhir/device.md` for FHIR Device element definitions
+- See `docs/ccda/product-instance.md` for C-CDA Product Instance specifications
+- See `docs/ccda/assigned-authoring-device.md` for assignedAuthoringDevice specifications
+- See `docs/mapping/05-procedure.md` for Procedure device participant mapping
+
+#### Notes
+- **Partial Implementation**: assignedAuthoringDevice already implemented; only Product Instance missing
+- **UDI Critical**: UDI parsing is essential for FDA regulatory compliance and device tracking
+- **US Core Profile**: Must apply US Core Implantable Device profile when patient reference present
+- **Patient Reference**: Required for implantable devices; infer from procedure subject
+- **Device Type Detection**: Use procedure code (insertion/implantation) and device code to identify implantable devices
+- **Multiple Devices**: Procedures may have multiple device participants; create separate Device resource for each
+- **Deduplication Important**: Same device may appear in multiple procedures; deduplicate by UDI or identifier
+- **GS1 Format**: Most common UDI format in US; prioritize GS1 application identifier parsing
+- **Historical Devices**: When UDI unavailable, use organization identifier and model name
+- **Procedure Reference**: Link Device back to Procedure via Procedure.focalDevice[].manipulated
+- **Status Mapping**: Infer Device.status from procedure status (completed → active)
+- **USCDI Requirement**: UDI for implantable devices is USCDI v1 requirement
+- **Non-Implantable Devices**: Support surgical instruments, diagnostic devices, and equipment
+- **Software Devices**: assignedAuthoringDevice handles EHR/software; Product Instance handles physical devices
+
+---
+
 ## Low Priority: USCDI Requirements
 
-### 7. CareTeam ❌ **NOT IMPLEMENTED** - LOW PRIORITY
+### 8. CareTeam ❌ **NOT IMPLEMENTED** - LOW PRIORITY
 
 **Impact:** Care team information can be extracted from document header (serviceEvent/performer) or structured Care Teams Section, but not formally converted to FHIR CareTeam resources. This limits care coordination interoperability and USCDI v4 compliance.
 
@@ -1988,7 +2229,7 @@ ccda_to_fhir/
 
 ---
 
-### 8. ServiceRequest ❌ **NOT IMPLEMENTED** - LOW PRIORITY
+### 9. ServiceRequest ❌ **NOT IMPLEMENTED** - LOW PRIORITY
 
 **Impact**: Planned procedures and ordered services are currently partially covered by Procedure resources with status=planned, but formal service requests/orders are not represented according to FHIR workflow patterns. This limits interoperability for order management and care planning workflows.
 
