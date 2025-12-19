@@ -277,21 +277,60 @@ Per US Realm Header Profile, personal attestation (mode="personal") references P
 
 ## Minor Issues
 
-### 9. No Known Allergies Representation 🟢
+### 9. No Known Allergies Representation Correctly Implements Standard ✅ RESOLVED
 
 **Issue**: Multiple valid approaches for representing "no known allergies" - unclear which is preferred.
 
-**Options**:
-1. AllergyIntolerance with code 716186003 "No known allergy"
-2. AllergyIntolerance with negated substance + verificationStatus="refuted"
-3. List resource indicating absence of allergies
-4. Composition section.emptyReason
+**Impact**:
+- ✅ Standard-compliant FHIR output per C-CDA on FHIR IG
+- ✅ Correctly distinguishes general vs. specific "no known allergy" statements
+- ⚠️  Specific substance approach (Pattern B) is not US Core conformant (acknowledged limitation)
 
-**Current Behavior**: Uses approach #1 (AllergyIntolerance with negated code)
+**Resolution** (Completed):
+- ✅ Implementation correctly follows C-CDA on FHIR IG guidance for mapping negated allergies (`negationInd=true`)
+- ✅ **Pattern A** (General "no known allergy"): Uses negated concept codes when available
+  - C-CDA: `negationInd=true` + participant with `nullFlavor="NA"`
+  - FHIR: AllergyIntolerance with negated concept code (e.g., SNOMED 716186003 "No known allergy")
+  - verificationStatus = "confirmed" (confirming the absence)
+  - US Core conformant ✅
+- ✅ **Pattern B** (Specific "no known X allergy"): Uses substanceExposureRisk extension when no pre-coordinated negated concept exists
+  - C-CDA: `negationInd=true` + participant with specific substance code (e.g., Penicillin V)
+  - FHIR: AllergyIntolerance with substanceExposureRisk extension containing substance + exposureRisk="no-known-reaction-risk"
+  - .code element omitted per FHIR constraint (extension prohibits .code)
+  - verificationStatus = "confirmed" (confirming the absence)
+  - NOT US Core conformant ❌ (acknowledged by IG)
+- ✅ Added comprehensive test coverage for both patterns
 
-**Impact**: Minimal - all approaches are valid, but implementers may expect different patterns
+**Current Behavior**:
+- General "no known allergy" → Negated concept code (716186003) ✅ US Core conformant
+- General "no known drug allergy" → Negated concept code (409137002) ✅ US Core conformant
+- General "no known food allergy" → Negated concept code (429625007) ✅ US Core conformant
+- General "no known environmental allergy" → Negated concept code (428607008) ✅ US Core conformant
+- Specific "no known [substance] allergy" → substanceExposureRisk extension ⚠️  NOT US Core conformant
 
-**Reference**: [HL7 C-CDA on FHIR Known Issues - Absent Allergies](https://build.fhir.org/ig/HL7/ccda-on-fhir/mappingIssues.html#absent-allergies)
+**Why This Is Correct**:
+1. **Follows official IG guidance**: Implementation adheres to C-CDA on FHIR IG mapping rules
+2. **Uses negated concepts when available**: SNOMED CT provides four broad-category negated codes, all used correctly
+3. **Handles specific substances appropriately**: When no pre-coordinated negated code exists (e.g., "no known penicillin allergy"), uses extension per IG guidance
+4. **Semantic clarity**: Distinguishes "confirmed no known allergy" from "refuted allergy" appropriately
+5. **Per official IG**: "When using this extension, the AllergyIntolerance resource will not be a conformant US Core AllergyIntolerance since the extension prohibits the required .code element"
+
+**US Core Conformance Note**:
+The C-CDA on FHIR IG acknowledges that Pattern B (substanceExposureRisk extension) creates non-US Core conformant resources. This is a known limitation when mapping specific "no known X allergy" statements where SNOMED CT lacks pre-coordinated negated concept codes. Implementers requiring strict US Core conformance should:
+- Use only broad-category "no known allergy" statements (Pattern A)
+- OR use verificationStatus="refuted" + substance code (alternative approach per SNOMED Allergy IG, not currently implemented)
+
+**Available SNOMED CT Negated Concept Codes**:
+- 716186003 "No known allergy"
+- 409137002 "No known drug allergy"
+- 429625007 "No known food allergy"
+- 428607008 "No known environmental allergy"
+- 716184000 "No known latex allergy" (not yet implemented)
+
+**Official IG Guidance**:
+- [C-CDA on FHIR Allergies Mapping](https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-allergies.html)
+- [FHIR substanceExposureRisk Extension](http://hl7.org/fhir/R4/extension-allergyintolerance-substanceexposurerisk.html)
+- [SNOMED Allergy Implementation Guide](https://docs.snomed.org/implementation-guides/allergy-implementation-guide/4-information-model-and-terminology-binding/4.3-examples)
 
 ---
 
