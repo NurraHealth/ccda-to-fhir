@@ -459,3 +459,96 @@ class TestGetAllResources:
         all_resources = registry.get_all_resources()
 
         assert all_resources == []
+
+
+class TestEncounterReference:
+    """Test encounter reference retrieval methods."""
+
+    def test_has_encounter_returns_true_when_encounter_registered(self):
+        """Test that has_encounter() returns True when an encounter is registered."""
+        registry = ReferenceRegistry()
+
+        encounter: FHIRResourceDict = {
+            "resourceType": "Encounter",
+            "id": "encounter-123",
+        }
+
+        registry.register_resource(encounter)
+
+        assert registry.has_encounter() is True
+
+    def test_has_encounter_returns_false_when_no_encounter(self):
+        """Test that has_encounter() returns False when no encounter is registered."""
+        registry = ReferenceRegistry()
+
+        assert registry.has_encounter() is False
+
+    def test_get_encounter_reference_returns_reference(self):
+        """Test that get_encounter_reference() returns reference when encounter exists."""
+        registry = ReferenceRegistry()
+
+        encounter: FHIRResourceDict = {
+            "resourceType": "Encounter",
+            "id": "encounter-abc",
+            "status": "finished",
+            "class": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "code": "AMB",
+            },
+        }
+
+        registry.register_resource(encounter)
+
+        reference = registry.get_encounter_reference()
+
+        assert reference is not None
+        assert reference == {"reference": "Encounter/encounter-abc"}
+
+    def test_get_encounter_reference_returns_none_when_no_encounter(self):
+        """Test that get_encounter_reference() returns None when no encounter exists."""
+        registry = ReferenceRegistry()
+
+        reference = registry.get_encounter_reference()
+
+        assert reference is None
+
+    def test_get_encounter_reference_returns_first_when_multiple(self):
+        """Test that get_encounter_reference() returns first encounter when multiple exist."""
+        registry = ReferenceRegistry()
+
+        encounter1: FHIRResourceDict = {
+            "resourceType": "Encounter",
+            "id": "encounter-1",
+        }
+        encounter2: FHIRResourceDict = {
+            "resourceType": "Encounter",
+            "id": "encounter-2",
+        }
+
+        registry.register_resource(encounter1)
+        registry.register_resource(encounter2)
+
+        reference = registry.get_encounter_reference()
+
+        assert reference is not None
+        # Should return first encounter (dict iteration order is insertion order in Python 3.7+)
+        assert reference == {"reference": "Encounter/encounter-1"}
+
+    def test_get_encounter_reference_increments_stats(self):
+        """Test that get_encounter_reference() increments resolved count."""
+        registry = ReferenceRegistry()
+
+        encounter: FHIRResourceDict = {
+            "resourceType": "Encounter",
+            "id": "encounter-123",
+        }
+
+        registry.register_resource(encounter)
+
+        # Call twice
+        registry.get_encounter_reference()
+        registry.get_encounter_reference()
+
+        stats = registry.get_stats()
+        # Should have 2 resolutions (one from each call)
+        assert stats["resolved"] == 2

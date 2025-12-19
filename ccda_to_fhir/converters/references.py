@@ -238,6 +238,41 @@ class ReferenceRegistry:
         self._stats["resolved"] += 1
         return {"reference": f"Patient/{patient_id}"}
 
+    def has_encounter(self) -> bool:
+        """Check if an encounter has been registered.
+
+        Returns:
+            True if at least one encounter is registered, False otherwise
+        """
+        return "Encounter" in self._resources and bool(self._resources["Encounter"])
+
+    def get_encounter_reference(self) -> JSONObject | None:
+        """Get reference to the document's encounter if one exists.
+
+        C-CDA documents may contain an encounter in componentOf/encompassingEncounter.
+        This is optional in C-CDA, so this method returns None if no encounter
+        has been registered.
+
+        This method returns a reference to the first registered encounter.
+
+        Returns:
+            Reference object {"reference": "Encounter/id"} or None if no encounter registered
+
+        Example:
+            >>> registry = ReferenceRegistry()
+            >>> encounter = {"resourceType": "Encounter", "id": "encounter-123"}
+            >>> registry.register_resource(encounter)
+            >>> ref = registry.get_encounter_reference()
+            >>> # Returns: {"reference": "Encounter/encounter-123"}
+        """
+        if not self.has_encounter():
+            return None
+
+        # Get first encounter
+        encounter_id = next(iter(self._resources["Encounter"].keys()))
+        self._stats["resolved"] += 1
+        return {"reference": f"Encounter/{encounter_id}"}
+
     def clear(self) -> None:
         """Clear all registered resources and reset stats."""
         self._resources.clear()

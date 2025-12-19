@@ -13,6 +13,7 @@ from .diagnostic_report import DiagnosticReportConverter
 from .document_reference import DocumentReferenceConverter
 from .encounter import EncounterConverter
 from .immunization import ImmunizationConverter
+from .medication_dispense import MedicationDispenseConverter
 from .medication_request import MedicationRequestConverter, convert_medication_activity
 from .medication_statement import MedicationStatementConverter, convert_medication_statement
 from .observation import ObservationConverter
@@ -33,6 +34,7 @@ __all__ = [
     "convert_medication_activity",
     "MedicationStatementConverter",
     "convert_medication_statement",
+    "MedicationDispenseConverter",
     "ImmunizationConverter",
     "ObservationConverter",
     "DeviceConverter",

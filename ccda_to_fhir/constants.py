@@ -42,6 +42,7 @@ class TemplateIds:
     INDICATION_OBSERVATION = "2.16.840.1.113883.10.20.22.4.19"
     INSTRUCTION_ACT = "2.16.840.1.113883.10.20.22.4.20"
     MEDICATION_SUPPLY_ORDER = "2.16.840.1.113883.10.20.22.4.17"
+    MEDICATION_DISPENSE = "2.16.840.1.113883.10.20.22.4.18"
 
     # Immunization templates
     IMMUNIZATION_ACTIVITY = "2.16.840.1.113883.10.20.22.4.52"
@@ -506,6 +507,18 @@ class FHIRCodes:
         UNKNOWN = "unknown"
         NOT_TAKEN = "not-taken"
 
+    # MedicationDispense status
+    class MedicationDispenseStatus:
+        PREPARATION = "preparation"
+        IN_PROGRESS = "in-progress"
+        CANCELLED = "cancelled"
+        ON_HOLD = "on-hold"
+        COMPLETED = "completed"
+        ENTERED_IN_ERROR = "entered-in-error"
+        STOPPED = "stopped"
+        DECLINED = "declined"
+        UNKNOWN = "unknown"
+
     # Immunization status
     class Immunization:
         STATUS_COMPLETED = "completed"
@@ -922,6 +935,18 @@ MEDICATION_STATUS_TO_FHIR_STATEMENT = {
     "held": FHIRCodes.MedicationStatementStatus.ON_HOLD,
     "new": FHIRCodes.MedicationStatementStatus.INTENDED,
     "nullified": FHIRCodes.MedicationStatementStatus.ENTERED_IN_ERROR,
+}
+
+# Map C-CDA medication dispense statusCode to FHIR MedicationDispense status
+# Per mapping specification: docs/mapping/15-medication-dispense.md
+MEDICATION_DISPENSE_STATUS_TO_FHIR = {
+    "completed": FHIRCodes.MedicationDispenseStatus.COMPLETED,
+    "active": FHIRCodes.MedicationDispenseStatus.IN_PROGRESS,
+    "aborted": FHIRCodes.MedicationDispenseStatus.STOPPED,
+    "cancelled": FHIRCodes.MedicationDispenseStatus.CANCELLED,
+    "held": FHIRCodes.MedicationDispenseStatus.ON_HOLD,
+    "new": FHIRCodes.MedicationDispenseStatus.PREPARATION,
+    "nullified": FHIRCodes.MedicationDispenseStatus.ENTERED_IN_ERROR,
 }
 
 # Map C-CDA medication moodCode to FHIR MedicationRequest intent
