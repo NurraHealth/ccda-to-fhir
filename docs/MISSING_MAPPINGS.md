@@ -13,7 +13,7 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 9 missing mappings (7 high/medium priority, 2 low priority)
+**Current Status**: 10 missing mappings (8 high/medium priority, 2 low priority)
 
 ---
 
@@ -2574,8 +2574,279 @@ Since C-CDA on FHIR IG doesn't provide official mapping, this implementation:
 3. Applies mapping patterns consistent with other C-CDA → FHIR conversions in this library
 4. Documents all design decisions in `docs/mapping/13-goal.md`
 
----
+### 10. DocumentReference (Document Indexing) ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
 
+**Impact**: Cannot index C-CDA documents for discovery and management without full conversion to FHIR resources. Document management systems, health information exchanges, and document repositories require DocumentReference for lightweight document indexing, search, and retrieval workflows.
+
+#### Documentation
+- ✅ **FHIR Documentation**: `docs/fhir/document-reference.md`
+- ✅ **C-CDA Documentation**: Covered in `docs/ccda/clinical-document.md`
+- ✅ **Mapping Specification**: `docs/mapping/26-document-reference.md`
+
+#### Standards References
+- **FHIR R4 Resource**: [DocumentReference](https://hl7.org/fhir/R4/documentreference.html)
+- **US Core Profile**: [US Core DocumentReference Profile v8.0.1](http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference)
+- **C-CDA Template**: US Realm Header (`2.16.840.1.113883.10.20.22.1.1`)
+- **IHE Format Codes**: [IHE Format Code ValueSet](http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem)
+- **USCDI Requirement**: Clinical Notes (v1+)
+
+#### Required Implementation
+
+DocumentReference provides metadata about a document to make it discoverable and manageable. Unlike Composition (which converts the entire document to FHIR resources), DocumentReference creates a lightweight index that points to the original C-CDA XML document.
+
+**Key Distinction**:
+- **Composition + Bundle**: Full structured conversion of C-CDA to FHIR resources
+- **DocumentReference**: Lightweight indexing with reference to original C-CDA XML
+
+Both approaches are complementary and can coexist.
+
+##### Input: C-CDA ClinicalDocument
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <templateId root="2.16.840.1.113883.10.20.22.1.1" extension="2015-08-01"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.2" extension="2015-08-01"/>
+
+  <id root="2.16.840.1.113883.19.5.99999.1" extension="TT988"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"
+        displayName="Summarization of Episode Note"/>
+  <title>Continuity of Care Document</title>
+  <effectiveTime value="20200301102000-0500"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <setId root="2.16.840.1.113883.19.5.99999.19" extension="sTT988"/>
+  <versionNumber value="1"/>
+
+  <recordTarget>
+    <patientRole>
+      <id root="2.16.840.1.113883.19.5.99999.2" extension="998991"/>
+      <patient>
+        <name><given>Ellen</given><family>Ross</family></name>
+      </patient>
+    </patientRole>
+  </recordTarget>
+
+  <author>
+    <time value="20200301"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+      <assignedPerson>
+        <name><given>Adam</given><family>Careful</family></name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5.9999.1393"/>
+        <name>Community Health and Hospitals</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+
+  <!-- Document body... -->
+</ClinicalDocument>
+```
+
+##### Output: FHIR DocumentReference
+
+```json
+{
+  "resourceType": "DocumentReference",
+  "meta": {
+    "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference"]
+  },
+  "identifier": [{
+    "system": "urn:oid:2.16.840.1.113883.19.5.99999.1",
+    "value": "TT988"
+  }],
+  "masterIdentifier": {
+    "system": "urn:oid:2.16.840.1.113883.19.5.99999.19",
+    "value": "sTT988"
+  },
+  "status": "current",
+  "docStatus": "final",
+  "type": {
+    "coding": [{
+      "system": "http://loinc.org",
+      "code": "34133-9",
+      "display": "Summarization of Episode Note"
+    }]
+  },
+  "category": [{
+    "coding": [{
+      "system": "http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category",
+      "code": "clinical-note",
+      "display": "Clinical Note"
+    }]
+  }],
+  "subject": {
+    "reference": "Patient/patient-998991"
+  },
+  "date": "2020-03-01T10:20:00-05:00",
+  "author": [{
+    "reference": "Practitioner/practitioner-1234567890"
+  }],
+  "custodian": {
+    "reference": "Organization/org-1393"
+  },
+  "content": [{
+    "attachment": {
+      "contentType": "application/xml",
+      "language": "en-US",
+      "url": "Binary/ccda-ccd-tt988",
+      "title": "Continuity of Care Document",
+      "creation": "2020-03-01T10:20:00-05:00"
+    },
+    "format": {
+      "system": "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem",
+      "code": "urn:hl7-org:sdwg:ccda-structuredBody:2.1",
+      "display": "C-CDA R2.1 Structured Body"
+    }
+  }]
+}
+```
+
+#### Implementation Checklist
+
+##### Core Converter (`ccda_to_fhir/converters/document_reference.py`)
+- [ ] Create `DocumentReferenceConverter` class extending `BaseConverter`
+- [ ] Implement `convert()` method accepting ClinicalDocument element
+- [ ] Map `id` → `DocumentReference.identifier`
+- [ ] Map `setId` → `DocumentReference.masterIdentifier`
+- [ ] Map `code` → `DocumentReference.type` (LOINC document type)
+- [ ] Set `category` = "clinical-note" for all clinical documents
+- [ ] Set `status` = "current" (default), "superseded" (if replaced), or "entered-in-error"
+- [ ] Set `docStatus` = "final" (default) or infer from context
+- [ ] Map `effectiveTime` → `DocumentReference.date`
+- [ ] Map `recordTarget` → `subject` (Patient reference)
+- [ ] Map `author` → `author[]` (Practitioner references)
+- [ ] Map `legalAuthenticator` → `authenticator`
+- [ ] Map `custodian` → `custodian` (Organization reference)
+- [ ] Map `confidentialityCode` → `securityLabel`
+- [ ] Map `relatedDocument` → `relatesTo` (replaces, appends, transforms)
+
+##### Content Attachment Processing
+- [ ] Store C-CDA XML in Binary resource
+- [ ] Set `content.attachment.contentType` = "application/xml"
+- [ ] Set `content.attachment.url` = reference to Binary resource
+- [ ] Calculate SHA-1 hash of C-CDA XML → `content.attachment.hash`
+- [ ] Set `content.attachment.size` = byte size of C-CDA XML
+- [ ] Map `languageCode` → `content.attachment.language`
+- [ ] Map `title` → `content.attachment.title`
+- [ ] Map `effectiveTime` → `content.attachment.creation`
+
+##### Format Code Determination
+- [ ] Detect C-CDA version from templateId extension
+- [ ] templateId extension "2015-08-01" or later → "urn:hl7-org:sdwg:ccda-structuredBody:2.1"
+- [ ] templateId extension "2014-06-09" or earlier → "urn:hl7-org:sdwg:ccda-structuredBody:1.1"
+- [ ] Set `content.format` with appropriate IHE format code
+
+##### Context Mapping
+- [ ] Map `componentOf/encompassingEncounter` → `context.encounter`
+- [ ] Map `documentationOf/serviceEvent/@classCode` → `context.event`
+- [ ] Map `documentationOf/serviceEvent/effectiveTime` → `context.period`
+- [ ] Infer `context.facilityType` from encounter location (if available)
+- [ ] Infer `context.practiceSetting` from author specialty code
+
+##### Document Versioning Support
+- [ ] When document has relatedDocument[@typeCode='RPLC']:
+  - Set new DocumentReference status = "current"
+  - Add relatesTo.code = "replaces" with target identifier
+  - Update prior DocumentReference status to "superseded"
+- [ ] Track document versions via masterIdentifier (setId)
+
+##### Resource Creation and Management
+- [ ] Create Binary resource for C-CDA XML storage
+- [ ] Create or reference Patient resource (from recordTarget)
+- [ ] Create or reference Practitioner resources (from author, authenticator)
+- [ ] Create or reference Organization resource (from custodian)
+- [ ] Generate unique ID for DocumentReference
+- [ ] Ensure all references are resolvable
+
+##### Model Validation (`ccda_to_fhir/models.py`)
+- [ ] Add `is_clinical_document()` validator for ClinicalDocument element
+- [ ] Validate required elements: id, code, effectiveTime, recordTarget, author, custodian
+- [ ] Validate templateId includes US Realm Header (2.16.840.1.113883.10.20.22.1.1)
+
+##### Tests (`tests/converters/test_document_reference.py`)
+- [ ] Test basic ClinicalDocument → DocumentReference conversion
+- [ ] Test identifier mapping (id → identifier, setId → masterIdentifier)
+- [ ] Test document type mapping (all common C-CDA document types)
+- [ ] Test category assignment ("clinical-note")
+- [ ] Test status mapping (current, superseded, entered-in-error)
+- [ ] Test date/time conversion (effectiveTime → date)
+- [ ] Test participant mapping (author, authenticator, custodian)
+- [ ] Test confidentiality mapping (confidentialityCode → securityLabel)
+- [ ] Test relatedDocument mapping (RPLC → replaces, APND → appends)
+- [ ] Test Binary resource creation for C-CDA XML
+- [ ] Test content.attachment.url referencing Binary
+- [ ] Test format code determination (R2.1 vs R1.1)
+- [ ] Test SHA-1 hash calculation
+- [ ] Test context mapping (encounter, event, period)
+- [ ] Test document versioning (masterIdentifier consistency)
+
+##### Integration Tests (`tests/integration/test_document_reference.py`)
+- [ ] Test complete CCD → DocumentReference + Binary conversion
+- [ ] Test Discharge Summary → DocumentReference conversion
+- [ ] Test document replacement workflow (version 1 → version 2)
+- [ ] Test complementary use: DocumentReference + Composition/Bundle for same document
+- [ ] Test document retrieval via DocumentReference.content.attachment.url
+- [ ] Test $docref operation support (if implementing)
+
+##### US Core Conformance
+- [ ] Validate required elements: `status`, `type`, `category`, `subject`, `content`
+- [ ] Validate `content.attachment.contentType` = "application/xml"
+- [ ] Validate `content.attachment.url` OR `content.attachment.data` present
+- [ ] Validate Must Support: `identifier`, `date`, `author`, `content.format`, `context.encounter`, `context.period`
+- [ ] Include US Core DocumentReference profile in `meta.profile`
+
+##### Search Parameter Support
+- [ ] Implement search by patient
+- [ ] Implement search by patient + category
+- [ ] Implement search by patient + type
+- [ ] Implement search by patient + date (with comparators)
+- [ ] Implement search by identifier
+
+#### File Locations
+
+**New Files to Create:**
+```
+ccda_to_fhir/
+├── converters/
+│   └── document_reference.py    # DocumentReferenceConverter class
+tests/
+├── converters/
+│   └── test_document_reference.py  # Unit tests
+└── integration/
+    └── test_document_reference.py  # Integration tests
+```
+
+**Existing Files to Update:**
+```
+ccda_to_fhir/
+├── converters/
+│   └── __init__.py              # Export DocumentReferenceConverter
+└── models.py                    # Add ClinicalDocument validators
+```
+
+#### Related Documentation
+- **Composition Mapping**: [19-composition.md](19-composition.md) - Alternative structured conversion approach
+- **Bundle Mapping**: [20-bundle.md](20-bundle.md) - Document Bundle packaging
+- **Patient Mapping**: [01-patient.md](01-patient.md) - Patient reference mapping
+- **Participations**: [09-participations.md](09-participations.md) - Author, authenticator, custodian mapping
+
+#### Notes
+- **Composition vs DocumentReference**: Composition is for structured document conversion where all C-CDA content is converted to FHIR resources. DocumentReference is for document indexing/referencing where the original C-CDA is preserved and metadata is extracted for discovery.
+- **Complementary Use**: Both approaches can coexist - a system can create both a DocumentReference (pointing to the C-CDA) and a Composition/Bundle (with structured FHIR resources) for the same document.
+- **US Core Requirement**: US Core requires DocumentReference for clinical notes, making this essential for USCDI compliance and document-based interoperability.
+- **Binary Storage**: The C-CDA XML should be stored in a Binary resource and referenced via DocumentReference.content.attachment.url for clean separation of metadata and content.
+- **Hash Integrity**: Always calculate and include attachment.hash (SHA-1) for document integrity verification.
+- **Document Versioning**: Use masterIdentifier (from setId) to track document series, and relatesTo to link versions.
+
+---
 ## Future Mappings (Low Priority)
 
 *Currently none identified. This section will track additional mappings as they are documented.*
