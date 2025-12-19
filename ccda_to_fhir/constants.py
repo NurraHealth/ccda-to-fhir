@@ -75,6 +75,12 @@ class TemplateIds:
     # Note templates
     NOTE_ACTIVITY = "2.16.840.1.113883.10.20.22.4.202"
 
+    # Goal templates
+    GOAL_OBSERVATION = "2.16.840.1.113883.10.20.22.4.121"
+    PRIORITY_PREFERENCE = "2.16.840.1.113883.10.20.22.4.143"
+    PROGRESS_TOWARD_GOAL = "2.16.840.1.113883.10.20.22.4.110"
+    ENTRY_REFERENCE = "2.16.840.1.113883.10.20.22.4.122"
+
     # Section templates
     PROBLEM_SECTION = "2.16.840.1.113883.10.20.22.2.5.1"
     ALLERGY_SECTION = "2.16.840.1.113883.10.20.22.2.6.1"
@@ -86,6 +92,7 @@ class TemplateIds:
     PROCEDURES_SECTION = "2.16.840.1.113883.10.20.22.2.7.1"
     ENCOUNTERS_SECTION = "2.16.840.1.113883.10.20.22.2.22.1"
     NOTES_SECTION = "2.16.840.1.113883.10.20.22.2.65"
+    GOALS_SECTION = "2.16.840.1.113883.10.20.22.2.60"
 
 
 # =============================================================================
@@ -634,6 +641,7 @@ class FHIRCodes:
         COMPOSITION = "Composition"
         LOCATION = "Location"
         PROVENANCE = "Provenance"
+        GOAL = "Goal"
 
     # Patient gender
     class PatientGender:

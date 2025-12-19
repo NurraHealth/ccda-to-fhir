@@ -846,3 +846,148 @@ def ccda_procedure_activity_act() -> str:
 def ccda_procedure_no_effective_time() -> str:
     """Load C-CDA procedure without effectiveTime (tests data-absent-reason extension)."""
     return (CCDA_FIXTURES_DIR / "procedure_no_effective_time.xml").read_text()
+
+
+@pytest.fixture
+def ccda_goal_weight_loss() -> str:
+    """C-CDA Goal Observation for weight loss with quantity target."""
+    return """
+<observation classCode="OBS" moodCode="GOL">
+    <templateId root="2.16.840.1.113883.10.20.22.4.121" extension="2022-06-01"/>
+    <id root="db734647-fc99-424c-a864-7e3cda82e703"/>
+    <code code="289169006" codeSystem="2.16.840.1.113883.6.96" displayName="Weight loss"/>
+    <statusCode code="active"/>
+    <effectiveTime>
+        <low value="20240115"/>
+        <high value="20240715"/>
+    </effectiveTime>
+    <author>
+        <time value="20240115"/>
+        <assignedAuthor>
+            <id root="patient-system" extension="patient-123"/>
+        </assignedAuthor>
+    </author>
+    <entryRelationship typeCode="COMP">
+        <observation classCode="OBS" moodCode="GOL">
+            <templateId root="2.16.840.1.113883.10.20.22.4.121" extension="2022-06-01"/>
+            <code code="29463-7" codeSystem="2.16.840.1.113883.6.1" displayName="Body weight"/>
+            <value xsi:type="PQ" value="160" unit="[lb_av]"/>
+        </observation>
+    </entryRelationship>
+</observation>
+    """
+
+
+@pytest.fixture
+def ccda_goal_with_priority() -> str:
+    """C-CDA Goal Observation with priority preference."""
+    return """
+<observation classCode="OBS" moodCode="GOL">
+    <templateId root="2.16.840.1.113883.10.20.22.4.121" extension="2022-06-01"/>
+    <id root="goal-priority-test"/>
+    <code code="289169006" codeSystem="2.16.840.1.113883.6.96" displayName="Weight loss"/>
+    <statusCode code="active"/>
+    <effectiveTime>
+        <low value="20240115"/>
+    </effectiveTime>
+    <entryRelationship typeCode="REFR">
+        <observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.143"/>
+            <code code="225773000" codeSystem="2.16.840.1.113883.6.96" displayName="Preference"/>
+            <value xsi:type="CD" code="high-priority"
+                   codeSystem="2.16.840.1.113883.4.642.3.275"
+                   displayName="High Priority"/>
+        </observation>
+    </entryRelationship>
+</observation>
+    """
+
+
+@pytest.fixture
+def ccda_goal_with_progress() -> str:
+    """C-CDA Goal Observation with progress/achievement status."""
+    return """
+<observation classCode="OBS" moodCode="GOL">
+    <templateId root="2.16.840.1.113883.10.20.22.4.121" extension="2022-06-01"/>
+    <id root="goal-progress-test"/>
+    <code code="289169006" codeSystem="2.16.840.1.113883.6.96" displayName="Weight loss"/>
+    <statusCode code="active"/>
+    <effectiveTime>
+        <low value="20240115"/>
+    </effectiveTime>
+    <entryRelationship typeCode="REFR">
+        <observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.110"/>
+            <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+            <value xsi:type="CD" code="in-progress"
+                   codeSystem="2.16.840.1.113883.4.642.3.251"
+                   displayName="In Progress"/>
+        </observation>
+    </entryRelationship>
+</observation>
+    """
+
+
+@pytest.fixture
+def ccda_goal_with_health_concern() -> str:
+    """C-CDA Goal Observation with health concern reference."""
+    return """
+<observation classCode="OBS" moodCode="GOL">
+    <templateId root="2.16.840.1.113883.10.20.22.4.121" extension="2022-06-01"/>
+    <id root="goal-concern-test"/>
+    <code code="289169006" codeSystem="2.16.840.1.113883.6.96" displayName="Weight loss"/>
+    <statusCode code="active"/>
+    <effectiveTime>
+        <low value="20240115"/>
+    </effectiveTime>
+    <entryRelationship typeCode="RSON">
+        <observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.122"/>
+            <id root="condition-obesity-123"/>
+            <code code="75310-3" codeSystem="2.16.840.1.113883.6.1" displayName="Health Concern"/>
+            <value xsi:type="CD" code="414915002" codeSystem="2.16.840.1.113883.6.96" displayName="Obesity"/>
+        </observation>
+    </entryRelationship>
+</observation>
+    """
+
+
+@pytest.fixture
+def ccda_goal_blood_pressure() -> str:
+    """C-CDA Goal Observation with range target (blood pressure)."""
+    return """
+<observation classCode="OBS" moodCode="GOL">
+    <templateId root="2.16.840.1.113883.10.20.22.4.121" extension="2022-06-01"/>
+    <id root="goal-bp-test"/>
+    <code code="85354-9" codeSystem="2.16.840.1.113883.6.1" displayName="Blood pressure panel"/>
+    <statusCode code="active"/>
+    <effectiveTime>
+        <low value="20240115"/>
+    </effectiveTime>
+    <entryRelationship typeCode="COMP">
+        <observation classCode="OBS" moodCode="GOL">
+            <templateId root="2.16.840.1.113883.10.20.22.4.121" extension="2022-06-01"/>
+            <code code="8480-6" codeSystem="2.16.840.1.113883.6.1" displayName="Systolic blood pressure"/>
+            <value xsi:type="IVL_PQ">
+                <high value="140" unit="mm[Hg]"/>
+            </value>
+        </observation>
+    </entryRelationship>
+</observation>
+    """
+
+
+@pytest.fixture
+def ccda_goal_qualitative() -> str:
+    """C-CDA Goal Observation without measurable target (qualitative)."""
+    return """
+<observation classCode="OBS" moodCode="GOL">
+    <templateId root="2.16.840.1.113883.10.20.22.4.121" extension="2022-06-01"/>
+    <id root="goal-qualitative-test"/>
+    <code code="713458007" codeSystem="2.16.840.1.113883.6.96" displayName="Improving functional status"/>
+    <statusCode code="active"/>
+    <effectiveTime>
+        <low value="20240115"/>
+    </effectiveTime>
+</observation>
+    """

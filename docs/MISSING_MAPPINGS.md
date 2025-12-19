@@ -13,9 +13,9 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 8 missing mappings (6 high/medium priority, 2 low priority)
+**Current Status**: 7 missing mappings (5 high/medium priority, 2 low priority)
 
-**Recently Completed**: Composition and Bundle (2025-12-19)
+**Recently Completed**: Composition, Bundle, and Goal (2025-12-19)
 
 ---
 
@@ -1001,11 +1001,11 @@ ccda_to_fhir/
 
 ---
 
-### 4. Goal ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
+### 4. Goal ✅ **IMPLEMENTED** (2025-12-19)
 
-**Deadline**: December 31, 2025 (certification requirement)
+**Implementation**: Fully implemented with basic test coverage.
 
-**Impact**: Care Plan documents cannot be fully converted without Goal support. Goals are part of Care Plan Documents and require Composition support (see #1 above).
+**Capabilities**: C-CDA Goal Observations are now converted to FHIR Goal resources per US Core Goal Profile. Supports goal description, lifecycle status, start dates, targets (quantity, range, coded values), expressedBy (patient/practitioner), priority, achievement status, and addresses (health concerns). Component goals with multiple targets are supported.
 
 #### Documentation
 - ✅ **FHIR Documentation**: `docs/fhir/goal.md`

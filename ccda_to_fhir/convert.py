@@ -13,6 +13,7 @@ from fhir.resources.R4B.device import Device
 from fhir.resources.R4B.diagnosticreport import DiagnosticReport
 from fhir.resources.R4B.documentreference import DocumentReference
 from fhir.resources.R4B.encounter import Encounter
+from fhir.resources.R4B.goal import Goal
 from fhir.resources.R4B.immunization import Immunization
 from fhir.resources.R4B.medication import Medication
 from fhir.resources.R4B.medicationrequest import MedicationRequest
@@ -46,6 +47,7 @@ from .converters.device import DeviceConverter
 from .converters.diagnostic_report import DiagnosticReportConverter
 from .converters.document_reference import DocumentReferenceConverter
 from .converters.encounter import EncounterConverter
+from .converters.goal import GoalConverter
 from .converters.immunization import convert_immunization_activity
 from .converters.medication_request import (
     convert_medication_activity,
@@ -87,6 +89,7 @@ RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
     "Encounter": Encounter,
     "Composition": Composition,
     "Provenance": Provenance,
+    "Goal": Goal,
 }
 
 
@@ -213,6 +216,10 @@ class DocumentConverter:
             reference_registry=self.reference_registry,
         )
         self.encounter_converter = EncounterConverter(
+            code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
+        )
+        self.goal_converter = GoalConverter(
             code_system_mapper=self.code_system_mapper,
             reference_registry=self.reference_registry,
         )
@@ -374,6 +381,17 @@ class DocumentConverter:
                 entry_type="observation",
                 converter=self.observation_converter.convert,
                 error_message="social history observation",
+                include_section_code=False,
+            )
+        )
+
+        # Goals (Goal Observations)
+        self.goal_processor = SectionProcessor(
+            SectionConfig(
+                template_id=TemplateIds.GOAL_OBSERVATION,
+                entry_type="observation",
+                converter=self.goal_converter.convert,
+                error_message="goal observation",
                 include_section_code=False,
             )
         )
@@ -757,6 +775,14 @@ class DocumentConverter:
             if social_history:
                 section_resource_map[TemplateIds.SOCIAL_HISTORY_SECTION] = social_history
 
+            # Goals (from Goals sections)
+            goals = self._extract_goals(ccda_doc.component.structured_body)
+            resources.extend(goals)
+            for goal in goals:
+                self.reference_registry.register_resource(goal)
+            if goals:
+                section_resource_map[TemplateIds.GOALS_SECTION] = goals
+
             # Procedures (from Procedures sections)
             procedures = self._extract_procedures(ccda_doc.component.structured_body)
             resources.extend(procedures)
@@ -1017,6 +1043,20 @@ class DocumentConverter:
             structured_body,
             code_system_mapper=self.code_system_mapper,
             metadata_callback=self._store_author_metadata,
+            reference_registry=self.reference_registry,
+        )
+
+    def _extract_goals(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
+        """Extract and convert Goals from the structured body.
+
+        Args:
+            structured_body: The structuredBody element
+
+        Returns:
+            List of FHIR Goal resources
+        """
+        return self.goal_processor.process(
+            structured_body,
             reference_registry=self.reference_registry,
         )
 
