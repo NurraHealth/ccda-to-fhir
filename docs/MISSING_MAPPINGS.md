@@ -2357,6 +2357,7 @@ For reference, the following mappings are **documented and implemented**:
 10. ✅ Notes (10-notes.md)
 11. ✅ Social History (11-social-history.md)
 12. ✅ Vital Signs (12-vital-signs.md)
+13. ✅ DiagnosticReport (21-diagnostic-report.md) - Groups lab results/observations together
 
 See `docs/implementation-status.md` for detailed implementation status of all completed mappings.
 
