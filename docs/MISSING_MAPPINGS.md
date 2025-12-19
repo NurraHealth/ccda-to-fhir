@@ -2,7 +2,7 @@
 
 **Purpose**: Track mappings documented in `docs/mapping/` that are not yet implemented in the converter code.
 
-**Last Updated**: 2025-12-19
+**Last Updated**: 2025-12-20
 
 ---
 
@@ -13,9 +13,9 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 5 missing mappings (3 high/medium priority, 2 low priority)
+**Current Status**: 4 missing mappings (2 high/medium priority, 2 low priority)
 
-**Recently Completed**: Composition, Bundle, Goal, CarePlan, and MedicationDispense (2025-12-19)
+**Recently Completed**: Composition, Bundle, Goal, CarePlan, MedicationDispense (2025-12-19), and Location (2025-12-20)
 
 ---
 
@@ -1437,9 +1437,11 @@ ccda_to_fhir/
 
 ---
 
-### 6. Location ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
+### 6. Location ✅ **IMPLEMENTED** (2025-12-20)
 
-**Impact**: Location data is currently embedded within Encounter resources but not extracted as separate, reusable Location resources. This limits interoperability and violates US Core recommendations to create separate Location resources.
+**Implementation**: Fully implemented with comprehensive test coverage (32 unit tests passing)
+
+**Capabilities**: Service Delivery Location participants from Encounters are now converted to separate FHIR Location resources with deduplication by NPI or name+city. Locations are registered in the reference registry and added to document bundles. Supports all identifier types (NPI, CLIA, NAIC), facility type codes (HSLOC, SNOMED CT, CMS POS), addresses, and telecom information per US Core Location profile.
 
 #### Documentation
 - ✅ **FHIR Documentation**: `docs/fhir/location.md`

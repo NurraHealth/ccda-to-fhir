@@ -44,6 +44,9 @@ class CodeSystemMapper:
         # CDC Race and Ethnicity
         "2.16.840.1.113883.6.238": "urn:oid:2.16.840.1.113883.6.238",  # CDC Race/Ethnicity (keep as OID)
 
+        # CDC NHSN Healthcare Service Location (HSLOC)
+        "2.16.840.1.113883.6.259": "https://www.cdc.gov/nhsn/cdaportal/terminology/codesystem/hsloc.html",
+
         # NUCC Provider Taxonomy
         "2.16.840.1.113883.6.101": "http://nucc.org/provider-taxonomy",
 

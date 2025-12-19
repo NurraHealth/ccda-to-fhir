@@ -1,0 +1,424 @@
+"""Location converter: C-CDA Service Delivery Location to FHIR Location resource.
+
+Converts C-CDA Service Delivery Location (template 2.16.840.1.113883.10.20.22.4.32)
+to FHIR Location resource compliant with US Core Location profile.
+
+Reference:
+- C-CDA: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-ServiceDeliveryLocation.html
+- FHIR: https://hl7.org/fhir/R4B/location.html
+- US Core: http://hl7.org/fhir/us/core/StructureDefinition/us-core-location
+- Mapping: docs/mapping/16-location.md
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from ccda_to_fhir.constants import ADDRESS_USE_MAP, FHIRCodes, TELECOM_USE_MAP
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+
+from .base import BaseConverter
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.datatypes import AD, CE, II, ON, TEL
+    from ccda_to_fhir.ccda.models.participant import ParticipantRole
+
+
+class LocationConverter(BaseConverter["ParticipantRole"]):
+    """Convert C-CDA Service Delivery Location to FHIR Location.
+
+    Handles mapping from C-CDA Service Delivery Location template
+    (2.16.840.1.113883.10.20.22.4.32) to US Core Location profile.
+    """
+
+    # Service Delivery Location template OID
+    SERVICE_DELIVERY_LOCATION_TEMPLATE = "2.16.840.1.113883.10.20.22.4.32"
+
+    # US Core Location profile
+    US_CORE_LOCATION_PROFILE = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location"
+
+    def convert(self, participant_role: "ParticipantRole") -> FHIRResourceDict:
+        """Convert Service Delivery Location to Location resource.
+
+        Args:
+            participant_role: C-CDA ParticipantRole with classCode='SDLOC'
+
+        Returns:
+            FHIR Location resource as dictionary
+
+        Raises:
+            ValueError: If required elements are missing or invalid
+        """
+        # Validate Service Delivery Location template
+        self._validate_template(participant_role)
+
+        # Validate classCode
+        self._validate_class_code(participant_role)
+
+        location: FHIRResourceDict = {
+            "resourceType": FHIRCodes.ResourceTypes.LOCATION,
+        }
+
+        # Add US Core profile
+        location["meta"] = {
+            "profile": [self.US_CORE_LOCATION_PROFILE]
+        }
+
+        # Generate ID from identifiers
+        if participant_role.id:
+            location["id"] = self._generate_location_id(participant_role.id)
+
+        # Map identifiers (NPI, CLIA, NAIC, etc.)
+        identifiers = self._convert_identifiers(participant_role.id)
+        if identifiers:
+            location["identifier"] = identifiers
+
+        # Map status (default: active)
+        location["status"] = "active"
+
+        # Map name (required by US Core)
+        name = self._extract_name(participant_role)
+        if not name:
+            raise ValueError("Location name is required (playingEntity/name)")
+        location["name"] = name
+
+        # Map mode (default: instance for specific locations)
+        location["mode"] = "instance"
+
+        # Map type (facility type - required)
+        if not participant_role.code:
+            raise ValueError("Location type code is required (participantRole/code)")
+        location_type = self._convert_type(participant_role.code)
+        if location_type:
+            location["type"] = [location_type]
+
+        # Map telecom (phone, fax, email)
+        if participant_role.telecom:
+            telecom_list = self._convert_telecom(participant_role.telecom)
+            if telecom_list:
+                location["telecom"] = telecom_list
+
+        # Map address
+        if participant_role.addr:
+            address = self._convert_address(participant_role.addr)
+            if address:
+                location["address"] = address
+
+        return location
+
+    def _validate_template(self, participant_role: "ParticipantRole") -> None:
+        """Validate that this is a Service Delivery Location template.
+
+        Args:
+            participant_role: ParticipantRole to validate
+
+        Raises:
+            ValueError: If template ID is missing or invalid
+        """
+        if not participant_role.template_id:
+            raise ValueError(
+                f"Missing templateId - expected {self.SERVICE_DELIVERY_LOCATION_TEMPLATE}"
+            )
+
+        has_valid_template = any(
+            tid.root == self.SERVICE_DELIVERY_LOCATION_TEMPLATE
+            for tid in participant_role.template_id
+        )
+
+        if not has_valid_template:
+            raise ValueError(
+                f"Invalid templateId - expected {self.SERVICE_DELIVERY_LOCATION_TEMPLATE}"
+            )
+
+    def _validate_class_code(self, participant_role: "ParticipantRole") -> None:
+        """Validate that classCode is SDLOC (Service Delivery Location).
+
+        Args:
+            participant_role: ParticipantRole to validate
+
+        Raises:
+            ValueError: If classCode is not SDLOC
+        """
+        if participant_role.class_code != "SDLOC":
+            raise ValueError(
+                f"Invalid classCode '{participant_role.class_code}' - expected 'SDLOC'"
+            )
+
+    def _generate_location_id(self, identifiers: list["II"]) -> str:
+        """Generate FHIR Location ID from C-CDA identifiers.
+
+        Priority:
+        1. NPI-based ID: location-npi-{extension}
+        2. UUID v4 from cached ID generator
+
+        Args:
+            identifiers: List of C-CDA II identifiers
+
+        Returns:
+            Generated Location ID
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        # Check for NPI identifier (root = 2.16.840.1.113883.4.6)
+        for identifier in identifiers:
+            if identifier.root == "2.16.840.1.113883.4.6" and identifier.extension:
+                return f"location-npi-{identifier.extension}"
+
+        # Use cached UUID v4 generator for other identifiers
+        root = identifiers[0].root if identifiers and identifiers[0].root else None
+        extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
+
+        return generate_id_from_identifiers("Location", root, extension)
+
+    def _convert_identifiers(self, identifiers: list["II"] | None) -> list[JSONObject]:
+        """Convert C-CDA identifiers to FHIR identifiers with special handling.
+
+        Special OID mappings:
+        - 2.16.840.1.113883.4.6 → http://hl7.org/fhir/sid/us-npi (NPI)
+        - 2.16.840.1.113883.4.7 → urn:oid:... (CLIA)
+        - 2.16.840.1.113883.6.300 → urn:oid:... (NAIC)
+        - Others → urn:oid:...
+
+        Args:
+            identifiers: List of C-CDA II identifiers
+
+        Returns:
+            List of FHIR identifier objects
+        """
+        if not identifiers:
+            return []
+
+        fhir_identifiers: list[JSONObject] = []
+
+        for identifier in identifiers:
+            # Skip nullFlavor identifiers (handled separately if needed)
+            if identifier.null_flavor:
+                # Optional: Include nullFlavor representation
+                fhir_identifiers.append({
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                    "value": identifier.null_flavor
+                })
+                continue
+
+            if not identifier.root:
+                continue
+
+            fhir_identifier = self.create_identifier(
+                root=identifier.root,
+                extension=identifier.extension
+            )
+
+            if fhir_identifier:
+                fhir_identifiers.append(fhir_identifier)
+
+        return fhir_identifiers
+
+    def _extract_name(self, participant_role: "ParticipantRole") -> str | None:
+        """Extract facility name from playingEntity/name.
+
+        Args:
+            participant_role: C-CDA ParticipantRole
+
+        Returns:
+            Facility name string or None
+        """
+        if not participant_role.playing_entity:
+            return None
+
+        if not participant_role.playing_entity.name:
+            return None
+
+        names = participant_role.playing_entity.name
+
+        # Handle single name (string)
+        if isinstance(names, str):
+            return names
+
+        # Handle list of names
+        if isinstance(names, list) and len(names) > 0:
+            first_name = names[0]
+
+            # Handle string in list
+            if isinstance(first_name, str):
+                return first_name
+
+            # Handle ON (OrganizationName) object
+            if hasattr(first_name, "value") and first_name.value:
+                return first_name.value
+
+            # Fallback to string representation
+            return str(first_name) if first_name else None
+
+        return None
+
+    def _convert_type(self, code: "CE") -> JSONObject:
+        """Convert facility type code to FHIR Location.type CodeableConcept.
+
+        Supports multiple code systems:
+        - HSLOC: 2.16.840.1.113883.6.259 → https://www.cdc.gov/nhsn/cdaportal/terminology/codesystem/hsloc.html
+        - SNOMED CT: 2.16.840.1.113883.6.96 → http://snomed.info/sct
+        - RoleCode: 2.16.840.1.113883.5.111 → http://terminology.hl7.org/CodeSystem/v3-RoleCode
+        - CMS POS: URL → same URL
+
+        Args:
+            code: C-CDA CE (CodedElement) with facility type
+
+        Returns:
+            FHIR CodeableConcept for Location.type
+        """
+        if not code or not code.code:
+            return {}
+
+        codeable_concept: JSONObject = {}
+        codings: list[JSONObject] = []
+
+        # Primary coding
+        if code.code and code.code_system:
+            primary_coding = self._create_coding(code)
+            if primary_coding:
+                codings.append(primary_coding)
+
+        # Translation codings
+        if hasattr(code, "translation") and code.translation:
+            for trans in code.translation:
+                trans_coding = self._create_coding(trans)
+                if trans_coding:
+                    codings.append(trans_coding)
+
+        if codings:
+            codeable_concept["coding"] = codings
+
+        # Original text
+        if hasattr(code, "original_text") and code.original_text:
+            codeable_concept["text"] = code.original_text
+
+        return codeable_concept
+
+    def _create_coding(self, code: "CE") -> JSONObject:
+        """Create a FHIR Coding from C-CDA CE.
+
+        Args:
+            code: C-CDA CodedElement
+
+        Returns:
+            FHIR Coding object
+        """
+        if not code.code:
+            return {}
+
+        coding: JSONObject = {}
+
+        # Map code system OID to FHIR URI
+        if code.code_system:
+            coding["system"] = self.map_oid_to_uri(code.code_system)
+
+        coding["code"] = code.code
+
+        if code.display_name:
+            coding["display"] = code.display_name
+
+        return coding
+
+    def _convert_telecom(self, telecoms: list["TEL"] | "TEL") -> list[JSONObject]:
+        """Convert C-CDA telecom to FHIR ContactPoint.
+
+        Parses URI schemes (tel:, fax:, mailto:, http:) and maps to FHIR system codes.
+
+        Args:
+            telecoms: List of C-CDA TEL or single TEL
+
+        Returns:
+            List of FHIR ContactPoint objects
+        """
+        fhir_telecom: list[JSONObject] = []
+
+        # Normalize to list
+        telecom_list = telecoms if isinstance(telecoms, list) else [telecoms]
+
+        for telecom in telecom_list:
+            if not telecom.value:
+                continue
+
+            contact_point: JSONObject = {}
+
+            # Parse value (tel:+1..., mailto:..., fax:..., http://...)
+            value = telecom.value
+            if value.startswith("tel:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
+                contact_point["value"] = value[4:]  # Remove "tel:" prefix
+            elif value.startswith("mailto:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.EMAIL
+                contact_point["value"] = value[7:]  # Remove "mailto:" prefix
+            elif value.startswith("fax:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.FAX
+                contact_point["value"] = value[4:]  # Remove "fax:" prefix
+            elif value.startswith("http:") or value.startswith("https:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.URL
+                contact_point["value"] = value
+            else:
+                # Unknown format, store as-is (assume phone if no prefix)
+                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
+                contact_point["value"] = value
+
+            # Map use code (HP = home, WP = work, etc.)
+            if telecom.use:
+                fhir_use = TELECOM_USE_MAP.get(telecom.use)
+                if fhir_use:
+                    contact_point["use"] = fhir_use
+
+            if contact_point:
+                fhir_telecom.append(contact_point)
+
+        return fhir_telecom
+
+    def _convert_address(self, addresses: list["AD"] | "AD") -> JSONObject:
+        """Convert C-CDA address to FHIR Address.
+
+        Note: Location.address is 0..1 (single address), not array.
+        If multiple addresses provided, uses the first one.
+
+        Args:
+            addresses: List of C-CDA AD or single AD
+
+        Returns:
+            FHIR Address object (or empty dict if no valid address)
+        """
+        # Normalize to list
+        addr_list = addresses if isinstance(addresses, list) else [addresses]
+
+        if not addr_list:
+            return {}
+
+        # Use first address
+        addr = addr_list[0]
+        fhir_address: JSONObject = {}
+
+        # Street address lines
+        if addr.street_address_line:
+            fhir_address["line"] = addr.street_address_line
+
+        # City
+        if addr.city:
+            fhir_address["city"] = addr.city if isinstance(addr.city, str) else addr.city[0]
+
+        # State
+        if addr.state:
+            fhir_address["state"] = addr.state if isinstance(addr.state, str) else addr.state[0]
+
+        # Postal code
+        if addr.postal_code:
+            fhir_address["postalCode"] = (
+                addr.postal_code if isinstance(addr.postal_code, str) else addr.postal_code[0]
+            )
+
+        # Country
+        if addr.country:
+            fhir_address["country"] = addr.country if isinstance(addr.country, str) else addr.country[0]
+
+        # Map use code (HP = home, WP = work, TMP = temp, etc.)
+        if addr.use:
+            fhir_use = ADDRESS_USE_MAP.get(addr.use)
+            if fhir_use:
+                fhir_address["use"] = fhir_use
+
+        return fhir_address if fhir_address else {}

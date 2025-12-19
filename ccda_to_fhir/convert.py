@@ -16,6 +16,7 @@ from fhir.resources.R4B.documentreference import DocumentReference
 from fhir.resources.R4B.encounter import Encounter
 from fhir.resources.R4B.goal import Goal
 from fhir.resources.R4B.immunization import Immunization
+from fhir.resources.R4B.location import Location
 from fhir.resources.R4B.medication import Medication
 from fhir.resources.R4B.medicationrequest import MedicationRequest
 from fhir.resources.R4B.medicationstatement import MedicationStatement
@@ -85,6 +86,7 @@ RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
     "MedicationRequest": MedicationRequest,
     "MedicationStatement": MedicationStatement,
     "Immunization": Immunization,
+    "Location": Location,
     "Observation": Observation,
     "DiagnosticReport": DiagnosticReport,
     "Procedure": Procedure,
@@ -844,6 +846,12 @@ class DocumentConverter:
             resources.extend(encounter_diagnoses)
             for diagnosis in encounter_diagnoses:
                 self.reference_registry.register_resource(diagnosis)
+
+            # Extract and convert Location resources from encounter participants
+            locations = self._extract_locations(ccda_doc.component.structured_body)
+            resources.extend(locations)
+            for location in locations:
+                self.reference_registry.register_resource(location)
 
             # Notes (from Notes sections)
             notes = self._extract_notes(ccda_doc.component.structured_body)
@@ -2091,6 +2099,116 @@ class DocumentConverter:
                         conditions.extend(nested_conditions)
 
         return conditions
+
+    def _extract_locations(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
+        """Extract and convert Location resources from encounter participants.
+
+        Extracts Service Delivery Location participants from encounters and procedures,
+        converts them to FHIR Location resources, and deduplicates by identifier.
+
+        Args:
+            structured_body: The C-CDA structured body
+
+        Returns:
+            List of deduplicated FHIR Location resources
+        """
+        from ccda_to_fhir.converters.location import LocationConverter
+
+        locations = []
+        location_registry = {}  # Deduplication registry: key -> Location resource
+
+        location_converter = LocationConverter(
+            code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
+        )
+
+        if not structured_body.component:
+            return locations
+
+        for comp in structured_body.component:
+            if not comp.section:
+                continue
+
+            section = comp.section
+
+            # Process encounters section
+            if section.entry:
+                for entry in section.entry:
+                    if hasattr(entry, "encounter") and entry.encounter:
+                        # Extract location participants from encounter
+                        if entry.encounter.participant:
+                            for participant in entry.encounter.participant:
+                                # Look for location participants (typeCode="LOC")
+                                if hasattr(participant, "type_code") and participant.type_code == "LOC":
+                                    if participant.participant_role:
+                                        try:
+                                            # Convert to Location resource
+                                            location = location_converter.convert(participant.participant_role)
+
+                                            # Deduplicate by NPI or name+city
+                                            dedup_key = self._get_location_dedup_key(location)
+
+                                            if dedup_key not in location_registry:
+                                                location_registry[dedup_key] = location
+                                                logger.debug(
+                                                    f"Created Location resource: {location.get('name')} (ID: {location.get('id')})"
+                                                )
+                                        except ValueError as e:
+                                            # Invalid location (missing required fields)
+                                            logger.warning(
+                                                f"Skipping invalid Service Delivery Location: {e}"
+                                            )
+                                        except Exception as e:
+                                            logger.error(
+                                                f"Error converting Service Delivery Location: {e}",
+                                                exc_info=True
+                                            )
+
+            # Process nested sections
+            if section.component:
+                for nested_comp in section.component:
+                    if nested_comp.section:
+                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        nested_locations = self._extract_locations(temp_body)
+                        for location in nested_locations:
+                            dedup_key = self._get_location_dedup_key(location)
+                            if dedup_key not in location_registry:
+                                location_registry[dedup_key] = location
+
+        # Convert registry to list
+        locations = list(location_registry.values())
+
+        return locations
+
+    def _get_location_dedup_key(self, location: FHIRResourceDict) -> str:
+        """Generate deduplication key for a Location resource.
+
+        Uses NPI identifier if available, otherwise name+city combination.
+
+        Args:
+            location: FHIR Location resource
+
+        Returns:
+            Deduplication key string
+        """
+        # Priority 1: Use NPI identifier
+        if "identifier" in location:
+            for identifier in location["identifier"]:
+                if identifier.get("system") == "http://hl7.org/fhir/sid/us-npi":
+                    return f"npi:{identifier.get('value')}"
+
+        # Priority 2: Use name + city combination
+        name = location.get("name", "")
+        city = ""
+        if "address" in location:
+            city = location["address"].get("city", "")
+
+        if name and city:
+            # Normalize to lowercase for case-insensitive deduplication
+            return f"name-city:{name.lower()}:{city.lower()}"
+
+        # Priority 3: Use Location ID as fallback
+        return f"id:{location.get('id', 'unknown')}"
 
     def _extract_header_encounter(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict | None:
         """Extract and convert encompassingEncounter from document header.
