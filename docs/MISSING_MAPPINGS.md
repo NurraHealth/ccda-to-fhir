@@ -13,13 +13,351 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 1 missing mapping
+**Current Status**: 2 missing mappings
 
 ---
 
 ## High Priority: Certification Requirements
 
-### 1. Goal ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
+### 1. CarePlan ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
+
+**Deadline**: December 31, 2025 (certification requirement)
+
+**Impact**: Care Plan documents cannot be converted to FHIR without CarePlan support. This is a foundational document type for care coordination.
+
+#### Documentation
+- ✅ **FHIR Documentation**: `docs/fhir/careplan.md`
+- ✅ **C-CDA Documentation**: `docs/ccda/care-plan-document.md`
+- ✅ **Mapping Specification**: `docs/mapping/14-careplan.md`
+
+#### Standards References
+- **US Core Profile**: [US Core CarePlan Profile v8.0.1](http://hl7.org/fhir/us/core/StructureDefinition/us-core-careplan)
+- **C-CDA on FHIR Profile**: [Care Plan Document v1.2.0](https://hl7.org/fhir/us/ccda/StructureDefinition-Care-Plan-Document.html)
+- **C-CDA Template**:
+  - Care Plan Document: `2.16.840.1.113883.10.20.22.1.15` (LOINC `52521-2`)
+  - Health Concerns Section: `2.16.840.1.113883.10.20.22.2.58` (LOINC `75310-3`)
+  - Goals Section: `2.16.840.1.113883.10.20.22.2.60` (LOINC `61146-7`)
+  - Interventions Section: `2.16.840.1.113883.10.20.21.2.3` (LOINC `62387-6`)
+  - Outcomes Section: `2.16.840.1.113883.10.20.22.2.61` (LOINC `11383-7`)
+
+#### Required Implementation
+
+The Care Plan Document requires **dual resource mapping**:
+1. **Composition** resource (C-CDA on FHIR Care Plan Document profile)
+2. **CarePlan** resource (US Core CarePlan profile)
+
+##### Input: C-CDA Care Plan Document
+
+```xml
+<ClinicalDocument>
+  <templateId root="2.16.840.1.113883.10.20.22.1.15" extension="2015-08-01"/>
+  <code code="52521-2" codeSystem="2.16.840.1.113883.6.1"
+        displayName="Overall plan of care/advance care directives"/>
+  <title>Care Plan</title>
+  <effectiveTime value="20240115120000-0500"/>
+
+  <recordTarget><!-- Patient information --></recordTarget>
+  <author><!-- Care plan author --></author>
+  <custodian><!-- Organization --></custodian>
+
+  <documentationOf>
+    <serviceEvent classCode="PCPR">
+      <effectiveTime>
+        <low value="20240115"/>
+        <high value="20240415"/>
+      </effectiveTime>
+    </serviceEvent>
+  </documentationOf>
+
+  <component>
+    <structuredBody>
+      <!-- REQUIRED: Health Concerns Section -->
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.58" extension="2015-08-01"/>
+          <code code="75310-3" codeSystem="2.16.840.1.113883.6.1"/>
+          <!-- Contains Health Concern Act entries -->
+        </section>
+      </component>
+
+      <!-- REQUIRED: Goals Section -->
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.60" extension="2015-08-01"/>
+          <code code="61146-7" codeSystem="2.16.840.1.113883.6.1"/>
+          <!-- Contains Goal Observation entries -->
+        </section>
+      </component>
+
+      <!-- SHOULD: Interventions Section -->
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.21.2.3" extension="2015-08-01"/>
+          <code code="62387-6" codeSystem="2.16.840.1.113883.6.1"/>
+          <!-- Contains Intervention Act entries -->
+        </section>
+      </component>
+
+      <!-- SHOULD: Outcomes Section -->
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.61"/>
+          <code code="11383-7" codeSystem="2.16.840.1.113883.6.1"/>
+          <!-- Contains Outcome Observation entries -->
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>
+```
+
+##### Output: FHIR Bundle with Composition + CarePlan
+
+```json
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Composition",
+        "meta": {
+          "profile": ["http://hl7.org/fhir/us/ccda/StructureDefinition/Care-Plan-Document"]
+        },
+        "identifier": [{"value": "urn:uuid:careplan-12345"}],
+        "status": "final",
+        "type": {
+          "coding": [{
+            "system": "http://loinc.org",
+            "code": "52521-2",
+            "display": "Overall plan of care/advance care directives"
+          }]
+        },
+        "subject": {"reference": "Patient/patient-123"},
+        "date": "2024-01-15T12:00:00-05:00",
+        "author": [{"reference": "Practitioner/provider-123"}],
+        "title": "Care Plan",
+        "custodian": {"reference": "Organization/hospital-123"},
+        "event": [{
+          "period": {"start": "2024-01-15", "end": "2024-04-15"},
+          "detail": [{"reference": "CarePlan/careplan-1"}]
+        }],
+        "section": [
+          {
+            "title": "HEALTH CONCERNS",
+            "code": {"coding": [{"system": "http://loinc.org", "code": "75310-3"}]},
+            "entry": [{"reference": "Condition/concern-1"}]
+          },
+          {
+            "title": "GOALS",
+            "code": {"coding": [{"system": "http://loinc.org", "code": "61146-7"}]},
+            "entry": [{"reference": "Goal/goal-1"}]
+          },
+          {
+            "title": "INTERVENTIONS",
+            "code": {"coding": [{"system": "http://loinc.org", "code": "62387-6"}]},
+            "entry": [{"reference": "ServiceRequest/intervention-1"}]
+          },
+          {
+            "title": "OUTCOMES",
+            "code": {"coding": [{"system": "http://loinc.org", "code": "11383-7"}]},
+            "entry": [{"reference": "Observation/outcome-1"}]
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CarePlan",
+        "meta": {
+          "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-careplan"]
+        },
+        "text": {
+          "status": "additional",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><h3>Assessment</h3><p>Patient concerns and conditions.</p><h3>Plan</h3><p>Goals and planned interventions.</p></div>"
+        },
+        "identifier": [{"value": "urn:uuid:careplan-12345"}],
+        "status": "active",
+        "intent": "plan",
+        "category": [{
+          "coding": [{
+            "system": "http://hl7.org/fhir/us/core/CodeSystem/careplan-category",
+            "code": "assess-plan"
+          }]
+        }],
+        "subject": {"reference": "Patient/patient-123"},
+        "period": {"start": "2024-01-15", "end": "2024-04-15"},
+        "author": {"reference": "Practitioner/provider-123"},
+        "contributor": [{"reference": "Practitioner/provider-123"}],
+        "addresses": [{"reference": "Condition/concern-1"}],
+        "goal": [{"reference": "Goal/goal-1"}],
+        "activity": [{
+          "reference": {"reference": "ServiceRequest/intervention-1"},
+          "outcomeReference": [{"reference": "Observation/outcome-1"}]
+        }]
+      }
+    }
+  ]
+}
+```
+
+#### Implementation Checklist
+
+##### Document-Level Converter (`ccda_to_fhir/converters/care_plan_document.py`)
+- [ ] Create `CarePlanDocumentConverter` class
+- [ ] Implement dual resource creation (Composition + CarePlan)
+- [ ] Map ClinicalDocument header → Composition metadata
+- [ ] Map ClinicalDocument `id` → Composition.identifier + CarePlan.identifier
+- [ ] Map `code` (52521-2) → Composition.type
+- [ ] Map `title` → Composition.title
+- [ ] Map `effectiveTime` → Composition.date
+- [ ] Map `confidentialityCode` → Composition.confidentiality
+- [ ] Map `languageCode` → Composition.language
+- [ ] Map `setId` and `versionNumber` → Composition.identifier
+- [ ] Map `recordTarget` → Composition.subject + CarePlan.subject
+- [ ] Map `author` → Composition.author + CarePlan.author + CarePlan.contributor
+- [ ] Map `custodian` → Composition.custodian
+- [ ] Map serviceEvent `effectiveTime` → Composition.event.period + CarePlan.period
+- [ ] Set CarePlan.intent = "plan" (fixed)
+- [ ] Set CarePlan.category = "assess-plan" (fixed)
+- [ ] Set CarePlan.status based on document and intervention status
+
+##### Composition Section Processing
+- [ ] Process Health Concerns Section → Composition.section + Condition resources
+- [ ] Process Goals Section → Composition.section + Goal resources
+- [ ] Process Interventions Section → Composition.section + ServiceRequest/Procedure
+- [ ] Process Outcomes Section → Composition.section + Observation resources
+- [ ] Link Composition sections to corresponding resources
+- [ ] Generate section narratives from C-CDA text elements
+
+##### CarePlan Content Mapping
+- [ ] Map Health Concerns → CarePlan.addresses (Condition references)
+- [ ] Map Goals → CarePlan.goal (Goal references)
+- [ ] Map Interventions → CarePlan.activity.reference
+- [ ] Map Intervention moodCode=INT → ServiceRequest (intent="plan")
+- [ ] Map Intervention moodCode=EVN → Procedure (status="completed")
+- [ ] Map Outcomes → CarePlan.activity.outcomeReference
+- [ ] Link outcomes to goals via entryRelationship typeCode="GEVL"
+
+##### Narrative Generation (`CarePlan.text`)
+- [ ] Aggregate narratives from all sections
+- [ ] Create Assessment section from Health Concerns
+- [ ] Create Plan section from Goals + Interventions
+- [ ] Format as XHTML div
+- [ ] Set text.status = "additional"
+
+##### Section Processors
+- [ ] `HealthConcernsSectionProcessor` for Health Concerns Section
+- [ ] `GoalsSectionProcessor` for Goals Section (reuse from Goal implementation)
+- [ ] `InterventionsSectionProcessor` for Interventions Section
+- [ ] `OutcomesSectionProcessor` for Outcomes Section
+
+##### Bundle Assembly
+- [ ] Create FHIR Document Bundle (type="document")
+- [ ] Add Composition as first entry
+- [ ] Add CarePlan resource
+- [ ] Add all referenced resources (Patient, Practitioner, Organization, Condition, Goal, ServiceRequest, Procedure, Observation)
+- [ ] Ensure all references are resolvable within bundle
+- [ ] Assign fullUrl for each resource
+
+##### Model Validation (`ccda_to_fhir/models.py`)
+- [ ] Add `is_care_plan_document()` validator for template `2.16.840.1.113883.10.20.22.1.15`
+- [ ] Add `is_health_concerns_section()` validator for template `2.16.840.1.113883.10.20.22.2.58`
+- [ ] Add `is_interventions_section()` validator for template `2.16.840.1.113883.10.20.21.2.3`
+- [ ] Add `is_outcomes_section()` validator for template `2.16.840.1.113883.10.20.22.2.61`
+- [ ] Validate required sections present
+
+##### Tests (`tests/converters/test_care_plan_document.py`)
+- [ ] Test Care Plan Document → Composition conversion
+- [ ] Test Care Plan Document → CarePlan conversion
+- [ ] Test dual resource creation in bundle
+- [ ] Test Health Concerns Section mapping
+- [ ] Test Goals Section mapping
+- [ ] Test Interventions Section mapping (planned vs completed)
+- [ ] Test Outcomes Section mapping
+- [ ] Test Composition.event.detail links to CarePlan
+- [ ] Test CarePlan.addresses links to Conditions
+- [ ] Test CarePlan.goal links to Goals
+- [ ] Test CarePlan.activity links to interventions
+- [ ] Test CarePlan.activity.outcomeReference links to outcomes
+- [ ] Test narrative generation from sections
+- [ ] Test status mapping (active, completed, etc.)
+- [ ] Test contributor mapping (multiple authors)
+- [ ] Test empty sections with nullFlavor
+- [ ] Test document versioning (setId, versionNumber)
+
+##### Integration Tests (`tests/integration/test_care_plan_document.py`)
+- [ ] Test complete Care Plan Document with all sections
+- [ ] Test minimal Care Plan Document (only required sections)
+- [ ] Test document with multiple authors
+- [ ] Test document with patient as participant
+- [ ] Test longitudinal care plan (multiple versions)
+- [ ] Test bundle structure and reference resolution
+
+##### US Core Conformance
+- [ ] Validate Composition.type = 52521-2
+- [ ] Validate required sections (Health Concerns, Goals)
+- [ ] Validate section.entry references
+- [ ] Validate CarePlan.status, intent, category, subject
+- [ ] Validate CarePlan.text.status and text.div
+- [ ] Validate CarePlan.contributor (USCDI requirement)
+- [ ] Include US Core CarePlan profile in meta.profile
+- [ ] Include C-CDA on FHIR Care Plan Document profile in meta.profile
+
+##### C-CDA on FHIR Conformance
+- [ ] Validate all required Composition elements
+- [ ] Validate section codes (LOINC)
+- [ ] Validate section.entry types match allowed resources
+- [ ] Handle optional sections (Interventions, Outcomes)
+- [ ] Prohibit Plan of Treatment Section in Care Plan
+
+#### File Locations
+
+**New Files to Create:**
+```
+ccda_to_fhir/
+├── converters/
+│   └── care_plan_document.py    # CarePlanDocumentConverter class
+├── sections/
+│   ├── health_concerns_section.py  # HealthConcernsSectionProcessor
+│   ├── interventions_section.py    # InterventionsSectionProcessor
+│   └── outcomes_section.py         # OutcomesSectionProcessor
+tests/
+├── converters/
+│   └── test_care_plan_document.py  # Unit tests
+└── integration/
+    └── test_care_plan_document.py  # Integration tests
+```
+
+**Files to Modify:**
+```
+ccda_to_fhir/
+├── models.py                    # Add validators
+├── converter.py                 # Register CarePlanDocumentConverter
+└── sections/__init__.py         # Export section processors
+```
+
+#### Related Documentation
+- See `docs/mapping/14-careplan.md` for complete mapping specification
+- See `docs/fhir/careplan.md` for FHIR CarePlan element definitions
+- See `docs/ccda/care-plan-document.md` for C-CDA template specifications
+- See `docs/mapping/13-goal.md` for Goal mapping (required for Goals Section)
+- See `docs/mapping/02-condition.md` for Condition mapping (required for Health Concerns)
+
+#### Notes
+- **Dual Resource Mapping**: Unlike other document types, Care Plan requires creating BOTH Composition and CarePlan resources
+- **Document Bundle**: Output is a FHIR Document Bundle (type="document") with Composition as first entry
+- **Section Processing**: Each section (Health Concerns, Goals, Interventions, Outcomes) creates corresponding FHIR resources
+- **Reference Resolution**: Composition sections reference resources, CarePlan also references same resources for addresses, goal, activity
+- **Narrative Aggregation**: CarePlan.text aggregates assessment/plan narrative from all sections
+- **Status Logic**: CarePlan.status derived from intervention statuses and document context
+- **Contributor vs Author**: Map all authors to contributor; first author maps to author
+- **Intervention MoodCode**: INT (intent) → ServiceRequest, EVN (event) → Procedure
+- **Certification**: ONC certification requires Interventions and Outcomes sections
+
+---
+
+### 2. Goal ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
 
 **Deadline**: December 31, 2025 (certification requirement)
 
