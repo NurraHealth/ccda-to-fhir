@@ -158,6 +158,14 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             if location:
                 fhir_procedure["location"] = location
 
+            # Devices (Product Instance)
+            devices_result = self._extract_devices(
+                procedure.participant,
+                procedure_status=procedure.status_code.code if procedure.status_code else None
+            )
+            if devices_result and devices_result.get("devices"):
+                fhir_procedure["focalDevice"] = devices_result["focal_devices"]
+
         # Author/recorder
         if procedure.author:
             recorder = self._extract_recorder(procedure.author)
@@ -427,6 +435,100 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     return location_ref
 
         return None
+
+    def _extract_devices(
+        self,
+        participants: list,
+        procedure_status: str | None = None
+    ) -> JSONObject | None:
+        """Extract FHIR devices from C-CDA participants.
+
+        Looks for Product Instance participants (typeCode="DEV") and converts
+        them to FHIR Device resources. Also creates focalDevice entries
+        in the Procedure resource.
+
+        Args:
+            participants: List of C-CDA participant elements
+            procedure_status: C-CDA procedure status code for device status inference
+
+        Returns:
+            Dictionary with 'devices' (list of Device resources) and
+            'focal_devices' (list of focalDevice entries), or None
+        """
+        from ccda_to_fhir.converters.device import DeviceConverter
+
+        # Product Instance template ID
+        product_instance_template = "2.16.840.1.113883.10.20.22.4.37"
+
+        device_converter = DeviceConverter()
+        devices: list[FHIRResourceDict] = []
+        focal_devices: list[JSONObject] = []
+
+        for participant in participants:
+            # Look for device participants (typeCode="DEV")
+            if hasattr(participant, "type_code") and participant.type_code == "DEV":
+                if hasattr(participant, "participant_role") and participant.participant_role:
+                    role = participant.participant_role
+
+                    # Check if this is a Product Instance (has template ID)
+                    is_product_instance = False
+                    if hasattr(role, "template_id") and role.template_id:
+                        for template in role.template_id:
+                            if template.root == product_instance_template:
+                                is_product_instance = True
+                                break
+
+                    # Only process Product Instance devices
+                    # (assignedAuthoringDevice is handled separately in author processing)
+                    if is_product_instance:
+                        # Get patient reference from registry
+                        patient_ref = None
+                        if self.reference_registry:
+                            patient_ref = self.reference_registry.get_patient_reference()
+
+                        # Convert Product Instance to Device
+                        device = device_converter.convert_product_instance(
+                            role,
+                            patient_reference=patient_ref,
+                            procedure_status=procedure_status
+                        )
+
+                        # Register device resource with reference registry
+                        if self.reference_registry:
+                            self.reference_registry.register_resource(device)
+
+                        # Store device resource
+                        devices.append(device)
+
+                        # Create focalDevice entry for Procedure
+                        focal_device: JSONObject = {
+                            "manipulated": {
+                                "reference": f"{FHIRCodes.ResourceTypes.DEVICE}/{device['id']}"
+                            }
+                        }
+
+                        # Infer action from device type or procedure code
+                        # For implantable devices, use "implantation"
+                        if patient_ref:
+                            focal_device["action"] = {
+                                "coding": [
+                                    {
+                                        "system": "http://snomed.info/sct",
+                                        "code": "129337003",
+                                        "display": "Implantation"
+                                    }
+                                ]
+                            }
+
+                        focal_devices.append(focal_device)
+
+        if not devices:
+            return None
+
+        return {
+            "devices": devices,
+            "focal_devices": focal_devices
+        }
 
     def _extract_recorder(self, authors: list) -> JSONObject | None:
         """Extract FHIR recorder from C-CDA authors.

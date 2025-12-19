@@ -1,33 +1,40 @@
 """Device converter.
 
-Converts C-CDA AssignedAuthoringDevice to FHIR Device resource.
+Converts C-CDA device elements to FHIR Device resource:
+1. AssignedAuthoringDevice → Device (authoring systems/software)
+2. Product Instance → Device (medical devices, implantable devices)
 
 Device resources represent medical devices, software systems, or applications
-that author or generate clinical information.
+that author clinical information or are used in patient care.
 
 Mapping:
 - AssignedAuthor.id → Device.identifier
 - assignedAuthoringDevice.manufacturerModelName → Device.deviceName[type=manufacturer-name]
 - assignedAuthoringDevice.softwareName → Device.deviceName[type=model-name]
+- Product Instance participantRole → Device (with UDI, patient reference)
 
 Reference:
 - C-CDA: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-AuthorParticipation.html
+- C-CDA: http://hl7.org/cda/us/ccda/StructureDefinition/ProductInstance
 - FHIR: https://hl7.org/fhir/R4B/device.html
-- Mapping: docs/mapping/09-practitioner.md lines 396-434
+- US Core: http://hl7.org/fhir/us/core/StructureDefinition/us-core-implantable-device
+- Mapping: docs/mapping/22-device.md
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ccda_to_fhir.constants import FHIRCodes
+from ccda_to_fhir.constants import FHIRCodes, FHIRSystems
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.utils.udi_parser import parse_udi
 
 from .base import BaseConverter
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.author import AssignedAuthor
     from ccda_to_fhir.ccda.models.datatypes import II
+    from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
 
 class DeviceConverter(BaseConverter["AssignedAuthor"]):
@@ -130,3 +137,217 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             })
 
         return device_names
+
+    def convert_product_instance(
+        self,
+        participant_role: ParticipantRole,
+        patient_reference: JSONObject | None = None,
+        procedure_status: str | None = None
+    ) -> FHIRResourceDict:
+        """Convert C-CDA Product Instance to FHIR Device resource.
+
+        Product Instance represents medical devices used in patient care,
+        particularly implantable devices requiring UDI tracking.
+
+        Args:
+            participant_role: ParticipantRole containing Product Instance
+            patient_reference: Optional patient reference for implantable devices
+            procedure_status: Optional procedure status to infer device status
+
+        Returns:
+            FHIR Device resource as dictionary
+        """
+        device: FHIRResourceDict = {
+            "resourceType": FHIRCodes.ResourceTypes.DEVICE,
+        }
+
+        # Generate ID from identifiers
+        if participant_role.id:
+            device["id"] = self._generate_device_id(participant_role.id)
+        else:
+            device["id"] = "device-unknown"
+
+        # Map identifiers
+        if participant_role.id:
+            identifiers = self.convert_identifiers(participant_role.id)
+            if identifiers:
+                device["identifier"] = identifiers
+
+        # Parse UDI if present
+        udi_info = self._extract_udi_info(participant_role.id)
+        if udi_info:
+            device["udiCarrier"] = [udi_info["udi_carrier"]]
+
+            # Map UDI production identifiers to device fields
+            if udi_info.get("manufacture_date"):
+                device["manufactureDate"] = udi_info["manufacture_date"]
+            if udi_info.get("expiration_date"):
+                device["expirationDate"] = udi_info["expiration_date"]
+            if udi_info.get("lot_number"):
+                device["lotNumber"] = udi_info["lot_number"]
+            if udi_info.get("serial_number"):
+                device["serialNumber"] = udi_info["serial_number"]
+
+        # Map device type code
+        if participant_role.playing_device and participant_role.playing_device.code:
+            code = participant_role.playing_device.code
+            device["type"] = self.create_codeable_concept(
+                code=code.code if hasattr(code, "code") else None,
+                code_system=code.code_system if hasattr(code, "code_system") else None,
+                display_name=code.display_name if hasattr(code, "display_name") else None,
+                original_text=code.original_text if hasattr(code, "original_text") else None
+            )
+
+        # Map device names
+        if participant_role.playing_device:
+            device_names = self._convert_product_instance_names(participant_role.playing_device)
+            if device_names:
+                device["deviceName"] = device_names
+
+            # Map manufacturer model name to modelNumber
+            if participant_role.playing_device.manufacturer_model_name:
+                device["modelNumber"] = participant_role.playing_device.manufacturer_model_name
+
+        # Map manufacturer
+        if participant_role.scoping_entity and participant_role.scoping_entity.desc:
+            device["manufacturer"] = participant_role.scoping_entity.desc
+
+        # Add patient reference for implantable devices
+        if patient_reference:
+            device["patient"] = patient_reference
+            # Apply US Core Implantable Device profile when patient reference present
+            device["meta"] = {
+                "profile": [
+                    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-implantable-device"
+                ]
+            }
+
+        # Map status (infer from procedure status)
+        device["status"] = self._infer_device_status(procedure_status)
+
+        return device
+
+    def _extract_udi_info(self, identifiers: list[II] | None) -> JSONObject | None:
+        """Extract and parse UDI information from device identifiers.
+
+        FDA UDI OID: 2.16.840.1.113883.3.3719
+
+        Args:
+            identifiers: List of device identifiers
+
+        Returns:
+            Dictionary with UDI carrier and parsed components, or None
+        """
+        if not identifiers:
+            return None
+
+        # Find UDI identifier (FDA OID)
+        udi_oid = "2.16.840.1.113883.3.3719"
+        udi_id = None
+
+        for identifier in identifiers:
+            if identifier.root == udi_oid and identifier.extension:
+                udi_id = identifier
+                break
+
+        if not udi_id or not udi_id.extension:
+            return None
+
+        # Parse UDI string
+        udi_string = udi_id.extension
+        parsed = parse_udi(udi_string)
+
+        if not parsed:
+            return None
+
+        # Build UDI carrier
+        udi_carrier: JSONObject = {
+            "carrierHRF": udi_string,
+            "entryType": "unknown"  # Not specified in C-CDA
+        }
+
+        # Add device identifier if parsed
+        if parsed.get("device_identifier"):
+            udi_carrier["deviceIdentifier"] = parsed["device_identifier"]
+
+        # Add issuer if detected
+        if parsed.get("issuer"):
+            udi_carrier["issuer"] = parsed["issuer"]
+
+        # Set jurisdiction to FDA for US devices
+        udi_carrier["jurisdiction"] = FHIRSystems.FDA_UDI
+
+        result: JSONObject = {
+            "udi_carrier": udi_carrier
+        }
+
+        # Add parsed production identifiers
+        if parsed.get("manufacture_date"):
+            result["manufacture_date"] = parsed["manufacture_date"]
+        if parsed.get("expiration_date"):
+            result["expiration_date"] = parsed["expiration_date"]
+        if parsed.get("lot_number"):
+            result["lot_number"] = parsed["lot_number"]
+        if parsed.get("serial_number"):
+            result["serial_number"] = parsed["serial_number"]
+
+        return result
+
+    def _convert_product_instance_names(self, playing_device) -> list[JSONObject]:
+        """Convert Product Instance device names to FHIR Device.deviceName.
+
+        Args:
+            playing_device: PlayingDevice from ParticipantRole
+
+        Returns:
+            List of DeviceName objects
+        """
+        device_names: list[JSONObject] = []
+
+        # Model name from manufacturerModelName
+        if playing_device.manufacturer_model_name:
+            device_names.append({
+                "name": playing_device.manufacturer_model_name,
+                "type": "model-name"
+            })
+
+        # User-friendly name from device code display
+        if playing_device.code:
+            display_name = None
+            # Try original text first
+            if hasattr(playing_device.code, "original_text") and playing_device.code.original_text:
+                display_name = playing_device.code.original_text
+            # Fall back to display name
+            elif hasattr(playing_device.code, "display_name") and playing_device.code.display_name:
+                display_name = playing_device.code.display_name
+
+            if display_name:
+                device_names.append({
+                    "name": display_name,
+                    "type": "user-friendly-name"
+                })
+
+        return device_names
+
+    def _infer_device_status(self, procedure_status: str | None) -> str:
+        """Infer FHIR Device status from procedure context.
+
+        Args:
+            procedure_status: C-CDA procedure status code
+
+        Returns:
+            FHIR Device status code
+        """
+        # Map C-CDA procedure status to device status
+        # Per docs/mapping/22-device.md:
+        # - completed procedure → active device
+        # - planned/pending procedure → inactive device
+        # - default → active
+
+        if procedure_status == "completed":
+            return "active"
+        elif procedure_status in ("planned", "pending"):
+            return "inactive"
+        else:
+            # Default to active for implanted/used devices
+            return "active"

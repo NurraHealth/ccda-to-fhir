@@ -406,6 +406,9 @@ class FHIRSystems:
     US_NPI = "http://hl7.org/fhir/sid/us-npi"  # US National Provider Identifier
     US_SSN = "http://hl7.org/fhir/sid/us-ssn"  # US Social Security Number
 
+    # Device identifiers
+    FDA_UDI = "http://hl7.org/fhir/NamingSystem/fda-udi"  # FDA Unique Device Identification
+
     # Provider taxonomy
     NUCC_PROVIDER_TAXONOMY = "http://nucc.org/provider-taxonomy"  # NUCC Healthcare Provider Taxonomy
     NUCC_TAXONOMY = NUCC_PROVIDER_TAXONOMY  # Alias for convenience
