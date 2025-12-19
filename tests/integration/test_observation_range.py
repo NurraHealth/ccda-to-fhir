@@ -187,8 +187,9 @@ class TestObservationRange:
         period = observation["effectivePeriod"]
         assert "start" in period
         assert "end" in period
-        assert "2023-11-01T08:00:00" in period["start"]
-        assert "2023-11-02T08:00:00" in period["end"]
+        # Timestamps without timezone are reduced to date-only per FHIR R4 requirement
+        assert period["start"] == "2023-11-01"
+        assert period["end"] == "2023-11-02"
 
     def test_effective_period_with_date_only(self) -> None:
         """Test that IVL_TS effectiveTime with date-only values converts to effectivePeriod."""

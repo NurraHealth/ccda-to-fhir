@@ -233,8 +233,8 @@ class TestRecordedDate:
         )
 
         assert "recorded" in provenance
-        # Should use earliest time (author2)
-        assert provenance["recorded"].startswith("2024-01-15T09:00:00")
+        # Should use earliest time (author2), reduced to date-only per FHIR R4 requirement (no timezone in source)
+        assert provenance["recorded"] == "2024-01-15"
 
     def test_handles_author_without_time(
         self,

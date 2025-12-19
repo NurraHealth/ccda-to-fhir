@@ -407,8 +407,8 @@ class TestMedicationConversion:
         except ValueError:
             raise AssertionError(f"Practitioner ID {practitioner_id} is not a valid UUID v4")
 
-        # authoredOn should still use earliest time
-        assert med_request["authoredOn"] == "2023-10-01T08:00:00"
+        # authoredOn should use earliest time, reduced to date-only per FHIR R4 requirement (no timezone in source)
+        assert med_request["authoredOn"] == "2023-10-01"
 
     def test_completed_status_with_future_dates_maps_to_active(self) -> None:
         """Test that completed status with future end date correctly maps to active.

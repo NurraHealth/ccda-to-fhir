@@ -334,23 +334,39 @@ The C-CDA on FHIR IG acknowledges that Pattern B (substanceExposureRisk extensio
 
 ---
 
-### 10. Timezone Handling for Partial Dates 🟢
+### 10. Timezone Handling for Partial Dates ✅ RESOLVED
 
-**Issue**: When C-CDA timestamp lacks timezone but includes time component, unclear how to infer timezone.
+**Issue**: When C-CDA timestamp lacks timezone but includes time component, FHIR R4 requires timezone to be populated.
 
-**Example**:
-- C-CDA: `<time value="20230515143000"/>` (no timezone)
-- FHIR requires timezone for dateTime precision > day
+**Impact**:
+- ✅ Standard-compliant FHIR output per R4 specification
+- ✅ Avoids manufacturing potentially incorrect timezone data
+- ✅ Preserves maximum safe precision from C-CDA data
+
+**Resolution** (Completed):
+- ✅ Per FHIR R4 specification: "If hours and minutes are specified, a time zone SHALL be populated" (mandatory requirement)
+- ✅ Per C-CDA on FHIR IG guidance: When timezone is missing, first recommended option is to "Omit time entirely"
+- ✅ Implementation now reduces precision to date-only when C-CDA timestamp includes time but lacks timezone
+- ✅ Prevents FHIR validation errors while avoiding manufacturing potentially incorrect timezone data
+- ✅ Logs informational message when precision reduction occurs for transparency
+- ✅ Updated 3 tests to reflect new standard-compliant behavior
+- ✅ All 917 tests pass
 
 **Current Behavior**:
-- Uses system timezone or UTC as default
-- May not reflect actual timezone of event
+- C-CDA timestamp with date only (e.g., `20230515`) → FHIR date (e.g., `2023-05-15`) ✅
+- C-CDA timestamp with time and timezone (e.g., `20230515143000-0500`) → FHIR dateTime with timezone (e.g., `2023-05-15T14:30:00-05:00`) ✅
+- C-CDA timestamp with time but no timezone (e.g., `20230515143000`) → FHIR date only (e.g., `2023-05-15`) ✅ (reduced precision per FHIR requirement)
 
-**Workaround**:
-- Configure timezone for facility/organization
-- Use document metadata to infer timezone
+**Why This Is Correct**:
+1. **FHIR R4 Compliance**: Satisfies mandatory timezone requirement for dateTime with time components
+2. **Follows Official Guidance**: Implements first recommended option from C-CDA on FHIR IG
+3. **Avoids Clinical Risk**: Doesn't manufacture timezone data that could have clinical implications
+4. **Preserves Safe Precision**: Keeps date information which is always reliable
+5. **Transparent**: Logs when precision reduction occurs so implementers are aware
 
-**Impact**: Minimal - timestamps still accurately order events, though absolute time may be off by hours
+**Official Standards**:
+- [FHIR R4 dateTime Specification](https://hl7.org/fhir/R4/datatypes.html#dateTime): "If hours and minutes are specified, a time zone SHALL be populated"
+- [C-CDA on FHIR IG Mapping Guidance](https://build.fhir.org/ig/HL7/ccda-on-fhir/mappingGuidance.html): Recommends omitting time when timezone unavailable
 
 ---
 

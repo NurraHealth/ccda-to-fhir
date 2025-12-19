@@ -292,9 +292,16 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         - YYYY → YYYY
         - YYYYMM → YYYY-MM
         - YYYYMMDD → YYYY-MM-DD
-        - YYYYMMDDHH → YYYY-MM-DDThh:00:00
-        - YYYYMMDDHHmm → YYYY-MM-DDThh:mm:00
-        - YYYYMMDDHHmmss → YYYY-MM-DDThh:mm:ss
+        - YYYYMMDDHH → YYYY-MM-DD (reduced to date per FHIR requirement)
+        - YYYYMMDDHHmm → YYYY-MM-DD (reduced to date per FHIR requirement)
+        - YYYYMMDDHHmmss → YYYY-MM-DD (reduced to date per FHIR requirement)
+        - YYYYMMDDHHmmss+ZZZZ → YYYY-MM-DDThh:mm:ss+zz:zz (full conversion with timezone)
+
+        Per FHIR R4 specification, if hours and minutes are specified, a time zone
+        SHALL be populated. When C-CDA timestamp includes time but lacks timezone,
+        this implementation reduces precision to date-only per C-CDA on FHIR IG
+        guidance to avoid violating FHIR requirements or manufacturing potentially
+        incorrect timezone data.
 
         Args:
             ccda_date: C-CDA formatted date string
@@ -306,11 +313,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             >>> convert_date("20240115")
             '2024-01-15'
             >>> convert_date("202401150930")
-            '2024-01-15T09:30:00'
+            '2024-01-15'  # Reduced to date - no timezone available
             >>> convert_date("20240115093000-0500")
             '2024-01-15T09:30:00-05:00'
             >>> convert_date("202X0115")  # Invalid - returns None
             None
+
+        References:
+            - FHIR R4 dateTime: https://hl7.org/fhir/R4/datatypes.html#dateTime
+            - C-CDA on FHIR IG: https://build.fhir.org/ig/HL7/ccda-on-fhir/mappingGuidance.html
         """
         from datetime import datetime
 
@@ -373,6 +384,23 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 logger.warning(f"Year out of valid range: {dt.year}")
                 return None
 
+            # Check if timestamp includes time components (length > 8)
+            # Per FHIR R4: "If hours and minutes are specified, a time zone SHALL be populated"
+            has_time_component = length > 8
+            has_timezone = tz_part and len(tz_part) >= 5
+
+            if has_time_component and not has_timezone:
+                # Per C-CDA on FHIR IG guidance: When timezone is missing, reduce precision to date-only
+                # This avoids FHIR validation errors and prevents manufacturing potentially incorrect timezone data
+                from ccda_to_fhir.logging_config import get_logger
+                logger = get_logger(__name__)
+                logger.info(
+                    f"C-CDA timestamp '{ccda_date}' has time component but no timezone. "
+                    f"Reducing precision to date-only per FHIR R4 requirement and C-CDA on FHIR IG guidance."
+                )
+                # Return date-only format (YYYY-MM-DD)
+                return f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d}"
+
             # Format result using template
             result = fhir_template.format(
                 year=f"{dt.year:04d}",
@@ -384,7 +412,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             )
 
             # Handle timezone if present
-            if tz_part and len(tz_part) >= 5:
+            if has_timezone:
                 tz_sign = tz_part[0]
                 tz_hours = tz_part[1:3]
                 tz_mins = tz_part[3:5]
@@ -393,6 +421,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     tz_m = int(tz_mins)
                     if 0 <= tz_h <= 14 and 0 <= tz_m <= 59:
                         result += f"{tz_sign}{tz_hours}:{tz_mins}"
+                    else:
+                        from ccda_to_fhir.logging_config import get_logger
+                        logger = get_logger(__name__)
+                        logger.warning(f"Timezone offset out of valid range: {tz_part}")
                 except ValueError:
                     from ccda_to_fhir.logging_config import get_logger
                     logger = get_logger(__name__)

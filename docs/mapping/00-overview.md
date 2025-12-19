@@ -101,12 +101,13 @@ YYYY-MM-DDThh:mm:ss+zz:zz
 | `20230515` | `2023-05-15` | Date only |
 | `202305` | `2023-05` | Year-month only |
 | `2023` | `2023` | Year only |
-| `20230515143022-0500` | `2023-05-15T14:30:22-05:00` | Full timestamp |
+| `20230515143022-0500` | `2023-05-15T14:30:22-05:00` | Full timestamp with timezone |
+| `20230515143022` | `2023-05-15` | Time without timezone → reduced to date per FHIR R4 |
 
 **Precision Preservation:**
 - Partial dates should maintain their precision (don't pad with zeros)
-- Timezone offsets are required in FHIR when precision is more specific than days
-- If CDA timestamp lacks timezone, use contextual knowledge or document location
+- Per FHIR R4: timezone offsets are **required** (SHALL) when precision includes hours/minutes
+- When C-CDA timestamp has time but lacks timezone, precision is reduced to date-only per C-CDA on FHIR IG guidance (avoids manufacturing potentially incorrect timezone data)
 
 **Structured Temporal Fields:**
 
