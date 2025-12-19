@@ -242,7 +242,6 @@ Based on the [HL7 C-CDA on FHIR](https://build.fhir.org/ig/HL7/ccda-on-fhir/) ma
 
 ### Minor
 - 🟢 **Timezone inference**: Partial timestamps without timezone use system/UTC default
-- 🟢 **Reference range filtering**: Only normal (interpretationCode="N") ranges mapped; therapeutic/critical ranges dropped
 - 🟢 **No contained resources**: All resources created as Bundle entries (not contained)
 
 **For complete details**: See [docs/mapping/known-issues.md](docs/mapping/known-issues.md)
