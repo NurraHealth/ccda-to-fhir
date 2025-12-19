@@ -13,17 +13,440 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 6 missing mappings (4 high/medium priority, 2 low priority)
+**Current Status**: 7 missing mappings (5 high/medium priority, 2 low priority)
 
 ---
 
 ## High Priority: Certification Requirements
 
-### 1. CarePlan ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
+### 1. Composition (Document Structure) ❌ **NOT IMPLEMENTED** - CRITICAL PRIORITY
+
+**Deadline**: Immediate (required for any document conversion)
+
+**Impact**: Without Composition support, C-CDA documents cannot be converted to proper FHIR document Bundles. This is the foundational resource for all C-CDA on FHIR document conversions. Currently, the converter may create individual resources but cannot create compliant FHIR document Bundles with Composition as the first entry.
+
+#### Documentation
+- ✅ **FHIR Documentation**: `docs/fhir/composition.md`
+- ✅ **C-CDA Documentation**: `docs/ccda/clinical-document.md` (covers both DocumentReference and Composition mappings)
+- ✅ **Mapping Specification**: `docs/mapping/19-composition.md`
+
+#### Standards References
+- **FHIR R4 Resource**: [Composition](https://hl7.org/fhir/R4/composition.html)
+- **FHIR Documents**: [FHIR Document Bundle Specification](https://hl7.org/fhir/R4/documents.html)
+- **C-CDA on FHIR IG**: [Document Profiles](http://hl7.org/fhir/us/ccda/)
+- **C-CDA Templates**:
+  - US Realm Header: `2.16.840.1.113883.10.20.22.1.1`
+  - CCD: `2.16.840.1.113883.10.20.22.1.2`
+  - Consultation Note: `2.16.840.1.113883.10.20.22.1.4`
+  - Diagnostic Imaging Report: `2.16.840.1.113883.10.20.22.1.5`
+  - Discharge Summary: `2.16.840.1.113883.10.20.22.1.8`
+  - Care Plan: `2.16.840.1.113883.10.20.22.1.15`
+  - And all other C-CDA document types (11 total profiles)
+
+#### Required Implementation
+
+The Composition resource is the foundation of FHIR documents and must be the first entry in any FHIR document Bundle.
+
+##### Input: C-CDA ClinicalDocument
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1" extension="2015-08-01"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.2" extension="2015-08-01"/>
+  <id root="2.16.840.1.113883.19.5.99999.1" extension="TT988"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"
+        displayName="Summarization of Episode Note"/>
+  <title>Continuity of Care Document</title>
+  <effectiveTime value="20200301102000-0500"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+
+  <recordTarget>
+    <patientRole>
+      <id root="2.16.840.1.113883.19.5.99999.2" extension="998991"/>
+      <patient>
+        <name><given>Ellen</given><family>Ross</family></name>
+        <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+        <birthTime value="19750501"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+
+  <author>
+    <time value="20200301"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+      <assignedPerson>
+        <name><given>Adam</given><family>Careful</family></name>
+      </assignedPerson>
+      <representedOrganization>
+        <name>Community Health and Hospitals</name>
+      </representedOrganization>
+    </assignedAuthor>
+  </author>
+
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5.9999.1393"/>
+        <name>Community Health and Hospitals</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.6.1"/>
+          <code code="48765-2" codeSystem="2.16.840.1.113883.6.1"
+                displayName="Allergies and adverse reactions Document"/>
+          <title>Allergies and Intolerances</title>
+          <text>...</text>
+          <entry>...</entry>
+        </section>
+      </component>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.1.1"/>
+          <code code="10160-0" codeSystem="2.16.840.1.113883.6.1"
+                displayName="History of Medication use Narrative"/>
+          <title>Medications</title>
+          <text>...</text>
+          <entry>...</entry>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>
+```
+
+##### Output: FHIR Document Bundle with Composition
+
+```json
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "identifier": {
+    "system": "urn:oid:2.16.840.1.113883.19.5.99999.1",
+    "value": "TT988"
+  },
+  "timestamp": "2020-03-01T10:20:00-05:00",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:composition-tt988",
+      "resource": {
+        "resourceType": "Composition",
+        "id": "composition-tt988",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/ccda/StructureDefinition/CCDA-on-FHIR-Continuity-of-Care-Document"
+          ]
+        },
+        "identifier": {
+          "system": "urn:oid:2.16.840.1.113883.19.5.99999.1",
+          "value": "TT988"
+        },
+        "status": "final",
+        "type": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "34133-9",
+              "display": "Summarization of Episode Note"
+            }
+          ],
+          "text": "Continuity of Care Document"
+        },
+        "subject": {
+          "reference": "Patient/patient-998991",
+          "display": "Ellen Ross"
+        },
+        "date": "2020-03-01T10:20:00-05:00",
+        "author": [
+          {
+            "reference": "Practitioner/practitioner-1234567890",
+            "display": "Adam Careful"
+          }
+        ],
+        "title": "Continuity of Care Document",
+        "confidentiality": "N",
+        "custodian": {
+          "reference": "Organization/org-1393",
+          "display": "Community Health and Hospitals"
+        },
+        "section": [
+          {
+            "title": "Allergies and Intolerances",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "48765-2",
+                  "display": "Allergies and adverse reactions Document"
+                }
+              ]
+            },
+            "text": {
+              "status": "generated",
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">...</div>"
+            },
+            "mode": "snapshot",
+            "entry": [
+              {
+                "reference": "AllergyIntolerance/allergy-1"
+              }
+            ]
+          },
+          {
+            "title": "Medications",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "10160-0",
+                  "display": "History of Medication use Narrative"
+                }
+              ]
+            },
+            "text": {
+              "status": "generated",
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">...</div>"
+            },
+            "mode": "snapshot",
+            "entry": [
+              {
+                "reference": "MedicationRequest/med-1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:patient-998991",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-998991",
+        ...
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:practitioner-1234567890",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "practitioner-1234567890",
+        ...
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:org-1393",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1393",
+        ...
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:allergy-1",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "allergy-1",
+        ...
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:med-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-1",
+        ...
+      }
+    }
+  ]
+}
+```
+
+#### Implementation Checklist
+
+##### Document-Level Converter (`ccda_to_fhir/converters/composition.py`)
+- [ ] Create `CompositionConverter` class
+- [ ] Implement Composition resource creation from ClinicalDocument
+- [ ] Map ClinicalDocument `id` → Composition.identifier (OID to URI conversion)
+- [ ] Map `code` (LOINC document type) → Composition.type
+- [ ] Map `title` → Composition.title
+- [ ] Map `effectiveTime` → Composition.date (timestamp conversion)
+- [ ] Set `status` = "final" (or infer from document context)
+- [ ] Map `confidentialityCode` → Composition.confidentiality
+- [ ] Map `languageCode` → Composition.language
+- [ ] Map `recordTarget` → Composition.subject (reference to Patient)
+- [ ] Map `componentOf/encompassingEncounter` → Composition.encounter
+- [ ] Map `author` → Composition.author[] (references to Practitioner/Organization)
+- [ ] Map `custodian` → Composition.custodian (reference to Organization)
+- [ ] Map `legalAuthenticator` → Composition.attester[] with mode="legal"
+- [ ] Map `authenticator` → Composition.attester[] with mode="professional"
+- [ ] Map `relatedDocument` → Composition.relatesTo[]
+- [ ] Map `documentationOf/serviceEvent` → Composition.event[]
+
+##### Section Processing
+- [ ] Map ClinicalDocument sections → Composition.section[]
+- [ ] Map `section/title` → section.title
+- [ ] Map `section/code` → section.code (LOINC section codes)
+- [ ] Convert C-CDA narrative (`section/text`) → FHIR XHTML (`section.text.div`)
+- [ ] Set `section.mode` = "snapshot" (default for most C-CDA sections)
+- [ ] Map `section/entry` → section.entry[] (references to resources)
+- [ ] Handle empty sections → section.emptyReason
+- [ ] Handle nested sections → section.section[] (recursive)
+- [ ] Map `section/author` → section.author[] (section-specific authors)
+
+##### Narrative Text Conversion
+- [ ] Convert C-CDA HL7 narrative to FHIR XHTML
+- [ ] Map C-CDA `<content>` → XHTML `<span>`
+- [ ] Map C-CDA `<paragraph>` → XHTML `<p>`
+- [ ] Map C-CDA `<list>` → XHTML `<ul>` or `<ol>`
+- [ ] Map C-CDA `<table>` → XHTML `<table>` (preserve structure)
+- [ ] Map C-CDA `@ID` → XHTML `@id`
+- [ ] Map C-CDA `@styleCode` → XHTML `@class` or `@style`
+- [ ] Handle `<linkHtml>` → `<a>`
+- [ ] Handle `<renderMultiMedia>` → `<img>`
+- [ ] Set `text.status` = "generated" or "additional"
+
+##### Bundle Assembly
+- [ ] Create Bundle with type="document"
+- [ ] Set Bundle.identifier from ClinicalDocument/id
+- [ ] Set Bundle.timestamp from ClinicalDocument/effectiveTime
+- [ ] Insert Composition as first entry
+- [ ] Add Patient resource (from recordTarget)
+- [ ] Add all Practitioner resources (from authors, performers)
+- [ ] Add Organization resources (from custodian, author orgs)
+- [ ] Add section entry resources (AllergyIntolerance, Condition, MedicationRequest, etc.)
+- [ ] Assign fullUrl for each entry (UUID-based)
+- [ ] Ensure all Composition references resolve within Bundle
+
+##### Profile Selection
+- [ ] Detect C-CDA document type from templateId
+- [ ] Map to appropriate C-CDA on FHIR Composition profile:
+  - [ ] CCD (2.16.840.1.113883.10.20.22.1.2) → CCDA-on-FHIR-Continuity-of-Care-Document
+  - [ ] Consultation Note (2.16.840.1.113883.10.20.22.1.4) → CCDA-on-FHIR-Consultation-Note
+  - [ ] Discharge Summary (2.16.840.1.113883.10.20.22.1.8) → CCDA-on-FHIR-Discharge-Summary
+  - [ ] Diagnostic Imaging Report (2.16.840.1.113883.10.20.22.1.5) → Diagnostic-Imaging-Report
+  - [ ] History and Physical (2.16.840.1.113883.10.20.22.1.1) → CCDA-on-FHIR-History-and-Physical
+  - [ ] Operative Note (2.16.840.1.113883.10.20.22.1.6) → CCDA-on-FHIR-Operative-Note
+  - [ ] Progress Note (2.16.840.1.113883.10.20.22.1.9) → CCDA-on-FHIR-Progress-Note
+  - [ ] Procedure Note (2.16.840.1.113883.10.20.22.1.7) → CCDA-on-FHIR-Procedure-Note
+  - [ ] Referral Note (2.16.840.1.113883.10.20.22.1.14) → CCDA-on-FHIR-Referral-Note
+  - [ ] Transfer Summary (2.16.840.1.113883.10.20.22.1.13) → CCDA-on-FHIR-Transfer-Summary
+  - [ ] Care Plan (2.16.840.1.113883.10.20.22.1.15) → Care-Plan-Document
+- [ ] Set Composition.meta.profile accordingly
+
+##### Model Validation (`ccda_to_fhir/models.py`)
+- [ ] Add document type validators for each C-CDA document template
+- [ ] Add section validators for common section templates
+- [ ] Validate required elements (id, code, title, effectiveTime, etc.)
+
+##### Tests (`tests/converters/test_composition.py`)
+- [ ] Test ClinicalDocument → Composition conversion
+- [ ] Test document identifier mapping (OID/UUID to URI)
+- [ ] Test document type mapping (LOINC codes)
+- [ ] Test status determination (final, amended, appended)
+- [ ] Test subject mapping (reference to Patient)
+- [ ] Test author mapping (multiple authors)
+- [ ] Test custodian mapping (Organization reference)
+- [ ] Test attester mapping (legalAuthenticator, authenticator)
+- [ ] Test relatedDocument mapping (replaces, appends, transforms)
+- [ ] Test serviceEvent mapping (event.code, event.period, event.detail)
+- [ ] Test section title and code mapping
+- [ ] Test section narrative conversion (C-CDA to XHTML)
+- [ ] Test section entry references
+- [ ] Test empty section handling (emptyReason)
+- [ ] Test nested sections
+- [ ] Test Bundle assembly (type, identifier, timestamp, entry order)
+- [ ] Test fullUrl assignment for each entry
+- [ ] Test reference resolution within Bundle
+
+##### Integration Tests (`tests/integration/test_composition_bundle.py`)
+- [ ] Test complete CCD conversion (all sections)
+- [ ] Test Discharge Summary conversion
+- [ ] Test Consultation Note conversion
+- [ ] Test Care Plan Document conversion
+- [ ] Test document with multiple authors
+- [ ] Test document with legalAuthenticator
+- [ ] Test document with relatedDocument (version replacement)
+- [ ] Test document with serviceEvent
+- [ ] Test minimal document (only required sections)
+- [ ] Test document with empty sections
+- [ ] Test document with nested sections
+- [ ] Test Bundle structure validation
+- [ ] Test all references resolve within Bundle
+
+##### C-CDA on FHIR Conformance
+- [ ] Validate Composition.identifier present (1..1)
+- [ ] Validate Composition.status present (1..1)
+- [ ] Validate Composition.type present (1..1) with LOINC code
+- [ ] Validate Composition.subject references Patient (1..1)
+- [ ] Validate Composition.date present (1..1)
+- [ ] Validate Composition.author[] not empty (1..*)
+- [ ] Validate Composition.title present (1..1)
+- [ ] Validate Composition.custodian present (1..1 for C-CDA on FHIR)
+- [ ] Validate section.title present for each section (1..1)
+- [ ] Validate section.code present for each section (1..1)
+- [ ] Validate section.text present if section has content
+- [ ] Include correct C-CDA on FHIR profile in meta.profile
+
+#### File Locations
+
+**New Files to Create:**
+```
+ccda_to_fhir/
+├── converters/
+│   ├── composition.py           # CompositionConverter class
+│   └── narrative_converter.py   # C-CDA narrative to FHIR XHTML converter
+├── bundle/
+│   └── document_bundle.py       # Document Bundle assembly
+tests/
+├── converters/
+│   ├── test_composition.py      # Unit tests
+│   └── test_narrative_converter.py  # Narrative conversion tests
+└── integration/
+    └── test_composition_bundle.py   # Integration tests for full document conversion
+```
+
+**Files to Modify:**
+```
+ccda_to_fhir/
+├── models.py                    # Add document and section validators
+├── converter.py                 # Register CompositionConverter and document bundle creation
+└── converters/__init__.py       # Export CompositionConverter
+```
+
+#### Related Documentation
+- See `docs/mapping/19-composition.md` for complete mapping specification
+- See `docs/fhir/composition.md` for FHIR Composition element definitions
+- See `docs/ccda/clinical-document.md` for C-CDA ClinicalDocument specifications
+- See `docs/mapping/00-overview.md` for general mapping guidelines
+
+#### Notes
+- **Critical Priority**: This is the foundation for all C-CDA on FHIR document conversions
+- **Document Bundle**: Output must be a FHIR Bundle with type="document" and Composition as first entry
+- **Composition vs DocumentReference**: Composition is for structured document conversion; DocumentReference is for document indexing/referencing
+- **Section Organization**: Preserve C-CDA section structure including nesting
+- **Narrative Conversion**: Requires converting C-CDA HL7 narrative block to FHIR XHTML
+- **Profile Selection**: Must detect C-CDA document type and apply correct C-CDA on FHIR profile
+- **Reference Resolution**: All references in Composition must resolve to resources in the Bundle
+- **C-CDA on FHIR IG Compliance**: Required for certification and interoperability
+- **Entry References**: Composition sections reference resources created from C-CDA section entries
+- **Empty Sections**: Use emptyReason for sections with no structured entries but required by document type
+
+---
+
+### 2. CarePlan ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
 
 **Deadline**: December 31, 2025 (certification requirement)
 
-**Impact**: Care Plan documents cannot be converted to FHIR without CarePlan support. This is a foundational document type for care coordination.
+**Impact**: Care Plan documents cannot be converted to FHIR without CarePlan support. This is a foundational document type for care coordination. Note that Care Plan Documents also require Composition support (see #1 above).
 
 #### Documentation
 - ✅ **FHIR Documentation**: `docs/fhir/careplan.md`
@@ -357,11 +780,11 @@ ccda_to_fhir/
 
 ---
 
-### 2. Goal ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
+### 3. Goal ❌ **NOT IMPLEMENTED** - HIGH PRIORITY
 
 **Deadline**: December 31, 2025 (certification requirement)
 
-**Impact**: Care Plan documents cannot be fully converted without Goal support
+**Impact**: Care Plan documents cannot be fully converted without Goal support. Goals are part of Care Plan Documents and require Composition support (see #1 above).
 
 #### Documentation
 - ✅ **FHIR Documentation**: `docs/fhir/goal.md`
@@ -575,7 +998,7 @@ ccda_to_fhir/
 
 ---
 
-### 3. MedicationDispense ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
+### 4. MedicationDispense ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
 
 **Impact**: Cannot represent actual dispensing events (vs orders/statements). Medication fill history and pharmacy dispensing records cannot be converted to FHIR.
 
@@ -793,7 +1216,7 @@ ccda_to_fhir/
 
 ---
 
-### 4. Location ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
+### 5. Location ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
 
 **Impact**: Location data is currently embedded within Encounter resources but not extracted as separate, reusable Location resources. This limits interoperability and violates US Core recommendations to create separate Location resources.
 
@@ -1050,7 +1473,7 @@ ccda_to_fhir/
 
 ## Low Priority: USCDI Requirements
 
-### 5. CareTeam ❌ **NOT IMPLEMENTED** - LOW PRIORITY
+### 6. CareTeam ❌ **NOT IMPLEMENTED** - LOW PRIORITY
 
 **Impact:** Care team information can be extracted from document header (serviceEvent/performer) or structured Care Teams Section, but not formally converted to FHIR CareTeam resources. This limits care coordination interoperability and USCDI v4 compliance.
 
@@ -1356,7 +1779,7 @@ ccda_to_fhir/
 
 ---
 
-### 6. ServiceRequest ❌ **NOT IMPLEMENTED** - LOW PRIORITY
+### 7. ServiceRequest ❌ **NOT IMPLEMENTED** - LOW PRIORITY
 
 **Impact**: Planned procedures and ordered services are currently partially covered by Procedure resources with status=planned, but formal service requests/orders are not represented according to FHIR workflow patterns. This limits interoperability for order management and care planning workflows.
 
