@@ -13,7 +13,7 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 3 missing mappings
+**Current Status**: 4 missing mappings
 
 ---
 
@@ -790,6 +790,261 @@ ccda_to_fhir/
 - **Substitution Detection**: Compare dispense product code with parent activity code to detect substitutions
 - **Category Inference**: C-CDA lacks explicit category; infer from performer type and document context
 - **Days Supply**: Optional nested template or calculate from quantity and dosage
+
+---
+
+### 4. Location ❌ **NOT IMPLEMENTED** - MEDIUM PRIORITY
+
+**Impact**: Location data is currently embedded within Encounter resources but not extracted as separate, reusable Location resources. This limits interoperability and violates US Core recommendations to create separate Location resources.
+
+#### Documentation
+- ✅ **FHIR Documentation**: `docs/fhir/location.md`
+- ✅ **C-CDA Documentation**: `docs/ccda/service-delivery-location.md`
+- ✅ **Mapping Specification**: `docs/mapping/16-location.md`
+
+#### Standards References
+- **US Core Profile**: [US Core Location Profile v8.0.1](http://hl7.org/fhir/us/core/StructureDefinition/us-core-location)
+- **C-CDA Templates**:
+  - Service Delivery Location: `2.16.840.1.113883.10.20.22.4.32`
+  - Used in: Encounter Activity (participant[@typeCode='LOC'])
+  - Also in: Procedure Activity, Planned Encounter
+  - Header: encompassingEncounter/location/healthCareFacility
+- **C-CDA on FHIR IG**: Mentioned in Encounter mappings but no dedicated Location mapping published
+
+#### Required Implementation
+
+Location represents physical places where services are provided. Unlike the current approach of embedding location details within Encounter, the standard approach is to create separate Location resources that are referenced by Encounter, Procedure, Immunization, and other resources.
+
+##### Input: C-CDA Service Delivery Location
+
+```xml
+<participant typeCode="LOC">
+  <participantRole classCode="SDLOC">
+    <templateId root="2.16.840.1.113883.10.20.22.4.32"/>
+    <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+    <code code="1061-3" codeSystem="2.16.840.1.113883.6.259"
+          displayName="Hospital">
+      <translation code="22232009" codeSystem="2.16.840.1.113883.6.96"
+                   displayName="Hospital"/>
+    </code>
+    <addr>
+      <streetAddressLine>1001 Village Avenue</streetAddressLine>
+      <city>Portland</city>
+      <state>OR</state>
+      <postalCode>99123</postalCode>
+    </addr>
+    <telecom use="WP" value="tel:+1(555)555-5000"/>
+    <playingEntity classCode="PLC">
+      <name>Community Health and Hospitals</name>
+    </playingEntity>
+  </participantRole>
+</participant>
+```
+
+##### Output: FHIR Location Resource
+
+```json
+{
+  "resourceType": "Location",
+  "meta": {
+    "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-location"]
+  },
+  "identifier": [{
+    "system": "http://hl7.org/fhir/sid/us-npi",
+    "value": "1234567890"
+  }],
+  "status": "active",
+  "name": "Community Health and Hospitals",
+  "mode": "instance",
+  "type": [{
+    "coding": [
+      {
+        "system": "https://www.cdc.gov/nhsn/cdaportal/terminology/codesystem/hsloc.html",
+        "code": "1061-3",
+        "display": "Hospital"
+      },
+      {
+        "system": "http://snomed.info/sct",
+        "code": "22232009",
+        "display": "Hospital"
+      }
+    ]
+  }],
+  "telecom": [{
+    "system": "phone",
+    "value": "+1(555)555-5000",
+    "use": "work"
+  }],
+  "address": {
+    "use": "work",
+    "line": ["1001 Village Avenue"],
+    "city": "Portland",
+    "state": "OR",
+    "postalCode": "99123"
+  },
+  "managingOrganization": {
+    "reference": "Organization/org-hospital"
+  }
+}
+```
+
+##### Encounter Reference to Location
+
+```json
+{
+  "resourceType": "Encounter",
+  "location": [{
+    "location": {
+      "reference": "Location/location-npi-1234567890",
+      "display": "Community Health and Hospitals"
+    },
+    "status": "completed"
+  }]
+}
+```
+
+#### Implementation Checklist
+
+##### Core Converter (`ccda_to_fhir/converters/location.py`)
+- [ ] Create `LocationConverter` class extending `BaseConverter`
+- [ ] Implement `convert()` method accepting Service Delivery Location participantRole
+- [ ] Map `id` → `Location.identifier` with OID to URI conversion
+- [ ] Map NPI (`root='2.16.840.1.113883.4.6'`) → system `http://hl7.org/fhir/sid/us-npi`
+- [ ] Map CLIA (`root='2.16.840.1.113883.4.7'`) → system `urn:oid:2.16.840.1.113883.4.7`
+- [ ] Map NAIC (`root='2.16.840.1.113883.6.300'`) → system `urn:oid:2.16.840.1.113883.6.300`
+- [ ] Map `code` → `Location.type` (CodeableConcept with all translations)
+- [ ] Map HSLOC codes (`codeSystem='2.16.840.1.113883.6.259'`) to HSLOC system URI
+- [ ] Map SNOMED CT codes (`codeSystem='2.16.840.1.113883.6.96'`) to SNOMED system URI
+- [ ] Map RoleCode (`codeSystem='2.16.840.1.113883.5.111'`) to v3-RoleCode system URI
+- [ ] Map `playingEntity/name` → `Location.name` (Required)
+- [ ] Map `addr` → `Location.address` (USRealmAddress to FHIR Address)
+- [ ] Map address `@use` codes (HP→home, WP→work, TMP→temp)
+- [ ] Map `telecom` → `Location.telecom` array
+- [ ] Parse telecom URI schemes (tel:, mailto:, fax:, http:) to FHIR system codes
+- [ ] Set `status` = "active" (default)
+- [ ] Set `mode` = "instance" (default for specific locations)
+- [ ] Infer `physicalType` from location type code when confident
+
+##### Location Deduplication
+- [ ] Implement location registry to track created locations
+- [ ] Deduplicate by NPI identifier match
+- [ ] Deduplicate by name + city/state match
+- [ ] Generate consistent Location IDs for duplicate facilities
+- [ ] Use NPI-based ID when available: `"location-npi-{extension}"`
+- [ ] Use name-based hash for locations without identifiers
+- [ ] Return reference to existing Location resource for duplicates
+
+##### encompassingEncounter/location Support
+- [ ] Extract location from `componentOf/encompassingEncounter/location/healthCareFacility`
+- [ ] Map `healthCareFacility/id` → `identifier`
+- [ ] Map `healthCareFacility/code` → `type`
+- [ ] Map `healthCareFacility/location/name` → `name`
+- [ ] Map `healthCareFacility/location/addr` → `address`
+- [ ] Map `serviceProviderOrganization` → `managingOrganization` reference
+- [ ] Handle absence of template ID (healthCareFacility doesn't use template 4.32)
+
+##### Organization Linking
+- [ ] Extract managing organization from encounter `serviceProvider`
+- [ ] Fallback to document `custodian` if no serviceProvider
+- [ ] Create or reference Organization resource
+- [ ] Set `Location.managingOrganization` reference
+
+##### Section Processing
+- [ ] Update `EncounterActivityConverter` to call `LocationConverter`
+- [ ] Update `ProcedureActivityConverter` to call `LocationConverter`
+- [ ] Extract location from `participant[@typeCode='LOC']/participantRole`
+- [ ] Store Location resource in bundle
+- [ ] Update Encounter.location to reference Location resource (not embed)
+
+##### Model Validation (`ccda_to_fhir/models.py`)
+- [ ] Add `is_service_delivery_location()` validator for template `2.16.840.1.113883.10.20.22.4.32`
+- [ ] Validate `participantRole/@classCode='SDLOC'`
+- [ ] Validate `playingEntity/@classCode='PLC'`
+- [ ] Validate required elements: code (1..1), playingEntity/name (1..1)
+
+##### Tests (`tests/converters/test_location.py`)
+- [ ] Test basic Service Delivery Location → Location conversion
+- [ ] Test identifier mapping (NPI, CLIA, NAIC)
+- [ ] Test OID to URI system conversion
+- [ ] Test facility type mapping (HSLOC, SNOMED CT, RoleCode)
+- [ ] Test translation codes (multiple code systems in one type)
+- [ ] Test name mapping (required element)
+- [ ] Test address mapping with multiple street lines
+- [ ] Test address use code mapping (HP, WP, TMP, BAD)
+- [ ] Test telecom mapping with various URI schemes
+- [ ] Test telecom use code mapping
+- [ ] Test location deduplication (NPI match, name+city match)
+- [ ] Test Location ID generation strategies
+- [ ] Test patient's home location (nullFlavor on id)
+- [ ] Test ambulance/mobile location
+- [ ] Test encompassingEncounter/location conversion
+- [ ] Test managing organization linking
+- [ ] Test physicalType inference
+- [ ] Test missing optional elements handling
+
+##### Integration Tests (`tests/integration/test_location.py`)
+- [ ] Test complete encounter with location extraction
+- [ ] Test multiple encounters sharing same location (deduplication)
+- [ ] Test procedure with location
+- [ ] Test document header encompassingEncounter location
+- [ ] Test location without identifiers
+- [ ] Test location with all optional elements
+- [ ] Test Encounter.location reference to Location resource
+
+##### US Core Conformance
+- [ ] Validate required element: `name` (1..1)
+- [ ] Validate Must Support: `identifier` (0..*)
+- [ ] Validate Must Support: `status` (0..1)
+- [ ] Validate Must Support: `type` (0..*)
+- [ ] Validate Must Support: `telecom` (0..*)
+- [ ] Validate Must Support: `address` (0..1)
+- [ ] Validate Must Support: `address.line`, `address.city`, `address.state`, `address.postalCode`
+- [ ] Validate Must Support: `managingOrganization` (0..1)
+- [ ] Include US Core Location profile in `meta.profile`
+
+#### File Locations
+
+**New Files to Create:**
+```
+ccda_to_fhir/
+├── converters/
+│   └── location.py              # LocationConverter class
+tests/
+├── converters/
+│   └── test_location.py         # Unit tests
+└── integration/
+    └── test_location.py         # Integration tests
+```
+
+**Files to Modify:**
+```
+ccda_to_fhir/
+├── models.py                    # Add is_service_delivery_location() validator
+├── converters/
+│   ├── encounter.py             # Update to create Location resources
+│   ├── procedure.py             # Update to create Location resources
+│   └── __init__.py              # Export LocationConverter
+```
+
+#### Related Documentation
+- See `docs/mapping/16-location.md` for complete mapping specification
+- See `docs/fhir/location.md` for FHIR Location element definitions
+- See `docs/ccda/service-delivery-location.md` for C-CDA template specifications
+- See `docs/mapping/08-encounter.md` for Encounter location reference mapping
+
+#### Notes
+- **Separate Resource Creation**: Unlike current implementation, Location should be extracted as separate resources, not embedded in Encounter
+- **Deduplication Critical**: Same facility may appear in multiple encounters/procedures; must deduplicate to avoid resource proliferation
+- **Multiple Source Locations**: Location data appears in both document body (Service Delivery Location template) and header (healthCareFacility); both should convert to same Location resource
+- **Identifier Importance**: NPI is the most stable identifier for US facilities; use for deduplication when available
+- **Managing Organization**: Required by US Core; infer from encounter serviceProvider or document custodian
+- **Address Formatting**: Follow US Realm address conventions with separate street lines
+- **Telecom URI Schemes**: Parse and convert C-CDA URI schemes (tel:, mailto:) to FHIR system codes
+- **USCDI Compliance**: Facility Name, Type, Identifier, and Address are USCDI elements
+- **Type Value Sets**: US Core allows HSLOC, SNOMED CT, or CMS POS codes; support all three
+- **Physical Type**: Optional; only infer when highly confident (e.g., "Operating Room" → "room")
+- **Status Default**: Always use "active" unless explicit information suggests otherwise
+- **Not in C-CDA on FHIR IG**: Location mapping not officially published in C-CDA on FHIR IG v2.0.0; this implementation fills that gap
 
 ---
 
