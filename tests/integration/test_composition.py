@@ -1837,3 +1837,231 @@ class TestParticipantExtensions:
             None
         )
         assert recipient_ext is not None
+
+
+class TestBundleStructure:
+    """Tests for FHIR document Bundle structure and metadata."""
+
+    def test_bundle_has_identifier(self) -> None:
+        """Test that Bundle.identifier is present and correct.
+
+        Per FHIR document spec, Bundle.identifier should match the document identifier.
+        Reference: https://hl7.org/fhir/R4/documents.html
+        """
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        assert "identifier" in bundle
+        assert bundle["identifier"]["system"] == "urn:oid:2.16.840.1.113883.19.5.99999.1"
+
+    def test_bundle_has_timestamp(self) -> None:
+        """Test that Bundle.timestamp is present and correct.
+
+        Per FHIR document spec, Bundle.timestamp should be the document creation time.
+        Reference: https://hl7.org/fhir/R4/documents.html
+        """
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        assert "timestamp" in bundle
+        # Default timestamp from wrap_in_ccda_document: 20231215120000-0500
+        assert bundle["timestamp"].startswith("2023-12-15")
+        # Verify it's a valid ISO 8601 datetime
+        assert "T" in bundle["timestamp"]
+
+    def test_bundle_identifier_matches_composition_identifier(self) -> None:
+        """Test that Bundle.identifier matches Composition.identifier.
+
+        Both should be derived from the same ClinicalDocument/id element.
+        """
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Both should have the same identifier
+        assert "identifier" in bundle
+        assert "identifier" in composition
+        assert bundle["identifier"]["system"] == composition["identifier"]["system"]
+
+    def test_bundle_timestamp_matches_composition_date(self) -> None:
+        """Test that Bundle.timestamp matches Composition.date.
+
+        Both should be derived from the same ClinicalDocument/effectiveTime element.
+        """
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        composition = _find_resource_in_bundle(bundle, "Composition")
+        assert composition is not None
+
+        # Both should have the same timestamp/date
+        assert "timestamp" in bundle
+        assert "date" in composition
+        assert bundle["timestamp"] == composition["date"]
+
+    def test_bundle_type_is_document(self) -> None:
+        """Test that Bundle.type is 'document'.
+
+        Document bundles must have type='document'.
+        """
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        assert bundle["type"] == "document"
+
+    def test_bundle_has_all_required_fields(self) -> None:
+        """Test that Bundle has all required fields for a FHIR document.
+
+        Required fields per FHIR R4 document spec:
+        - resourceType
+        - type (must be 'document')
+        - entry (with Composition as first entry)
+        - identifier (document identifier)
+        - timestamp (document timestamp)
+        """
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        # Check all required fields
+        assert bundle["resourceType"] == "Bundle"
+        assert bundle["type"] == "document"
+        assert "entry" in bundle
+        assert len(bundle["entry"]) > 0
+        assert "identifier" in bundle
+        assert "timestamp" in bundle
+
+
+class TestBundleEdgeCases:
+    """Edge case tests for Bundle timestamp and identifier handling."""
+
+    def test_bundle_timestamp_absent_when_effective_time_lacks_timezone(self) -> None:
+        """Bundle.timestamp should be omitted when effectiveTime lacks timezone.
+
+        FHIR instant type requires timezone. When C-CDA effectiveTime has time
+        but no timezone, Bundle.timestamp is omitted per FHIR spec.
+        """
+        from ccda_to_fhir.ccda.parser import parse_ccda
+
+        ccda_xml = '''<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="2.16.840.1.113883.19.5.99999.1"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+  <title>Test</title>
+  <effectiveTime value="20231215120000"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="2.16.840.1.113883.19.5" extension="12345"/>
+      <patient>
+        <name><given>John</given><family>Doe</family></name>
+        <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1"/>
+        <birthTime value="19800101"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20231215120000"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+      <assignedPerson><name><given>Jane</given><family>Smith</family></name></assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5"/>
+        <name>Test Hospital</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+</ClinicalDocument>
+'''
+
+        ccda_doc = parse_ccda(ccda_xml)
+        bundle = convert_document(ccda_doc)
+
+        # Bundle.timestamp is optional (0..1), should be omitted when timezone missing
+        assert "timestamp" not in bundle
+
+    def test_bundle_timestamp_present_with_timezone(self) -> None:
+        """Bundle.timestamp should be present when effectiveTime has timezone."""
+        # Default wrap_in_ccda_document includes timezone
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        assert "timestamp" in bundle
+        # Verify it's a valid instant (has timezone)
+        assert "T" in bundle["timestamp"]
+        assert ("+" in bundle["timestamp"] or "-" in bundle["timestamp"])
+
+    def test_bundle_identifier_without_extension_uses_system_only(self) -> None:
+        """Bundle.identifier should have system when extension is absent.
+
+        Per FHIR, Identifier can have system-only (unusual but valid).
+        """
+        from ccda_to_fhir.ccda.parser import parse_ccda
+
+        ccda_xml = '''<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="2.16.840.1.113883.19.5.99999.1"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1"/>
+  <title>Test</title>
+  <effectiveTime value="20231215120000-0500"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="2.16.840.1.113883.19.5" extension="12345"/>
+      <patient>
+        <name><given>John</given><family>Doe</family></name>
+        <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1"/>
+        <birthTime value="19800101"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20231215120000-0500"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+      <assignedPerson><name><given>Jane</given><family>Smith</family></name></assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5"/>
+        <name>Test Hospital</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+</ClinicalDocument>
+'''
+
+        ccda_doc = parse_ccda(ccda_xml)
+        bundle = convert_document(ccda_doc)
+
+        assert "identifier" in bundle
+        assert "system" in bundle["identifier"]
+        # No extension in document ID, so no value field expected
+        assert "value" not in bundle["identifier"]
+
+    def test_bundle_timestamp_format_is_valid_instant(self) -> None:
+        """Bundle.timestamp should be valid FHIR instant format."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        if "timestamp" in bundle:
+            timestamp = bundle["timestamp"]
+            # FHIR instant format: YYYY-MM-DDThh:mm:ss+zz:zz
+            import re
+            instant_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$'
+            assert re.match(instant_pattern, timestamp), f"Invalid instant format: {timestamp}"

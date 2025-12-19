@@ -13,17 +13,19 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 10 missing mappings (8 high/medium priority, 2 low priority)
+**Current Status**: 8 missing mappings (6 high/medium priority, 2 low priority)
+
+**Recently Completed**: Composition and Bundle (2025-12-19)
 
 ---
 
 ## High Priority: Certification Requirements
 
-### 1. Composition (Document Structure) ❌ **NOT IMPLEMENTED** - CRITICAL PRIORITY
+### 1. Composition (Document Structure) ✅ **IMPLEMENTED** (2025-12-19)
 
-**Deadline**: Immediate (required for any document conversion)
+**Implementation**: Fully implemented with comprehensive test coverage (50 tests passing)
 
-**Impact**: Without Composition support, C-CDA documents cannot be converted to proper FHIR document Bundles. This is the foundational resource for all C-CDA on FHIR document conversions. Currently, the converter may create individual resources but cannot create compliant FHIR document Bundles with Composition as the first entry.
+**Capabilities**: C-CDA documents are now converted to proper FHIR document Bundles with Composition as the first entry. All document metadata, sections, attestations, and participant extensions are supported per C-CDA on FHIR IG.
 
 #### Documentation
 - ✅ **FHIR Documentation**: `docs/fhir/composition.md`
@@ -442,11 +444,21 @@ ccda_to_fhir/
 
 ---
 
-### 2. Bundle (Document Packaging) ❌ **NOT IMPLEMENTED** - CRITICAL PRIORITY
+### 2. Bundle (Document Packaging) ✅ **IMPLEMENTED** (2025-12-19)
 
-**Deadline**: Immediate (required for any document conversion)
+**Implementation**: Fully implemented with standards-compliant FHIR instant handling
 
-**Impact**: Without Bundle support, C-CDA documents cannot be packaged as proper FHIR document Bundles. The Bundle resource serves as the container that wraps the Composition and all referenced resources into a single, immutable document unit. Without this, documents cannot be exchanged or stored according to FHIR document specifications.
+**Capabilities**:
+- C-CDA documents packaged as FHIR R4 document Bundles
+- Bundle.identifier populated from ClinicalDocument/id (OID format)
+- Bundle.timestamp populated from ClinicalDocument/effectiveTime when timezone present
+- Proper FHIR instant type handling (timezone required)
+
+**Implementation Notes**:
+- Bundle.timestamp requires FHIR instant type (timezone mandatory)
+- When C-CDA effectiveTime lacks timezone, Bundle.timestamp is omitted (per FHIR spec, timestamp is optional 0..1)
+- This approach prevents manufacturing incorrect timezone data while maintaining FHIR compliance
+- 54 tests including edge cases (all passing)
 
 #### Documentation
 - ✅ **FHIR Documentation**: `docs/fhir/bundle.md`

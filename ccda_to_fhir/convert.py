@@ -31,6 +31,7 @@ from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.validation import FHIRValidator
 
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
+from ccda_to_fhir.ccda.models.datatypes import II
 from ccda_to_fhir.ccda.models.section import StructuredBody
 from ccda_to_fhir.ccda.parser import parse_ccda
 from ccda_to_fhir.constants import TemplateIds, PARTICIPATION_FUNCTION_CODE_MAP
@@ -376,6 +377,115 @@ class DocumentConverter:
                 include_section_code=False,
             )
         )
+
+    def _create_bundle_identifier(self, doc_id: II) -> JSONObject:
+        """Create Bundle identifier from ClinicalDocument ID.
+
+        Args:
+            doc_id: Document identifier (II element)
+
+        Returns:
+            FHIR Identifier
+        """
+        identifier: JSONObject = {
+            "system": f"urn:oid:{doc_id.root}",
+        }
+
+        if doc_id.extension:
+            identifier["value"] = doc_id.extension
+
+        return identifier
+
+    def _convert_bundle_timestamp(self, ccda_datetime: str | None) -> str | None:
+        """Convert C-CDA datetime to FHIR instant (timestamp).
+
+        FHIR instant type requires full timestamp with timezone.
+        Per FHIR spec: instant = YYYY-MM-DDThh:mm:ss.sss+zz:zz (timezone REQUIRED)
+
+        If C-CDA effectiveTime lacks timezone, Bundle.timestamp is omitted
+        (it's optional 0..1 per FHIR spec) rather than manufacturing potentially
+        incorrect timezone data.
+
+        Args:
+            ccda_datetime: C-CDA datetime string (YYYYMMDDHHmmss±ZZZZ)
+
+        Returns:
+            FHIR instant (ISO 8601 with timezone) or None if timezone missing
+
+        Examples:
+            >>> _convert_bundle_timestamp("20231215120000-0500")
+            '2023-12-15T12:00:00-05:00'
+            >>> _convert_bundle_timestamp("20231215120000")  # No timezone
+            None
+            >>> _convert_bundle_timestamp("20231215")  # Date only
+            None
+        """
+        from datetime import datetime
+
+        if not ccda_datetime:
+            return None
+
+        try:
+            ccda_datetime = ccda_datetime.strip()
+
+            # Extract timezone
+            tz_start = -1
+            for i, char in enumerate(ccda_datetime):
+                if char in ('+', '-') and i > 8:
+                    tz_start = i
+                    break
+
+            # instant type REQUIRES timezone - return None if missing
+            if tz_start <= 0:
+                from ccda_to_fhir.logging_config import get_logger
+                logger = get_logger(__name__)
+                logger.info(
+                    f"Bundle.timestamp omitted: C-CDA effectiveTime '{ccda_datetime}' lacks timezone. "
+                    f"FHIR instant type requires timezone."
+                )
+                return None
+
+            numeric_part = ccda_datetime[:tz_start]
+            tz_part = ccda_datetime[tz_start:]
+
+            # Validate timezone format
+            if len(tz_part) < 5:
+                return None
+
+            # Only support full datetime (14 digits)
+            if not numeric_part.isdigit() or len(numeric_part) != 14:
+                return None
+
+            # Parse datetime
+            dt = datetime.strptime(numeric_part, "%Y%m%d%H%M%S")
+
+            # Validate year range
+            if not 1800 <= dt.year <= 2200:
+                return None
+
+            # Format timezone
+            tz_sign = tz_part[0]
+            tz_hours = tz_part[1:3]
+            tz_mins = tz_part[3:5]
+
+            tz_h = int(tz_hours)
+            tz_m = int(tz_mins)
+
+            if not (0 <= tz_h <= 14 and 0 <= tz_m <= 59):
+                return None
+
+            # Format as FHIR instant
+            return (
+                f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d}T"
+                f"{dt.hour:02d}:{dt.minute:02d}:{dt.second:02d}"
+                f"{tz_sign}{tz_hours}:{tz_mins}"
+            )
+
+        except (ValueError, IndexError):
+            from ccda_to_fhir.logging_config import get_logger
+            logger = get_logger(__name__)
+            logger.warning(f"Failed to convert C-CDA datetime to FHIR instant: {ccda_datetime}")
+            return None
 
     def _validate_resource(self, resource: FHIRResourceDict) -> bool:
         """Validate a FHIR resource if validation is enabled.
@@ -807,6 +917,16 @@ class DocumentConverter:
             "type": "document",
             "entry": [],
         }
+
+        # Add Bundle.identifier from ClinicalDocument.id (per FHIR document spec)
+        if ccda_doc.id:
+            bundle["identifier"] = self._create_bundle_identifier(ccda_doc.id)
+
+        # Add Bundle.timestamp from ClinicalDocument.effectiveTime (per FHIR document spec)
+        if ccda_doc.effective_time:
+            timestamp = self._convert_bundle_timestamp(ccda_doc.effective_time.value)
+            if timestamp:
+                bundle["timestamp"] = timestamp
 
         # Add resources as bundle entries (Composition first, then all others)
         for resource in resources:
