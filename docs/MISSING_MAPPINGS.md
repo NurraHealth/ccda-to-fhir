@@ -13,7 +13,7 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 4 missing mappings
+**Current Status**: 5 missing mappings (4 high/medium priority, 1 low priority)
 
 ---
 
@@ -1045,6 +1045,314 @@ ccda_to_fhir/
 - **Physical Type**: Optional; only infer when highly confident (e.g., "Operating Room" → "room")
 - **Status Default**: Always use "active" unless explicit information suggests otherwise
 - **Not in C-CDA on FHIR IG**: Location mapping not officially published in C-CDA on FHIR IG v2.0.0; this implementation fills that gap
+
+---
+
+## Low Priority: USCDI Requirements
+
+### 5. CareTeam ❌ **NOT IMPLEMENTED** - LOW PRIORITY
+
+**Impact:** Care team information can be extracted from document header (serviceEvent/performer) or structured Care Teams Section, but not formally converted to FHIR CareTeam resources. This limits care coordination interoperability and USCDI v4 compliance.
+
+#### Documentation
+- ✅ **FHIR Documentation**: `docs/fhir/careteam.md`
+- ✅ **C-CDA Documentation**: `docs/ccda/care-team.md`
+- ✅ **Mapping Specification**: `docs/mapping/17-careteam.md`
+
+#### Standards References
+- **US Core Profile**: [US Core CareTeam Profile v8.0.1](http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam)
+- **C-CDA Templates**:
+  - Care Teams Section: `2.16.840.1.113883.10.20.22.2.500` (LOINC `85847-2` - "Patient Care team information")
+  - Care Team Organizer: `2.16.840.1.113883.10.20.22.4.500` (LOINC `86744-0` - "Care team", extensions 2019-07-01, 2022-06-01)
+  - Care Team Member Act: `2.16.840.1.113883.10.20.22.4.500.1` (extensions 2019-07-01, 2022-06-01)
+  - Care Team Type Observation: `2.16.840.1.113883.10.20.22.4.500.2` (extension 2019-07-01)
+  - Alternative: documentationOf/serviceEvent/performer (header-based representation)
+- **USCDI Requirement**: Care Team Members (USCDI v4 data class)
+
+#### Required Implementation
+
+CareTeam represents the care team members associated with a patient for care coordination. C-CDA supports two approaches:
+
+1. **Structured Care Teams Section** (Recommended)
+   - Discrete, computable representation
+   - Supports multiple teams with types, leads, and members
+   - Newer approach (2019-2022 templates)
+
+2. **Header serviceEvent/performer** (Legacy)
+   - Simple list of care providers
+   - Common in transition-of-care documents
+   - Widely implemented but less structured
+
+##### Input: C-CDA Care Team Organizer (Structured Approach)
+
+```xml
+<section>
+  <templateId root="2.16.840.1.113883.10.20.22.2.500" extension="2022-06-01"/>
+  <code code="85847-2" codeSystem="2.16.840.1.113883.6.1" displayName="Patient Care team information"/>
+  <title>CARE TEAMS</title>
+
+  <entry>
+    <organizer classCode="CLUSTER" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.500" extension="2022-06-01"/>
+      <id root="2.16.840.1.113883.19.5" extension="primary-team-001"/>
+      <code code="86744-0" codeSystem="2.16.840.1.113883.6.1" displayName="Care team"/>
+      <statusCode code="active"/>
+      <effectiveTime>
+        <low value="20230115"/>
+      </effectiveTime>
+
+      <!-- Team Lead -->
+      <participant typeCode="PPRF">
+        <participantRole>
+          <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+        </participantRole>
+      </participant>
+
+      <!-- Team Type -->
+      <component>
+        <observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.500.2" extension="2019-07-01"/>
+          <code code="86744-0" codeSystem="2.16.840.1.113883.6.1"/>
+          <value xsi:type="CD" code="LA27976-2" codeSystem="2.16.840.1.113883.6.1"
+                 displayName="Longitudinal care-coordination focused care team"/>
+        </observation>
+      </component>
+
+      <!-- Care Team Members -->
+      <component>
+        <act classCode="PCPR" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.500.1" extension="2022-06-01"/>
+          <code code="86744-0" codeSystem="2.16.840.1.113883.6.1"/>
+          <statusCode code="active"/>
+          <performer>
+            <functionCode code="PCP" codeSystem="2.16.840.1.113883.5.88"
+                         displayName="Primary Care Physician"/>
+            <assignedEntity>
+              <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+              <code code="207Q00000X" codeSystem="2.16.840.1.113883.6.101"/>
+              <assignedPerson>
+                <name><given>John</given><family>Smith</family></name>
+              </assignedPerson>
+              <representedOrganization>
+                <name>Community Health Clinic</name>
+              </representedOrganization>
+            </assignedEntity>
+          </performer>
+        </act>
+      </component>
+
+    </organizer>
+  </entry>
+</section>
+```
+
+##### Input: C-CDA Header serviceEvent/performer (Legacy Approach)
+
+```xml
+<documentationOf>
+  <serviceEvent classCode="PCPR">
+    <effectiveTime>
+      <low value="20240110"/>
+      <high value="20240115"/>
+    </effectiveTime>
+
+    <performer typeCode="PRF">
+      <functionCode code="PCP" codeSystem="2.16.840.1.113883.5.88"
+                   displayName="Primary Care Physician"/>
+      <assignedEntity>
+        <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+        <assignedPerson>
+          <name><given>John</given><family>Smith</family></name>
+        </assignedPerson>
+      </assignedEntity>
+    </performer>
+
+    <!-- Additional performers -->
+  </serviceEvent>
+</documentationOf>
+```
+
+##### Output: FHIR CareTeam Resource
+
+```json
+{
+  "resourceType": "CareTeam",
+  "meta": {
+    "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam"]
+  },
+  "identifier": [{
+    "system": "urn:oid:2.16.840.1.113883.19.5",
+    "value": "primary-team-001"
+  }],
+  "status": "active",
+  "category": [{
+    "coding": [{
+      "system": "http://loinc.org",
+      "code": "LA27976-2",
+      "display": "Longitudinal care-coordination focused care team"
+    }]
+  }],
+  "name": "John Doe Primary Care Team",
+  "subject": {
+    "reference": "Patient/patient-123"
+  },
+  "period": {
+    "start": "2023-01-15"
+  },
+  "participant": [{
+    "role": [{
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+        "code": "PCP",
+        "display": "Primary Care Physician"
+      }]
+    }],
+    "member": {
+      "reference": "PractitionerRole/practitionerrole-npi-1234567890",
+      "display": "Dr. John Smith"
+    }
+  }],
+  "managingOrganization": [{
+    "reference": "Organization/org-clinic"
+  }]
+}
+```
+
+#### Implementation Checklist
+
+##### Core Converter (`ccda_to_fhir/converters/careteam.py`)
+- [ ] Create `CareTeamConverter` class extending `BaseConverter`
+- [ ] Implement `convert()` method accepting Care Team Organizer
+- [ ] Map `organizer/id` → `CareTeam.identifier` (OID to Identifier)
+- [ ] Map `statusCode/@code` → `CareTeam.status` per ConceptMap (active, completed, suspended, etc.)
+- [ ] Map `effectiveTime` → `CareTeam.period` (IVL_TS to Period)
+- [ ] Extract patient reference from document `recordTarget` → `CareTeam.subject`
+- [ ] Map `component/observation[type]` → `CareTeam.category` (team type)
+- [ ] Generate `CareTeam.name` from team type and patient name
+- [ ] Map managing organization from custodian or first member's organization → `CareTeam.managingOrganization`
+
+##### Participant Processing
+- [ ] Process Care Team Member Act components → `CareTeam.participant` array
+- [ ] Map `performer/functionCode` → `participant.role` (CodeableConcept)
+- [ ] Map function code system OIDs to FHIR system URIs (v3-RoleCode, SNOMED CT)
+- [ ] Create Practitioner resource from `assignedEntity/assignedPerson`
+- [ ] Create PractitionerRole resource from `assignedEntity` (includes location, contact, specialty)
+- [ ] Create Organization resource from `representedOrganization`
+- [ ] Map `participant.member` → Reference to PractitionerRole (preferred) or Practitioner
+- [ ] Map `act/effectiveTime` → `participant.period` (member participation period)
+- [ ] Handle non-clinical members (family caregivers) → RelatedPerson resources
+- [ ] Deduplicate practitioners by NPI across multiple teams
+
+##### Care Team Lead Handling
+- [ ] Identify care team lead from `participant[@typeCode='PPRF']`
+- [ ] Match lead ID to Care Team Member performer ID
+- [ ] Order participants with lead first in array
+- [ ] Add role coding for team lead if applicable
+
+##### Header serviceEvent/performer Conversion
+- [ ] Create `ServiceEventCareTeamConverter` for header-based approach
+- [ ] Map `serviceEvent/effectiveTime` → `CareTeam.period`
+- [ ] Map each `performer[@typeCode='PRF']` → `CareTeam.participant`
+- [ ] Generate CareTeam identifier from document ID + "-careteam"
+- [ ] Infer category from document type (encounter-focused, longitudinal, etc.)
+- [ ] Generate name: "{DocumentType} Care Team for {PatientName}"
+
+##### Section Processing (`ccda_to_fhir/sections/careteams_section.py`)
+- [ ] Create `CareTeamsSectionProcessor` class
+- [ ] Identify Care Teams Section by template ID `2.16.840.1.113883.10.20.22.2.500`
+- [ ] Extract Care Team Organizer entries
+- [ ] Call `CareTeamConverter` for each organizer
+- [ ] Store CareTeam resources in result bundle
+
+##### Model Validation (`ccda_to_fhir/models.py`)
+- [ ] Add `is_care_teams_section()` validator for template `2.16.840.1.113883.10.20.22.2.500`
+- [ ] Add `is_care_team_organizer()` validator for template `2.16.840.1.113883.10.20.22.4.500`
+- [ ] Add `is_care_team_member_act()` validator for template `2.16.840.1.113883.10.20.22.4.500.1`
+- [ ] Add `is_care_team_type_observation()` validator for template `2.16.840.1.113883.10.20.22.4.500.2`
+- [ ] Validate required elements: id, code, statusCode, effectiveTime, at least one member
+
+##### Value Set Mappings
+- [ ] Implement status ConceptMap: active→active, completed→inactive, suspended→suspended, etc.
+- [ ] Map Care Team Type LOINC answer codes (LA27976-2, LA27977-0, LA28865-6, LA28866-4, LA28867-2)
+- [ ] Map Care Team Member Function codes (v3-RoleCode, SNOMED CT)
+- [ ] Convert NUCC Provider Taxonomy codes for professional credentials
+
+##### Tests (`tests/converters/test_careteam.py`)
+- [ ] Test Care Team Organizer → CareTeam conversion (structured approach)
+- [ ] Test serviceEvent/performer → CareTeam conversion (header approach)
+- [ ] Test status mapping for all status codes
+- [ ] Test category mapping (team types)
+- [ ] Test participant.role mapping (function codes from v3-RoleCode and SNOMED CT)
+- [ ] Test participant.member reference creation (Practitioner, PractitionerRole, RelatedPerson)
+- [ ] Test PractitionerRole creation with location and contact info
+- [ ] Test care team lead identification and ordering
+- [ ] Test multiple members in one team
+- [ ] Test multiple care teams per patient
+- [ ] Test non-clinical team members (family caregivers → RelatedPerson)
+- [ ] Test organizational team members (Organization reference)
+- [ ] Test practitioner deduplication by NPI
+- [ ] Test combined approach (structured section + header performers)
+- [ ] Test missing effectiveTime handling
+- [ ] Test missing function codes
+- [ ] Test narrative generation from section text
+
+##### Integration Tests (`tests/integration/test_careteams_section.py`)
+- [ ] Test complete Care Teams Section extraction
+- [ ] Test document with both primary care and specialty teams
+- [ ] Test transition-of-care document with header performers only
+- [ ] Test combined structured section + header performers
+- [ ] Test care team references from other resources (CarePlan, Observation)
+
+##### US Core Conformance
+- [ ] Validate required elements: `status` (1..1), `subject` (1..1), `participant` (1..*)
+- [ ] Validate participant required elements: `role` (1..1), `member` (1..1)
+- [ ] Validate Must Support: status, subject, participant, participant.role, participant.member
+- [ ] Include US Core CareTeam profile in `meta.profile`
+- [ ] Validate member references use PractitionerRole when available (recommended)
+- [ ] Support patient+status search parameter combination
+
+#### File Locations
+
+**New Files to Create:**
+```
+ccda_to_fhir/
+├── converters/
+│   └── careteam.py                  # CareTeamConverter class
+├── sections/
+│   └── careteams_section.py         # CareTeamsSectionProcessor class
+tests/
+├── converters/
+│   └── test_careteam.py             # Unit tests
+└── integration/
+    └── test_careteams_section.py    # Integration tests
+```
+
+**Files to Modify:**
+```
+ccda_to_fhir/
+├── models.py                        # Add validators
+├── converter.py                     # Register CareTeamsSectionProcessor
+├── converters/__init__.py           # Export CareTeamConverter
+└── sections/__init__.py             # Export CareTeamsSectionProcessor
+```
+
+#### Related Documentation
+- See `docs/mapping/17-careteam.md` for complete mapping specification
+- See `docs/fhir/careteam.md` for FHIR CareTeam element definitions
+- See `docs/ccda/care-team.md` for C-CDA template specifications
+- See `docs/mapping/09-participations.md` for Practitioner/PractitionerRole/Organization mapping (dependency)
+
+#### Notes
+- **Two Approaches**: Supports both structured Care Team Organizer (newer, richer) and header serviceEvent/performer (legacy, simpler)
+- **Low Priority Rationale**: Not widely adopted in legacy C-CDA documents; Care Team Organizer templates are relatively new (2019-2022)
+- **USCDI v4**: Required for USCDI v4 compliance but not blocking for core conversion functionality
+- **Practitioner Deduplication**: Same practitioner may appear in multiple teams; deduplicate by NPI
+- **PractitionerRole Preferred**: Use PractitionerRole over Practitioner for member references (provides location/contact context)
+- **Non-Clinical Members**: Support family caregivers, social services, transportation providers via RelatedPerson or Organization
+- **Care Team Types**: LOINC answer codes classify teams as longitudinal, condition-focused, encounter-focused, episode-focused, or event-focused
+- **Team Lead**: Identified by `participant[@typeCode='PPRF']` matching member performer ID; no direct FHIR element, use ordering
+- **Combined Approach**: When both structured section and header performers exist, prefer structured section and optionally create encounter-specific team from header
+- **Not in C-CDA on FHIR IG**: CareTeam mapping not officially published in C-CDA on FHIR IG v2.0.0; this implementation fills that gap based on US Core requirements
 
 ---
 
