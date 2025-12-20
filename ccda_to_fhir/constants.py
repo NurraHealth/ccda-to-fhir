@@ -68,6 +68,8 @@ class TemplateIds:
     PROCEDURE_ACTIVITY_PROCEDURE = "2.16.840.1.113883.10.20.22.4.14"
     PROCEDURE_ACTIVITY_ACT = "2.16.840.1.113883.10.20.22.4.12"
     PROCEDURE_ACTIVITY_OBSERVATION = "2.16.840.1.113883.10.20.22.4.13"
+    PLANNED_PROCEDURE = "2.16.840.1.113883.10.20.22.4.41"
+    PLANNED_ACT = "2.16.840.1.113883.10.20.22.4.39"
 
     # Encounter templates
     ENCOUNTER_ACTIVITY = "2.16.840.1.113883.10.20.22.4.49"
@@ -99,6 +101,7 @@ class TemplateIds:
     RESULTS_SECTION = "2.16.840.1.113883.10.20.22.2.3.1"
     SOCIAL_HISTORY_SECTION = "2.16.840.1.113883.10.20.22.2.17"
     PROCEDURES_SECTION = "2.16.840.1.113883.10.20.22.2.7.1"
+    PLAN_OF_TREATMENT_SECTION = "2.16.840.1.113883.10.20.22.2.10"
     ENCOUNTERS_SECTION = "2.16.840.1.113883.10.20.22.2.22.1"
     NOTES_SECTION = "2.16.840.1.113883.10.20.22.2.65"
     GOALS_SECTION = "2.16.840.1.113883.10.20.22.2.60"
@@ -549,6 +552,35 @@ class FHIRCodes:
         COMPLETED = "completed"
         ENTERED_IN_ERROR = "entered-in-error"
         UNKNOWN = "unknown"
+
+    # ServiceRequest status
+    class ServiceRequestStatus:
+        DRAFT = "draft"
+        ACTIVE = "active"
+        ON_HOLD = "on-hold"
+        REVOKED = "revoked"
+        COMPLETED = "completed"
+        ENTERED_IN_ERROR = "entered-in-error"
+        UNKNOWN = "unknown"
+
+    # ServiceRequest intent
+    class ServiceRequestIntent:
+        PROPOSAL = "proposal"
+        PLAN = "plan"
+        ORDER = "order"
+        DIRECTIVE = "directive"
+        ORIGINAL_ORDER = "original-order"
+        REFLEX_ORDER = "reflex-order"
+        FILLER_ORDER = "filler-order"
+        INSTANCE_ORDER = "instance-order"
+        OPTION = "option"
+
+    # ServiceRequest priority
+    class ServiceRequestPriority:
+        ROUTINE = "routine"
+        URGENT = "urgent"
+        ASAP = "asap"
+        STAT = "stat"
 
     # Encounter status
     class EncounterStatus:
@@ -1050,6 +1082,39 @@ PROCEDURE_STATUS_TO_FHIR = {
     "new": FHIRCodes.ProcedureStatus.PREPARATION,
     "held": FHIRCodes.ProcedureStatus.ON_HOLD,
     "suspended": FHIRCodes.ProcedureStatus.ON_HOLD,
+}
+
+# =============================================================================
+# ServiceRequest Mappings
+# =============================================================================
+
+# Map C-CDA statusCode to FHIR ServiceRequest status
+SERVICE_REQUEST_STATUS_TO_FHIR = {
+    "active": FHIRCodes.ServiceRequestStatus.ACTIVE,
+    "completed": FHIRCodes.ServiceRequestStatus.COMPLETED,
+    "aborted": FHIRCodes.ServiceRequestStatus.REVOKED,
+    "cancelled": FHIRCodes.ServiceRequestStatus.REVOKED,
+    "held": FHIRCodes.ServiceRequestStatus.ON_HOLD,
+    "suspended": FHIRCodes.ServiceRequestStatus.ON_HOLD,
+    "new": FHIRCodes.ServiceRequestStatus.DRAFT,
+}
+
+# Map C-CDA moodCode to FHIR ServiceRequest intent
+SERVICE_REQUEST_MOOD_TO_INTENT = {
+    "INT": FHIRCodes.ServiceRequestIntent.PLAN,  # Intent
+    "RQO": FHIRCodes.ServiceRequestIntent.ORDER,  # Request
+    "PRP": FHIRCodes.ServiceRequestIntent.PROPOSAL,  # Proposal
+    "ARQ": FHIRCodes.ServiceRequestIntent.ORDER,  # Appointment request
+    "PRMS": FHIRCodes.ServiceRequestIntent.DIRECTIVE,  # Promise
+}
+
+# Map C-CDA priorityCode to FHIR ServiceRequest priority
+SERVICE_REQUEST_PRIORITY_TO_FHIR = {
+    "R": FHIRCodes.ServiceRequestPriority.ROUTINE,  # Routine
+    "UR": FHIRCodes.ServiceRequestPriority.URGENT,  # Urgent
+    "EM": FHIRCodes.ServiceRequestPriority.STAT,  # Emergency/Stat
+    "A": FHIRCodes.ServiceRequestPriority.ASAP,  # ASAP
+    "EL": FHIRCodes.ServiceRequestPriority.ROUTINE,  # Elective
 }
 
 # =============================================================================

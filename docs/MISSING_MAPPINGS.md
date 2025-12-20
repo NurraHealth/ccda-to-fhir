@@ -13,9 +13,9 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 1 missing mapping (0 medium priority, 1 low priority)
+**Current Status**: 0 missing mappings
 
-**Recently Completed**: Composition, Bundle, Goal, CarePlan, MedicationDispense (2025-12-19), Location, Device, DocumentReference, and CareTeam (2025-12-20)
+**Recently Completed**: Composition, Bundle, Goal, CarePlan, MedicationDispense (2025-12-19), Location, Device, DocumentReference, CareTeam, and ServiceRequest (2025-12-20)
 
 ---
 
@@ -2249,9 +2249,11 @@ ccda_to_fhir/
 
 ---
 
-### 9. ServiceRequest ❌ **NOT IMPLEMENTED** - LOW PRIORITY
+### 9. ServiceRequest ✅ **IMPLEMENTED** (2025-12-20)
 
-**Impact**: Planned procedures and ordered services are currently partially covered by Procedure resources with status=planned, but formal service requests/orders are not represented according to FHIR workflow patterns. This limits interoperability for order management and care planning workflows.
+**Implementation**: Fully implemented with comprehensive support for Planned Procedures and Planned Acts conversion to US Core ServiceRequest profile. Converts Plan of Treatment section entries with moodCode validation, category inference, and all required/must-support elements.
+
+**Capabilities**: Planned Procedure and Planned Act templates are now converted to FHIR ServiceRequest resources with full support for intent mapping, priority codes, performer references, reason codes/references, patient instructions, and body sites per US Core requirements.
 
 #### Documentation
 - ✅ **FHIR Documentation**: `docs/fhir/service-request.md`

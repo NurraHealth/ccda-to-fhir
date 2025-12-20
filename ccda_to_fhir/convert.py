@@ -28,6 +28,7 @@ from fhir.resources.R4B.practitionerrole import PractitionerRole
 from fhir.resources.R4B.procedure import Procedure
 from fhir.resources.R4B.provenance import Provenance
 from fhir.resources.R4B.relatedperson import RelatedPerson
+from fhir.resources.R4B.servicerequest import ServiceRequest
 
 from ccda_to_fhir.exceptions import CCDAConversionError
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
@@ -68,6 +69,7 @@ from .converters.practitioner_role import PractitionerRoleConverter
 from .converters.procedure import ProcedureConverter
 from .converters.provenance import ProvenanceConverter
 from .converters.references import ReferenceRegistry
+from .converters.service_request import ServiceRequestConverter
 
 logger = get_logger(__name__)
 
@@ -90,6 +92,7 @@ RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
     "Observation": Observation,
     "DiagnosticReport": DiagnosticReport,
     "Procedure": Procedure,
+    "ServiceRequest": ServiceRequest,
     "Encounter": Encounter,
     "Composition": Composition,
     "Provenance": Provenance,
@@ -217,6 +220,10 @@ class DocumentConverter:
             reference_registry=self.reference_registry,
         )
         self.procedure_converter = ProcedureConverter(
+            code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
+        )
+        self.service_request_converter = ServiceRequestConverter(
             code_system_mapper=self.code_system_mapper,
             reference_registry=self.reference_registry,
         )
@@ -397,6 +404,28 @@ class DocumentConverter:
                 entry_type="observation",
                 converter=self.goal_converter.convert,
                 error_message="goal observation",
+                include_section_code=False,
+            )
+        )
+
+        # Service Requests (Planned Procedures)
+        self.planned_procedure_processor = SectionProcessor(
+            SectionConfig(
+                template_id=TemplateIds.PLANNED_PROCEDURE,
+                entry_type="procedure",
+                converter=self.service_request_converter.convert,
+                error_message="planned procedure",
+                include_section_code=False,
+            )
+        )
+
+        # Service Requests (Planned Acts)
+        self.planned_act_processor = SectionProcessor(
+            SectionConfig(
+                template_id=TemplateIds.PLANNED_ACT,
+                entry_type="act",
+                converter=self.service_request_converter.convert,
+                error_message="planned act",
                 include_section_code=False,
             )
         )
@@ -795,6 +824,16 @@ class DocumentConverter:
                 self.reference_registry.register_resource(procedure)
             if procedures:
                 section_resource_map[TemplateIds.PROCEDURES_SECTION] = procedures
+
+            # Service Requests (from Plan of Treatment sections)
+            service_requests = self._extract_service_requests(
+                ccda_doc.component.structured_body
+            )
+            resources.extend(service_requests)
+            for service_request in service_requests:
+                self.reference_registry.register_resource(service_request)
+            if service_requests:
+                section_resource_map[TemplateIds.PLAN_OF_TREATMENT_SECTION] = service_requests
 
             # Encounters (from Encounters sections)
             encounters = self._extract_encounters(ccda_doc.component.structured_body)
@@ -1960,6 +1999,35 @@ class DocumentConverter:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
                         self._store_procedure_metadata(temp_body, procedures)
+
+    def _extract_service_requests(
+        self, structured_body: StructuredBody
+    ) -> list[FHIRResourceDict]:
+        """Extract and convert ServiceRequests from the structured body.
+
+        Processes Planned Procedure and Planned Act templates from Plan of Treatment sections.
+        CRITICAL: Only converts procedures/acts with moodCode in {INT, RQO, PRP, ARQ, PRMS}.
+
+        Args:
+            structured_body: The structuredBody element
+
+        Returns:
+            List of FHIR ServiceRequest resources
+        """
+        # Process Planned Procedures
+        service_requests = self.planned_procedure_processor.process(
+            structured_body,
+            reference_registry=self.reference_registry,
+        )
+
+        # Process Planned Acts
+        planned_acts = self.planned_act_processor.process(
+            structured_body,
+            reference_registry=self.reference_registry,
+        )
+        service_requests.extend(planned_acts)
+
+        return service_requests
 
     def _extract_encounters(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Encounters from the structured body.

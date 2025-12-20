@@ -25,6 +25,7 @@ from .practitioner import PractitionerConverter
 from .practitioner_role import PractitionerRoleConverter
 from .procedure import ProcedureConverter
 from .provenance import ProvenanceConverter
+from .service_request import ServiceRequestConverter
 
 __all__ = [
     "PatientConverter",
@@ -45,6 +46,7 @@ __all__ = [
     "DocumentReferenceConverter",
     "CompositionConverter",
     "ProcedureConverter",
+    "ServiceRequestConverter",
     "EncounterConverter",
     "LocationConverter",
     "PractitionerConverter",
