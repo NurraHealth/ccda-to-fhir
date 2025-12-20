@@ -13,9 +13,9 @@ This document tracks mappings that are:
 2. ❌ Not yet implemented in converter code
 3. 🎯 Required for certification or standards compliance
 
-**Current Status**: 2 missing mappings (0 medium priority, 2 low priority)
+**Current Status**: 1 missing mapping (0 medium priority, 1 low priority)
 
-**Recently Completed**: Composition, Bundle, Goal, CarePlan, MedicationDispense (2025-12-19), Location, Device, and DocumentReference (2025-12-20)
+**Recently Completed**: Composition, Bundle, Goal, CarePlan, MedicationDispense (2025-12-19), Location, Device, DocumentReference, and CareTeam (2025-12-20)
 
 ---
 
@@ -1941,9 +1941,11 @@ tests/
 
 ## Low Priority: USCDI Requirements
 
-### 8. CareTeam ❌ **NOT IMPLEMENTED** - LOW PRIORITY
+### 8. CareTeam ✅ **IMPLEMENTED** (2025-12-20)
 
-**Impact:** Care team information can be extracted from document header (serviceEvent/performer) or structured Care Teams Section, but not formally converted to FHIR CareTeam resources. This limits care coordination interoperability and USCDI v4 compliance.
+**Implementation:** Fully implemented with support for structured Care Team Organizer conversion to US Core CareTeam profile. Converts Care Team Organizer entries with members, roles, team types, and team lead designation.
+
+**Capabilities:** Care Team Organizer templates are now converted to FHIR CareTeam resources with full participant mapping, role codes, team categories, and referenced Practitioner/PractitionerRole/Organization resources.
 
 #### Documentation
 - ✅ **FHIR Documentation**: `docs/fhir/careteam.md`

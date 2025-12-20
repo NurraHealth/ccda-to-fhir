@@ -6,6 +6,7 @@ from .allergy_intolerance import (
     AllergyIntoleranceConverter,
     convert_allergy_concern_act,
 )
+from .careteam import CareTeamConverter
 from .composition import CompositionConverter
 from .condition import ConditionConverter, convert_problem_concern_act
 from .device import DeviceConverter
@@ -31,6 +32,7 @@ __all__ = [
     "convert_problem_concern_act",
     "AllergyIntoleranceConverter",
     "convert_allergy_concern_act",
+    "CareTeamConverter",
     "MedicationRequestConverter",
     "convert_medication_activity",
     "MedicationStatementConverter",

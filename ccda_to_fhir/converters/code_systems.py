@@ -38,6 +38,7 @@ class CodeSystemMapper:
         "2.16.840.1.113883.5.60": "http://terminology.hl7.org/CodeSystem/v3-LanguageAbilityMode",
         "2.16.840.1.113883.5.61": "http://terminology.hl7.org/CodeSystem/v3-LanguageAbilityProficiency",
         "2.16.840.1.113883.5.83": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+        "2.16.840.1.113883.5.88": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",  # ParticipationFunction → v3-RoleCode
         "2.16.840.1.113883.5.111": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
         "2.16.840.1.113883.5.1063": "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
 

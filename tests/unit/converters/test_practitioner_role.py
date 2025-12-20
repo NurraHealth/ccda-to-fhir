@@ -268,13 +268,17 @@ class TestPractitionerRoleConverter:
     def test_handles_missing_organization_id(
         self, converter: PractitionerRoleConverter, sample_assigned_author: AssignedAuthor
     ) -> None:
-        """Test that missing organization_id raises appropriate error."""
-        with pytest.raises((ValueError, TypeError)):
-            converter.convert(
-                sample_assigned_author,
-                practitioner_id="practitioner-123",
-                organization_id=None  # type: ignore
-            )
+        """Test that PractitionerRole can be created without organization reference."""
+        role = converter.convert(
+            sample_assigned_author,
+            practitioner_id="practitioner-123",
+            organization_id=None
+        )
+
+        assert role["resourceType"] == "PractitionerRole"
+        assert role["practitioner"]["reference"] == "Practitioner/practitioner-123"
+        assert "organization" not in role  # No organization reference when not provided
+        assert role["id"] == "role-practitioner-123"  # ID without org suffix
 
     def test_id_generation_is_deterministic(
         self, converter: PractitionerRoleConverter, sample_assigned_author: AssignedAuthor

@@ -670,6 +670,7 @@ class FHIRCodes:
         PROVENANCE = "Provenance"
         GOAL = "Goal"
         CAREPLAN = "CarePlan"
+        CARETEAM = "CareTeam"
         SERVICE_REQUEST = "ServiceRequest"
 
     # Patient gender

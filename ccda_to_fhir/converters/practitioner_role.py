@@ -48,25 +48,23 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
         self,
         assigned: AssignedAuthor | AssignedEntity,
         practitioner_id: str,
-        organization_id: str,
+        organization_id: str | None = None,
     ) -> FHIRResourceDict:
         """Convert AssignedAuthor or AssignedEntity to PractitionerRole resource.
 
         Args:
             assigned: AssignedAuthor or AssignedEntity from C-CDA
             practitioner_id: ID of the Practitioner resource to reference
-            organization_id: ID of the Organization resource to reference
+            organization_id: ID of the Organization resource to reference (optional)
 
         Returns:
             FHIR PractitionerRole resource as dictionary
 
         Raises:
-            ValueError: If practitioner_id or organization_id is None
+            ValueError: If practitioner_id is None
         """
         if not practitioner_id:
             raise ValueError("practitioner_id is required")
-        if not organization_id:
-            raise ValueError("organization_id is required")
 
         practitioner_role: FHIRResourceDict = {
             "resourceType": FHIRCodes.ResourceTypes.PRACTITIONER_ROLE,
@@ -82,10 +80,11 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
             practitioner_id
         )
 
-        # Create reference to Organization
-        practitioner_role["organization"] = self._create_organization_reference(
-            organization_id
-        )
+        # Create reference to Organization (optional)
+        if organization_id:
+            practitioner_role["organization"] = self._create_organization_reference(
+                organization_id
+            )
 
         # Map specialty (assignedAuthor/code)
         if assigned.code:
@@ -112,22 +111,26 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
 
         return practitioner_role
 
-    def _generate_role_id(self, practitioner_id: str, organization_id: str) -> str:
+    def _generate_role_id(self, practitioner_id: str, organization_id: str | None) -> str:
         """Generate a deterministic ID for the PractitionerRole.
 
         The ID combines both practitioner and organization IDs to ensure uniqueness
         and enable deduplication (same practitioner + same org = same role).
+        If no organization is provided, uses only the practitioner ID.
 
         Args:
             practitioner_id: Practitioner resource ID
-            organization_id: Organization resource ID
+            organization_id: Organization resource ID (optional)
 
         Returns:
             Generated ID string
         """
         # Use a simple concatenation with separator for readability and uniqueness
         # This ensures same practitioner at different orgs gets different role IDs
-        return f"role-{practitioner_id}-{organization_id}"
+        if organization_id:
+            return f"role-{practitioner_id}-{organization_id}"
+        else:
+            return f"role-{practitioner_id}"
 
     def _create_practitioner_reference(self, practitioner_id: str) -> JSONObject:
         """Create a reference to the Practitioner resource.
