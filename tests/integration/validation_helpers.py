@@ -256,3 +256,52 @@ def _extract_all_references(obj: dict | list, path: str = "") -> list[tuple[str,
             refs.extend(_extract_all_references(item, new_path))
 
     return refs
+
+
+def assert_no_duplicate_section_references(bundle: dict) -> None:
+    """Verify Composition sections don't have duplicate entry references.
+
+    Per FHIR spec, each resource should appear once in section entries.
+    Duplicates can occur when sections have multiple template IDs and
+    resources are mapped to multiple template IDs.
+
+    Args:
+        bundle: FHIR Bundle to validate
+
+    Raises:
+        AssertionError: If any section has duplicate references
+    """
+    composition = None
+    for entry in bundle.get("entry", []):
+        resource = entry.get("resource", {})
+        if resource.get("resourceType") == "Composition":
+            composition = resource
+            break
+
+    if not composition:
+        return  # No composition, nothing to check
+
+    duplicate_sections = []
+
+    for section in composition.get("section", []):
+        entries = section.get("entry", [])
+        if not entries:
+            continue
+
+        refs = [e["reference"] for e in entries]
+        unique_refs = set(refs)
+
+        if len(refs) != len(unique_refs):
+            section_title = section.get("title", "Unknown")
+            section_code = section.get("code", {}).get("coding", [{}])[0].get("code", "N/A")
+            duplicates = len(refs) - len(unique_refs)
+
+            duplicate_sections.append(
+                f"Section '{section_title}' (code: {section_code}): "
+                f"{len(refs)} entries, {len(unique_refs)} unique ({duplicates} duplicates)"
+            )
+
+    assert not duplicate_sections, (
+        f"Found {len(duplicate_sections)} section(s) with duplicate references:\n" +
+        "\n".join(f"  - {s}" for s in duplicate_sections)
+    )

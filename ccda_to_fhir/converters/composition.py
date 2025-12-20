@@ -1075,6 +1075,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             List of FHIR References to resources in this section
         """
         entries = []
+        seen_references = set()  # Track references to avoid duplicates
 
         if not section.template_id:
             return entries
@@ -1088,7 +1089,12 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                     if resource.get("resourceType") and resource.get("id"):
                         resource_type = resource["resourceType"]
                         resource_id = resource["id"]
-                        entries.append({"reference": f"{resource_type}/{resource_id}"})
+                        reference = f"{resource_type}/{resource_id}"
+
+                        # Only add if not already added (deduplicate)
+                        if reference not in seen_references:
+                            seen_references.add(reference)
+                            entries.append({"reference": reference})
 
         return entries
 

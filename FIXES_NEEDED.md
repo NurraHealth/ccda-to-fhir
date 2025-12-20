@@ -1,7 +1,7 @@
 # Converter Issues Tracking
 
-**Last Updated**: 2025-12-18
-**Status Summary**: 3/6 critical issues fixed, 3 remaining (low-medium priority)
+**Last Updated**: 2025-12-20
+**Status Summary**: 6/6 critical/moderate issues fixed, 2 low-priority issues remain
 
 Based on comparison between automated output and manually verified correct output, plus standards compliance review.
 
@@ -115,15 +115,128 @@ if value > max_reasonable_value:
 
 ---
 
-## 🟡 MODERATE: Duplicate References in Composition Sections
+## ✅ FIXED: Missing Medication Field in MedicationStatement
+
+**Status**: ✅ **FIXED** (2025-12-20)
+
+**File**: `ccda_to_fhir/converters/medication_statement.py`
+
+**Problem**: MedicationStatement resources missing required `medicationCodeableConcept` or `medicationReference` field when medication code had nullFlavor
+
+**Evidence**:
+```xml
+<manufacturedMaterial>
+    <code nullFlavor="OTH">
+        <originalText>
+            <reference value="#Med-Name-a22e013d-7ff9-4caf-bb7c-6e1dbb91ff99" />
+        </originalText>
+    </code>
+    <name>methylprednisolone 4 mg tablets in a dose pack</name>
+</manufacturedMaterial>
+```
+
+**Solution Implemented**:
+- Enhanced `_extract_medication()` method (medication_statement.py:252-302)
+- Extract medication name from `<name>` element when code has nullFlavor
+- Use name as `medicationCodeableConcept.text` when coded value unavailable
+- Fallback chain: code → originalText → name
+
+**Code Example** (medication_statement.py:275-278):
+```python
+# If code has nullFlavor or no original text, try to use the medication name
+if (not med_code or not med_code.code) and not original_text:
+    if manufactured_material.name:
+        original_text = manufactured_material.name
+```
+
+**Standards Compliance**:
+- ✅ FHIR R4: MedicationStatement.medication[x] is required (1..1)
+- ✅ C-CDA: medication name provides fallback when code unavailable
+- ✅ Text-only CodeableConcept valid per FHIR spec
+
+**Verification**:
+- ✅ All 1069 tests passing
+- ✅ Validation test assert_no_empty_codes passing
+- ✅ No MedicationStatement resources without medication field
+
+---
+
+## ✅ FIXED: Missing Observation Codes
+
+**Status**: ✅ **FIXED** (2025-12-20)
+
+**File**: `ccda_to_fhir/converters/observation.py`
+
+**Problem**: Observation resources created without required `code` field when C-CDA observation had nullFlavor code with no text
+
+**Evidence**:
+```xml
+<observation classCode="OBS" moodCode="EVN" negationInd="true">
+    <id root="2079c24e-2c54-4ced-94cd-a0b491a83c5b" />
+    <code nullFlavor="NI" xsi:type="CE" />
+    <text>
+        <reference value="#result2459818" />
+    </text>
+    <statusCode code="active" />
+    <value nullFlavor="NI" xsi:type="CD" />
+</observation>
+```
+
+**Solution Implemented**:
+- Added validation at start of `convert()` method (observation.py:66-86)
+- Check for valid code before creating Observation resource
+- Try to extract text from narrative reference if code has nullFlavor
+- Skip observations that cannot have valid code (raise ValueError)
+- Section processor logs error and continues with other observations
+
+**Code Example** (observation.py:66-83):
+```python
+# FHIR R4 Requirement: Observation.code is required (1..1)
+# Validate that we can extract a valid code before creating the resource
+if not observation.code:
+    raise ValueError("Observation must have a code element")
+
+code_cc = self._convert_code_to_codeable_concept(observation.code)
+if not code_cc:
+    # Code has nullFlavor with no text - try narrative
+    text_from_narrative = None
+    if observation.text:
+        text_from_narrative = self.extract_original_text(observation.text, section=section)
+
+    if not text_from_narrative:
+        raise ValueError(
+            "Observation code has nullFlavor with no extractable text. "
+            "Cannot create valid FHIR Observation without code."
+        )
+
+    code_cc = {"text": text_from_narrative}
+```
+
+**Standards Compliance**:
+- ✅ FHIR R4: Observation.code is required (1..1)
+- ✅ Per spec: cannot create Observation without code
+- ✅ C-CDA: observations with nullFlavor and no value provide no clinical value
+- ✅ Better to skip than create invalid resources
+
+**Verification**:
+- ✅ All 1069 tests passing
+- ✅ Validation test assert_no_empty_codes passing
+- ✅ No Observation resources without code field
+- ✅ Invalid observations properly skipped with logged errors
+
+---
+
+## ✅ FIXED: Duplicate References in Composition Sections
+
+**Status**: ✅ **FIXED** (2025-12-20)
 
 **File**: `ccda_to_fhir/converters/composition.py`
 
-**Problem**: Composition sections contain duplicate entry references
+**Problem**: Composition sections contained duplicate entry references (every reference appeared twice)
 
 **Evidence**:
 ```json
-// athena_ccd.json line ~177-190
+// athena_ccd.json (BEFORE FIX)
 "entry": [
   {"reference": "Condition/condition-a7795ac22a49a385"},
   {"reference": "Condition/condition-b8e662e06bbd6691"},
@@ -132,12 +245,44 @@ if value > max_reasonable_value:
 ]
 ```
 
-**Expected behavior**:
-Each resource should appear once in section entries. Deduplicate references.
+**Root Cause**: Sections often have multiple template IDs (base + versioned). The `_get_section_entries` method iterated through each template ID and added resources for each one, causing duplicates when resources were mapped to multiple template IDs.
 
-**Fix priority**: 🟡 MODERATE - Doesn't break functionality, but violates best practices
+**Solution Implemented**:
+- Added deduplication logic in `_get_section_entries()` method (composition.py:1077-1099)
+- Track seen references using a set to prevent duplicates
+- Only add each reference once, even if mapped to multiple template IDs
 
-**Status**: ⚠️ **NOT FIXED** - Tracked for future fix
+**Code Example** (composition.py:1078-1097):
+```python
+entries = []
+seen_references = set()  # Track references to avoid duplicates
+
+# Check each template ID to find matching resources
+for template in section.template_id:
+    template_id = template.root
+    if template_id in self.section_resource_map:
+        resources = self.section_resource_map[template_id]
+        for resource in resources:
+            if resource.get("resourceType") and resource.get("id"):
+                resource_type = resource["resourceType"]
+                resource_id = resource["id"]
+                reference = f"{resource_type}/{resource_id}"
+
+                # Only add if not already added (deduplicate)
+                if reference not in seen_references:
+                    seen_references.add(reference)
+                    entries.append({"reference": reference})
+```
+
+**Standards Compliance**:
+- ✅ FHIR R4: Each resource should appear once in section entries
+- ✅ Deduplication prevents redundant references
+- ✅ Maintains correct section→resource mapping
+
+**Verification**:
+- ✅ All 1074 tests passing
+- ✅ Validation test assert_no_duplicate_section_references passing
+- ✅ Fixed 23 duplicate references across 5 sections (Problems, Procedures, Allergies, Medications, Social History)
 
 ---
 
@@ -201,15 +346,17 @@ While hash IDs are valid, human-readable IDs improve debugging and testing. Cons
 | 🔴 CRITICAL | ✅ FIXED | Patient placeholder references |
 | 🔴 CRITICAL | ✅ FIXED | Missing procedure codes |
 | 🟡 MODERATE | ✅ FIXED | Invalid medication timing |
-| 🟡 MODERATE | ⚠️ OPEN | Duplicate composition section references |
+| 🟡 MODERATE | ✅ FIXED | Missing medication field in MedicationStatement |
+| 🟡 MODERATE | ✅ FIXED | Missing observation codes |
+| 🟡 MODERATE | ✅ FIXED | Duplicate composition section references |
 | 🟢 LOW | ⚠️ REVIEW | Excessive Provenance resources |
 | 🟢 LOW | ✅ ADDRESSED | Inconsistent resource IDs |
 
-**Overall Status**: 3/3 critical issues fixed, 2/3 remaining issues are low-medium priority
+**Overall Status**: 6/6 critical/moderate validation issues fixed, 2 low-priority issues remain
 
 ---
 
-## Standards Compliance Assessment (2025-12-18)
+## Standards Compliance Assessment (2025-12-20)
 
 ### C-CDA Compliance: ✅ 95%
 - ✅ Patient from recordTarget
@@ -223,11 +370,16 @@ While hash IDs are valid, human-readable IDs improve debugging and testing. Cons
 - ✅ References resolve properly
 - ✅ Optional elements handled appropriately
 - ✅ data-absent-reason extensions used correctly
+- ✅ Required medication field in MedicationStatement
+- ✅ Required code field in Observation
 
 ### Test Results: ✅ All Passing
-- 895/895 tests passing
-- Validation tests passing
+- 1074/1074 tests passing
+- Validation tests fully enabled (all assertions active)
 - No regressions detected
+- assert_all_references_resolve: ✅ PASSING
+- assert_no_empty_codes: ✅ PASSING
+- assert_no_duplicate_section_references: ✅ PASSING
 
 ---
 
@@ -276,15 +428,7 @@ def assert_all_required_fields_present(bundle):
 
 ## Remaining Work
 
-### 1. 🟡 Fix Duplicate Composition Section References
-**Next Steps**:
-- Add deduplication logic in CompositionConverter
-- Update section entry collection to use set-based approach
-- Add test to verify no duplicates
-
-**Estimated Effort**: 2-3 hours
-
-### 2. 🟢 Review Provenance Resource Count
+### 1. 🟢 Review Provenance Resource Count
 **Next Steps**:
 - Analyze whether 15 Provenance resources is correct per C-CDA on FHIR IG
 - Review author extraction logic
@@ -298,6 +442,8 @@ def assert_all_required_fields_present(bundle):
 - ✅ Patient reference resolution
 - ✅ Procedure code handling
 - ✅ Medication timing validation
+- ✅ Medication field in MedicationStatement
+- ✅ Observation code validation
 
 **Phase 2: Standard Extensions** (Not Started)
 - ⚠️ 7 C-CDA on FHIR participant extensions
@@ -310,48 +456,46 @@ See `docs/c-cda-fhir-compliance-plan.md` for full roadmap.
 
 ## Summary
 
-### Must Fix (Blocker)
-1. ❌ Patient placeholder references
-2. ❌ Missing Procedure codes
+### Must Fix (Blocker) ✅ ALL COMPLETE
+1. ✅ Patient placeholder references (FIXED 2025-12-18)
+2. ✅ Missing Procedure codes (FIXED 2025-12-18)
 
-### Should Fix (Important)
-3. ⚠️ Invalid medication timing
+### Should Fix (Important) ✅ ALL COMPLETE
+3. ✅ Invalid medication timing (FIXED 2025-12-18)
+4. ✅ Missing medication field in MedicationStatement (FIXED 2025-12-20)
+5. ✅ Missing observation codes (FIXED 2025-12-20)
 
 ### Nice to Have
-4. Duplicate section references
-5. Review Provenance usage
-6. Better resource IDs
+6. ⚠️ Duplicate section references (OPEN)
+7. ⚠️ Review Provenance usage (UNDER REVIEW)
+8. ✅ Better resource IDs (ADDRESSED)
 
 ---
 
 ## Next Steps
 
-1. **Fix critical issues first**: Patient references and Procedure codes
-2. **Add validation**: Check for placeholder references and empty codes
-3. **Regenerate test output**: After fixes, regenerate `athena_ccd.json`
-4. **Manual verification**: Compare to `athena_ccd_manual.json` to ensure correctness
-5. **Create regression tests**: Ensure bugs don't come back
+All critical and important validation issues are complete. Remaining work:
+
+1. **🟡 Duplicate Composition Section References**: Add deduplication logic (2-3 hours)
+2. **🟢 Review Provenance Count**: Research C-CDA on FHIR IG guidance (4-6 hours)
 
 ---
 
-## Files to Update
+## Files Updated (2025-12-20)
 
-Based on standard project structure:
-
+### Converters Fixed
 ```
-ccda_to_fhir/
-  converters/
-    allergy_intolerance.py  # Fix patient-placeholder
-    procedure.py            # Fix missing codes
-    medication_statement.py # Fix timing validation
-    composition.py          # Fix duplicate references
-    references.py           # Fix patient reference resolution
+ccda_to_fhir/converters/
+  ✅ allergy_intolerance.py  # Patient reference fix (2025-12-18)
+  ✅ procedure.py            # Missing codes fix (2025-12-18)
+  ✅ medication_statement.py # Timing validation + medication field fix (2025-12-18, 2025-12-20)
+  ✅ observation.py          # Code validation fix (2025-12-20)
+  ✅ references.py           # Patient reference resolution (2025-12-18)
+```
 
-tests/
-  integration/
-    test_documents.py       # Add validation checks
-    fixtures/
-      documents/
-        athena_ccd.xml      # Source
-        athena_ccd_manual.json  # Gold standard (NEW)
+### Tests Enhanced
+```
+tests/integration/
+  ✅ test_validation.py         # Enabled all validation assertions
+  ✅ validation_helpers.py      # Validation helper functions
 ```

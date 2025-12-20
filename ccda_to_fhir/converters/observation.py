@@ -63,6 +63,28 @@ class ObservationConverter(BaseConverter[Observation]):
         Raises:
             ValueError: If the observation lacks required data
         """
+        # FHIR R4 Requirement: Observation.code is required (1..1)
+        # Validate that we can extract a valid code before creating the resource
+        if not observation.code:
+            raise ValueError("Observation must have a code element")
+
+        code_cc = self._convert_code_to_codeable_concept(observation.code)
+        if not code_cc:
+            # Code has nullFlavor with no text - cannot create valid FHIR Observation
+            # Try to extract text from narrative if available
+            text_from_narrative = None
+            if observation.text:
+                text_from_narrative = self.extract_original_text(observation.text, section=section)
+
+            if not text_from_narrative:
+                raise ValueError(
+                    "Observation code has nullFlavor with no extractable text. "
+                    "Cannot create valid FHIR Observation without code."
+                )
+
+            # Create a text-only CodeableConcept from narrative
+            code_cc = {"text": text_from_narrative}
+
         fhir_obs: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
         }
@@ -94,11 +116,8 @@ class ObservationConverter(BaseConverter[Observation]):
         if categories:
             fhir_obs["category"] = categories
 
-        # 5. Code (required) - observation type code
-        if observation.code:
-            code_cc = self._convert_code_to_codeable_concept(observation.code)
-            if code_cc:
-                fhir_obs["code"] = code_cc
+        # 5. Code (required) - already validated and extracted above
+        fhir_obs["code"] = code_cc
 
         # 6. Subject (patient reference)
         if self.reference_registry:

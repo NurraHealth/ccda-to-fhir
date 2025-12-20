@@ -263,14 +263,27 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             return None
 
         manufactured_material = manufactured_product.manufactured_material
-        if not manufactured_material.code:
-            return None
 
+        # Try to get medication information from code or name
         med_code = manufactured_material.code
+        original_text = None
+
+        # Extract original text from code's originalText if available
+        if med_code and med_code.original_text:
+            original_text = self.extract_original_text(med_code.original_text)
+
+        # If code has nullFlavor or no original text, try to use the medication name
+        if (not med_code or not med_code.code) and not original_text:
+            if manufactured_material.name:
+                original_text = manufactured_material.name
+
+        # If we have neither code nor text, return None
+        if not med_code and not original_text:
+            return None
 
         # Extract translations - convert CD objects to dictionaries
         translations = None
-        if hasattr(med_code, 'translation') and med_code.translation:
+        if med_code and hasattr(med_code, 'translation') and med_code.translation:
             translations = []
             for trans in med_code.translation:
                 if trans.code and trans.code_system:
@@ -281,10 +294,10 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                     })
 
         return self.create_codeable_concept(
-            code=med_code.code,
-            code_system=med_code.code_system,
-            display_name=med_code.display_name,
-            original_text=self.extract_original_text(med_code.original_text) if med_code.original_text else None,
+            code=med_code.code if med_code else None,
+            code_system=med_code.code_system if med_code else None,
+            display_name=med_code.display_name if med_code else None,
+            original_text=original_text,
             translations=translations,
         )
 

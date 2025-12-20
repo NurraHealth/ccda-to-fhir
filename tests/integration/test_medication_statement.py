@@ -198,3 +198,91 @@ class TestHistoricalMedicationConversion:
         assert med_statement is not None
         # Completed with future end date → active (ongoing medication)
         assert med_statement["status"] == "active"
+
+    def test_medication_with_nullflavor_code_uses_name(self) -> None:
+        """Test that medication with nullFlavor code falls back to name.
+
+        Per C-CDA spec: medication can be identified by code or name.
+        When code has nullFlavor, the medication name should be used as text.
+
+        This ensures FHIR R4 compliance: MedicationStatement.medication[x] is required (1..1).
+        """
+        ccda_medication = """<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+    <id root="nullflavor-test-1"/>
+    <statusCode code="completed"/>
+    <effectiveTime xsi:type="IVL_TS">
+        <low value="20200301"/>
+        <high value="20200401"/>
+    </effectiveTime>
+    <doseQuantity value="1"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+            <manufacturedMaterial>
+                <code nullFlavor="OTH">
+                    <originalText>
+                        <reference value="#med-name-123"/>
+                    </originalText>
+                </code>
+                <name>methylprednisolone 4 mg tablets in a dose pack</name>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+</substanceAdministration>
+"""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
+        assert med_statement is not None
+        assert "medicationCodeableConcept" in med_statement
+
+        # Should have text from medication name (no coding since code has nullFlavor)
+        med_concept = med_statement["medicationCodeableConcept"]
+        assert "text" in med_concept
+        assert med_concept["text"] == "methylprednisolone 4 mg tablets in a dose pack"
+
+        # Should not have coding (code had nullFlavor)
+        assert "coding" not in med_concept or len(med_concept.get("coding", [])) == 0
+
+    def test_medication_with_nullflavor_code_and_originaltext(self) -> None:
+        """Test that medication with nullFlavor code prefers originalText over name.
+
+        Fallback precedence: code → originalText → name
+        """
+        ccda_medication = """<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+    <id root="nullflavor-test-2"/>
+    <text>Aspirin 81mg daily</text>
+    <statusCode code="completed"/>
+    <effectiveTime xsi:type="IVL_TS">
+        <low value="20200301"/>
+    </effectiveTime>
+    <doseQuantity value="1"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+            <manufacturedMaterial>
+                <code nullFlavor="OTH">
+                    <originalText>Aspirin 81mg daily</originalText>
+                </code>
+                <name>Generic Aspirin</name>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+</substanceAdministration>
+"""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
+        assert med_statement is not None
+        assert "medicationCodeableConcept" in med_statement
+
+        # Should prefer originalText over name
+        med_concept = med_statement["medicationCodeableConcept"]
+        assert "text" in med_concept
+        assert med_concept["text"] == "Aspirin 81mg daily"

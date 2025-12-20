@@ -15,6 +15,7 @@ from ccda_to_fhir.convert import convert_document
 from tests.integration.validation_helpers import (
     assert_all_references_resolve,
     assert_all_required_fields_present,
+    assert_no_duplicate_section_references,
     assert_no_empty_codes,
     assert_no_placeholder_references,
     count_resources_by_type,
@@ -48,18 +49,17 @@ def test_athena_ccd_validation():
     # Validate no placeholder references (bug #1)
     assert_no_placeholder_references(bundle)
 
-    # Validate all references resolve (currently has known issues)
-    # TODO: Fix the 45 broken references to Practitioners/Organizations not in bundle
-    # assert_all_references_resolve(bundle)
+    # Validate all references resolve
+    assert_all_references_resolve(bundle)
 
     # Validate required fields present
     assert_all_required_fields_present(bundle)
 
-    # Validate no empty codes (bug #2)
-    # TODO: Fix 4 resources with missing codes:
-    #   - 1 MedicationStatement missing medication field
-    #   - 3 Observations missing codes (not organizers)
-    # assert_no_empty_codes(bundle)
+    # Validate no empty codes
+    assert_no_empty_codes(bundle)
+
+    # Validate no duplicate section references
+    assert_no_duplicate_section_references(bundle)
 
     # Get resource summary for reporting
     summary = get_resource_summary(bundle)
