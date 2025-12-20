@@ -135,6 +135,12 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         if context:
             document_ref["context"] = context
 
+        # RelatesTo (document relationships - replaces, appends, transforms)
+        if clinical_document.related_document:
+            relates_to = self._convert_related_documents(clinical_document.related_document)
+            if relates_to:
+                document_ref["relatesTo"] = relates_to
+
         # Content (required - at least one)
         content = self._create_content(clinical_document)
         document_ref["content"] = [content]
@@ -441,6 +447,82 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
 
         return []
 
+    def _convert_related_documents(self, related_documents: list) -> list[JSONObject]:
+        """Convert related documents to relatesTo elements.
+
+        Args:
+            related_documents: List of RelatedDocument elements
+
+        Returns:
+            List of FHIR relatesTo elements
+        """
+        relates_to_list = []
+
+        for related_doc in related_documents:
+            if not related_doc.type_code:
+                continue
+
+            # Map C-CDA type codes to FHIR codes
+            # RPLC = replaces, APND = appends, XFRM = transforms
+            type_code_map = {
+                "RPLC": "replaces",
+                "APND": "appends",
+                "XFRM": "transforms",
+            }
+
+            code = type_code_map.get(related_doc.type_code.upper())
+            if not code:
+                continue
+
+            relates_to: JSONObject = {"code": code}
+
+            # Create target reference from parent document
+            if related_doc.parent_document:
+                parent_doc = related_doc.parent_document
+                if parent_doc.id and len(parent_doc.id) > 0:
+                    first_id = parent_doc.id[0]
+                    # Generate DocumentReference ID from parent document identifier
+                    parent_doc_id = self._generate_document_reference_id(first_id)
+                    relates_to["target"] = {
+                        "reference": f"{FHIRCodes.ResourceTypes.DOCUMENT_REFERENCE}/{parent_doc_id}"
+                    }
+
+            if "target" in relates_to:
+                relates_to_list.append(relates_to)
+
+        return relates_to_list
+
+    def _create_event_code(self, class_code: str) -> JSONObject | None:
+        """Create event code from service event classCode.
+
+        Args:
+            class_code: Service event class code (PCPR, ENC, etc.)
+
+        Returns:
+            FHIR CodeableConcept or None
+        """
+        if not class_code:
+            return None
+
+        # Map common event class codes to display names
+        # Per https://terminology.hl7.org/6.0.2/CodeSystem-v3-ActClass.html
+        display_map = {
+            "PCPR": "care provision",
+            "ENC": "encounter",
+        }
+
+        display = display_map.get(class_code.upper(), class_code)
+
+        return {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActClass",
+                    "code": class_code,
+                    "display": display,
+                }
+            ]
+        }
+
     def _create_context(self, clinical_document: ClinicalDocument) -> JSONObject | None:
         """Create document context (clinical context).
 
@@ -469,15 +551,25 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
                     if period:
                         context["period"] = period
 
-        # Service event period (from documentationOf)
+        # Service event period and event code (from documentationOf)
         if clinical_document.documentation_of:
             for doc_of in clinical_document.documentation_of:
-                if doc_of.service_event and doc_of.service_event.effective_time:
-                    period = self._convert_period(doc_of.service_event.effective_time)
-                    if period:
-                        # Use service event period if no encounter period
-                        if "period" not in context:
-                            context["period"] = period
+                if doc_of.service_event:
+                    # Period
+                    if doc_of.service_event.effective_time:
+                        period = self._convert_period(doc_of.service_event.effective_time)
+                        if period:
+                            # Use service event period if no encounter period
+                            if "period" not in context:
+                                context["period"] = period
+
+                    # Event code (classCode)
+                    if doc_of.service_event.class_code:
+                        event_code = self._create_event_code(doc_of.service_event.class_code)
+                        if event_code:
+                            if "event" not in context:
+                                context["event"] = []
+                            context["event"].append(event_code)
 
         # Facility type (from encompassing encounter location)
         if clinical_document.component_of:
@@ -593,6 +685,10 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
                 xml_bytes = self.original_xml
 
             attachment["data"] = base64.b64encode(xml_bytes).decode("ascii")
+
+            # Hash (SHA-1 hash of the content for integrity verification)
+            sha1_hash = hashlib.sha1(xml_bytes).digest()
+            attachment["hash"] = base64.b64encode(sha1_hash).decode("ascii")
 
         # URL (if the document is stored elsewhere)
         # Could be populated if we have an external document repository

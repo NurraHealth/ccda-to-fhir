@@ -343,3 +343,294 @@ class TestDocumentReferenceWithContext:
         assert "period" in doc_ref["context"]
         assert "start" in doc_ref["context"]["period"]
         assert doc_ref["context"]["period"]["start"].startswith("2023-12-15")
+
+
+class TestDocumentReferenceNewFeatures:
+    """Tests for newly implemented DocumentReference features."""
+
+    def test_converts_attachment_hash(self) -> None:
+        """Test that SHA-1 hash is calculated for attachment."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+        assert "content" in doc_ref
+        assert len(doc_ref["content"]) >= 1
+
+        content = doc_ref["content"][0]
+        assert "attachment" in content
+        # Hash should be present and be a base64-encoded SHA-1 hash
+        assert "hash" in content["attachment"]
+        # SHA-1 hash in base64 is 28 characters
+        assert len(content["attachment"]["hash"]) == 28
+
+    def test_converts_related_document_replaces(self) -> None:
+        """Test that relatedDocument with RPLC is converted to relatesTo."""
+        ccda_doc_with_related = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1" extension="DOC-002"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <relatedDocument typeCode="RPLC">
+        <parentDocument>
+            <id root="2.16.840.1.113883.19.5.99999.1" extension="DOC-001"/>
+        </parentDocument>
+    </relatedDocument>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <entry></entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc_with_related)
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+        assert "relatesTo" in doc_ref
+        assert len(doc_ref["relatesTo"]) == 1
+        assert doc_ref["relatesTo"][0]["code"] == "replaces"
+        assert "target" in doc_ref["relatesTo"][0]
+        assert "reference" in doc_ref["relatesTo"][0]["target"]
+        assert "DocumentReference/" in doc_ref["relatesTo"][0]["target"]["reference"]
+
+    def test_converts_related_document_appends(self) -> None:
+        """Test that relatedDocument with APND is converted to relatesTo."""
+        ccda_doc_with_apnd = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1" extension="DOC-ADDENDUM"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <relatedDocument typeCode="APND">
+        <parentDocument>
+            <id root="2.16.840.1.113883.19.5.99999.1" extension="DOC-ORIGINAL"/>
+        </parentDocument>
+    </relatedDocument>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <entry></entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc_with_apnd)
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+        assert "relatesTo" in doc_ref
+        assert len(doc_ref["relatesTo"]) == 1
+        assert doc_ref["relatesTo"][0]["code"] == "appends"
+        assert "target" in doc_ref["relatesTo"][0]
+        assert "reference" in doc_ref["relatesTo"][0]["target"]
+
+    def test_converts_related_document_transforms(self) -> None:
+        """Test that relatedDocument with XFRM is converted to relatesTo."""
+        ccda_doc_with_xfrm = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1" extension="DOC-TRANSFORMED"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <relatedDocument typeCode="XFRM">
+        <parentDocument>
+            <id root="2.16.840.1.113883.19.5.99999.1" extension="DOC-SOURCE"/>
+        </parentDocument>
+    </relatedDocument>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <entry></entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc_with_xfrm)
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+        assert "relatesTo" in doc_ref
+        assert len(doc_ref["relatesTo"]) == 1
+        assert doc_ref["relatesTo"][0]["code"] == "transforms"
+        assert "target" in doc_ref["relatesTo"][0]
+        assert "reference" in doc_ref["relatesTo"][0]["target"]
+
+    def test_converts_context_event_from_service_event(self) -> None:
+        """Test that serviceEvent classCode is converted to context.event."""
+        ccda_doc_with_event = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+    <realmCode code="US"/>
+    <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <id root="2.16.840.1.113883.19.5.99999.1"/>
+    <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+    <effectiveTime value="20231215120000-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id root="test-patient-id"/>
+            <patient>
+                <name><given>Test</given><family>Patient</family></name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+                <birthTime value="19800101"/>
+            </patient>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20231215120000-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+            <assignedPerson>
+                <name><given>Test</given><family>Author</family></name>
+            </assignedPerson>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.19.5"/>
+                <name>Test Organization</name>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <documentationOf>
+        <serviceEvent classCode="PCPR">
+            <effectiveTime>
+                <low value="20231201"/>
+                <high value="20231215"/>
+            </effectiveTime>
+        </serviceEvent>
+    </documentationOf>
+    <component>
+        <structuredBody>
+            <component>
+                <section>
+                    <entry></entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>"""
+
+        bundle = convert_document(ccda_doc_with_event)
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+        assert "context" in doc_ref
+        assert "event" in doc_ref["context"]
+        assert len(doc_ref["context"]["event"]) >= 1
+
+        event = doc_ref["context"]["event"][0]
+        assert "coding" in event
+        assert len(event["coding"]) >= 1
+        coding = event["coding"][0]
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-ActClass"
+        assert coding["code"] == "PCPR"
+        assert coding["display"] == "care provision"
