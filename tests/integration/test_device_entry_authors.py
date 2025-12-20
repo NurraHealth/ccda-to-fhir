@@ -26,6 +26,22 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str, resource_id
     return None
 
 
+def _find_provenance_by_target(bundle: JSONObject, target_reference: str) -> JSONObject | None:
+    """Find a Provenance resource by its target reference."""
+    if "entry" not in bundle:
+        return None
+
+    for entry in bundle["entry"]:
+        resource = entry.get("resource", {})
+        if resource.get("resourceType") == "Provenance":
+            targets = resource.get("target", [])
+            for target in targets:
+                if target.get("reference") == target_reference:
+                    return resource
+
+    return None
+
+
 def _find_all_resources_in_bundle(
     bundle: JSONObject, resource_type: str
 ) -> list[JSONObject]:
@@ -310,7 +326,12 @@ class TestDeviceEntryAuthors:
 
         # Check that both Device and Provenance exist
         device = _find_device_by_identifier(bundle, "DEVICE-ROBOT")
-        provenance = _find_resource_in_bundle(bundle, "Provenance", "provenance-procedure-proc-1")
+        # Find the procedure first to get its ID
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+        assert procedure is not None, "Procedure should exist"
+
+        # Find Provenance by target reference (using new ID generation)
+        provenance = _find_provenance_by_target(bundle, f"Procedure/{procedure['id']}")
 
         assert device is not None, "Device should exist"
         assert provenance is not None, "Provenance should exist"

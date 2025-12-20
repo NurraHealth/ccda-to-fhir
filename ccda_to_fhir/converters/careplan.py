@@ -94,10 +94,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # Generate ID from document identifier
         if clinical_document.id:
-            careplan_id = self.generate_resource_id(
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers
+            careplan_id = generate_id_from_identifiers(
+                "CarePlan",
                 clinical_document.id.root,
                 clinical_document.id.extension,
-                "careplan"
             )
             careplan["id"] = careplan_id
 
@@ -136,11 +137,12 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             if clinical_document.record_target and len(clinical_document.record_target) > 0:
                 record_target = clinical_document.record_target[0]
                 if record_target.patient_role and record_target.patient_role.id:
+                    from ccda_to_fhir.id_generator import generate_id_from_identifiers
                     patient_id = record_target.patient_role.id[0]
-                    patient_ref_id = self.generate_resource_id(
+                    patient_ref_id = generate_id_from_identifiers(
+                        "Patient",
                         patient_id.root,
                         patient_id.extension,
-                        "patient"
                     )
                     careplan["subject"] = {"reference": f"Patient/{patient_ref_id}"}
                 else:
@@ -182,11 +184,12 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 if doc_of.service_event and doc_of.service_event.performer:
                     for performer in doc_of.service_event.performer:
                         if performer.assigned_entity and performer.assigned_entity.id:
+                            from ccda_to_fhir.id_generator import generate_id_from_identifiers
                             performer_id = performer.assigned_entity.id[0]
-                            practitioner_id = self.generate_resource_id(
+                            practitioner_id = generate_id_from_identifiers(
+                                "Practitioner",
                                 performer_id.root,
                                 performer_id.extension,
-                                "practitioner"
                             )
                             performer_ref = {"reference": f"Practitioner/{practitioner_id}"}
                             if performer_ref not in contributors:
@@ -305,10 +308,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
             # If assignedPerson exists, reference Practitioner
             if assigned_author.assigned_person:
-                practitioner_id = self.generate_resource_id(
+                from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                practitioner_id = generate_id_from_identifiers(
+                    "Practitioner",
                     first_id.root,
                     first_id.extension,
-                    "practitioner"
                 )
                 return {"reference": f"Practitioner/{practitioner_id}"}
             else:

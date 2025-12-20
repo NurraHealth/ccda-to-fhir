@@ -71,9 +71,10 @@ class GoalConverter(BaseConverter[Observation]):
 
         # 1. Generate ID from observation identifier
         if observation.id and len(observation.id) > 0:
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers
             first_id = observation.id[0]
-            fhir_goal["id"] = self.generate_resource_id(
-                first_id.root, first_id.extension, "goal"
+            fhir_goal["id"] = generate_id_from_identifiers(
+                "Goal", first_id.root, first_id.extension
             )
 
         # 2. Identifiers
@@ -321,8 +322,9 @@ class GoalConverter(BaseConverter[Observation]):
             # For now, if it has an assignedPerson, assume it's a Practitioner
             if assigned_author.assigned_person:
                 # Create Practitioner reference
-                practitioner_id = self.generate_resource_id(
-                    first_id.root, first_id.extension, "practitioner"
+                from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                practitioner_id = generate_id_from_identifiers(
+                    "Practitioner", first_id.root, first_id.extension
                 )
                 return {"reference": f"Practitioner/{practitioner_id}"}
             else:
@@ -412,10 +414,11 @@ class GoalConverter(BaseConverter[Observation]):
         """
         # Look for the referenced observation's ID
         if entry_ref_obs.id and len(entry_ref_obs.id) > 0:
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers
             first_id = entry_ref_obs.id[0]
             # Create a reference to a Condition resource
-            condition_id = self.generate_resource_id(
-                first_id.root, first_id.extension, "condition"
+            condition_id = generate_id_from_identifiers(
+                "Condition", first_id.root, first_id.extension
             )
 
             reference: JSONObject = {"reference": f"Condition/{condition_id}"}

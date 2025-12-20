@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from typing import TYPE_CHECKING
 
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
@@ -273,26 +272,20 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
     def _generate_composition_id(self, doc_id: II) -> str | None:
         """Generate a FHIR Composition ID from C-CDA document ID.
 
+        Uses centralized id_generator to ensure consistency across document.
+
         Args:
             doc_id: C-CDA II element (document identifier)
 
         Returns:
-            Generated ID string or None
+            Generated UUID string or None (cached for consistency within document)
         """
         if not doc_id:
             return None
 
-        # Use extension if available, otherwise hash the root
-        if doc_id.extension:
-            # Clean the extension for use as an ID
-            id_value = doc_id.extension.replace(".", "-").replace("_", "-")
-            return f"comp-{id_value}"
-        elif doc_id.root:
-            # Hash the root OID to create a deterministic ID
-            hash_val = hashlib.sha256(doc_id.root.encode()).hexdigest()[:16]
-            return f"comp-{hash_val}"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        return None
+        return generate_id_from_identifiers("Composition", doc_id.root, doc_id.extension)
 
     def _convert_identifier(self, doc_id: II) -> JSONObject | None:
         """Convert document ID to Composition identifier.

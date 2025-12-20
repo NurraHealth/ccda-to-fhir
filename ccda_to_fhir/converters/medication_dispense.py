@@ -77,11 +77,12 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         # 1. Generate ID from supply identifier
         if supply.id and len(supply.id) > 0:
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers
             first_id = supply.id[0]
-            med_dispense["id"] = self.generate_resource_id(
+            med_dispense["id"] = generate_id_from_identifiers(
+                "MedicationDispense",
                 first_id.root,
                 first_id.extension,
-                "medicationdispense",
             )
 
         # 2. Identifiers
@@ -280,10 +281,11 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     if hasattr(assigned, "id") and assigned.id:
                         for id_elem in assigned.id:
                             if id_elem.root:
-                                pract_id = self.generate_resource_id(
+                                from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                                pract_id = generate_id_from_identifiers(
+                                    "Practitioner",
                                     id_elem.root,
                                     id_elem.extension,
-                                    "practitioner",
                                 )
                                 performer_obj["actor"] = {
                                     "reference": f"Practitioner/{pract_id}"
@@ -316,10 +318,11 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     if hasattr(assigned, "id") and assigned.id:
                         for id_elem in assigned.id:
                             if id_elem.root:
-                                pract_id = self.generate_resource_id(
+                                from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                                pract_id = generate_id_from_identifiers(
+                                    "Practitioner",
                                     id_elem.root,
                                     id_elem.extension,
-                                    "practitioner",
                                 )
                                 performer_obj = {
                                     "function": {

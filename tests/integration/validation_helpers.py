@@ -305,3 +305,55 @@ def assert_no_duplicate_section_references(bundle: dict) -> None:
         f"Found {len(duplicate_sections)} section(s) with duplicate references:\n" +
         "\n".join(f"  - {s}" for s in duplicate_sections)
     )
+
+
+def assert_valid_fhir_ids(bundle: dict) -> None:
+    r"""Verify all resource IDs comply with FHIR R4 specification.
+
+    Per FHIR R4: Resource.id must be:
+    - Max 64 characters
+    - Only contain: [A-Za-z0-9\-\.]
+    - Case sensitive but recommend lowercase for consistency
+
+    References:
+    - http://hl7.org/fhir/R4/datatypes.html#id
+    - https://www.hl7.org/fhir/R4/resource-definitions.html#Resource.id
+
+    Args:
+        bundle: FHIR Bundle to validate
+
+    Raises:
+        AssertionError: If any resource IDs violate FHIR spec
+    """
+    import re
+
+    invalid_ids = []
+    fhir_id_pattern = re.compile(r'^[A-Za-z0-9\-\.]+$')
+
+    for entry in bundle.get("entry", []):
+        resource = entry.get("resource", {})
+        resource_type = resource.get("resourceType", "Unknown")
+        resource_id = resource.get("id")
+
+        if not resource_id:
+            # ID is optional in bundles, skip
+            continue
+
+        # Check 1: Length <= 64 characters
+        if len(resource_id) > 64:
+            invalid_ids.append(
+                f"{resource_type}/{resource_id}: "
+                f"Length {len(resource_id)} exceeds 64-character limit"
+            )
+
+        # Check 2: Valid characters only [A-Za-z0-9\-\.]
+        if not fhir_id_pattern.match(resource_id):
+            invalid_ids.append(
+                f"{resource_type}/{resource_id}: "
+                f"Contains invalid characters (must match [A-Za-z0-9\\-\\.])"
+            )
+
+    assert not invalid_ids, (
+        f"Found {len(invalid_ids)} FHIR ID violation(s):\n" +
+        "\n".join(f"  - {i}" for i in invalid_ids)
+    )

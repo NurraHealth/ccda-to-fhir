@@ -68,8 +68,8 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         # Default ID if not available
         if not immunization_id:
-            import uuid
-            immunization_id = f"immunization-{uuid.uuid4()}"
+            from ccda_to_fhir.id_generator import generate_id
+            immunization_id = generate_id()
             immunization["id"] = immunization_id
 
         # 2. Identifiers
@@ -192,25 +192,18 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
     def _generate_immunization_id(self, root: str | None, extension: str | None) -> str:
         """Generate a FHIR Immunization ID from C-CDA identifier.
 
+        Uses centralized id_generator to ensure consistency across document.
+
         Args:
             root: The identifier root (OID or UUID)
             extension: The identifier extension
 
         Returns:
-            Generated ID string
+            Generated UUID string (cached for consistency within document)
         """
-        if extension:
-            # Use extension as ID if available (sanitize for FHIR ID requirements)
-            clean_ext = extension.lower().replace(" ", "-").replace(".", "-")
-            return f"immunization-{clean_ext}"
-        elif root:
-            # Use root as fallback (take last 16 chars to keep ID reasonable length)
-            root_suffix = root.replace(".", "").replace("-", "")[-16:]
-            return f"immunization-{root_suffix}"
-        else:
-            # Generate random ID
-            import uuid
-            return f"immunization-{uuid.uuid4()}"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Immunization", root, extension)
 
     def _determine_status(self, substance_admin: SubstanceAdministration) -> str:
         """Determine FHIR Immunization status from C-CDA statusCode.

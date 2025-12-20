@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from ccda_to_fhir.ccda.models.act import Act

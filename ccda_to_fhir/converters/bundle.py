@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-from uuid import uuid4
 
 
 def create_bundle(
@@ -22,7 +21,8 @@ def create_bundle(
         FHIR Bundle as a dict
     """
     if bundle_id is None:
-        bundle_id = str(uuid4())
+        from ccda_to_fhir.id_generator import generate_id
+        bundle_id = generate_id()
 
     bundle: JSONObject = {
         "resourceType": "Bundle",

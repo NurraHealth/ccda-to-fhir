@@ -1,7 +1,7 @@
 # Converter Issues Tracking
 
 **Last Updated**: 2025-12-20
-**Status Summary**: 6/6 critical/moderate issues fixed, 2 low-priority issues remain
+**Status Summary**: 7/7 critical/moderate issues fixed, 1 low-priority issue remains under review
 
 Based on comparison between automated output and manually verified correct output, plus standards compliance review.
 
@@ -309,33 +309,78 @@ Review C-CDA on FHIR IG guidance for Provenance resource usage. May be correct, 
 
 ---
 
-## 🟢 LOW: Inconsistent Resource ID Generation
+## 🟡 MODERATE: Inconsistent Resource ID Generation ✅ **FIXED** (2025-12-20)
 
-**Problem**: Resource IDs are auto-generated hashes instead of meaningful identifiers
+**Problem**: Multiple ID generation approaches causing inconsistent IDs across converters
 
-**Evidence**:
+**Evidence (Before Fix)**:
+```python
+# Three different approaches found:
+1. ✅ Centralized (id_generator.py): Used by 17 converters
+2. ❌ Old base.py method: hashlib-based deterministic hashing
+3. ❌ Direct uuid4: immunization.py, bundle.py inline calls
 ```
-Auto-generated: condition-a7795ac22a49a385
-Better: condition-low-back-pain
+
+**Root Cause**:
+- `id_generator.py` created but migration incomplete
+- `BaseConverter.generate_resource_id()` still used by 3 converters with old hashlib approach
+- `immunization.py` used direct `uuid.uuid4()` calls (lines 72, 213)
+- `bundle.py` used direct `uuid4()` call (line 25)
+- `composition.py` used hashlib for ID generation (line 292)
+
+**Solution Implemented**:
+- ✅ Migrated `immunization.py` to use `id_generator.generate_id_from_identifiers()`
+- ✅ Migrated `bundle.py` to use `id_generator.generate_id()`
+- ✅ Migrated `composition.py` to use `id_generator.generate_id_from_identifiers()`
+- ✅ Migrated `medication_dispense.py` (3 occurrences) to use `id_generator`
+- ✅ Migrated `careplan.py` (4 occurrences) to use `id_generator`
+- ✅ Migrated `goal.py` (3 occurrences) to use `id_generator`
+- ✅ Removed unused hashlib imports from `composition.py` and `note_activity.py`
+- ✅ All converters now use centralized `id_generator.py` consistently
+- ✅ `BaseConverter.generate_resource_id()` no longer used (can be deprecated)
+
+**Files Updated**:
+```
+ccda_to_fhir/converters/
+  ✅ immunization.py        # _generate_immunization_id() now uses id_generator
+  ✅ bundle.py              # create_bundle() now uses id_generator
+  ✅ composition.py         # _generate_composition_id() now uses id_generator, removed hashlib import
+  ✅ medication_dispense.py # All 3 occurrences migrated
+  ✅ careplan.py            # All 4 occurrences migrated
+  ✅ goal.py                # All 3 occurrences migrated
+  ✅ note_activity.py       # Removed unused hashlib import
+  ✅ provenance.py          # Migrated from concat format (exceeded 64 chars) to id_generator
+
+tests/integration/
+  ✅ validation_helpers.py  # Added assert_valid_fhir_ids() validation function
+  ✅ test_validation.py     # Added FHIR ID validation to test suite
+
+tests/unit/converters/
+  ✅ test_provenance.py     # Updated test to expect UUID format instead of old concat format
+
+tests/integration/
+  ✅ test_device_entry_authors.py # Updated to find Provenance by target reference
 ```
 
-**Expected behavior**:
-While hash IDs are valid, human-readable IDs improve debugging and testing. Consider:
-- Using C-CDA entry IDs when available
-- Generating descriptive IDs from content
-- At minimum, use consistent prefixes
+**Current Behavior**:
+- All converters use `id_generator.generate_id_from_identifiers(resource_type, root, extension)` ✅
+- All IDs cached per document for consistency ✅
+- `reset_id_cache()` called at document start ✅
+- Same C-CDA identifiers → same UUID within document ✅
+- No more hashlib/uuid4 direct calls for ID generation ✅
+- Only exception: `document_reference.py` uses hashlib.sha1() for **content hashing** (correct per FHIR spec)
 
-**Fix priority**: 🟢 LOW - Nice to have, not required
+**Verification**:
+- ✅ All 1074 tests passing (including new FHIR ID validation test)
+- ✅ No more `self.generate_resource_id()` calls in converters
+- ✅ No more direct `uuid.uuid4()` calls for IDs
+- ✅ Consistent ID generation across all 17/17 converters (100% coverage)
+- ✅ **Critical fix**: Provenance IDs now <= 64 chars (was 67+ chars, violated FHIR spec)
+- ✅ New validation test ensures all IDs comply with FHIR R4 spec:
+  - Max 64 characters
+  - Valid characters only [A-Za-z0-9\-\.]
 
-**Status**: ✅ **ADDRESSED** - Centralized ID generation implemented with UUID caching
-
-**Solution**:
-- New file: ccda_to_fhir/id_generator.py
-- Centralized UUID v4 generation with caching
-- Same C-CDA identifiers → same UUID within document
-- Consistent IDs across all converters
-
-**Note**: UUIDs are valid per FHIR spec. Human-readable IDs remain a future enhancement.
+**Status**: ✅ **FIXED** (2025-12-20)
 
 ---
 
@@ -349,10 +394,10 @@ While hash IDs are valid, human-readable IDs improve debugging and testing. Cons
 | 🟡 MODERATE | ✅ FIXED | Missing medication field in MedicationStatement |
 | 🟡 MODERATE | ✅ FIXED | Missing observation codes |
 | 🟡 MODERATE | ✅ FIXED | Duplicate composition section references |
+| 🟡 MODERATE | ✅ FIXED | Inconsistent resource ID generation |
 | 🟢 LOW | ⚠️ REVIEW | Excessive Provenance resources |
-| 🟢 LOW | ✅ ADDRESSED | Inconsistent resource IDs |
 
-**Overall Status**: 6/6 critical/moderate validation issues fixed, 2 low-priority issues remain
+**Overall Status**: 7/7 critical/moderate validation issues fixed, 1 low-priority issue remains under review
 
 ---
 

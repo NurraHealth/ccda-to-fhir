@@ -55,10 +55,17 @@ class ProvenanceConverter(BaseConverter[None]):
             "resourceType": FHIRCodes.ResourceTypes.PROVENANCE,
         }
 
-        # Generate ID from target resource
+        # Generate ID from target resource using centralized generator
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
         resource_type = target_resource["resourceType"]
         resource_id = target_resource["id"]
-        provenance["id"] = f"provenance-{resource_type.lower()}-{resource_id}"
+        # Use target resource type and ID as cache key for consistency
+        provenance["id"] = generate_id_from_identifiers(
+            "Provenance",
+            f"target-{resource_type}",
+            resource_id
+        )
 
         # Target - reference to the resource(s) this Provenance is about
         provenance["target"] = [{"reference": f"{resource_type}/{resource_id}"}]

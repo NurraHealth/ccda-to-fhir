@@ -18,6 +18,7 @@ from tests.integration.validation_helpers import (
     assert_no_duplicate_section_references,
     assert_no_empty_codes,
     assert_no_placeholder_references,
+    assert_valid_fhir_ids,
     count_resources_by_type,
     get_resource_summary,
 )
@@ -60,6 +61,9 @@ def test_athena_ccd_validation():
 
     # Validate no duplicate section references
     assert_no_duplicate_section_references(bundle)
+
+    # Validate FHIR ID compliance (max 64 chars, valid characters)
+    assert_valid_fhir_ids(bundle)
 
     # Get resource summary for reporting
     summary = get_resource_summary(bundle)
