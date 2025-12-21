@@ -198,9 +198,13 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         return med_dispense
 
     def _determine_status(self, supply: Supply) -> str:
-        """Map C-CDA statusCode to FHIR MedicationDispense status.
+        """Map C-CDA code element to FHIR MedicationDispense status.
 
-        Per mapping specification: docs/mapping/15-medication-dispense.md
+        Per C-CDA spec: statusCode is fixed to "completed",
+        actual status comes from code element (required 1..1).
+
+        The code element uses the FHIR MedicationDispense status value set
+        (OID 2.16.840.1.113883.4.642.3.1312).
 
         Args:
             supply: The C-CDA Supply element
@@ -208,14 +212,56 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         Returns:
             FHIR MedicationDispense status code
         """
-        if not supply.status_code or not supply.status_code.code:
+        # Extract status from code element (required per C-CDA)
+        if not supply.code or not supply.code.code:
+            logger.warning(
+                "Medication Dispense missing required code element. "
+                "Defaulting to 'completed'."
+            )
             return FHIRCodes.MedicationDispenseStatus.COMPLETED
 
-        status_code = supply.status_code.code
+        code_value = supply.code.code
 
-        return MEDICATION_DISPENSE_STATUS_TO_FHIR.get(
-            status_code, FHIRCodes.MedicationDispenseStatus.COMPLETED
+        # Validate statusCode if present (should always be "completed" per C-CDA)
+        if supply.status_code:
+            if supply.status_code.code and supply.status_code.code != "completed":
+                logger.warning(
+                    f"Medication Dispense statusCode should be 'completed' per C-CDA spec, "
+                    f"found '{supply.status_code.code}'"
+                )
+
+        # Check if code_value is already a FHIR status code (preferred per spec)
+        valid_fhir_codes = {
+            FHIRCodes.MedicationDispenseStatus.PREPARATION,
+            FHIRCodes.MedicationDispenseStatus.IN_PROGRESS,
+            FHIRCodes.MedicationDispenseStatus.COMPLETED,
+            FHIRCodes.MedicationDispenseStatus.ON_HOLD,
+            FHIRCodes.MedicationDispenseStatus.CANCELLED,
+            FHIRCodes.MedicationDispenseStatus.STOPPED,
+            FHIRCodes.MedicationDispenseStatus.DECLINED,
+            FHIRCodes.MedicationDispenseStatus.ENTERED_IN_ERROR,
+            FHIRCodes.MedicationDispenseStatus.UNKNOWN,
+        }
+
+        if code_value in valid_fhir_codes:
+            # Direct FHIR code - no mapping needed
+            return code_value
+
+        # Fall back to legacy ActStatus code mapping for backwards compatibility
+        mapped_status = MEDICATION_DISPENSE_STATUS_TO_FHIR.get(code_value)
+        if mapped_status:
+            logger.info(
+                f"Medication Dispense code '{code_value}' appears to be a legacy ActStatus code. "
+                f"Mapping to FHIR code '{mapped_status}'."
+            )
+            return mapped_status
+
+        # Unknown code - default to completed with warning
+        logger.warning(
+            f"Medication Dispense code '{code_value}' is not a recognized FHIR or ActStatus code. "
+            f"Defaulting to 'completed'."
         )
+        return FHIRCodes.MedicationDispenseStatus.COMPLETED
 
     def _extract_medication(self, supply: Supply) -> JSONObject | None:
         """Extract medication code as medicationCodeableConcept.

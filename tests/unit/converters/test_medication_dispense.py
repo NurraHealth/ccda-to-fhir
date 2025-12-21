@@ -24,7 +24,14 @@ def create_minimal_dispense() -> Supply:
         II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")
     ]
     dispense.id = [II(root="dispense-456")]
+    # Per C-CDA spec: statusCode is fixed to "completed"
     dispense.status_code = CS(code="completed")
+    # Actual status comes from code element (FHIR value set)
+    dispense.code = CE(
+        code="completed",
+        code_system="2.16.840.1.113883.4.642.3.1312",
+        display_name="Completed",
+    )
     # Add effectiveTime to satisfy US Core constraint for completed status
     dispense.effective_time = IVL_TS(value="20200301143000-0500")
 
@@ -76,8 +83,42 @@ class TestMedicationDispenseConverter:
         assert result["identifier"][1]["value"] == "alt-id"
 
     def test_status_mapping(self):
-        """Test status code mapping."""
-        test_cases = [
+        """Test status code mapping from supply.code element.
+
+        Per C-CDA spec: statusCode is fixed to "completed",
+        actual status comes from code element using FHIR value set.
+        """
+        # Test direct FHIR codes (preferred per C-CDA spec)
+        fhir_test_cases = [
+            "completed",
+            "in-progress",
+            "stopped",
+            "cancelled",
+            "on-hold",
+            "preparation",
+            "entered-in-error",
+            "declined",
+            "unknown",
+        ]
+
+        for fhir_status in fhir_test_cases:
+            dispense = create_minimal_dispense()
+            # statusCode is always "completed" per C-CDA spec
+            dispense.status_code = CS(code="completed")
+            # Actual status in code element
+            dispense.code = CE(
+                code=fhir_status,
+                code_system="2.16.840.1.113883.4.642.3.1312",
+                display_name=fhir_status.title(),
+            )
+
+            converter = MedicationDispenseConverter()
+            result = converter.convert(dispense)
+
+            assert result["status"] == fhir_status, f"Failed for FHIR code {fhir_status}"
+
+        # Test legacy ActStatus codes (backwards compatibility)
+        legacy_test_cases = [
             ("completed", "completed"),
             ("active", "in-progress"),
             ("aborted", "stopped"),
@@ -87,14 +128,19 @@ class TestMedicationDispenseConverter:
             ("nullified", "entered-in-error"),
         ]
 
-        for ccda_status, fhir_status in test_cases:
+        for legacy_code, expected_fhir in legacy_test_cases:
             dispense = create_minimal_dispense()
-            dispense.status_code = CS(code=ccda_status)
+            dispense.status_code = CS(code="completed")
+            dispense.code = CE(
+                code=legacy_code,
+                code_system="2.16.840.1.113883.5.14",  # ActStatus
+                display_name=legacy_code.title(),
+            )
 
             converter = MedicationDispenseConverter()
             result = converter.convert(dispense)
 
-            assert result["status"] == fhir_status, f"Failed for {ccda_status}"
+            assert result["status"] == expected_fhir, f"Failed for legacy code {legacy_code}"
 
     def test_medication_code_mapping(self):
         """Test medication code mapping with RxNorm."""
@@ -176,6 +222,11 @@ class TestMedicationDispenseTiming:
         ]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
+        dispense.code = CE(
+            code="completed",
+            code_system="2.16.840.1.113883.4.642.3.1312",
+            display_name="Completed",
+        )
 
         material = ManufacturedMaterial()
         material.code = CE(code="314076", code_system="2.16.840.1.113883.6.88")
@@ -240,6 +291,11 @@ class TestMedicationDispenseType:
         ]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
+        dispense.code = CE(
+            code="completed",
+            code_system="2.16.840.1.113883.4.642.3.1312",
+            display_name="Completed",
+        )
 
         material = ManufacturedMaterial()
         material.code = CE(code="314076", code_system="2.16.840.1.113883.6.88")
@@ -329,6 +385,11 @@ class TestMedicationDispensePerformer:
         ]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
+        dispense.code = CE(
+            code="completed",
+            code_system="2.16.840.1.113883.4.642.3.1312",
+            display_name="Completed",
+        )
 
         material = ManufacturedMaterial()
         material.code = CE(code="314076", code_system="2.16.840.1.113883.6.88")
@@ -410,6 +471,11 @@ class TestMedicationDispenseCategory:
         ]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
+        dispense.code = CE(
+            code="completed",
+            code_system="2.16.840.1.113883.4.642.3.1312",
+            display_name="Completed",
+        )
 
         material = ManufacturedMaterial()
         material.code = CE(code="314076", code_system="2.16.840.1.113883.6.88")
@@ -446,6 +512,11 @@ class TestMedicationDispenseUSCoreProfile:
         ]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
+        dispense.code = CE(
+            code="completed",
+            code_system="2.16.840.1.113883.4.642.3.1312",
+            display_name="Completed",
+        )
 
         material = ManufacturedMaterial()
         material.code = CE(code="314076", code_system="2.16.840.1.113883.6.88")
@@ -489,6 +560,11 @@ class TestMedicationDispenseValidation:
         dispense.mood_code = "EVN"
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
+        dispense.code = CE(
+            code="completed",
+            code_system="2.16.840.1.113883.4.642.3.1312",
+            display_name="Completed",
+        )
         # No product set
 
         converter = MedicationDispenseConverter()
@@ -503,6 +579,11 @@ class TestMedicationDispenseValidation:
         dispense.mood_code = "INT"  # Intent, not event
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
+        dispense.code = CE(
+            code="completed",
+            code_system="2.16.840.1.113883.4.642.3.1312",
+            display_name="Completed",
+        )
 
         material = ManufacturedMaterial()
         material.code = CE(code="314076", code_system="2.16.840.1.113883.6.88")
@@ -522,6 +603,11 @@ class TestMedicationDispenseValidation:
         dispense.mood_code = "EVN"
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
+        dispense.code = CE(
+            code="completed",
+            code_system="2.16.840.1.113883.4.642.3.1312",
+            display_name="Completed",
+        )
         # No effective_time set
 
         material = ManufacturedMaterial()
@@ -636,6 +722,11 @@ class TestMedicationDispensePharmacyLocation:
         ]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
+        dispense.code = CE(
+            code="completed",
+            code_system="2.16.840.1.113883.4.642.3.1312",
+            display_name="Completed",
+        )
         dispense.effective_time = IVL_TS(value="20200301143000-0500")
 
         material = ManufacturedMaterial()
