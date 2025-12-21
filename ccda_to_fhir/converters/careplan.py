@@ -216,12 +216,13 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 careplan["activity"] = activities
 
         # Text narrative - generate from sections
-        # TODO: Implement narrative generation from Health Concerns, Goals, Interventions
-        # For now, create a minimal narrative
-        careplan["text"] = {
-            "status": "additional",
-            "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Care Plan</p></div>"
-        }
+        careplan["text"] = self._generate_narrative(
+            clinical_document=clinical_document,
+            period=careplan.get("period"),
+            health_concern_count=len(self.health_concern_refs),
+            goal_count=len(self.goal_refs),
+            intervention_entries=self.intervention_entries,
+        )
 
         return careplan
 
@@ -464,5 +465,172 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         # Resources are stored with their simple root ID
         if self.reference_registry.has_resource("Observation", entry_id):
             return {"reference": f"Observation/{entry_id}"}
+
+        return None
+
+    def _generate_narrative(
+        self,
+        clinical_document: ClinicalDocument,
+        period: JSONObject | None,
+        health_concern_count: int,
+        goal_count: int,
+        intervention_entries: list,
+    ) -> JSONObject:
+        """Generate FHIR narrative from Care Plan sections.
+
+        Creates meaningful XHTML narrative summarizing the care plan per FHIR R4 and
+        US Core requirements. The narrative uses "generated" status as it is created
+        entirely from structured data.
+
+        Args:
+            clinical_document: The C-CDA ClinicalDocument
+            period: Care plan period dict
+            health_concern_count: Number of health concerns
+            goal_count: Number of goals
+            intervention_entries: List of intervention entry elements
+
+        Returns:
+            FHIR text dict with status and div (well-formed XHTML)
+        """
+        import html
+
+        lines = ['<div xmlns="http://www.w3.org/1999/xhtml">']
+
+        # Title
+        if clinical_document.title:
+            title = html.escape(clinical_document.title)
+            lines.append(f'<h2>{title}</h2>')
+        else:
+            lines.append('<h2>Care Plan</h2>')
+
+        # Period
+        if period:
+            period_text = self._format_period_text(period)
+            lines.append(f'<p><strong>Period:</strong> {html.escape(period_text)}</p>')
+
+        # Health Concerns summary
+        if health_concern_count > 0:
+            plural = "s" if health_concern_count > 1 else ""
+            lines.append(f'<p><strong>Health Concerns:</strong> {health_concern_count} concern{plural} documented</p>')
+
+        # Goals summary
+        if goal_count > 0:
+            plural = "s" if goal_count > 1 else ""
+            lines.append(f'<p><strong>Goals:</strong> {goal_count} goal{plural} documented</p>')
+
+        # Interventions section
+        if intervention_entries:
+            lines.append('<h3>Planned Interventions</h3>')
+            lines.append('<ul>')
+            for intervention in intervention_entries:
+                intervention_text = self._extract_intervention_text(intervention)
+                if intervention_text:
+                    lines.append(f'<li>{html.escape(intervention_text)}</li>')
+            lines.append('</ul>')
+
+        # If no meaningful content was generated, add a minimal summary
+        if len(lines) == 1:
+            lines.append('<p>Care Plan with no detailed information available</p>')
+
+        lines.append('</div>')
+
+        return {
+            "status": "generated",
+            "div": '\n'.join(lines)
+        }
+
+    def _format_period_text(self, period: JSONObject) -> str:
+        """Format period as readable text.
+
+        Args:
+            period: FHIR Period dict with start and/or end
+
+        Returns:
+            Human-readable period text
+        """
+        start = period.get('start', 'Unknown')
+        end = period.get('end')
+
+        if end:
+            return f"{start} to {end}"
+        else:
+            return f"{start} onwards"
+
+    def _extract_intervention_text(self, intervention_entry) -> str | None:
+        """Extract displayable text from intervention entry.
+
+        Attempts to extract meaningful display text from the intervention entry,
+        preferring nested procedure/act details over the parent intervention code
+        as they provide more specific information.
+
+        Args:
+            intervention_entry: C-CDA intervention entry element
+
+        Returns:
+            Displayable text or None
+        """
+        # First try to get text from nested procedure in entryRelationship
+        # This is preferred as it provides more specific information
+        if hasattr(intervention_entry, 'entry_relationship'):
+            for rel in intervention_entry.entry_relationship:
+                # Look for COMP (component) relationships with procedures
+                if hasattr(rel, 'type_code') and rel.type_code == 'COMP':
+                    # Check for procedure
+                    if hasattr(rel, 'procedure') and rel.procedure:
+                        text = self._extract_code_display_text(rel.procedure)
+                        if text:
+                            return text
+                    # Check for act
+                    elif hasattr(rel, 'act') and rel.act:
+                        text = self._extract_code_display_text(rel.act)
+                        if text:
+                            return text
+
+        # Fallback to parent intervention code element
+        if hasattr(intervention_entry, 'code') and intervention_entry.code:
+            code = intervention_entry.code
+
+            # Prefer displayName
+            if hasattr(code, 'display_name') and code.display_name:
+                return code.display_name
+
+            # Fallback to originalText
+            if hasattr(code, 'original_text') and code.original_text:
+                # originalText might be a string or an object
+                if isinstance(code.original_text, str):
+                    return code.original_text
+                elif hasattr(code.original_text, 'value'):
+                    return code.original_text.value
+
+            # Fallback to code value
+            if hasattr(code, 'code') and code.code:
+                return f"Intervention (code: {code.code})"
+
+        return None
+
+    def _extract_code_display_text(self, entry) -> str | None:
+        """Extract display text from an entry's code element.
+
+        Args:
+            entry: C-CDA entry element with a code attribute
+
+        Returns:
+            Display text or None
+        """
+        if not hasattr(entry, 'code') or not entry.code:
+            return None
+
+        code = entry.code
+
+        # Prefer displayName
+        if hasattr(code, 'display_name') and code.display_name:
+            return code.display_name
+
+        # Fallback to originalText
+        if hasattr(code, 'original_text') and code.original_text:
+            if isinstance(code.original_text, str):
+                return code.original_text
+            elif hasattr(code.original_text, 'value'):
+                return code.original_text.value
 
         return None

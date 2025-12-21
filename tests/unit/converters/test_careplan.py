@@ -699,12 +699,251 @@ class TestNarrative:
         assert "</div>" in careplan["text"]["div"]
 
     def test_narrative_status_generated(self, minimal_care_plan_document):
-        """Test text.status is set appropriately."""
+        """Test text.status is 'generated'."""
         converter = CarePlanConverter()
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
-        assert careplan["text"]["status"] in ["generated", "additional", "extensions"]
+        assert careplan["text"]["status"] == "generated"
+
+    def test_narrative_includes_title(self, minimal_care_plan_document):
+        """Test narrative includes care plan title."""
+        minimal_care_plan_document.title = "Patient Care Plan 2024"
+        converter = CarePlanConverter()
+        careplan = converter.convert(minimal_care_plan_document)
+
+        assert "text" in careplan
+        assert "Patient Care Plan 2024" in careplan["text"]["div"]
+        assert "<h2>" in careplan["text"]["div"]
+
+    def test_narrative_includes_period(self, complete_care_plan_document):
+        """Test narrative includes care plan period."""
+        converter = CarePlanConverter()
+        careplan = converter.convert(complete_care_plan_document)
+
+        assert "text" in careplan
+        div = careplan["text"]["div"]
+        assert "Period:" in div
+        assert "2024-01-15" in div
+        assert "2024-04-15" in div
+
+    def test_narrative_includes_health_concerns_count(
+        self, minimal_care_plan_document, mock_reference_registry
+    ):
+        """Test narrative includes health concerns count."""
+        health_concerns = [
+            {"reference": "Condition/concern-1"},
+            {"reference": "Condition/concern-2"},
+        ]
+        converter = CarePlanConverter(
+            reference_registry=mock_reference_registry,
+            health_concern_refs=health_concerns,
+        )
+        careplan = converter.convert(minimal_care_plan_document)
+
+        assert "text" in careplan
+        div = careplan["text"]["div"]
+        assert "Health Concerns:" in div
+        assert "2 concerns documented" in div
+
+    def test_narrative_includes_goals_count(
+        self, minimal_care_plan_document, mock_reference_registry
+    ):
+        """Test narrative includes goals count."""
+        goals = [
+            {"reference": "Goal/goal-1"},
+            {"reference": "Goal/goal-2"},
+            {"reference": "Goal/goal-3"},
+        ]
+        converter = CarePlanConverter(
+            reference_registry=mock_reference_registry, goal_refs=goals
+        )
+        careplan = converter.convert(minimal_care_plan_document)
+
+        assert "text" in careplan
+        div = careplan["text"]["div"]
+        assert "Goals:" in div
+        assert "3 goals documented" in div
+
+    def test_narrative_includes_interventions(
+        self, minimal_care_plan_document, mock_reference_registry
+    ):
+        """Test narrative includes intervention details."""
+        # Create intervention with displayName
+        from unittest.mock import Mock
+
+        intervention = Mock()
+        intervention.id = [Mock(root="intervention-123")]
+        intervention.code = Mock()
+        intervention.code.display_name = "Oxygen therapy via nasal cannula"
+        intervention.entry_relationship = []
+
+        converter = CarePlanConverter(
+            reference_registry=mock_reference_registry,
+            intervention_entries=[intervention],
+        )
+        careplan = converter.convert(minimal_care_plan_document)
+
+        assert "text" in careplan
+        div = careplan["text"]["div"]
+        assert "Planned Interventions" in div
+        assert "<h3>" in div
+        assert "Oxygen therapy via nasal cannula" in div
+        assert "<ul>" in div
+        assert "<li>" in div
+
+    def test_narrative_html_escaped(self, minimal_care_plan_document):
+        """Test special characters are HTML escaped."""
+        # Use title with special characters
+        minimal_care_plan_document.title = "Care Plan <Test> & 'Special' \"Chars\""
+        converter = CarePlanConverter()
+        careplan = converter.convert(minimal_care_plan_document)
+
+        assert "text" in careplan
+        div = careplan["text"]["div"]
+        # HTML entities should be escaped
+        assert "&lt;" in div  # <
+        assert "&gt;" in div  # >
+        assert "&amp;" in div  # &
+        # Original characters should not appear unescaped in text content
+        assert "Care Plan <Test>" not in div or "<h2>Care Plan" not in div
+
+    def test_narrative_minimal_with_no_data(
+        self, care_plan_template_id, us_realm_header_template_id
+    ):
+        """Test narrative generation with minimal data."""
+        # Create a bare minimum document
+        doc = ClinicalDocument(
+            realm_code=[CS(code="US")],
+            type_id=II(root="2.16.840.1.113883.1.3", extension="POCD_HD000040"),
+            template_id=[us_realm_header_template_id, care_plan_template_id],
+            id=II(root="test-root", extension="test-ext"),
+            code=CE(code="52521-2", code_system="2.16.840.1.113883.6.1"),
+            effective_time=TS(value="20240115"),
+            confidentiality_code=CE(code="N", code_system="2.16.840.1.113883.5.25"),
+            language_code=CS(code="en-US"),
+            title=None,  # No title
+            record_target=[
+                RecordTarget(
+                    patient_role=PatientRole(id=[II(root="test", extension="pat")])
+                )
+            ],
+            author=[
+                Author(
+                    time=TS(value="20240115"),
+                    assigned_author=AssignedAuthor(
+                        id=[II(root="test", extension="auth")],
+                        assigned_person=AssignedPerson(
+                            name=[
+                                PN(
+                                    given=[ENXP(value="Test")],
+                                    family=ENXP(value="Author"),
+                                )
+                            ]
+                        ),
+                    ),
+                )
+            ],
+            custodian=Custodian(
+                assigned_custodian=AssignedCustodian(
+                    represented_custodian_organization=CustodianOrganization(
+                        id=[II(root="test", extension="cust")],
+                        name=ON(value="Test Hospital"),
+                    )
+                )
+            ),
+        )
+
+        converter = CarePlanConverter()
+        careplan = converter.convert(doc)
+
+        assert "text" in careplan
+        assert "status" in careplan["text"]
+        assert careplan["text"]["status"] == "generated"
+        assert "div" in careplan["text"]
+        # Should have at least a title
+        assert "<h2>Care Plan</h2>" in careplan["text"]["div"]
+
+    def test_narrative_period_with_start_only(
+        self, minimal_care_plan_document, care_plan_template_id
+    ):
+        """Test narrative period formatting with only start date."""
+        minimal_care_plan_document.documentation_of = [
+            DocumentationOf(
+                service_event=ServiceEvent(
+                    effective_time=IVL_TS(low=TS(value="20240115")),
+                )
+            )
+        ]
+
+        converter = CarePlanConverter()
+        careplan = converter.convert(minimal_care_plan_document)
+
+        assert "text" in careplan
+        div = careplan["text"]["div"]
+        assert "Period:" in div
+        assert "2024-01-15 onwards" in div
+
+    def test_narrative_intervention_with_nested_procedure(
+        self, minimal_care_plan_document, mock_reference_registry
+    ):
+        """Test intervention text extraction from nested procedure."""
+        from unittest.mock import Mock
+
+        # Create intervention with nested procedure (COMP relationship)
+        intervention = Mock()
+        intervention.id = [Mock(root="intervention-123")]
+        intervention.code = Mock()
+        intervention.code.display_name = "Intervention Act"  # Parent code
+
+        # Create nested procedure
+        nested_procedure = Mock()
+        nested_procedure.code = Mock()
+        nested_procedure.code.display_name = "Oxygen administration by nasal cannula"
+
+        # Create COMP relationship
+        comp_rel = Mock()
+        comp_rel.type_code = "COMP"
+        comp_rel.procedure = nested_procedure
+        comp_rel.act = None
+
+        intervention.entry_relationship = [comp_rel]
+
+        converter = CarePlanConverter(
+            reference_registry=mock_reference_registry,
+            intervention_entries=[intervention],
+        )
+        careplan = converter.convert(minimal_care_plan_document)
+
+        assert "text" in careplan
+        div = careplan["text"]["div"]
+        # Should extract text from nested procedure
+        assert "Oxygen administration by nasal cannula" in div
+
+    def test_narrative_intervention_fallback_to_code(
+        self, minimal_care_plan_document, mock_reference_registry
+    ):
+        """Test intervention text falls back to code value when no displayName."""
+        from unittest.mock import Mock
+
+        intervention = Mock()
+        intervention.id = [Mock(root="intervention-123")]
+        intervention.code = Mock()
+        intervention.code.display_name = None  # No display name
+        intervention.code.original_text = None  # No original text
+        intervention.code.code = "12345-6"  # Only code
+        intervention.entry_relationship = []
+
+        converter = CarePlanConverter(
+            reference_registry=mock_reference_registry,
+            intervention_entries=[intervention],
+        )
+        careplan = converter.convert(minimal_care_plan_document)
+
+        assert "text" in careplan
+        div = careplan["text"]["div"]
+        # Should show code value
+        assert "12345-6" in div
 
 
 # ============================================================================

@@ -672,20 +672,53 @@ def test_ehr_device_version_patterns():
 
 ---
 
-## 🟡 MEDIUM PRIORITY - Enhance When Possible (6 items)
+## 🟡 MEDIUM PRIORITY - Enhance When Possible (5 items)
 
-### 7. CarePlan: Implement Narrative Generation
+### ~~7. CarePlan: Implement Narrative Generation~~ ✅ COMPLETED
 
 **Priority:** 🟡 MEDIUM
 **File:** `ccda_to_fhir/converters/careplan.py`
+**Status:** ✅ COMPLETED (2025-12-21)
 **Issue:** Minimal placeholder narrative - US Core requires meaningful text
 **Estimated Effort:** 3-4 hours
 
-**Current Code (Lines 227-232):**
+**Implementation Summary:**
+- Implemented `_generate_narrative()` method that creates meaningful XHTML narratives from structured data
+- Narrative includes:
+  - Care plan title (from document title)
+  - Period (formatted as "start to end" or "start onwards")
+  - Health concerns count
+  - Goals count
+  - Detailed list of planned interventions with display names
+- Added helper methods:
+  - `_format_period_text()` - formats period as human-readable text
+  - `_extract_intervention_text()` - extracts displayable text from interventions
+  - `_extract_code_display_text()` - extracts display text from code elements
+- Intervention text extraction prioritizes nested procedures over parent codes (more specific information)
+- All HTML special characters properly escaped using `html.escape()`
+- Narrative status set to "generated" (created entirely from structured data)
+- Well-formed XHTML with proper namespace
+- Added 12 comprehensive unit tests covering:
+  - Basic narrative structure and XHTML compliance
+  - Status field ("generated")
+  - Title inclusion
+  - Period formatting (with end date, start only)
+  - Health concerns count
+  - Goals count
+  - Intervention details
+  - HTML escaping
+  - Minimal data scenarios
+  - Nested procedure extraction
+  - Code fallback scenarios
+- All 1,179 tests passing (including integration tests)
+- Compliant with FHIR R4 and US Core CarePlan profile requirements
+
+**Original Current Code (Lines 218-224):**
 ```python
 # TODO: Implement narrative generation from Health Concerns, Goals, Interventions
-fhir_careplan["text"] = {
-    "status": "generated",
+# For now, create a minimal narrative
+careplan["text"] = {
+    "status": "additional",
     "div": '<div xmlns="http://www.w3.org/1999/xhtml"><p>Care Plan</p></div>'
 }
 ```
@@ -1391,9 +1424,9 @@ def _create_pharmacy_location(
 |----------|-------|------------------|
 | 🔴 Critical | 0 (2 ✅) | 0 hours (5-6 hours completed) |
 | 🟠 High | 0 (4 ✅) | 0 hours (9-11 hours completed) |
-| 🟡 Medium | 6 | 10-14 hours |
+| 🟡 Medium | 5 (1 ✅) | 7-10 hours (3-4 hours completed) |
 | 🟢 Low | 3 | 5-6 hours |
-| **Total** | **9 remaining** | **15-20 hours** |
+| **Total** | **8 remaining** | **12-16 hours** |
 
 ---
 
