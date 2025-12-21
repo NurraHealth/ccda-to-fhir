@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from ccda_to_fhir.ccda.models.datatypes import IVL_TS
@@ -15,6 +17,10 @@ from ccda_to_fhir.constants import (
 from ccda_to_fhir.logging_config import get_logger
 
 from .base import BaseConverter
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.datatypes import AD, TEL
+    from ccda_to_fhir.ccda.models.performer import RepresentedOrganization
 
 logger = get_logger(__name__)
 
@@ -129,10 +135,14 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             if encounter_ref:
                 med_dispense["context"] = encounter_ref
 
-        # 7. Performer (pharmacy/pharmacist)
-        performers = self._extract_performers(supply)
+        # 7. Performer (pharmacy/pharmacist) and Location (pharmacy)
+        performers, location_ref = self._extract_performers_and_location(supply)
         if performers:
             med_dispense["performer"] = performers
+
+        # 7b. Location (pharmacy location)
+        if location_ref:
+            med_dispense["location"] = {"reference": location_ref}
 
         # 8. AuthorizingPrescription (reference to parent MedicationRequest)
         if parent_medication_request_id:
@@ -255,16 +265,21 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             translations=translations,
         )
 
-    def _extract_performers(self, supply: Supply) -> list[JSONObject] | None:
-        """Extract performers (pharmacy/pharmacist) from supply.
+    def _extract_performers_and_location(self, supply: Supply) -> tuple[list[JSONObject] | None, str | None]:
+        """Extract performers (pharmacy/pharmacist) and location (pharmacy) from supply.
+
+        Also creates Location resource for pharmacy when representedOrganization is present.
 
         Args:
             supply: The C-CDA Supply element
 
         Returns:
-            List of FHIR performer objects
+            Tuple of (performer list, location reference string)
+            - performer list: List of FHIR performer objects or None
+            - location reference: Location reference (e.g., "Location/pharmacy-123") or None
         """
         performers = []
+        location_ref = None
 
         # From performer element (pharmacy/pharmacist)
         if supply.performer:
@@ -306,6 +321,10 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     if performer_obj.get("actor"):
                         performers.append(performer_obj)
 
+                # Create Location resource from representedOrganization
+                if hasattr(assigned, "represented_organization") and assigned.represented_organization:
+                    location_ref = self._create_pharmacy_location(assigned.represented_organization)
+
         # From author element (pharmacist who packaged)
         if supply.author:
             for author in supply.author:
@@ -339,7 +358,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                                 performers.append(performer_obj)
                                 break
 
-        return performers if performers else None
+        return (performers if performers else None, location_ref)
 
     def _infer_dispense_type(self, supply: Supply) -> JSONObject | None:
         """Infer dispense type from repeatNumber.
@@ -475,3 +494,293 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                         timing["whenHandedOver"] = when_handed_over
 
         return timing if timing else None
+
+    def _create_pharmacy_location(
+        self,
+        organization: "RepresentedOrganization"
+    ) -> str | None:
+        """Create Location resource for pharmacy organization.
+
+        Maps C-CDA performer/representedOrganization to FHIR Location resource
+        per mapping guidance: docs/mapping/15-medication-dispense.md (line 297-309).
+
+        Args:
+            organization: The representedOrganization element from performer
+
+        Returns:
+            Location reference (e.g., "Location/pharmacy-123") or None if creation fails
+
+        Examples:
+            >>> org = RepresentedOrganization(name=["Community Pharmacy"])
+            >>> ref = self._create_pharmacy_location(org)
+            >>> # Returns: "Location/pharmacy-..."
+        """
+        if not organization:
+            return None
+
+        if not self.reference_registry:
+            # Cannot create Location without registry
+            return None
+
+        # Generate Location ID from organization identifiers or name
+        location_id = self._generate_location_id(organization)
+
+        # Check if already created
+        if self.reference_registry.has_resource("Location", location_id):
+            return f"Location/{location_id}"
+
+        # Create Location resource
+        location: JSONObject = {
+            "resourceType": "Location",
+            "id": location_id,
+            "status": "active",
+            "mode": "instance",
+        }
+
+        # Add name from organization (required by US Core)
+        name = self._extract_organization_name(organization)
+        if not name:
+            # Name is required by US Core - cannot create Location without it
+            return None
+
+        location["name"] = name
+
+        # Add type (pharmacy location)
+        # Per FHIR standards, use RoleCode "PHARM" for pharmacy locations
+        location["type"] = [{
+            "coding": [{
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "PHARM",
+                "display": "Pharmacy"
+            }]
+        }]
+
+        # Add address if available
+        if hasattr(organization, "addr") and organization.addr:
+            address = self._convert_address(organization.addr)
+            if address:
+                location["address"] = address
+
+        # Add telecom if available
+        if hasattr(organization, "telecom") and organization.telecom:
+            telecom_list = self._convert_telecom(organization.telecom)
+            if telecom_list:
+                location["telecom"] = telecom_list
+
+        # Register Location resource
+        self.reference_registry.register_resource(location)
+
+        return f"Location/{location_id}"
+
+    def _generate_location_id(self, organization: "RepresentedOrganization") -> str:
+        """Generate FHIR Location ID from pharmacy organization.
+
+        Uses organization identifiers if available, otherwise generates
+        from organization name using cached ID generator.
+
+        Args:
+            organization: RepresentedOrganization element
+
+        Returns:
+            Generated Location ID
+
+        Examples:
+            >>> org = RepresentedOrganization(
+            ...     id=[II(root="1.2.3.4", extension="PHARM-001")],
+            ...     name=["Community Pharmacy"]
+            ... )
+            >>> location_id = self._generate_location_id(org)
+            >>> # Returns: "location-pharm-001" or similar
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        # Try to use organization identifiers
+        if hasattr(organization, "id") and organization.id:
+            for id_elem in organization.id:
+                if id_elem.root:
+                    return generate_id_from_identifiers(
+                        "Location",
+                        id_elem.root,
+                        id_elem.extension
+                    )
+
+        # Fallback: Generate from organization name
+        name = self._extract_organization_name(organization)
+        if name:
+            # Use name as fallback context for deterministic ID generation
+            return generate_id_from_identifiers(
+                "Location",
+                None,
+                name
+            )
+
+        # Ultimate fallback: Generate random ID
+        return generate_id_from_identifiers("Location", None, None)
+
+    def _extract_organization_name(self, organization: "RepresentedOrganization") -> str | None:
+        """Extract organization name from representedOrganization.
+
+        Args:
+            organization: RepresentedOrganization element
+
+        Returns:
+            Organization name string or None
+
+        Examples:
+            >>> org = RepresentedOrganization(name=["Community Pharmacy"])
+            >>> name = self._extract_organization_name(org)
+            >>> # Returns: "Community Pharmacy"
+        """
+        if not hasattr(organization, "name") or not organization.name:
+            return None
+
+        names = organization.name
+
+        # Handle single name (string)
+        if isinstance(names, str):
+            return names
+
+        # Handle list of names
+        if isinstance(names, list) and len(names) > 0:
+            first_name = names[0]
+
+            # Handle string in list
+            if isinstance(first_name, str):
+                return first_name
+
+            # Handle ON (OrganizationName) object
+            if hasattr(first_name, "value") and first_name.value:
+                return first_name.value
+
+            # Fallback to string representation
+            return str(first_name) if first_name else None
+
+        return None
+
+    def _convert_address(self, addresses: list["AD"] | "AD") -> JSONObject:
+        """Convert C-CDA address to FHIR Address.
+
+        Note: Location.address is 0..1 (single address), not array.
+        If multiple addresses provided, uses the first one.
+
+        Args:
+            addresses: List of C-CDA AD or single AD
+
+        Returns:
+            FHIR Address object (or empty dict if no valid address)
+
+        Examples:
+            >>> addr = AD(
+            ...     street_address_line=["123 Main St"],
+            ...     city="Boston",
+            ...     state="MA",
+            ...     postal_code="02101"
+            ... )
+            >>> fhir_addr = self._convert_address(addr)
+            >>> # Returns: {"line": ["123 Main St"], "city": "Boston", ...}
+        """
+        from ccda_to_fhir.constants import ADDRESS_USE_MAP
+
+        # Normalize to list
+        addr_list = addresses if isinstance(addresses, list) else [addresses]
+
+        if not addr_list:
+            return {}
+
+        # Use first address
+        addr = addr_list[0]
+        fhir_address: JSONObject = {}
+
+        # Use code (HP = home, WP = work, etc.)
+        if hasattr(addr, "use") and addr.use:
+            fhir_use = ADDRESS_USE_MAP.get(addr.use)
+            if fhir_use:
+                fhir_address["use"] = fhir_use
+
+        # Street address lines
+        if hasattr(addr, "street_address_line") and addr.street_address_line:
+            fhir_address["line"] = addr.street_address_line
+
+        # City
+        if hasattr(addr, "city") and addr.city:
+            fhir_address["city"] = addr.city if isinstance(addr.city, str) else addr.city[0]
+
+        # State
+        if hasattr(addr, "state") and addr.state:
+            fhir_address["state"] = addr.state if isinstance(addr.state, str) else addr.state[0]
+
+        # Postal code
+        if hasattr(addr, "postal_code") and addr.postal_code:
+            fhir_address["postalCode"] = (
+                addr.postal_code if isinstance(addr.postal_code, str) else addr.postal_code[0]
+            )
+
+        # Country
+        if hasattr(addr, "country") and addr.country:
+            fhir_address["country"] = addr.country if isinstance(addr.country, str) else addr.country[0]
+
+        return fhir_address if fhir_address else {}
+
+    def _convert_telecom(self, telecoms: list["TEL"] | "TEL") -> list[JSONObject]:
+        """Convert C-CDA telecom to FHIR ContactPoint.
+
+        Parses URI schemes (tel:, fax:, mailto:, http:) and maps to FHIR system codes.
+
+        Args:
+            telecoms: List of C-CDA TEL or single TEL
+
+        Returns:
+            List of FHIR ContactPoint objects
+
+        Examples:
+            >>> tel = TEL(value="tel:+1-555-1234", use="WP")
+            >>> contact_points = self._convert_telecom(tel)
+            >>> # Returns: [{"system": "phone", "value": "+1-555-1234", "use": "work"}]
+        """
+        fhir_telecom: list[JSONObject] = []
+
+        # Normalize to list
+        telecom_list = telecoms if isinstance(telecoms, list) else [telecoms]
+
+        for telecom in telecom_list:
+            if not hasattr(telecom, "value") or not telecom.value:
+                continue
+
+            contact_point: JSONObject = {}
+
+            # Parse value (tel:+1..., mailto:..., fax:..., http://...)
+            value = telecom.value
+            if value.startswith("tel:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
+                contact_point["value"] = value[4:]  # Remove "tel:" prefix
+            elif value.startswith("mailto:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.EMAIL
+                contact_point["value"] = value[7:]  # Remove "mailto:" prefix
+            elif value.startswith("fax:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.FAX
+                contact_point["value"] = value[4:]  # Remove "fax:" prefix
+            elif value.startswith("http:") or value.startswith("https:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.URL
+                contact_point["value"] = value
+            else:
+                # Unknown format, store as-is (assume phone if no prefix)
+                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
+                contact_point["value"] = value
+
+            # Map use code (HP = home, WP = work, etc.)
+            if hasattr(telecom, "use") and telecom.use:
+                # Simple mapping for common use codes
+                use_map = {
+                    "HP": "home",
+                    "WP": "work",
+                    "MC": "mobile",
+                    "PG": "mobile"
+                }
+                fhir_use = use_map.get(telecom.use)
+                if fhir_use:
+                    contact_point["use"] = fhir_use
+
+            if contact_point:
+                fhir_telecom.append(contact_point)
+
+        return fhir_telecom

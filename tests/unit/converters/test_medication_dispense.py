@@ -621,3 +621,397 @@ class TestMedicationDispenseWithRegistry:
 
         # Should reference the patient from registry
         assert result["subject"] == {"reference": "Patient/patient-xyz"}
+
+
+class TestMedicationDispensePharmacyLocation:
+    """Test pharmacy Location resource creation."""
+
+    def create_minimal_dispense(self) -> Supply:
+        """Create minimal valid medication dispense."""
+        dispense = Supply()
+        dispense.class_code = "SPLY"
+        dispense.mood_code = "EVN"
+        dispense.template_id = [
+            II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")
+        ]
+        dispense.id = [II(root="dispense-456")]
+        dispense.status_code = CS(code="completed")
+        dispense.effective_time = IVL_TS(value="20200301143000-0500")
+
+        material = ManufacturedMaterial()
+        material.code = CE(code="314076", code_system="2.16.840.1.113883.6.88")
+        product = ManufacturedProduct()
+        product.manufactured_material = material
+        dispense.product = product
+
+        return dispense
+
+    def test_location_created_when_represented_organization_present(self):
+        """Test Location resource created for representedOrganization."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedPerson,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.ccda.models.datatypes import AD, TEL
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+
+        patient = {
+            "resourceType": "Patient",
+            "id": "patient-123",
+        }
+        registry.register_resource(patient)
+
+        # Create converter with registry
+        converter = MedicationDispenseConverter(reference_registry=registry)
+
+        # Create dispense with pharmacy organization
+        dispense = self.create_minimal_dispense()
+
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        # representedOrganization (pharmacy)
+        org = RepresentedOrganization()
+        org.name = ["Community Pharmacy"]
+        org.addr = [AD(
+            street_address_line=["123 Pharmacy Lane"],
+            city="Boston",
+            state="MA",
+            postal_code="02101"
+        )]
+        org.telecom = [TEL(value="tel:(555)555-1000", use="WP")]
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+
+        dispense.performer = [performer]
+
+        result = converter.convert(dispense)
+
+        # Should have location reference
+        assert "location" in result
+        assert "reference" in result["location"]
+        assert result["location"]["reference"].startswith("Location/")
+
+        # Location resource should be in registry
+        location_id = result["location"]["reference"].split("/")[1]
+        assert registry.has_resource("Location", location_id)
+
+        # Get the Location resource from registry
+        location = registry.get_resource("Location", location_id)
+        assert location is not None
+        assert location["resourceType"] == "Location"
+        assert location["name"] == "Community Pharmacy"
+        assert location["status"] == "active"
+        assert location["mode"] == "instance"
+
+        # Check type is PHARM
+        assert "type" in location
+        assert len(location["type"]) == 1
+        coding = location["type"][0]["coding"][0]
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
+        assert coding["code"] == "PHARM"
+        assert coding["display"] == "Pharmacy"
+
+        # Check address
+        assert "address" in location
+        assert location["address"]["line"] == ["123 Pharmacy Lane"]
+        assert location["address"]["city"] == "Boston"
+        assert location["address"]["state"] == "MA"
+        assert location["address"]["postalCode"] == "02101"
+
+        # Check telecom
+        assert "telecom" in location
+        assert len(location["telecom"]) == 1
+        assert location["telecom"][0]["system"] == "phone"
+        assert location["telecom"][0]["value"] == "(555)555-1000"
+        assert location["telecom"][0]["use"] == "work"
+
+    def test_location_not_created_without_represented_organization(self):
+        """Test Location not created when representedOrganization is absent."""
+        from ccda_to_fhir.ccda.models.performer import AssignedPerson
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+
+        patient = {
+            "resourceType": "Patient",
+            "id": "patient-123",
+        }
+        registry.register_resource(patient)
+
+        # Create converter with registry
+        converter = MedicationDispenseConverter(reference_registry=registry)
+
+        # Create dispense WITHOUT pharmacy organization
+        dispense = self.create_minimal_dispense()
+
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity.assigned_person = AssignedPerson()
+        # No represented_organization
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+
+        dispense.performer = [performer]
+
+        result = converter.convert(dispense)
+
+        # Should NOT have location reference
+        assert "location" not in result
+
+    def test_location_not_created_without_organization_name(self):
+        """Test Location not created when organization lacks name."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedPerson,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+
+        patient = {
+            "resourceType": "Patient",
+            "id": "patient-123",
+        }
+        registry.register_resource(patient)
+
+        # Create converter with registry
+        converter = MedicationDispenseConverter(reference_registry=registry)
+
+        # Create dispense with pharmacy organization WITHOUT name
+        dispense = self.create_minimal_dispense()
+
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        # representedOrganization without name
+        org = RepresentedOrganization()
+        # No name field
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+
+        dispense.performer = [performer]
+
+        result = converter.convert(dispense)
+
+        # Should NOT have location reference (name is required)
+        assert "location" not in result
+
+    def test_location_not_created_without_registry(self):
+        """Test Location not created when no reference registry."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedPerson,
+            RepresentedOrganization,
+        )
+
+        # Create converter WITHOUT registry
+        converter = MedicationDispenseConverter()
+
+        # Create dispense with pharmacy organization
+        dispense = self.create_minimal_dispense()
+
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        # representedOrganization
+        org = RepresentedOrganization()
+        org.name = ["Community Pharmacy"]
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+
+        dispense.performer = [performer]
+
+        result = converter.convert(dispense)
+
+        # Should NOT have location reference (no registry to register Location)
+        assert "location" not in result
+
+    def test_location_reused_for_same_organization(self):
+        """Test same Location resource reused for same organization."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedPerson,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+
+        patient = {
+            "resourceType": "Patient",
+            "id": "patient-123",
+        }
+        registry.register_resource(patient)
+
+        # Create converter with registry
+        converter = MedicationDispenseConverter(reference_registry=registry)
+
+        # Create first dispense
+        dispense1 = self.create_minimal_dispense()
+        dispense1.id = [II(root="dispense-1")]
+
+        assigned_entity1 = AssignedEntity()
+        assigned_entity1.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity1.assigned_person = AssignedPerson()
+
+        org1 = RepresentedOrganization()
+        org1.id = [II(root="org-123", extension="pharmacy-1")]
+        org1.name = ["Community Pharmacy"]
+        assigned_entity1.represented_organization = org1
+
+        performer1 = Performer()
+        performer1.assigned_entity = assigned_entity1
+
+        dispense1.performer = [performer1]
+
+        result1 = converter.convert(dispense1)
+
+        # Create second dispense with SAME organization
+        dispense2 = self.create_minimal_dispense()
+        dispense2.id = [II(root="dispense-2")]
+
+        assigned_entity2 = AssignedEntity()
+        assigned_entity2.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity2.assigned_person = AssignedPerson()
+
+        org2 = RepresentedOrganization()
+        org2.id = [II(root="org-123", extension="pharmacy-1")]  # SAME ID
+        org2.name = ["Community Pharmacy"]
+        assigned_entity2.represented_organization = org2
+
+        performer2 = Performer()
+        performer2.assigned_entity = assigned_entity2
+
+        dispense2.performer = [performer2]
+
+        result2 = converter.convert(dispense2)
+
+        # Both should reference the SAME Location resource
+        assert result1["location"]["reference"] == result2["location"]["reference"]
+
+    def test_location_with_multiple_address_lines(self):
+        """Test Location address with multiple street lines."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedPerson,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.ccda.models.datatypes import AD
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+
+        patient = {
+            "resourceType": "Patient",
+            "id": "patient-123",
+        }
+        registry.register_resource(patient)
+
+        # Create converter with registry
+        converter = MedicationDispenseConverter(reference_registry=registry)
+
+        # Create dispense with pharmacy organization
+        dispense = self.create_minimal_dispense()
+
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        # representedOrganization with multiple address lines
+        org = RepresentedOrganization()
+        org.name = ["Downtown Pharmacy"]
+        org.addr = [AD(
+            street_address_line=["Suite 200", "456 Main Street"],
+            city="Springfield",
+            state="IL",
+            postal_code="62701"
+        )]
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+
+        dispense.performer = [performer]
+
+        result = converter.convert(dispense)
+
+        # Get the Location resource
+        location_id = result["location"]["reference"].split("/")[1]
+        location = registry.get_resource("Location", location_id)
+
+        # Check address has multiple lines
+        assert "address" in location
+        assert location["address"]["line"] == ["Suite 200", "456 Main Street"]
+        assert location["address"]["city"] == "Springfield"
+
+    def test_location_with_minimal_organization_info(self):
+        """Test Location created with minimal organization info (name only)."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedPerson,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+
+        patient = {
+            "resourceType": "Patient",
+            "id": "patient-123",
+        }
+        registry.register_resource(patient)
+
+        # Create converter with registry
+        converter = MedicationDispenseConverter(reference_registry=registry)
+
+        # Create dispense with minimal pharmacy organization (name only)
+        dispense = self.create_minimal_dispense()
+
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        # representedOrganization with only name
+        org = RepresentedOrganization()
+        org.name = ["Pharmacy Express"]
+        # No address, telecom, or other fields
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+
+        dispense.performer = [performer]
+
+        result = converter.convert(dispense)
+
+        # Should have location reference
+        assert "location" in result
+
+        # Get the Location resource
+        location_id = result["location"]["reference"].split("/")[1]
+        location = registry.get_resource("Location", location_id)
+
+        # Check minimal required fields
+        assert location["resourceType"] == "Location"
+        assert location["name"] == "Pharmacy Express"
+        assert location["status"] == "active"
+        assert location["mode"] == "instance"
+
+        # Optional fields should not be present
+        assert "address" not in location
+        assert "telecom" not in location
