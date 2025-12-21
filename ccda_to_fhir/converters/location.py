@@ -92,6 +92,11 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         if location_type:
             location["type"] = [location_type]
 
+        # Map physicalType (physical form of location - inferred from type code)
+        physical_type = self._infer_physical_type(participant_role.code)
+        if physical_type:
+            location["physicalType"] = physical_type
+
         # Map telecom (phone, fax, email)
         if participant_role.telecom:
             telecom_list = self._convert_telecom(participant_role.telecom)
@@ -427,6 +432,121 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 fhir_address["use"] = fhir_use
 
         return fhir_address if fhir_address else {}
+
+    def _infer_physical_type(self, location_code: "CE") -> JSONObject | None:
+        """Infer physical type from location type code.
+
+        Maps C-CDA location codes to FHIR location-physical-type codes.
+        Uses http://terminology.hl7.org/CodeSystem/location-physical-type
+
+        Per FHIR R4 specification, physicalType describes the physical form
+        of the location (e.g., building, room, vehicle, road).
+
+        Args:
+            location_code: The C-CDA location type code (participantRole/code)
+
+        Returns:
+            FHIR CodeableConcept for physicalType or None if cannot infer
+
+        Examples:
+            >>> # Hospital location
+            >>> code = CE(code="1061-3", code_system="2.16.840.1.113883.6.259")
+            >>> physical_type = self._infer_physical_type(code)
+            >>> # Returns: {"coding": [{"system": "...", "code": "bu", "display": "Building"}]}
+            >>>
+            >>> # Patient's residence
+            >>> code = CE(code="PTRES", code_system="2.16.840.1.113883.5.111")
+            >>> physical_type = self._infer_physical_type(code)
+            >>> # Returns: {"coding": [{"system": "...", "code": "ho", "display": "House"}]}
+        """
+        if not location_code or not hasattr(location_code, 'code') or not location_code.code:
+            return None
+
+        # Mapping from C-CDA location codes to FHIR physicalType codes
+        # Key: (code_system, code) → (physical_type_code, display)
+
+        # HSLOC codes (2.16.840.1.113883.6.259)
+        hsloc_map = {
+            '1061-3': ('bu', 'Building'),  # Hospital
+            '1116-5': ('bu', 'Building'),  # Ambulatory Surgical Center
+            '1117-3': ('bu', 'Building'),  # Ambulatory Primary Care Clinic
+            '1118-1': ('wa', 'Ward'),      # Emergency Department
+            '1160-1': ('bu', 'Building'),  # Urgent Care Center
+            '1200-7': ('bu', 'Building'),  # Long Term Care
+            '1242-9': ('bu', 'Building'),  # Outpatient Clinic
+
+            # Wards and units
+            '1021-7': ('wa', 'Ward'),      # Critical Care Unit
+            '1023-3': ('wa', 'Ward'),      # Inpatient Medical Ward
+            '1024-1': ('wa', 'Ward'),      # Inpatient Surgical Ward
+            '1025-8': ('wa', 'Ward'),      # Inpatient Pediatric Ward
+            '1026-6': ('wa', 'Ward'),      # Inpatient Obstetric Ward
+            '1027-4': ('wa', 'Ward'),      # Inpatient Psychiatric Ward
+            '1028-2': ('wa', 'Ward'),      # Rehabilitation Unit
+            '1029-0': ('wa', 'Ward'),      # Labor and Delivery
+            '1033-2': ('wa', 'Ward'),      # Pediatric Critical Care
+            '1034-0': ('wa', 'Ward'),      # Neonatal Critical Care (NICU)
+            '1035-7': ('wa', 'Ward'),      # Burn Unit
+
+            # Rooms and specific areas
+            '1108-2': ('ro', 'Room'),      # Operating Room
+            '1250-2': ('area', 'Area'),    # Pharmacy
+            '1251-0': ('area', 'Area'),    # Radiology
+            '1252-8': ('area', 'Area'),    # Laboratory
+        }
+
+        # RoleCode v3 codes (2.16.840.1.113883.5.111)
+        rolecode_map = {
+            'PTRES': ('ho', 'House'),      # Patient's Residence
+            'AMB': ('ve', 'Vehicle'),      # Ambulance
+            'HOSP': ('bu', 'Building'),    # Hospital
+            'PHARM': ('bu', 'Building'),   # Pharmacy
+            'COMM': ('bu', 'Building'),    # Community Location
+            'SCHOOL': ('bu', 'Building'),  # School
+            'WORK': ('bu', 'Building'),    # Work Site
+        }
+
+        # SNOMED CT codes (2.16.840.1.113883.6.96)
+        snomed_map = {
+            '22232009': ('bu', 'Building'),     # Hospital
+            '225728007': ('wa', 'Ward'),        # Accident and Emergency department
+            '309904001': ('wa', 'Ward'),        # Intensive care unit
+            '309905002': ('wa', 'Ward'),        # Coronary care unit
+            '309939001': ('wa', 'Ward'),        # Palliative care unit
+            '309914001': ('ro', 'Room'),        # Operating theater
+            '225746001': ('ro', 'Room'),        # Patient room
+            '702871004': ('area', 'Area'),      # Infusion clinic
+        }
+
+        # Determine which mapping to use based on code system
+        physical_type_code = None
+        display = None
+
+        code_system = location_code.code_system if hasattr(location_code, 'code_system') else None
+        code_value = location_code.code
+
+        if code_system == '2.16.840.1.113883.6.259':  # HSLOC
+            if code_value in hsloc_map:
+                physical_type_code, display = hsloc_map[code_value]
+        elif code_system == '2.16.840.1.113883.5.111':  # RoleCode
+            if code_value in rolecode_map:
+                physical_type_code, display = rolecode_map[code_value]
+        elif code_system == '2.16.840.1.113883.6.96':  # SNOMED CT
+            if code_value in snomed_map:
+                physical_type_code, display = snomed_map[code_value]
+
+        # If no mapping found, return None (field will be omitted)
+        if not physical_type_code:
+            return None
+
+        # Return FHIR CodeableConcept structure
+        return {
+            "coding": [{
+                "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
+                "code": physical_type_code,
+                "display": display
+            }]
+        }
 
     def _get_managing_organization_reference(
         self,

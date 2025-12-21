@@ -737,3 +737,158 @@ class TestLocationConverter:
 
         # Should NOT have managingOrganization when scoping entity has no ID
         assert "managingOrganization" not in location
+
+    # ============================================================================
+    # K. Physical Type Mapping (8 tests)
+    # ============================================================================
+
+    def test_physical_type_inferred_from_hsloc_hospital(
+        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+    ) -> None:
+        """Test physicalType inferred from HSLOC hospital code (→ Building)."""
+        location = location_converter.convert(sample_service_delivery_location)
+
+        assert "physicalType" in location
+        assert "coding" in location["physicalType"]
+        assert len(location["physicalType"]["coding"]) == 1
+
+        coding = location["physicalType"]["coding"][0]
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/location-physical-type"
+        assert coding["code"] == "bu"
+        assert coding["display"] == "Building"
+
+    def test_physical_type_patient_home(
+        self, location_converter: LocationConverter, patient_home_location: ParticipantRole
+    ) -> None:
+        """Test patient residence maps to House physical type."""
+        location = location_converter.convert(patient_home_location)
+
+        assert "physicalType" in location
+        coding = location["physicalType"]["coding"][0]
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/location-physical-type"
+        assert coding["code"] == "ho"
+        assert coding["display"] == "House"
+
+    def test_physical_type_ambulance(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test ambulance maps to Vehicle physical type."""
+        ambulance_location = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="9988776655")],
+            code=CE(
+                code="AMB",
+                code_system="2.16.840.1.113883.5.111",
+                display_name="Ambulance"
+            ),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Ambulance Unit 5"])
+        )
+
+        location = location_converter.convert(ambulance_location)
+
+        assert "physicalType" in location
+        coding = location["physicalType"]["coding"][0]
+        assert coding["code"] == "ve"
+        assert coding["display"] == "Vehicle"
+
+    def test_physical_type_emergency_department(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test emergency department maps to Ward physical type."""
+        ed_location = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+            code=CE(
+                code="1118-1",
+                code_system="2.16.840.1.113883.6.259",
+                display_name="Emergency Department"
+            ),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Boston General Emergency Department"])
+        )
+
+        location = location_converter.convert(ed_location)
+
+        assert "physicalType" in location
+        coding = location["physicalType"]["coding"][0]
+        assert coding["code"] == "wa"
+        assert coding["display"] == "Ward"
+
+    def test_physical_type_operating_room(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test operating room maps to Room physical type."""
+        or_location = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="1111222233")],
+            code=CE(
+                code="1108-2",
+                code_system="2.16.840.1.113883.6.259",
+                display_name="Operating Room"
+            ),
+            playing_entity=PlayingEntity(class_code="PLC", name=["OR 3"])
+        )
+
+        location = location_converter.convert(or_location)
+
+        assert "physicalType" in location
+        coding = location["physicalType"]["coding"][0]
+        assert coding["code"] == "ro"
+        assert coding["display"] == "Room"
+
+    def test_physical_type_snomed_icu(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test SNOMED CT ICU code maps to Ward physical type."""
+        icu_location = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+            code=CE(
+                code="309904001",
+                code_system="2.16.840.1.113883.6.96",
+                display_name="Intensive care unit"
+            ),
+            playing_entity=PlayingEntity(class_code="PLC", name=["ICU"])
+        )
+
+        location = location_converter.convert(icu_location)
+
+        assert "physicalType" in location
+        coding = location["physicalType"]["coding"][0]
+        assert coding["code"] == "wa"
+        assert coding["display"] == "Ward"
+
+    def test_physical_type_omitted_when_cannot_infer(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test physicalType omitted when code not in mapping."""
+        # Use a code that's not in our physical type mapping
+        unmapped_location = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+            code=CE(
+                code="99999",  # Unmapped code
+                code_system="2.16.840.1.113883.6.259",
+                display_name="Unknown Facility Type"
+            ),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Unknown Facility"])
+        )
+
+        location = location_converter.convert(unmapped_location)
+
+        # Should NOT have physicalType when cannot infer
+        assert "physicalType" not in location
+
+    def test_physical_type_uses_standard_fhir_system(
+        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+    ) -> None:
+        """Test physicalType uses official FHIR CodeSystem URI."""
+        location = location_converter.convert(sample_service_delivery_location)
+
+        assert "physicalType" in location
+        assert location["physicalType"]["coding"][0]["system"] == \
+               "http://terminology.hl7.org/CodeSystem/location-physical-type"

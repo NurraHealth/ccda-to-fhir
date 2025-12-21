@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-12-21
 **Status:** Action Items from Comprehensive Code Review
-**Total Items:** 15 (2 Critical ✅ Complete, 4 High ✅ Complete, 5 Medium, 3 Low)
+**Total Items:** 15 (2 Critical ✅ Complete, 4 High ✅ Complete, 5 Medium ✅ Complete, 1 Medium, 3 Low)
 
 ---
 
@@ -672,7 +672,7 @@ def test_ehr_device_version_patterns():
 
 ---
 
-## 🟡 MEDIUM PRIORITY - Enhance When Possible (2 items - 4 ✅ Complete)
+## 🟡 MEDIUM PRIORITY - Enhance When Possible (1 item - 5 ✅ Complete)
 
 ### ~~7. CarePlan: Implement Narrative Generation~~ ✅ COMPLETED
 
@@ -1129,12 +1129,40 @@ def test_device_owner_missing_when_no_entity():
 
 ---
 
-### 11. Location: Add physicalType Mapping
+### ~~11. Location: Add physicalType Mapping~~ ✅ COMPLETED
 
 **Priority:** 🟡 MEDIUM
 **File:** `ccda_to_fhir/converters/location.py`
+**Status:** ✅ COMPLETED (2025-12-21)
 **Issue:** physicalType not populated
 **Estimated Effort:** 1-2 hours
+
+**Implementation Summary:**
+- Added `_infer_physical_type()` method to location.py that maps C-CDA location codes to FHIR physicalType codes
+- Comprehensive mapping implemented for three code systems:
+  - HSLOC codes (2.16.840.1.113883.6.259): 20 mappings covering hospitals, wards, rooms, and areas
+  - RoleCode v3 codes (2.16.840.1.113883.5.111): 7 mappings for patient homes, ambulances, etc.
+  - SNOMED CT codes (2.16.840.1.113883.6.96): 8 mappings for ICU, operating theaters, patient rooms, etc.
+- physicalType field uses official FHIR CodeSystem: http://terminology.hl7.org/CodeSystem/location-physical-type
+- physicalType codes include: bu (Building), wa (Ward), ro (Room), ve (Vehicle), ho (House), area (Area)
+- Field correctly omitted when location type cannot be mapped to physical type
+- Added physicalType field to convert() method in location.py (line 95-98)
+- Added 8 comprehensive unit tests covering all physical type scenarios:
+  - Hospital → Building
+  - Patient home → House
+  - Ambulance → Vehicle
+  - Emergency department → Ward
+  - Operating room → Room
+  - SNOMED ICU → Ward
+  - Unmapped code → physicalType omitted
+  - Standard FHIR system URI verification
+- All 1,198 tests passing (added 8 new tests, no regressions)
+- Standards-compliant implementation per FHIR R4 Location.physicalType specification
+
+**Current Behavior:**
+physicalType field now populated from location type code using comprehensive C-CDA to FHIR mappings. Field omitted when physical type cannot be inferred.
+
+**Original Required Implementation:**
 
 **Required Implementation:**
 
@@ -1473,9 +1501,9 @@ def _create_pharmacy_location(
 |----------|-------|------------------|
 | 🔴 Critical | 0 (2 ✅) | 0 hours (5-6 hours completed) |
 | 🟠 High | 0 (4 ✅) | 0 hours (9-11 hours completed) |
-| 🟡 Medium | 2 (4 ✅) | 3-6 hours (7-8 hours completed) |
+| 🟡 Medium | 1 (5 ✅) | 1 hour (8-10 hours completed) |
 | 🟢 Low | 3 | 5-6 hours |
-| **Total** | **5 remaining** | **8-12 hours** |
+| **Total** | **4 remaining** | **6-7 hours** |
 
 ---
 
@@ -1517,7 +1545,7 @@ Before marking this document as complete:
 - [x] All 2 Critical items resolved
 - [x] All 4 High priority items resolved (4 of 4 complete ✅)
 - [x] All new code has test coverage >90%
-- [x] All 1,190 tests passing (was 1097, added 93 new tests)
+- [x] All 1,198 tests passing (was 1097, added 101 new tests)
 - [ ] US Core validation passes for all converters
 - [ ] FHIR R4 validation passes for all resources
 - [x] No regressions introduced
