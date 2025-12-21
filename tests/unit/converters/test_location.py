@@ -624,3 +624,116 @@ class TestLocationConverter:
 
         with pytest.raises(ValueError, match="classCode"):
             location_converter.convert(invalid_location)
+
+    # ============================================================================
+    # J. Managing Organization (4 tests)
+    # ============================================================================
+
+    def test_managing_organization_from_scoping_entity(self) -> None:
+        """Test managingOrganization mapped from scopingEntity when Organization registered."""
+        from ccda_to_fhir.ccda.models.participant import ScopingEntity
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        # Generate the organization ID using the same logic as the converter
+        scoping_entity_id = II(root="2.16.840.1.113883.4.6", extension="org-123")
+        org_id = generate_id_from_identifiers("Organization", scoping_entity_id.root, scoping_entity_id.extension)
+
+        # Create a reference registry and register an organization
+        registry = ReferenceRegistry()
+        org_resource = {
+            "resourceType": "Organization",
+            "id": org_id,
+            "name": "Community Health System"
+        }
+        registry.register_resource(org_resource)
+
+        # Create location converter with registry
+        converter = LocationConverter(reference_registry=registry)
+
+        # Create location with scopingEntity
+        location_with_org = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+            code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"]),
+            scoping_entity=ScopingEntity(
+                class_code="ORG",
+                id=[scoping_entity_id]
+            )
+        )
+
+        location = converter.convert(location_with_org)
+
+        # Should have managingOrganization reference
+        assert "managingOrganization" in location
+        assert "reference" in location["managingOrganization"]
+        assert location["managingOrganization"]["reference"] == f"Organization/{org_id}"
+
+    def test_managing_organization_omitted_when_not_registered(self) -> None:
+        """Test managingOrganization omitted when scopingEntity exists but Organization not registered."""
+        from ccda_to_fhir.ccda.models.participant import ScopingEntity
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create a reference registry WITHOUT registering the organization
+        registry = ReferenceRegistry()
+
+        # Create location converter with registry
+        converter = LocationConverter(reference_registry=registry)
+
+        # Create location with scopingEntity
+        location_with_org = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+            code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"]),
+            scoping_entity=ScopingEntity(
+                class_code="ORG",
+                id=[II(root="2.16.840.1.113883.4.6", extension="org-456")]
+            )
+        )
+
+        location = converter.convert(location_with_org)
+
+        # Should NOT have managingOrganization (avoids dangling reference)
+        assert "managingOrganization" not in location
+
+    def test_managing_organization_omitted_without_scoping_entity(
+        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+    ) -> None:
+        """Test managingOrganization omitted when no scopingEntity present."""
+        location = location_converter.convert(sample_service_delivery_location)
+
+        # Should NOT have managingOrganization when no scoping entity
+        assert "managingOrganization" not in location
+
+    def test_managing_organization_omitted_when_scoping_entity_has_no_id(self) -> None:
+        """Test managingOrganization omitted when scopingEntity has no identifiers."""
+        from ccda_to_fhir.ccda.models.participant import ScopingEntity
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create a reference registry
+        registry = ReferenceRegistry()
+
+        # Create location converter with registry
+        converter = LocationConverter(reference_registry=registry)
+
+        # Create location with scopingEntity but no ID
+        location_with_org = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+            code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"]),
+            scoping_entity=ScopingEntity(
+                class_code="ORG",
+                id=None  # No identifiers
+            )
+        )
+
+        location = converter.convert(location_with_org)
+
+        # Should NOT have managingOrganization when scoping entity has no ID
+        assert "managingOrganization" not in location

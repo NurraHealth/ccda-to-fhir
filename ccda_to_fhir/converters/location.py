@@ -104,6 +104,11 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             if address:
                 location["address"] = address
 
+        # Map managingOrganization (US Core Must Support)
+        managing_org = self._get_managing_organization_reference(participant_role)
+        if managing_org:
+            location["managingOrganization"] = managing_org
+
         return location
 
     def _validate_template(self, participant_role: "ParticipantRole") -> None:
@@ -422,3 +427,71 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 fhir_address["use"] = fhir_use
 
         return fhir_address if fhir_address else {}
+
+    def _get_managing_organization_reference(
+        self,
+        participant_role: "ParticipantRole"
+    ) -> JSONObject | None:
+        """Extract managing organization reference from location's scoping entity.
+
+        The managing organization is the organization responsible for the provisioning
+        and upkeep of the location. This is extracted from participantRole/scopingEntity,
+        which represents the organization that owns or manages the location.
+
+        Per US Core Location profile, managingOrganization is a Must Support element.
+
+        Args:
+            participant_role: C-CDA ParticipantRole with potential scopingEntity
+
+        Returns:
+            Organization reference dict or None if no managing organization found
+
+        Examples:
+            >>> # Location with scoping organization
+            >>> ref = self._get_managing_organization_reference(participant_role)
+            >>> # Returns: {"reference": "Organization/org-123"}
+            >>>
+            >>> # Location without scoping organization
+            >>> ref = self._get_managing_organization_reference(participant_role)
+            >>> # Returns: None
+        """
+        # Check if scoping entity exists
+        if not participant_role.scoping_entity:
+            return None
+
+        scoping_entity = participant_role.scoping_entity
+
+        # Extract organization ID from scoping entity identifiers
+        if not scoping_entity.id or len(scoping_entity.id) == 0:
+            return None
+
+        # Generate organization ID from identifiers
+        org_id = self._generate_organization_id(scoping_entity.id)
+
+        # Check if Organization resource exists in registry
+        # Only create reference if the Organization has been registered
+        if self.reference_registry and self.reference_registry.has_resource("Organization", org_id):
+            return {"reference": f"Organization/{org_id}"}
+
+        # If no Organization resource exists in registry, don't create dangling reference
+        # The organization may be created later or may not be relevant
+        return None
+
+    def _generate_organization_id(self, identifiers: list["II"]) -> str:
+        """Generate FHIR Organization ID from C-CDA identifiers.
+
+        Uses the same logic as OrganizationConverter to ensure consistent IDs.
+
+        Args:
+            identifiers: List of C-CDA II identifiers
+
+        Returns:
+            Generated Organization ID
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        # Use cached UUID v4 generator for organization identifiers
+        root = identifiers[0].root if identifiers and identifiers[0].root else None
+        extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
+
+        return generate_id_from_identifiers("Organization", root, extension)
