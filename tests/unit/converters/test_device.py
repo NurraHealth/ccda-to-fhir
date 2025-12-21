@@ -299,6 +299,147 @@ class TestDeviceConverter:
         # asMaintainedEntity should not be mapped to any FHIR field
         assert "owner" not in device  # owner would be the logical FHIR mapping
 
+    # ============================================================================
+    # E. EHR Device Type and Version (8 tests)
+    # ============================================================================
+
+    def test_ehr_device_has_snomed_type_code(
+        self, device_converter: DeviceConverter, sample_assigned_author_with_device: AssignedAuthor
+    ) -> None:
+        """Test EHR device has SNOMED type code 706689003."""
+        device = device_converter.convert(sample_assigned_author_with_device)
+
+        assert "type" in device
+        assert "coding" in device["type"]
+        assert len(device["type"]["coding"]) == 1
+        assert device["type"]["coding"][0]["system"] == "http://snomed.info/sct"
+        assert device["type"]["coding"][0]["code"] == "706689003"
+        assert device["type"]["coding"][0]["display"] == "Electronic health record"
+
+    def test_ehr_device_type_includes_text(
+        self, device_converter: DeviceConverter, sample_assigned_author_with_device: AssignedAuthor
+    ) -> None:
+        """Test EHR device type includes text field."""
+        device = device_converter.convert(sample_assigned_author_with_device)
+
+        assert "type" in device
+        assert device["type"]["text"] == "Electronic Health Record System"
+
+    def test_version_extraction_v_pattern(
+        self, device_converter: DeviceConverter
+    ) -> None:
+        """Test version extracted from 'v1.2' pattern."""
+        device_with_version = AssignedAuthoringDevice(
+            manufacturer_model_name="Epic EHR",
+            software_name="Epic v2.1"
+        )
+        assigned_author = AssignedAuthor(
+            id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
+            assigned_authoring_device=device_with_version
+        )
+
+        device = device_converter.convert(assigned_author)
+
+        assert "version" in device
+        assert len(device["version"]) == 1
+        assert device["version"][0]["value"] == "2.1"
+        # Verify full CodeableConcept structure
+        assert "type" in device["version"][0]
+        assert "coding" in device["version"][0]["type"]
+        assert len(device["version"][0]["type"]["coding"]) == 1
+        assert device["version"][0]["type"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/device-version-type"
+        assert device["version"][0]["type"]["coding"][0]["code"] == "software"
+        assert device["version"][0]["type"]["coding"][0]["display"] == "Software Version"
+        assert device["version"][0]["type"]["text"] == "software"
+
+    def test_version_extraction_version_keyword(
+        self, device_converter: DeviceConverter
+    ) -> None:
+        """Test version extracted from 'version 1.2' pattern."""
+        device_with_version = AssignedAuthoringDevice(
+            manufacturer_model_name="MyEHR",
+            software_name="MyEHR version 3.0.1"
+        )
+        assigned_author = AssignedAuthor(
+            id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
+            assigned_authoring_device=device_with_version
+        )
+
+        device = device_converter.convert(assigned_author)
+
+        assert "version" in device
+        assert device["version"][0]["value"] == "3.0.1"
+
+    def test_version_extraction_parentheses(
+        self, device_converter: DeviceConverter
+    ) -> None:
+        """Test version extracted from '(1.5)' pattern."""
+        device_with_version = AssignedAuthoringDevice(
+            manufacturer_model_name="System",
+            software_name="System (1.5)"
+        )
+        assigned_author = AssignedAuthor(
+            id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
+            assigned_authoring_device=device_with_version
+        )
+
+        device = device_converter.convert(assigned_author)
+
+        assert "version" in device
+        assert device["version"][0]["value"] == "1.5"
+
+    def test_version_extraction_end_of_string(
+        self, device_converter: DeviceConverter
+    ) -> None:
+        """Test version extracted from '1.2.3' at end of string."""
+        device_with_version = AssignedAuthoringDevice(
+            manufacturer_model_name="Epic EHR",
+            software_name="Epic 2020.1.5"
+        )
+        assigned_author = AssignedAuthor(
+            id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
+            assigned_authoring_device=device_with_version
+        )
+
+        device = device_converter.convert(assigned_author)
+
+        assert "version" in device
+        assert device["version"][0]["value"] == "2020.1.5"
+
+    def test_version_not_extracted_when_no_pattern_match(
+        self, device_converter: DeviceConverter
+    ) -> None:
+        """Test version not extracted when no recognizable pattern."""
+        device_no_version = AssignedAuthoringDevice(
+            manufacturer_model_name="Epic EHR",
+            software_name="Epic System"
+        )
+        assigned_author = AssignedAuthor(
+            id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
+            assigned_authoring_device=device_no_version
+        )
+
+        device = device_converter.convert(assigned_author)
+
+        assert "version" not in device
+
+    def test_version_not_extracted_when_no_software_name(
+        self, device_converter: DeviceConverter
+    ) -> None:
+        """Test version not extracted when softwareName is None."""
+        device_no_software = AssignedAuthoringDevice(
+            manufacturer_model_name="Epic EHR",
+            software_name=None
+        )
+        assigned_author = AssignedAuthor(
+            id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
+            assigned_authoring_device=device_no_software
+        )
+
+        device = device_converter.convert(assigned_author)
+
+        assert "version" not in device
+
 
 # =============================================================================
 # Product Instance Conversion Tests

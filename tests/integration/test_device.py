@@ -580,3 +580,140 @@ class TestDeviceConversion:
         # Composition should have 2 authors
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert len(composition["author"]) == 2
+
+    # ============================================================================
+    # E. Type and Version Fields (2 tests)
+    # ============================================================================
+
+    def test_device_has_ehr_type_code(self) -> None:
+        """Test that EHR Device has SNOMED CT type code 706689003."""
+        ccda_xml = dedent("""<?xml version="1.0" encoding="UTF-8"?>
+        <ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc">
+            <realmCode code="US"/>
+            <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+            <templateId root="2.16.840.1.113883.10.20.22.1.1" extension="2015-08-01"/>
+            <id root="1.2.3.4.5" extension="test-doc-device"/>
+            <code code="34133-9" codeSystem="2.16.840.1.113883.6.1" displayName="Summarization of Episode Note"/>
+            <title>C-CDA Document</title>
+            <effectiveTime value="20240101120000"/>
+            <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+            <languageCode code="en-US"/>
+
+            <recordTarget>
+                <patientRole>
+                    <id root="1.2.3.4.5" extension="patient-123"/>
+                    <patient>
+                        <name><given>John</given><family>Doe</family></name>
+                        <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1"/>
+                        <birthTime value="19800101"/>
+                    </patient>
+                </patientRole>
+            </recordTarget>
+
+            <author>
+                <time value="20200301"/>
+                <assignedAuthor>
+                    <id root="2.16.840.1.113883.19.5" extension="DEVICE-001"/>
+                    <assignedAuthoringDevice>
+                        <manufacturerModelName>Epic EHR</manufacturerModelName>
+                        <softwareName>Epic 2020</softwareName>
+                    </assignedAuthoringDevice>
+                </assignedAuthor>
+            </author>
+
+            <custodian>
+                <assignedCustodian>
+                    <representedCustodianOrganization>
+                        <id root="1.2.3.4.5" extension="custodian-org"/>
+                        <name>Custodian Hospital</name>
+                    </representedCustodianOrganization>
+                </assignedCustodian>
+            </custodian>
+
+            <component><structuredBody><component><section>
+                <code code="48765-2" codeSystem="2.16.840.1.113883.6.1"/>
+                <title>Allergies</title>
+                <text>No known allergies</text>
+            </section></component></structuredBody></component>
+        </ClinicalDocument>""")
+
+        bundle = convert_document(ccda_xml)
+
+        device = _find_resource_in_bundle(bundle, "Device")
+        assert "type" in device
+        assert "coding" in device["type"]
+        assert len(device["type"]["coding"]) == 1
+        assert device["type"]["coding"][0]["system"] == "http://snomed.info/sct"
+        assert device["type"]["coding"][0]["code"] == "706689003"
+        assert device["type"]["coding"][0]["display"] == "Electronic health record"
+        assert device["type"]["text"] == "Electronic Health Record System"
+
+    def test_device_version_extraction_from_software_name(self) -> None:
+        """Test that version is extracted from softwareName and has proper structure."""
+        ccda_xml = dedent("""<?xml version="1.0" encoding="UTF-8"?>
+        <ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc">
+            <realmCode code="US"/>
+            <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+            <templateId root="2.16.840.1.113883.10.20.22.1.1" extension="2015-08-01"/>
+            <id root="1.2.3.4.5" extension="test-doc-device"/>
+            <code code="34133-9" codeSystem="2.16.840.1.113883.6.1" displayName="Summarization of Episode Note"/>
+            <title>C-CDA Document</title>
+            <effectiveTime value="20240101120000"/>
+            <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+            <languageCode code="en-US"/>
+
+            <recordTarget>
+                <patientRole>
+                    <id root="1.2.3.4.5" extension="patient-123"/>
+                    <patient>
+                        <name><given>John</given><family>Doe</family></name>
+                        <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1"/>
+                        <birthTime value="19800101"/>
+                    </patient>
+                </patientRole>
+            </recordTarget>
+
+            <author>
+                <time value="20200301"/>
+                <assignedAuthor>
+                    <id root="2.16.840.1.113883.19.5" extension="DEVICE-001"/>
+                    <assignedAuthoringDevice>
+                        <manufacturerModelName>Cerner Millennium</manufacturerModelName>
+                        <softwareName>Cerner version 2020.1.5</softwareName>
+                    </assignedAuthoringDevice>
+                </assignedAuthor>
+            </author>
+
+            <custodian>
+                <assignedCustodian>
+                    <representedCustodianOrganization>
+                        <id root="1.2.3.4.5" extension="custodian-org"/>
+                        <name>Custodian Hospital</name>
+                    </representedCustodianOrganization>
+                </assignedCustodian>
+            </custodian>
+
+            <component><structuredBody><component><section>
+                <code code="48765-2" codeSystem="2.16.840.1.113883.6.1"/>
+                <title>Allergies</title>
+                <text>No known allergies</text>
+            </section></component></structuredBody></component>
+        </ClinicalDocument>""")
+
+        bundle = convert_document(ccda_xml)
+
+        device = _find_resource_in_bundle(bundle, "Device")
+        assert "version" in device
+        assert len(device["version"]) == 1
+
+        # Verify full CodeableConcept structure for type
+        assert "type" in device["version"][0]
+        assert "coding" in device["version"][0]["type"]
+        assert len(device["version"][0]["type"]["coding"]) == 1
+        assert device["version"][0]["type"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/device-version-type"
+        assert device["version"][0]["type"]["coding"][0]["code"] == "software"
+        assert device["version"][0]["type"]["coding"][0]["display"] == "Software Version"
+        assert device["version"][0]["type"]["text"] == "software"
+
+        # Verify version value
+        assert device["version"][0]["value"] == "2020.1.5"

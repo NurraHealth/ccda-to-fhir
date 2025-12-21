@@ -81,6 +81,26 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             )
             device["deviceName"] = device_names
 
+            # Add type for EHR systems (SNOMED CT 706689003)
+            # Per task requirements, use SNOMED CT code 706689003 for "Electronic health record"
+            # This identifies assignedAuthoringDevice elements as EHR software systems
+            # Note: Device.type has "Example" binding strength per FHIR R4, allowing this usage
+            device["type"] = {
+                "coding": [{
+                    "system": "http://snomed.info/sct",
+                    "code": "706689003",
+                    "display": "Electronic health record"
+                }],
+                "text": "Electronic Health Record System"
+            }
+
+            # Extract and add version if available from softwareName
+            version = self._extract_device_version(
+                assigned.assigned_authoring_device.software_name
+            )
+            if version:
+                device["version"] = version
+
         # NOTE: assignedAuthoringDevice.asMaintainedEntity is NOT mapped.
         # This field (maintaining person/org) is out of scope for MVP.
         # Future enhancement: Could map to Device.owner if needed.
@@ -137,6 +157,54 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             })
 
         return device_names
+
+    def _extract_device_version(self, software_name: str | None) -> list[JSONObject] | None:
+        """Extract version information from software name.
+
+        Attempts to parse version number from software name string.
+        Common patterns: "EHR System v2.1", "MyEHR 3.0.1", "System (version 1.5)"
+
+        Per FHIR R4, Device.version is an array of BackboneElements with:
+        - type (CodeableConcept, optional): The classification/category of the version
+        - component (Identifier, optional): A specific component identifier
+        - value (string, required): The actual version text/number
+
+        Args:
+            software_name: The software name string
+
+        Returns:
+            List of version dicts or None
+        """
+        if not software_name:
+            return None
+
+        import re
+
+        # Pattern matches: v1.2, version 1.2, (1.2), 1.2.3, etc.
+        version_patterns = [
+            r'v\.?\s*(\d+(?:\.\d+)*)',  # v1.2 or v.1.2
+            r'version\s+(\d+(?:\.\d+)*)',  # version 1.2
+            r'\((\d+(?:\.\d+)*)\)',  # (1.2)
+            r'\s(\d+\.\d+(?:\.\d+)?)\s*$',  # 1.2.3 at end
+        ]
+
+        for pattern in version_patterns:
+            match = re.search(pattern, software_name, re.IGNORECASE)
+            if match:
+                version_number = match.group(1)
+                return [{
+                    "type": {
+                        "coding": [{
+                            "system": "http://terminology.hl7.org/CodeSystem/device-version-type",
+                            "code": "software",
+                            "display": "Software Version"
+                        }],
+                        "text": "software"
+                    },
+                    "value": version_number
+                }]
+
+        return None
 
     def convert_product_instance(
         self,
