@@ -148,12 +148,12 @@ FHIR:
 
 | C-CDA Context | FHIR docStatus |
 |---------------|----------------|
-| Completed document | `final` |
+| Authenticated document (legalAuthenticator present with signatureCode="S") | `final` |
 | Preliminary/draft indicator | `preliminary` |
 | Document with amendments | `amended` |
 | Erroneous document | `entered-in-error` |
 
-**Default:** Use `final` for most C-CDA documents.
+**Conservative Approach:** Only populate docStatus when it can be reliably inferred from C-CDA elements (e.g., legalAuthenticator signatureCode). Omit docStatus when status is uncertain rather than defaulting to "final".
 
 **Example:**
 ```json

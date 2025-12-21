@@ -73,7 +73,7 @@ Generate Location resource IDs using one of these strategies:
 | `participantRole/telecom` | `telecom` | [Telecom Mapping](#telecom-mapping) | Contact information |
 | `playingEntity/name` | `name` | String extraction | **Required** facility name |
 | `playingEntity/@classCode='PLC'` | — | Validation only | Confirms this is a place |
-| *Derived from parent encounter* | `managingOrganization` | Reference(Organization) | From encounter serviceProvider |
+| `participantRole/scopingEntity` | `managingOrganization` | Reference(Organization) | From location's scopingEntity when Organization registered |
 | *Inferred from data* | `status` | Fixed: `"active"` | Default assumption |
 
 ### Identifier Mapping
@@ -387,13 +387,7 @@ Not directly represented in C-CDA. Can be inferred from the location type code.
 
 ### Managing Organization
 
-**C-CDA:** Service Delivery Location does not directly contain organization information. However, the organization can be inferred from context.
-
-**Context Sources:**
-1. **Encounter performer's representedOrganization**
-2. **Procedure performer's representedOrganization**
-3. **Document custodian**
-4. **encompassingEncounter/location/healthCareFacility/serviceProviderOrganization**
+**C-CDA:** Service Delivery Location `participantRole/scopingEntity` represents the organization that owns or manages the location.
 
 **FHIR:**
 ```json
@@ -406,10 +400,12 @@ Not directly represented in C-CDA. Can be inferred from the location type code.
 ```
 
 **Mapping Strategy:**
-1. If the location appears in an Encounter, link to the Encounter's `serviceProvider` organization
-2. If the location appears in a Procedure with performer organization, link to that organization
-3. Otherwise, link to the document custodian organization
-4. If no organization can be determined, omit `managingOrganization`
+1. Extract organization from `participantRole/scopingEntity` identifiers
+2. Generate Organization ID from scopingEntity identifiers
+3. Create reference only if Organization resource exists in registry (avoids dangling references)
+4. If no scopingEntity or Organization not registered, omit `managingOrganization`
+
+**Note:** The implementation extracts managingOrganization directly from the location's scopingEntity element, not from encounter or procedure context. This ensures the reference accurately represents the organization specified in the C-CDA location structure itself.
 
 ## Special Cases
 

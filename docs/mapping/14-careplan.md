@@ -621,7 +621,7 @@ The CarePlan narrative should summarize assessment and plan from all sections:
 ```json
 {
   "text": {
-    "status": "additional",
+    "status": "generated",
     "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><h3>Assessment</h3><p>Patient presents with respiratory insufficiency and productive cough.</p><h3>Plan</h3><p>Goals: Maintain oxygen saturation >92% through supplemental oxygen. Interventions: Oxygen therapy at 2L/min, elevation of head of bed, pulmonary toilet.</p></div>"
   }
 }
@@ -834,7 +834,7 @@ The CarePlan narrative should summarize assessment and plan from all sections:
           ]
         },
         "text": {
-          "status": "additional",
+          "status": "generated",
           "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><h3>Assessment</h3><p>Patient presents with respiratory insufficiency.</p><h3>Plan</h3><p>Goals: Maintain oxygen saturation >92%. Interventions: Oxygen therapy at 2L/min via nasal cannula.</p></div>"
         },
         "identifier": [
