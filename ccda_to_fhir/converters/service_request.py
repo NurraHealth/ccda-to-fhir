@@ -230,22 +230,23 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
     ) -> str:
         """Generate a FHIR ServiceRequest ID from C-CDA identifiers.
 
+        Uses centralized ID generation for consistent UUID caching and handling.
+
         Args:
             root: The OID or UUID root
             extension: The extension value
 
         Returns:
-            A FHIR-compliant ID string
+            Generated UUID string
         """
-        if extension:
-            return extension.replace(" ", "-").replace(".", "-")
-        elif root:
-            return root.replace(".", "-")
-        else:
-            return "servicerequest-unknown"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("ServiceRequest", root, extension)
 
     def _map_status(self, status_code) -> str:
         """Map C-CDA status code to FHIR ServiceRequest status.
+
+        Handles nullFlavor per C-CDA on FHIR IG ConceptMap CF-NullFlavorDataAbsentReason.
 
         Args:
             status_code: The C-CDA status code
@@ -253,8 +254,18 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         Returns:
             FHIR ServiceRequest status code
         """
-        if not status_code or not status_code.code:
-            # Default to active for planned procedures
+        if not status_code:
+            return FHIRCodes.ServiceRequestStatus.ACTIVE
+
+        # Check for nullFlavor - per C-CDA on FHIR IG
+        if hasattr(status_code, 'null_flavor') and status_code.null_flavor:
+            null_flavor_upper = status_code.null_flavor.upper()
+            if null_flavor_upper == 'UNK':
+                return FHIRCodes.ServiceRequestStatus.UNKNOWN
+            # For planned procedures, other nullFlavors default to active
+            return FHIRCodes.ServiceRequestStatus.ACTIVE
+
+        if not status_code.code:
             return FHIRCodes.ServiceRequestStatus.ACTIVE
 
         ccda_status = status_code.code.lower()

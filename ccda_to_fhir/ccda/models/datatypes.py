@@ -132,6 +132,7 @@ class CS(CDAModel):
 
     code: str | None = None
     display_name: str | None = Field(default=None, alias="displayName")
+    null_flavor: str | None = Field(default=None, alias="nullFlavor")
 
 
 class CR(CDAModel):
