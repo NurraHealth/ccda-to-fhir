@@ -38,8 +38,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         reference_registry: "ReferenceRegistry | None" = None,
         health_concern_refs: list[JSONObject] | None = None,
         goal_refs: list[JSONObject] | None = None,
-        intervention_refs: list[JSONObject] | None = None,
-        outcome_refs: list[JSONObject] | None = None,
+        intervention_entries: list | None = None,
+        outcome_entries: list | None = None,
         **kwargs,
     ):
         """Initialize the CarePlan converter.
@@ -48,16 +48,16 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             reference_registry: Reference registry for resource references
             health_concern_refs: References to Condition resources (CarePlan.addresses)
             goal_refs: References to Goal resources (CarePlan.goal)
-            intervention_refs: References to ServiceRequest/Procedure (CarePlan.activity)
-            outcome_refs: References to Observation resources (CarePlan.activity.outcomeReference)
+            intervention_entries: C-CDA intervention entry elements (CarePlan.activity)
+            outcome_entries: C-CDA outcome observation entry elements (CarePlan.activity.outcomeReference)
             **kwargs: Additional arguments passed to BaseConverter
         """
         super().__init__(**kwargs)
         self.reference_registry = reference_registry
         self.health_concern_refs = health_concern_refs or []
         self.goal_refs = goal_refs or []
-        self.intervention_refs = intervention_refs or []
-        self.outcome_refs = outcome_refs or []
+        self.intervention_entries = intervention_entries or []
+        self.outcome_entries = outcome_entries or []
 
     def convert(self, clinical_document: ClinicalDocument) -> FHIRResourceDict:
         """Convert a C-CDA Care Plan Document to a FHIR CarePlan resource.
@@ -206,22 +206,14 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         if self.goal_refs:
             careplan["goal"] = self.goal_refs
 
-        # Activity - planned interventions and outcomes
-        if self.intervention_refs:
-            activities = []
-            for intervention_ref in self.intervention_refs:
-                activity: JSONObject = {
-                    "reference": intervention_ref
-                }
-                # Add outcome references if they exist
-                # Note: Linking outcomes to specific activities requires additional logic
-                # For now, we'll add all outcomes to all activities
-                # TODO: Implement proper outcome-to-activity linking based on entryRelationship
-                if self.outcome_refs:
-                    activity["outcomeReference"] = self.outcome_refs
-                activities.append(activity)
-
-            careplan["activity"] = activities
+        # Activity - planned interventions with properly linked outcomes
+        if self.intervention_entries:
+            activities = self._link_outcomes_to_activities(
+                self.intervention_entries,
+                self.outcome_entries
+            )
+            if activities:
+                careplan["activity"] = activities
 
         # Text narrative - generate from sections
         # TODO: Implement narrative generation from Health Concerns, Goals, Interventions
@@ -321,5 +313,156 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                     return self.reference_registry.get_patient_reference()
                 else:
                     return {"reference": "Patient/patient-unknown"}
+
+        return None
+
+    def _link_outcomes_to_activities(
+        self,
+        interventions: list,
+        outcomes: list
+    ) -> list[JSONObject]:
+        """Link outcome observations to their parent intervention activities.
+
+        Uses entryRelationship with typeCode='GEVL' (evaluates) to determine
+        which outcomes belong to which activities. This prevents the incorrect
+        behavior of adding all outcomes to all activities.
+
+        Args:
+            interventions: List of intervention entry elements from C-CDA
+            outcomes: List of outcome observation entry elements from C-CDA
+
+        Returns:
+            List of activity detail dicts with proper outcomeReference arrays
+        """
+        activity_details = []
+
+        for intervention in interventions:
+            activity_ref = self._create_intervention_reference(intervention)
+            if not activity_ref:
+                continue
+
+            # CarePlan.activity.reference is a Reference type, not a string
+            activity_detail: JSONObject = {"reference": {"reference": activity_ref}}
+
+            # Find outcomes linked to this intervention via entryRelationship
+            linked_outcomes = []
+
+            if hasattr(intervention, 'entry_relationship'):
+                for rel in intervention.entry_relationship:
+                    # typeCode='GEVL' means "evaluates" - outcome evaluates the intervention
+                    if hasattr(rel, 'type_code') and rel.type_code == 'GEVL':
+                        if hasattr(rel, 'observation'):
+                            outcome_id = self._get_entry_id(rel.observation)
+                            # Check if this outcome is in our outcomes list
+                            for outcome_entry in outcomes:
+                                if self._get_entry_id(outcome_entry) == outcome_id:
+                                    outcome_ref = self._create_outcome_reference(outcome_entry)
+                                    if outcome_ref:
+                                        linked_outcomes.append(outcome_ref)
+
+            # Only add outcomeReference if there are linked outcomes
+            if linked_outcomes:
+                activity_detail["outcomeReference"] = linked_outcomes
+
+            activity_details.append(activity_detail)
+
+        return activity_details
+
+    def _get_entry_id(self, entry) -> str | None:
+        """Extract identifier from C-CDA entry for matching.
+
+        Args:
+            entry: C-CDA entry element (observation, act, procedure, etc.)
+
+        Returns:
+            ID root or None if not found
+        """
+        if hasattr(entry, 'id') and entry.id:
+            # Handle both single id and list of ids
+            if isinstance(entry.id, list) and len(entry.id) > 0:
+                if hasattr(entry.id[0], 'root'):
+                    return entry.id[0].root
+            elif hasattr(entry.id, 'root'):
+                return entry.id.root
+        return None
+
+    def _create_intervention_reference(self, intervention_entry) -> str | None:
+        """Create reference to intervention resource (ServiceRequest/Procedure).
+
+        For intervention acts (template 2.16.840.1.113883.10.20.22.4.131), the actual
+        procedure/activity is in a nested entryRelationship with typeCode='COMP'.
+        This method looks for the nested procedure first, then falls back to the
+        intervention act itself.
+
+        Args:
+            intervention_entry: C-CDA intervention entry element (usually an intervention act)
+
+        Returns:
+            Reference string or None
+        """
+        if not intervention_entry or not self.reference_registry:
+            return None
+
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        # First, check if this intervention has nested procedures/acts (COMP entryRelationships)
+        if hasattr(intervention_entry, 'entry_relationship') and intervention_entry.entry_relationship:
+            for rel in intervention_entry.entry_relationship:
+                if hasattr(rel, 'type_code') and rel.type_code == 'COMP':
+                    # Look for nested procedure
+                    if hasattr(rel, 'procedure') and rel.procedure:
+                        nested_id = self._get_entry_id(rel.procedure)
+                        if nested_id:
+                            # Resources are stored with their simple root ID
+                            # Try as Procedure
+                            if self.reference_registry.has_resource("Procedure", nested_id):
+                                return f"Procedure/{nested_id}"
+
+                            # Try as ServiceRequest
+                            if self.reference_registry.has_resource("ServiceRequest", nested_id):
+                                return f"ServiceRequest/{nested_id}"
+
+                    # Look for nested act
+                    elif hasattr(rel, 'act') and rel.act:
+                        nested_id = self._get_entry_id(rel.act)
+                        if nested_id:
+                            # Try as Procedure
+                            if self.reference_registry.has_resource("Procedure", nested_id):
+                                return f"Procedure/{nested_id}"
+
+        # Fallback: Try the intervention entry itself
+        entry_id = self._get_entry_id(intervention_entry)
+        if entry_id:
+            # Resources are stored with their simple root ID
+            # Try ServiceRequest first (for planned interventions)
+            if self.reference_registry.has_resource("ServiceRequest", entry_id):
+                return f"ServiceRequest/{entry_id}"
+
+            # Try Procedure (for completed interventions)
+            if self.reference_registry.has_resource("Procedure", entry_id):
+                return f"Procedure/{entry_id}"
+
+        return None
+
+    def _create_outcome_reference(self, outcome_entry) -> JSONObject | None:
+        """Create reference to Observation outcome resource.
+
+        Args:
+            outcome_entry: C-CDA outcome observation entry element
+
+        Returns:
+            FHIR Reference dict or None
+        """
+        if not outcome_entry or not self.reference_registry:
+            return None
+
+        # Get ID for the outcome observation
+        entry_id = self._get_entry_id(outcome_entry)
+        if not entry_id:
+            return None
+
+        # Resources are stored with their simple root ID
+        if self.reference_registry.has_resource("Observation", entry_id):
+            return {"reference": f"Observation/{entry_id}"}
 
         return None

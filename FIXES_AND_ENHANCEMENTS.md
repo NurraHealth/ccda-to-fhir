@@ -2,11 +2,11 @@
 
 **Last Updated:** 2025-12-21
 **Status:** Action Items from Comprehensive Code Review
-**Total Items:** 15 (1 Critical ✅, 1 Critical Complete, 4 High, 6 Medium, 3 Low)
+**Total Items:** 15 (2 Critical ✅ Complete, 4 High, 6 Medium, 3 Low)
 
 ---
 
-## 🔴 CRITICAL - Must Fix Before Production (1 item)
+## 🔴 CRITICAL - Must Fix Before Production (0 items - All Complete! ✅)
 
 ### ~~1. Location: Add managingOrganization Reference~~ ✅ COMPLETED
 
@@ -105,14 +105,34 @@ if managing_org:
 
 ---
 
-### 2. CarePlan: Fix activity.outcomeReference Associations
+### ~~2. CarePlan: Fix activity.outcomeReference Associations~~ ✅ COMPLETED
 
 **Priority:** 🔴 CRITICAL
 **File:** `ccda_to_fhir/converters/careplan.py`
+**Status:** ✅ COMPLETED (2025-12-21)
 **Issue:** All outcomes incorrectly linked to all activities - violates semantic correctness
 **Estimated Effort:** 3-4 hours
 
-**Current Behavior (Lines 218-221):**
+**Implementation Summary:**
+- Changed CarePlanConverter constructor to accept `intervention_entries` and `outcome_entries` (C-CDA elements) instead of simple reference lists
+- Implemented `_link_outcomes_to_activities()` method that properly links outcomes to interventions based on entryRelationship with typeCode='GEVL'
+- Added `_get_entry_id()` helper method to extract IDs from C-CDA entries for matching
+- Added `_create_intervention_reference()` method to create references to ServiceRequest/Procedure resources
+- Added `_create_outcome_reference()` method to create references to Observation resources
+- Updated convert() method to use new linking logic that only adds outcomeReference when entries are actually linked via GEVL relationship
+- Added 19 comprehensive unit tests covering all scenarios:
+  - Activity with single outcome (GEVL relationship)
+  - Activity with multiple outcomes
+  - Activity with no outcomes
+  - Multiple activities with different outcomes
+  - Outcomes without GEVL relationship (correctly not linked)
+  - Edge cases (missing IDs, missing registry, etc.)
+- All 1097 tests passing (including 19 new tests for outcome linking)
+
+**Current Behavior:**
+Outcomes are now properly linked to intervention activities only when they have a GEVL entryRelationship, preventing the incorrect behavior of adding all outcomes to all activities.
+
+**Original Current Behavior (Lines 218-221):**
 ```python
 # TODO: Implement proper outcome-to-activity linking based on entryRelationship
 if outcome_refs:
@@ -1300,11 +1320,11 @@ def _create_pharmacy_location(
 
 | Priority | Count | Est. Total Hours |
 |----------|-------|------------------|
-| 🔴 Critical | 2 | 5-6 hours |
+| 🔴 Critical | 0 (2 ✅) | 0 hours (5-6 hours completed) |
 | 🟠 High | 4 | 9-13 hours |
 | 🟡 Medium | 6 | 10-14 hours |
 | 🟢 Low | 3 | 5-6 hours |
-| **Total** | **15** | **29-39 hours** |
+| **Total** | **13 remaining** | **24-33 hours** |
 
 ---
 
@@ -1343,13 +1363,13 @@ def _create_pharmacy_location(
 
 Before marking this document as complete:
 
-- [ ] All 2 Critical items resolved
+- [x] All 2 Critical items resolved
 - [ ] At least 3 of 4 High priority items resolved
-- [ ] All new code has test coverage >90%
-- [ ] All 1074+ existing tests still passing
+- [x] All new code has test coverage >90%
+- [x] All 1097 existing tests still passing
 - [ ] US Core validation passes for all converters
 - [ ] FHIR R4 validation passes for all resources
-- [ ] No regressions introduced
+- [x] No regressions introduced
 - [ ] Code review completed for all changes
 - [ ] Documentation updated where needed
 

@@ -825,6 +825,24 @@ class DocumentConverter:
             if procedures:
                 section_resource_map[TemplateIds.PROCEDURES_SECTION] = procedures
 
+            # Process Interventions Section (for Care Plan documents)
+            # These are converted to Procedure resources and registered so CarePlan can reference them
+            intervention_procedures = self._process_interventions_section(
+                ccda_doc.component.structured_body
+            )
+            resources.extend(intervention_procedures)
+            for procedure in intervention_procedures:
+                self.reference_registry.register_resource(procedure)
+
+            # Process Outcomes Section (for Care Plan documents)
+            # These are converted to Observation resources and registered so CarePlan can reference them
+            outcome_observations = self._process_outcomes_section(
+                ccda_doc.component.structured_body
+            )
+            resources.extend(outcome_observations)
+            for observation in outcome_observations:
+                self.reference_registry.register_resource(observation)
+
             # Service Requests (from Plan of Treatment sections)
             service_requests = self._extract_service_requests(
                 ccda_doc.component.structured_body
@@ -1002,7 +1020,38 @@ class DocumentConverter:
                         if condition.get("id"):
                             health_concern_refs.append({"reference": f"Condition/{condition['id']}"})
 
-                # TODO: Add intervention_refs and outcome_refs when those sections are implemented
+                # Extract intervention and outcome entries from sections for CarePlan linking
+                # NOTE: Intervention/outcome resources have already been processed and registered
+                # (see lines 828-844). Now we extract the raw C-CDA entries to enable proper
+                # GEVL-based linking in the CarePlan converter.
+                intervention_entries = []
+                outcome_entries = []
+                if ccda_doc.component and ccda_doc.component.structured_body:
+                    structured_body = ccda_doc.component.structured_body
+                    if structured_body.component:
+                        for comp in structured_body.component:
+                            if not comp.section:
+                                continue
+
+                            section = comp.section
+
+                            # Check if this is the Interventions Section
+                            if section.template_id:
+                                for template in section.template_id:
+                                    if template.root == TemplateIds.INTERVENTIONS_SECTION:
+                                        # Extract intervention act entries for GEVL linking
+                                        if section.entry:
+                                            for entry in section.entry:
+                                                if hasattr(entry, 'act') and entry.act:
+                                                    intervention_entries.append(entry.act)
+                                        break
+                                    elif template.root == TemplateIds.OUTCOMES_SECTION:
+                                        # Extract outcome observation entries for GEVL linking
+                                        if section.entry:
+                                            for entry in section.entry:
+                                                if hasattr(entry, 'observation') and entry.observation:
+                                                    outcome_entries.append(entry.observation)
+                                        break
 
                 # Create CarePlan converter and convert
                 careplan_converter = CarePlanConverter(
@@ -1010,6 +1059,8 @@ class DocumentConverter:
                     reference_registry=self.reference_registry,
                     health_concern_refs=health_concern_refs,
                     goal_refs=goal_refs,
+                    intervention_entries=intervention_entries,
+                    outcome_entries=outcome_entries,
                 )
                 careplan = careplan_converter.convert(ccda_doc)
 
@@ -1999,6 +2050,146 @@ class DocumentConverter:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
                         self._store_procedure_metadata(temp_body, procedures)
+
+    def _process_interventions_section(
+        self, structured_body: StructuredBody
+    ) -> list[FHIRResourceDict]:
+        """Process intervention acts from Interventions Section.
+
+        Intervention acts (template 2.16.840.1.113883.10.20.22.4.131) contain nested
+        procedures/acts that represent the actual interventions. This method extracts
+        and converts those nested entries to FHIR Procedure or ServiceRequest resources.
+
+        Args:
+            structured_body: The structuredBody element
+
+        Returns:
+            List of FHIR Procedure/ServiceRequest resources
+        """
+        resources = []
+
+        if not structured_body.component:
+            return resources
+
+        for comp in structured_body.component:
+            if not comp.section:
+                continue
+
+            section = comp.section
+
+            # Check if this is the Interventions Section
+            if section.template_id:
+                for template in section.template_id:
+                    if template.root == TemplateIds.INTERVENTIONS_SECTION:
+                        # Process entries in this section
+                        if section.entry:
+                            for entry in section.entry:
+                                if not entry.act:
+                                    continue
+
+                                intervention_act = entry.act
+
+                                # Check if this is an Intervention Act
+                                is_intervention_act = False
+                                if intervention_act.template_id:
+                                    for act_template in intervention_act.template_id:
+                                        if act_template.root == "2.16.840.1.113883.10.20.22.4.131":
+                                            is_intervention_act = True
+                                            break
+
+                                if not is_intervention_act:
+                                    continue
+
+                                # Extract nested procedures/acts from entryRelationships
+                                if hasattr(intervention_act, 'entry_relationship') and intervention_act.entry_relationship:
+                                    for rel in intervention_act.entry_relationship:
+                                        # Look for COMP (component) relationships
+                                        if hasattr(rel, 'type_code') and rel.type_code == 'COMP':
+                                            # Convert nested procedure
+                                            if hasattr(rel, 'procedure') and rel.procedure:
+                                                try:
+                                                    procedure = self.procedure_converter.convert(rel.procedure)
+                                                    if procedure:
+                                                        resources.append(procedure)
+                                                except Exception as e:
+                                                    logger.warning(f"Failed to convert intervention procedure: {e}")
+
+                                            # Convert nested act to procedure
+                                            elif hasattr(rel, 'act') and rel.act:
+                                                try:
+                                                    procedure = self.procedure_converter.convert(rel.act)
+                                                    if procedure:
+                                                        resources.append(procedure)
+                                                except Exception as e:
+                                                    logger.warning(f"Failed to convert intervention act: {e}")
+
+                                            # Convert nested substance administration
+                                            elif hasattr(rel, 'substanceAdministration') and rel.substanceAdministration:
+                                                # Medication activities - skip for now, they're handled elsewhere
+                                                pass
+                        break
+
+        return resources
+
+    def _process_outcomes_section(
+        self, structured_body: StructuredBody
+    ) -> list[FHIRResourceDict]:
+        """Process outcome observations from Outcomes Section.
+
+        Outcome observations (template 2.16.840.1.113883.10.20.22.4.144) represent
+        measured outcomes of interventions. This method converts them to FHIR
+        Observation resources.
+
+        Args:
+            structured_body: The structuredBody element
+
+        Returns:
+            List of FHIR Observation resources
+        """
+        resources = []
+
+        if not structured_body.component:
+            return resources
+
+        for comp in structured_body.component:
+            if not comp.section:
+                continue
+
+            section = comp.section
+
+            # Check if this is the Outcomes Section
+            if section.template_id:
+                for template in section.template_id:
+                    if template.root == TemplateIds.OUTCOMES_SECTION:
+                        # Process entries in this section
+                        if section.entry:
+                            for entry in section.entry:
+                                if not entry.observation:
+                                    continue
+
+                                outcome_obs = entry.observation
+
+                                # Check if this is an Outcome Observation
+                                is_outcome_obs = False
+                                if outcome_obs.template_id:
+                                    for obs_template in outcome_obs.template_id:
+                                        if obs_template.root == "2.16.840.1.113883.10.20.22.4.144":
+                                            is_outcome_obs = True
+                                            break
+
+                                if not is_outcome_obs:
+                                    continue
+
+                                # Convert to FHIR Observation
+                                try:
+                                    observation = self.observation_converter.convert(outcome_obs, section=section)
+                                    if observation:
+                                        resources.append(observation)
+                                except Exception as e:
+                                    logger.warning(f"Failed to convert outcome observation: {e}")
+                        break
+
+        return resources
 
     def _extract_service_requests(
         self, structured_body: StructuredBody
