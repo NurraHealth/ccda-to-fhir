@@ -101,9 +101,11 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             if version:
                 device["version"] = version
 
-        # NOTE: assignedAuthoringDevice.asMaintainedEntity is NOT mapped.
-        # This field (maintaining person/org) is out of scope for MVP.
-        # Future enhancement: Could map to Device.owner if needed.
+        # Map owner organization from representedOrganization (if available)
+        if hasattr(self, "reference_registry") and self.reference_registry:
+            owner_ref = self._extract_ehr_device_owner(assigned)
+            if owner_ref:
+                device["owner"] = owner_ref
 
         return device
 
@@ -293,6 +295,12 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         # Map status (infer from procedure status)
         device["status"] = self._infer_device_status(procedure_status)
 
+        # Map owner organization from scopingEntity (if available)
+        if hasattr(self, "reference_registry") and self.reference_registry:
+            owner_ref = self._extract_device_owner(participant_role)
+            if owner_ref:
+                device["owner"] = owner_ref
+
         return device
 
     def _extract_udi_info(self, identifiers: list[II] | None) -> JSONObject | None:
@@ -419,3 +427,84 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         else:
             # Default to active for implanted/used devices
             return "active"
+
+    def _extract_device_owner(self, participant_role: ParticipantRole) -> dict | None:
+        """Extract device owner organization reference from Product Instance.
+
+        Maps participantRole.scopingEntity to Device.owner.
+        The scopingEntity represents the manufacturer or organization maintaining the device.
+
+        Args:
+            participant_role: C-CDA ParticipantRole containing scopingEntity
+
+        Returns:
+            Organization reference dict or None
+        """
+        if not hasattr(participant_role, "scoping_entity") or not participant_role.scoping_entity:
+            return None
+
+        scoping_entity = participant_role.scoping_entity
+
+        # Extract organization ID from scopingEntity identifiers
+        if not hasattr(scoping_entity, "id") or not scoping_entity.id:
+            return None
+
+        # Generate organization ID using same method as OrganizationConverter
+        org_id = self._generate_organization_id(scoping_entity.id)
+
+        # Check if Organization resource exists in registry
+        if not self.reference_registry.has_resource("Organization", org_id):
+            return None
+
+        return {"reference": f"Organization/{org_id}"}
+
+    def _extract_ehr_device_owner(self, assigned: AssignedAuthor) -> dict | None:
+        """Extract device owner organization reference from EHR device.
+
+        Maps assignedAuthor.representedOrganization to Device.owner.
+        The representedOrganization represents the healthcare organization
+        under whose authority the device operates.
+
+        Args:
+            assigned: C-CDA AssignedAuthor containing representedOrganization
+
+        Returns:
+            Organization reference dict or None
+        """
+        if not hasattr(assigned, "represented_organization") or not assigned.represented_organization:
+            return None
+
+        represented_org = assigned.represented_organization
+
+        # Extract organization ID from representedOrganization identifiers
+        if not hasattr(represented_org, "id") or not represented_org.id:
+            return None
+
+        # Generate organization ID using same method as OrganizationConverter
+        org_id = self._generate_organization_id(represented_org.id)
+
+        # Check if Organization resource exists in registry
+        if not self.reference_registry.has_resource("Organization", org_id):
+            return None
+
+        return {"reference": f"Organization/{org_id}"}
+
+    def _generate_organization_id(self, identifiers: list[II]) -> str:
+        """Generate FHIR Organization ID using cached UUID v4 from C-CDA identifiers.
+
+        Uses the same ID generation method as OrganizationConverter to ensure
+        consistent IDs when referencing the same organization.
+
+        Args:
+            identifiers: List of C-CDA II identifiers
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        # Use first identifier for cache key
+        root = identifiers[0].root if identifiers and identifiers[0].root else None
+        extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
+
+        return generate_id_from_identifiers("Organization", root, extension)

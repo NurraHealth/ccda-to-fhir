@@ -281,12 +281,47 @@ class TestDeviceConverter:
             pytest.fail(f"ID {device['id']} is not a valid UUID v4")
         assert len(device["deviceName"]) == 0
 
-    def test_ignores_as_maintained_entity(
+    def test_owner_from_represented_organization(
         self, device_converter: DeviceConverter, sample_device: AssignedAuthoringDevice
     ) -> None:
-        """Test that asMaintainedEntity is ignored (out of scope for MVP)."""
-        # Note: We're not even setting asMaintainedEntity because it's out of scope
-        # This test just verifies converter works without errors when device has basic fields
+        """Test Device.owner from representedOrganization."""
+        from ccda_to_fhir.ccda.models.author import RepresentedOrganization
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Setup reference registry with organization
+        registry = ReferenceRegistry()
+        org_id = device_converter._generate_organization_id(
+            [II(root="2.16.840.1.113883.19.5.9999.1393", extension="ORG-001")]
+        )
+        registry.register_resource({
+            "resourceType": "Organization",
+            "id": org_id,
+            "name": "Community Health and Hospitals"
+        })
+        device_converter.reference_registry = registry
+
+        assigned_author = AssignedAuthor(
+            id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
+            assigned_authoring_device=sample_device,
+            represented_organization=RepresentedOrganization(
+                id=[II(root="2.16.840.1.113883.19.5.9999.1393", extension="ORG-001")],
+                name=["Community Health and Hospitals"]
+            )
+        )
+
+        device = device_converter.convert(assigned_author)
+
+        assert "owner" in device
+        assert device["owner"]["reference"] == f"Organization/{org_id}"
+
+    def test_owner_omitted_when_no_represented_organization(
+        self, device_converter: DeviceConverter, sample_device: AssignedAuthoringDevice
+    ) -> None:
+        """Test owner omitted when representedOrganization missing."""
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        device_converter.reference_registry = ReferenceRegistry()
+
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
             assigned_authoring_device=sample_device
@@ -294,10 +329,57 @@ class TestDeviceConverter:
 
         device = device_converter.convert(assigned_author)
 
+        assert "owner" not in device
+
+    def test_owner_omitted_when_organization_not_registered(
+        self, device_converter: DeviceConverter, sample_device: AssignedAuthoringDevice
+    ) -> None:
+        """Test owner omitted when Organization not in registry."""
+        from ccda_to_fhir.ccda.models.author import RepresentedOrganization
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Registry with no organizations
+        device_converter.reference_registry = ReferenceRegistry()
+
+        assigned_author = AssignedAuthor(
+            id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
+            assigned_authoring_device=sample_device,
+            represented_organization=RepresentedOrganization(
+                id=[II(root="2.16.840.1.113883.19.5.9999.1393", extension="ORG-001")],
+                name=["Community Health and Hospitals"]
+            )
+        )
+
+        device = device_converter.convert(assigned_author)
+
+        # Owner should be omitted since Organization not registered
+        assert "owner" not in device
+
+    def test_as_maintained_entity_still_ignored(
+        self, device_converter: DeviceConverter
+    ) -> None:
+        """Test that asMaintainedEntity is still ignored (out of scope)."""
+        from ccda_to_fhir.ccda.models.author import MaintainedEntity
+
+        # Create device with asMaintainedEntity
+        # Note: We don't need to fully populate MaintainedEntity - just verify it's ignored
+        device_with_maintained_entity = AssignedAuthoringDevice(
+            manufacturer_model_name="Epic EHR",
+            software_name="Epic 2020",
+            as_maintained_entity=MaintainedEntity()
+        )
+
+        assigned_author = AssignedAuthor(
+            id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
+            assigned_authoring_device=device_with_maintained_entity
+        )
+
+        device = device_converter.convert(assigned_author)
+
         # Device should be created successfully
         assert device["resourceType"] == FHIRCodes.ResourceTypes.DEVICE
-        # asMaintainedEntity should not be mapped to any FHIR field
-        assert "owner" not in device  # owner would be the logical FHIR mapping
+        # asMaintainedEntity should not be mapped (owner would be the logical mapping)
+        assert "owner" not in device
 
     # ============================================================================
     # E. EHR Device Type and Version (8 tests)
@@ -883,3 +965,88 @@ class TestProductInstanceConverter:
             procedure_status="planned"
         )
         assert device["status"] == "inactive"
+
+    # ============================================================================
+    # E. Device Owner Mapping (3 tests)
+    # ============================================================================
+
+    def test_device_owner_from_scoping_entity(
+        self, device_converter: DeviceConverter
+    ) -> None:
+        """Test Device.owner from scopingEntity."""
+        from ccda_to_fhir.ccda.models.participant import (
+            ParticipantRole,
+            ScopingEntity,
+        )
+        from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Setup reference registry with organization
+        registry = ReferenceRegistry()
+        org_id = device_converter._generate_organization_id(
+            [II(root="2.16.840.1.113883.3.3719", extension="ORG-123")]
+        )
+        registry.register_resource({
+            "resourceType": "Organization",
+            "id": org_id,
+            "name": "Acme Devices, Inc"
+        })
+        device_converter.reference_registry = registry
+
+        participant_role = ParticipantRole(
+            id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
+            scoping_entity=ScopingEntity(
+                id=[II(root="2.16.840.1.113883.3.3719", extension="ORG-123")],
+                desc="Acme Devices, Inc"
+            )
+        )
+
+        device = device_converter.convert_product_instance(participant_role)
+
+        assert "owner" in device
+        assert device["owner"]["reference"] == f"Organization/{org_id}"
+
+    def test_device_owner_omitted_when_no_scoping_entity(
+        self, device_converter: DeviceConverter
+    ) -> None:
+        """Test owner omitted when scopingEntity missing."""
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
+        from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        device_converter.reference_registry = ReferenceRegistry()
+
+        participant_role = ParticipantRole(
+            id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")]
+        )
+
+        device = device_converter.convert_product_instance(participant_role)
+
+        assert "owner" not in device
+
+    def test_device_owner_omitted_when_organization_not_registered(
+        self, device_converter: DeviceConverter
+    ) -> None:
+        """Test owner omitted when Organization not in registry."""
+        from ccda_to_fhir.ccda.models.participant import (
+            ParticipantRole,
+            ScopingEntity,
+        )
+        from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Registry with no organizations
+        device_converter.reference_registry = ReferenceRegistry()
+
+        participant_role = ParticipantRole(
+            id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
+            scoping_entity=ScopingEntity(
+                id=[II(root="2.16.840.1.113883.3.3719", extension="ORG-123")],
+                desc="Acme Devices, Inc"
+            )
+        )
+
+        device = device_converter.convert_product_instance(participant_role)
+
+        # Owner should be omitted since Organization not registered
+        assert "owner" not in device

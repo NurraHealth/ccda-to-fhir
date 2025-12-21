@@ -672,7 +672,7 @@ def test_ehr_device_version_patterns():
 
 ---
 
-## 🟡 MEDIUM PRIORITY - Enhance When Possible (3 items - 1 ✅ Complete)
+## 🟡 MEDIUM PRIORITY - Enhance When Possible (2 items - 4 ✅ Complete)
 
 ### ~~7. CarePlan: Implement Narrative Generation~~ ✅ COMPLETED
 
@@ -1035,15 +1035,35 @@ def test_format_uses_hl7_system():
 
 ---
 
-### 10. Device: Add owner Reference
+### ~~10. Device: Add owner Reference~~ ✅ COMPLETED
 
 **Priority:** 🟡 MEDIUM
 **File:** `ccda_to_fhir/converters/device.py`
+**Status:** ✅ COMPLETED (2025-12-21)
 **Issue:** Not mapping representedOrganization to Device.owner
 **Estimated Effort:** 1 hour
 
-**Current State:**
-Lines 84-86 note that `asMaintainedEntity` is ignored.
+**Implementation Summary:**
+- Added `_extract_device_owner()` method to extract owner from Product Instance scopingEntity
+- Added `_extract_ehr_device_owner()` method to extract owner from EHR device representedOrganization
+- Added `_generate_organization_id()` helper method to ensure consistent ID generation with OrganizationConverter
+- owner field now populated when:
+  - Product Instance has scopingEntity with identifiers
+  - EHR device has representedOrganization with identifiers
+  - Corresponding Organization resource exists in reference registry
+- Field correctly omitted when no owner available (avoiding dangling references)
+- Added 7 comprehensive unit tests covering all scenarios:
+  - 3 tests for Product Instance (with scopingEntity, without, Organization not registered)
+  - 3 tests for EHR devices (with representedOrganization, without, Organization not registered)
+  - 1 test verifying asMaintainedEntity is still ignored (out of scope)
+- All 1,190 tests passing (added 7 new tests)
+- Standards-compliant implementation per FHIR R4 Device.owner specification
+
+**Current Behavior:**
+`owner` field is now properly populated from scopingEntity (Product Instance) or representedOrganization (EHR devices) when Organization resource is registered.
+
+**Original Current State:**
+Lines 104-106 note that `asMaintainedEntity` is ignored.
 
 **Required Implementation:**
 
@@ -1453,9 +1473,9 @@ def _create_pharmacy_location(
 |----------|-------|------------------|
 | 🔴 Critical | 0 (2 ✅) | 0 hours (5-6 hours completed) |
 | 🟠 High | 0 (4 ✅) | 0 hours (9-11 hours completed) |
-| 🟡 Medium | 3 (3 ✅) | 4-7 hours (6-7 hours completed) |
+| 🟡 Medium | 2 (4 ✅) | 3-6 hours (7-8 hours completed) |
 | 🟢 Low | 3 | 5-6 hours |
-| **Total** | **6 remaining** | **9-13 hours** |
+| **Total** | **5 remaining** | **8-12 hours** |
 
 ---
 
@@ -1497,7 +1517,7 @@ Before marking this document as complete:
 - [x] All 2 Critical items resolved
 - [x] All 4 High priority items resolved (4 of 4 complete ✅)
 - [x] All new code has test coverage >90%
-- [x] All 1184 tests passing (was 1097, added 87 new tests)
+- [x] All 1,190 tests passing (was 1097, added 93 new tests)
 - [ ] US Core validation passes for all converters
 - [ ] FHIR R4 validation passes for all resources
 - [x] No regressions introduced
