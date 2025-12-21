@@ -71,9 +71,10 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
             document_ref["identifier"] = identifiers
 
         # Document status (preliminary, final, amended, etc.)
-        # Note: C-CDA doesn't have a direct equivalent to FHIR docStatus
-        # If we wanted to infer it, we could look at authenticator/legalAuthenticator
-        # For now, we can add this if explicitly needed
+        # Inferred from authenticator presence per C-CDA semantics
+        doc_status = self._infer_doc_status(clinical_document)
+        if doc_status:
+            document_ref["docStatus"] = doc_status
 
         # Type (document kind - LOINC code)
         if clinical_document.code:
@@ -712,6 +713,38 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         }
 
         return content
+
+    def _infer_doc_status(self, clinical_document: ClinicalDocument) -> str | None:
+        """Infer document status from authenticator presence.
+
+        Per C-CDA semantics:
+        - legalAuthenticator present → document is finalized and legally authenticated
+        - authenticator present (not legal) → document is authenticated but not finalized
+        - Neither present → status unknown (omit field)
+
+        Args:
+            clinical_document: The C-CDA clinical document
+
+        Returns:
+            docStatus code ('final', 'preliminary') or None
+        """
+        # Check for legal authenticator (document is finalized)
+        legal_auth = getattr(clinical_document, 'legal_authenticator', None)
+        if legal_auth is not None:
+            return "final"
+
+        # Check for regular authenticator (document is authenticated but not finalized)
+        authenticator = getattr(clinical_document, 'authenticator', None)
+        if authenticator is not None:
+            # authenticator can be a list or single element
+            if isinstance(authenticator, list):
+                if len(authenticator) > 0:
+                    return "preliminary"
+            else:
+                return "preliminary"
+
+        # No authentication → don't specify status
+        return None
 
     def _extract_original_text(self, code: CE) -> str | None:
         """Extract original text from CE code element.
