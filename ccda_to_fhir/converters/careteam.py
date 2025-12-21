@@ -84,6 +84,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         self.organization_registry: dict[str, str] = {}  # OID -> Organization ID
         self.practitioner_role_registry: dict[str, str] = {}  # Key -> PractitionerRole ID
 
+        # Storage for created resources
+        self.created_practitioners: dict[str, FHIRResourceDict] = {}  # ID -> Resource
+        self.created_organizations: dict[str, FHIRResourceDict] = {}  # ID -> Resource
+        self.created_practitioner_roles: dict[str, FHIRResourceDict] = {}  # ID -> Resource
+
         # Converters for referenced resources
         self.practitioner_converter = PractitionerConverter()
         self.organization_converter = OrganizationConverter()
@@ -181,6 +186,26 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         careteam["name"] = self._generate_name(organizer, categories)
 
         return careteam
+
+    def get_related_resources(self) -> list[FHIRResourceDict]:
+        """Get all related resources created during conversion.
+
+        Returns:
+            List of Practitioner, PractitionerRole, and Organization resources
+            created during CareTeam conversion
+        """
+        resources: list[FHIRResourceDict] = []
+
+        # Add all created practitioners
+        resources.extend(self.created_practitioners.values())
+
+        # Add all created organizations
+        resources.extend(self.created_organizations.values())
+
+        # Add all created practitioner roles
+        resources.extend(self.created_practitioner_roles.values())
+
+        return resources
 
     def _validate_template(self, organizer: "Organizer") -> None:
         """Validate that this is a Care Team Organizer template.
@@ -578,6 +603,8 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 practitioner = self.practitioner_converter.convert(assigned_entity)
                 practitioner_id = practitioner.get("id", f"practitioner-{npi}")
                 self.practitioner_registry[npi] = practitioner_id
+                # Store the created resource
+                self.created_practitioners[practitioner_id] = practitioner
             else:
                 # No person, can't create practitioner
                 return None
@@ -595,6 +622,8 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                         organization = self.organization_converter.convert(org)
                         organization_id = organization.get("id", f"org-{org_oid.replace('.', '-')}")
                         self.organization_registry[org_oid] = organization_id
+                        # Store the created resource
+                        self.created_organizations[organization_id] = organization
                     except Exception:
                         # Organization conversion failed, continue without it
                         pass
@@ -613,6 +642,8 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 )
                 role_id = practitioner_role.get("id", f"role-{practitioner_id}-{organization_id}")
                 self.practitioner_role_registry[role_key] = role_id
+                # Store the created resource
+                self.created_practitioner_roles[role_id] = practitioner_role
             except Exception:
                 # PractitionerRole conversion failed, fallback to Practitioner
                 return {"reference": f"Practitioner/{practitioner_id}"}

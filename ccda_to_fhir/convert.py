@@ -8,6 +8,7 @@ from typing import Type
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 from fhir.resources.R4B.allergyintolerance import AllergyIntolerance
 from fhir.resources.R4B.careplan import CarePlan
+from fhir.resources.R4B.careteam import CareTeam
 from fhir.resources.R4B.composition import Composition
 from fhir.resources.R4B.condition import Condition
 from fhir.resources.R4B.device import Device
@@ -45,6 +46,7 @@ from ccda_to_fhir.logging_config import get_logger
 from .converters.allergy_intolerance import convert_allergy_concern_act
 from .converters.author_extractor import AuthorExtractor, AuthorInfo
 from .converters.careplan import CarePlanConverter
+from .converters.careteam import CareTeamConverter
 from .converters.code_systems import CodeSystemMapper
 from .converters.composition import CompositionConverter
 from .converters.condition import convert_problem_concern_act, ConditionConverter
@@ -104,7 +106,61 @@ RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
     "Provenance": Provenance,
     "Goal": Goal,
     "CarePlan": CarePlan,
+    "CareTeam": CareTeam,
 }
+
+
+def convert_careteam_organizer(
+    organizer,
+    code_system_mapper=None,
+    metadata_callback=None,
+    section=None,
+    reference_registry=None,
+) -> list[FHIRResourceDict]:
+    """Convert a Care Team Organizer to FHIR CareTeam and related resources.
+
+    Args:
+        organizer: The Care Team Organizer
+        code_system_mapper: Optional code system mapper
+        metadata_callback: Optional callback for storing metadata
+        section: The C-CDA Section containing this care team (for narrative)
+        reference_registry: Reference registry for patient reference
+
+    Returns:
+        List of FHIR resources: CareTeam, Practitioner, PractitionerRole, Organization
+    """
+    # Get patient reference from registry
+    if not reference_registry:
+        raise ValueError("Reference registry required for CareTeam conversion")
+
+    patient_reference = reference_registry.get_patient_reference()
+
+    converter = CareTeamConverter(
+        patient_reference=patient_reference,
+        code_system_mapper=code_system_mapper,
+        reference_registry=reference_registry,
+    )
+
+    try:
+        careteam = converter.convert(organizer)
+
+        # Store metadata if callback provided
+        if metadata_callback and careteam.get("id"):
+            metadata_callback(
+                resource_type="CareTeam",
+                resource_id=careteam["id"],
+                ccda_element=organizer,
+                concern_act=None,
+            )
+
+        # Collect all resources (CareTeam + related resources)
+        resources = [careteam]
+        resources.extend(converter.get_related_resources())
+
+        return resources
+    except Exception as e:
+        logger.error(f"Error converting care team organizer", exc_info=True)
+        raise
 
 
 def convert_medication(
@@ -432,6 +488,17 @@ class DocumentConverter:
                 entry_type="act",
                 converter=self.service_request_converter.convert,
                 error_message="planned act",
+                include_section_code=False,
+            )
+        )
+
+        # Care Teams (Care Team Organizers)
+        self.careteam_processor = SectionProcessor(
+            SectionConfig(
+                template_id=TemplateIds.CARE_TEAM_ORGANIZER,
+                entry_type="organizer",
+                converter=convert_careteam_organizer,
+                error_message="care team organizer",
                 include_section_code=False,
             )
         )
@@ -823,6 +890,22 @@ class DocumentConverter:
                 self.reference_registry.register_resource(goal)
             if goals:
                 section_resource_map[TemplateIds.GOALS_SECTION] = goals
+
+            # Care Teams (from Care Teams section)
+            # Note: _extract_careteams returns CareTeam resources plus related
+            # Practitioner, PractitionerRole, and Organization resources
+            careteam_resources = self._extract_careteams(ccda_doc.component.structured_body)
+            resources.extend(careteam_resources)
+
+            # Register all resources and collect just CareTeams for section map
+            careteams = []
+            for resource in careteam_resources:
+                self.reference_registry.register_resource(resource)
+                if resource.get("resourceType") == "CareTeam":
+                    careteams.append(resource)
+
+            if careteams:
+                section_resource_map[TemplateIds.CARE_TEAMS_SECTION] = careteams
 
             # Procedures (from Procedures sections)
             procedures = self._extract_procedures(ccda_doc.component.structured_body)
@@ -1236,6 +1319,21 @@ class DocumentConverter:
         return self.goal_processor.process(
             structured_body,
             reference_registry=self.reference_registry,
+        )
+
+    def _extract_careteams(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
+        """Extract and convert CareTeams from the structured body.
+
+        Args:
+            structured_body: The structuredBody element
+
+        Returns:
+            List of FHIR CareTeam resources
+        """
+        return self.careteam_processor.process(
+            structured_body,
+            reference_registry=self.reference_registry,
+            code_system_mapper=self.code_system_mapper,
         )
 
     def _extract_vital_signs(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:

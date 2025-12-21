@@ -89,6 +89,10 @@ class TemplateIds:
     INTERVENTION_ACT = "2.16.840.1.113883.10.20.22.4.131"
     PLANNED_INTERVENTION_ACT = "2.16.840.1.113883.10.20.22.4.146"
 
+    # Care Team templates
+    CARE_TEAM_ORGANIZER = "2.16.840.1.113883.10.20.22.4.500"
+    CARE_TEAM_MEMBER_ACT = "2.16.840.1.113883.10.20.22.4.500.1"
+
     # Document templates
     CARE_PLAN_DOCUMENT = "2.16.840.1.113883.10.20.22.1.15"
 
@@ -108,6 +112,7 @@ class TemplateIds:
     HEALTH_CONCERNS_SECTION = "2.16.840.1.113883.10.20.22.2.58"
     INTERVENTIONS_SECTION = "2.16.840.1.113883.10.20.21.2.3"
     OUTCOMES_SECTION = "2.16.840.1.113883.10.20.22.2.61"
+    CARE_TEAMS_SECTION = "2.16.840.1.113883.10.20.22.2.500"
 
 
 # =============================================================================
