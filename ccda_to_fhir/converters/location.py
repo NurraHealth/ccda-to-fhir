@@ -82,8 +82,8 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             raise ValueError("Location name is required (playingEntity/name)")
         location["name"] = name
 
-        # Map mode (default: instance for specific locations)
-        location["mode"] = "instance"
+        # Map mode (instance for specific locations, kind for location types)
+        location["mode"] = self._determine_mode(participant_role.code)
 
         # Map type (facility type - required)
         if not participant_role.code:
@@ -547,6 +547,55 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 "display": display
             }]
         }
+
+    def _determine_mode(self, location_code: "CE") -> str:
+        """Determine location mode (instance vs kind).
+
+        Per FHIR R4 specification:
+        - instance: Specific location (Room 123, specific hospital)
+        - kind: Type of location (patient's home, ambulance)
+
+        Location codes representing types/classes rather than specific instances
+        should use mode "kind". Examples include patient homes, ambulances, and
+        other non-facility-specific locations.
+
+        Args:
+            location_code: The C-CDA location type code (participantRole/code)
+
+        Returns:
+            "instance" or "kind"
+
+        Examples:
+            >>> # Specific hospital location
+            >>> code = CE(code="1061-3", code_system="2.16.840.1.113883.6.259")
+            >>> mode = self._determine_mode(code)
+            >>> # Returns: "instance"
+            >>>
+            >>> # Patient's home (generic location type)
+            >>> code = CE(code="PTRES", code_system="2.16.840.1.113883.5.111")
+            >>> mode = self._determine_mode(code)
+            >>> # Returns: "kind"
+        """
+        if not location_code or not hasattr(location_code, 'code') or not location_code.code:
+            # Default to instance when code is missing
+            return "instance"
+
+        # Codes that represent types/classes rather than specific instances
+        # These should use mode "kind" per FHIR specification
+        kind_codes = {
+            'PTRES',   # Patient's Residence - represents any patient home, not a specific address
+            'AMB',     # Ambulance - represents a type of vehicle, not a specific ambulance
+            'WORK',    # Work Site - represents any workplace
+            'SCHOOL',  # School - represents any school
+        }
+
+        code_value = location_code.code
+
+        if code_value in kind_codes:
+            return "kind"
+
+        # All other codes represent specific instances (hospitals, rooms, clinics, etc.)
+        return "instance"
 
     def _get_managing_organization_reference(
         self,

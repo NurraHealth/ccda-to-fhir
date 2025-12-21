@@ -558,19 +558,113 @@ class TestLocationConverter:
     def test_sets_mode_to_instance(
         self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
     ) -> None:
-        """Test that mode defaults to 'instance'."""
+        """Test that mode is 'instance' for specific locations."""
         location = location_converter.convert(sample_service_delivery_location)
 
         assert "mode" in location
         assert location["mode"] == "instance"
 
-    def test_mode_kind_for_jurisdiction(
+    def test_mode_kind_for_patient_home(
+        self, location_converter: LocationConverter, patient_home_location: ParticipantRole
+    ) -> None:
+        """Test mode='kind' for patient residence (represents any patient home, not specific address)."""
+        location = location_converter.convert(patient_home_location)
+
+        assert "mode" in location
+        assert location["mode"] == "kind"
+
+    def test_mode_kind_for_ambulance(
         self, location_converter: LocationConverter
     ) -> None:
-        """Test that mode is 'kind' for jurisdiction/class types (not instances)."""
-        # This is optional - only implement if we want to support jurisdiction types
-        # For now, all locations are 'instance' (specific physical places)
-        pass
+        """Test mode='kind' for ambulance (represents vehicle type, not specific ambulance)."""
+        ambulance_location = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="9988776655")],
+            code=CE(
+                code="AMB",
+                code_system="2.16.840.1.113883.5.111",
+                display_name="Ambulance"
+            ),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Ambulance Unit 5"])
+        )
+
+        location = location_converter.convert(ambulance_location)
+
+        assert "mode" in location
+        assert location["mode"] == "kind"
+
+    def test_mode_kind_for_work_site(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test mode='kind' for work site (represents any workplace)."""
+        work_location = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+            code=CE(
+                code="WORK",
+                code_system="2.16.840.1.113883.5.111",
+                display_name="Work Site"
+            ),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Patient's Workplace"])
+        )
+
+        location = location_converter.convert(work_location)
+
+        assert "mode" in location
+        assert location["mode"] == "kind"
+
+    def test_mode_kind_for_school(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test mode='kind' for school (represents any school)."""
+        school_location = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+            code=CE(
+                code="SCHOOL",
+                code_system="2.16.840.1.113883.5.111",
+                display_name="School"
+            ),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Local School"])
+        )
+
+        location = location_converter.convert(school_location)
+
+        assert "mode" in location
+        assert location["mode"] == "kind"
+
+    def test_mode_instance_for_urgent_care(
+        self, location_converter: LocationConverter, urgent_care_location: ParticipantRole
+    ) -> None:
+        """Test mode='instance' for specific urgent care facility."""
+        location = location_converter.convert(urgent_care_location)
+
+        assert "mode" in location
+        assert location["mode"] == "instance"
+
+    def test_mode_instance_for_emergency_department(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test mode='instance' for specific emergency department."""
+        ed_location = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+            code=CE(
+                code="1118-1",
+                code_system="2.16.840.1.113883.6.259",
+                display_name="Emergency Department"
+            ),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Boston General Emergency Department"])
+        )
+
+        location = location_converter.convert(ed_location)
+
+        assert "mode" in location
+        assert location["mode"] == "instance"
 
     # ============================================================================
     # H. Template ID Validation (2 tests)

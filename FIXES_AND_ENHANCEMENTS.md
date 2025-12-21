@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-12-21
 **Status:** Action Items from Comprehensive Code Review
-**Total Items:** 15 (2 Critical ✅ Complete, 4 High ✅ Complete, 5 Medium ✅ Complete, 1 Medium, 3 Low)
+**Total Items:** 15 (2 Critical ✅ Complete, 4 High ✅ Complete, 6 Medium ✅ Complete, 3 Low)
 
 ---
 
@@ -672,7 +672,7 @@ def test_ehr_device_version_patterns():
 
 ---
 
-## 🟡 MEDIUM PRIORITY - Enhance When Possible (1 item - 5 ✅ Complete)
+## 🟡 MEDIUM PRIORITY - Enhance When Possible (0 items - 6 ✅ Complete)
 
 ### ~~7. CarePlan: Implement Narrative Generation~~ ✅ COMPLETED
 
@@ -1246,14 +1246,39 @@ def test_physical_type_patient_home():
 
 ---
 
-### 12. Location: Enhance mode Detection
+### ~~12. Location: Enhance mode Detection~~ ✅ COMPLETED
 
 **Priority:** 🟡 MEDIUM
 **File:** `ccda_to_fhir/converters/location.py`
+**Status:** ✅ COMPLETED (2025-12-21)
 **Issue:** Mode always "instance", should detect "kind" for patient homes
 **Estimated Effort:** 1 hour
 
-**Current Code (Line 86):**
+**Implementation Summary:**
+- Implemented `_determine_mode()` method that determines location mode based on code type
+- Mode "kind" for location types that represent classes rather than specific instances:
+  - PTRES (Patient's Residence) - represents any patient home, not a specific address
+  - AMB (Ambulance) - represents vehicle type, not a specific ambulance
+  - WORK (Work Site) - represents any workplace
+  - SCHOOL (School) - represents any school
+- Mode "instance" for all specific locations (hospitals, clinics, rooms, wards, etc.)
+- Updated convert() method to call `_determine_mode()` instead of hardcoding "instance"
+- Added 6 comprehensive unit tests covering all mode detection scenarios:
+  - test_mode_kind_for_patient_home
+  - test_mode_kind_for_ambulance
+  - test_mode_kind_for_work_site
+  - test_mode_kind_for_school
+  - test_mode_instance_for_urgent_care
+  - test_mode_instance_for_emergency_department
+- All 1,203 tests passing (no regressions)
+- Standards-compliant per FHIR R4 Location.mode specification
+
+**Current Behavior:**
+Mode now properly differentiates between:
+- "instance" - Specific physical locations (Room 201, Boston General Hospital)
+- "kind" - Types/classes of locations (patient's home, ambulance)
+
+**Original Current Code (Line 86):**
 ```python
 fhir_location["mode"] = "instance"
 ```
@@ -1304,9 +1329,9 @@ def test_mode_instance_for_specific_location():
 ```
 
 **Acceptance Criteria:**
-- Patient homes, ambulances → mode "kind"
-- Specific locations → mode "instance"
-- Default to "instance" when uncertain
+- Patient homes, ambulances → mode "kind" ✅
+- Specific locations → mode "instance" ✅
+- Default to "instance" when uncertain ✅
 
 ---
 
@@ -1501,9 +1526,9 @@ def _create_pharmacy_location(
 |----------|-------|------------------|
 | 🔴 Critical | 0 (2 ✅) | 0 hours (5-6 hours completed) |
 | 🟠 High | 0 (4 ✅) | 0 hours (9-11 hours completed) |
-| 🟡 Medium | 1 (5 ✅) | 1 hour (8-10 hours completed) |
+| 🟡 Medium | 0 (6 ✅) | 0 hours (9-11 hours completed) |
 | 🟢 Low | 3 | 5-6 hours |
-| **Total** | **4 remaining** | **6-7 hours** |
+| **Total** | **3 remaining** | **5-6 hours** |
 
 ---
 
@@ -1544,8 +1569,9 @@ Before marking this document as complete:
 
 - [x] All 2 Critical items resolved
 - [x] All 4 High priority items resolved (4 of 4 complete ✅)
+- [x] All 6 Medium priority items resolved (6 of 6 complete ✅)
 - [x] All new code has test coverage >90%
-- [x] All 1,198 tests passing (was 1097, added 101 new tests)
+- [x] All 1,203 tests passing (was 1097, added 106 new tests)
 - [ ] US Core validation passes for all converters
 - [ ] FHIR R4 validation passes for all resources
 - [x] No regressions introduced
