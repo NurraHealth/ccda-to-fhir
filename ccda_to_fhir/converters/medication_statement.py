@@ -735,6 +735,8 @@ def convert_medication_statement(
 ) -> FHIRResourceDict:
     """Convert a Medication Activity to a FHIR MedicationStatement resource.
 
+    Also extracts nested MedicationDispense resources from entryRelationships.
+
     Args:
         substance_admin: The SubstanceAdministration (Medication Activity)
         code_system_mapper: Optional code system mapper
@@ -760,6 +762,14 @@ def convert_medication_statement(
                 ccda_element=substance_admin,
                 concern_act=None,
             )
+
+        # Extract nested medication dispenses
+        from ccda_to_fhir.converters.medication_dispense import extract_medication_dispenses
+        extract_medication_dispenses(
+            substance_admin,
+            code_system_mapper=code_system_mapper,
+            reference_registry=reference_registry,
+        )
 
         return medication_statement
     except Exception as e:

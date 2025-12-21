@@ -784,3 +784,81 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                 fhir_telecom.append(contact_point)
 
         return fhir_telecom
+
+
+# Global registry for storing created MedicationDispense resources
+# This will be populated during conversion and extracted by the DocumentConverter
+_dispense_registry: dict[str, FHIRResourceDict] = {}
+
+
+def extract_medication_dispenses(
+    substance_admin,
+    code_system_mapper=None,
+    reference_registry=None,
+) -> None:
+    """Extract nested MedicationDispense resources from Medication Activity.
+
+    C-CDA Medication Activities (SubstanceAdministration) can contain nested
+    Medication Dispense entries as entryRelationship elements with typeCode="REFR".
+    This function extracts those dispenses and adds them to the global registry.
+
+    Args:
+        substance_admin: The SubstanceAdministration (Medication Activity)
+        code_system_mapper: Optional code system mapper
+        reference_registry: Optional reference registry for tracking resources
+    """
+    from ccda_to_fhir.constants import TypeCodes
+
+    if not hasattr(substance_admin, 'entry_relationship') or not substance_admin.entry_relationship:
+        return
+
+    # Look for dispense entry relationships
+    for rel in substance_admin.entry_relationship:
+        if rel.type_code == TypeCodes.REFERENCE and rel.supply:
+            supply = rel.supply
+
+            # Check if this is a Medication Dispense (moodCode="EVN")
+            if hasattr(supply, 'mood_code') and supply.mood_code == "EVN":
+                # Check for Medication Dispense template
+                if hasattr(supply, 'template_id') and supply.template_id:
+                    is_dispense = any(
+                        tid.root == TemplateIds.MEDICATION_DISPENSE
+                        for tid in supply.template_id
+                        if hasattr(tid, 'root')
+                    )
+
+                    if is_dispense:
+                        try:
+                            converter = MedicationDispenseConverter(
+                                code_system_mapper=code_system_mapper,
+                                reference_registry=reference_registry,
+                            )
+                            dispense = converter.convert(supply)
+
+                            # Store in global registry
+                            if dispense.get("id"):
+                                _dispense_registry[dispense["id"]] = dispense
+                                logger.debug(f"Extracted MedicationDispense: {dispense['id']}")
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to extract medication dispense: {e}",
+                                exc_info=True
+                            )
+
+
+def get_medication_dispense_resources() -> list[FHIRResourceDict]:
+    """Get all MedicationDispense resources created during conversion.
+
+    Returns:
+        List of FHIR MedicationDispense resources
+    """
+    return list(_dispense_registry.values())
+
+
+def clear_medication_dispense_registry() -> None:
+    """Clear the medication dispense registry.
+
+    This should be called at the start of each document conversion to ensure
+    dispenses from previous conversions don't leak into new conversions.
+    """
+    _dispense_registry.clear()

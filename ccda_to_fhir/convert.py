@@ -18,6 +18,7 @@ from fhir.resources.R4B.goal import Goal
 from fhir.resources.R4B.immunization import Immunization
 from fhir.resources.R4B.location import Location
 from fhir.resources.R4B.medication import Medication
+from fhir.resources.R4B.medicationdispense import MedicationDispense
 from fhir.resources.R4B.medicationrequest import MedicationRequest
 from fhir.resources.R4B.medicationstatement import MedicationStatement
 from fhir.resources.R4B.observation import Observation
@@ -53,6 +54,10 @@ from .converters.document_reference import DocumentReferenceConverter
 from .converters.encounter import EncounterConverter
 from .converters.goal import GoalConverter
 from .converters.immunization import convert_immunization_activity
+from .converters.medication_dispense import (
+    get_medication_dispense_resources,
+    clear_medication_dispense_registry,
+)
 from .converters.medication_request import (
     convert_medication_activity,
     get_medication_resources,
@@ -85,6 +90,7 @@ RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
     "Condition": Condition,
     "AllergyIntolerance": AllergyIntolerance,
     "Medication": Medication,
+    "MedicationDispense": MedicationDispense,
     "MedicationRequest": MedicationRequest,
     "MedicationStatement": MedicationStatement,
     "Immunization": Immunization,
@@ -587,8 +593,9 @@ class DocumentConverter:
         Returns:
             FHIR Bundle as a dict with Composition as first entry
         """
-        # Clear medication registry at start of conversion
+        # Clear medication registries at start of conversion
         clear_medication_registry()
+        clear_medication_dispense_registry()
 
         # Reset ID cache for this document to ensure consistency within document
         from ccda_to_fhir.id_generator import reset_id_cache
@@ -951,6 +958,19 @@ class DocumentConverter:
                 logger.warning(
                     f"Medication resource failed validation, skipping",
                     resource_id=medication.get("id")
+                )
+
+        # Add MedicationDispense resources (extracted from medication activities)
+        dispenses = get_medication_dispense_resources()
+        for dispense in dispenses:
+            # Validate dispense
+            if self._validate_resource(dispense):
+                resources.append(dispense)
+                self.reference_registry.register_resource(dispense)
+            else:
+                logger.warning(
+                    f"MedicationDispense resource failed validation, skipping",
+                    resource_id=dispense.get("id")
                 )
 
         # Generate Practitioner and RelatedPerson resources from informants
