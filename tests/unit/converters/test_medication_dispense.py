@@ -823,6 +823,71 @@ class TestMedicationDispensePharmacyLocation:
         assert location["telecom"][0]["value"] == "(555)555-1000"
         assert location["telecom"][0]["use"] == "work"
 
+    def test_location_includes_identifiers_from_organization(self):
+        """Test Location.identifier populated from organization identifiers (US Core Must Support)."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedPerson,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+
+        patient = {
+            "resourceType": "Patient",
+            "id": "patient-123",
+        }
+        registry.register_resource(patient)
+
+        # Create converter with registry
+        converter = MedicationDispenseConverter(reference_registry=registry)
+
+        # Create dispense with pharmacy organization that has identifiers
+        dispense = self.create_minimal_dispense()
+
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        # representedOrganization with identifiers (NPI and custom identifier)
+        org = RepresentedOrganization()
+        org.name = ["Community Pharmacy"]
+        org.id = [
+            II(root="2.16.840.1.113883.4.6", extension="1234567890"),  # NPI
+            II(root="1.2.3.4.5.6", extension="PHARM-001"),  # Custom identifier
+        ]
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+
+        dispense.performer = [performer]
+
+        result = converter.convert(dispense)
+
+        # Get the Location resource from registry
+        location_id = result["location"]["reference"].split("/")[1]
+        location = registry.get_resource("Location", location_id)
+
+        # Verify identifiers are populated (US Core Must Support)
+        assert "identifier" in location, "Location.identifier missing (US Core Must Support violation)"
+        assert len(location["identifier"]) == 2
+
+        # Check first identifier (NPI - OID mapped to FHIR URI)
+        id1 = location["identifier"][0]
+        assert "system" in id1
+        assert "value" in id1
+        assert id1["value"] == "1234567890"
+        assert id1["system"] == "http://hl7.org/fhir/sid/us-npi"
+
+        # Check second identifier (custom OID - becomes urn:oid:)
+        id2 = location["identifier"][1]
+        assert "system" in id2
+        assert "value" in id2
+        assert id2["value"] == "PHARM-001"
+        assert id2["system"] == "urn:oid:1.2.3.4.5.6"
+
     def test_location_not_created_without_represented_organization(self):
         """Test Location not created when representedOrganization is absent."""
         from ccda_to_fhir.ccda.models.performer import AssignedPerson

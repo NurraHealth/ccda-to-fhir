@@ -48,38 +48,24 @@ Updated `_determine_status()` method to:
 
 ---
 
-### CRITICAL-2: MedicationDispense - Location.identifier Not Populated
+### ~~CRITICAL-2: MedicationDispense - Location.identifier Not Populated~~ ✅ FIXED
 
+**Status:** ✅ Fixed on 2025-12-22
 **Severity:** High
 **Component:** MedicationDispense Converter - Location creation
-**Location:** `ccda_to_fhir/converters/medication_dispense.py:532-546`
+**Location:** `ccda_to_fhir/converters/medication_dispense.py:616-626`
 
 **Issue:**
-When creating Location resources for pharmacies, `identifier` field is not populated even when the source organization has identifiers.
+When creating Location resources for pharmacies, `identifier` field was not populated even when the source organization had identifiers.
 
 **US Core Must Support Rule:**
 > "Must be supported if the data is present in the sending system"
 
-**Current Code:**
+**Fix Applied:**
+Added identifier population from organization identifiers to Location resource creation:
 ```python
-# Lines 532-546 create Location without identifiers
-location: JSONObject = {
-    "resourceType": "Location",
-    "id": location_id,
-    "status": "active",
-    "mode": "instance",
-    "name": org_name,
-    # ... identifier not populated even when org has IDs
-}
-```
-
-**Impact:**
-Violates US Core Must Support: when source org has identifiers, they should be included in Location.
-
-**Fix:**
-```python
-# Add after line 546
-# Populate identifiers from organization (US Core Must Support)
+# Add identifiers from organization (US Core Must Support)
+# Per US Core: "Must be supported if the data is present in the sending system"
 if hasattr(organization, "id") and organization.id:
     identifiers = []
     for id_elem in organization.id:
@@ -90,6 +76,11 @@ if hasattr(organization, "id") and organization.id:
     if identifiers:
         location["identifier"] = identifiers
 ```
+
+**Implementation:**
+- Modified: `ccda_to_fhir/converters/medication_dispense.py:616-626`
+- Added test: `test_location_includes_identifiers_from_organization()`
+- Test Status: ✅ All 1235 tests passing - no regressions
 
 **References:**
 - [US Core Location Profile](http://hl7.org/fhir/us/core/STU7/StructureDefinition-us-core-location.html)
@@ -480,23 +471,23 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 ## Summary
 
 ### By Severity
-- **Critical:** ~~2~~ 1 remaining (~~1 fixed~~)
+- **Critical:** ~~2~~ 0 remaining (~~2 fixed~~)
 - **High:** 3 (functionality gaps)
 - **Medium:** 5 (intentional leniency vs strict compliance)
 - **Low:** 2 (nice-to-have validations)
 
 ### By Component
-- **MedicationDispense:** ~~7~~ 6 issues remaining (~~1 fixed~~)
+- **MedicationDispense:** ~~7~~ ~~6~~ 5 issues remaining (~~2 fixed~~)
 - **CareTeam:** 5 issues
 
 ### Key Takeaways
 
 **Fixed:**
 1. ✅ Extract supply.code element (contains actual status) - FIXED 2025-12-22
+2. ✅ Populate Location.identifier from organization - FIXED 2025-12-22
 
 **Must Fix:**
-1. Populate Location.identifier from organization
-2. Handle Organization performers
+1. Handle Organization performers
 
 **Intentional Design Choices:**
 - CareTeam accepts missing required elements (statusCode, effectiveTime, type observation)

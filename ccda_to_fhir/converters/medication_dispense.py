@@ -613,6 +613,18 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             if telecom_list:
                 location["telecom"] = telecom_list
 
+        # Add identifiers from organization (US Core Must Support)
+        # Per US Core: "Must be supported if the data is present in the sending system"
+        if hasattr(organization, "id") and organization.id:
+            identifiers = []
+            for id_elem in organization.id:
+                if id_elem.root:
+                    identifier = self.create_identifier(id_elem.root, id_elem.extension)
+                    if identifier:
+                        identifiers.append(identifier)
+            if identifiers:
+                location["identifier"] = identifiers
+
         # Register Location resource
         self.reference_registry.register_resource(location)
 
