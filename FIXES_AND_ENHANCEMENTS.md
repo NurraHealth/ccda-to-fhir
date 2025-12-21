@@ -672,7 +672,7 @@ def test_ehr_device_version_patterns():
 
 ---
 
-## 🟡 MEDIUM PRIORITY - Enhance When Possible (5 items)
+## 🟡 MEDIUM PRIORITY - Enhance When Possible (4 items)
 
 ### ~~7. CarePlan: Implement Narrative Generation~~ ✅ COMPLETED
 
@@ -849,14 +849,30 @@ def test_narrative_html_escaped():
 
 ---
 
-### 8. CarePlan: Enhance Status Determination
+### ~~8. CarePlan: Enhance Status Determination~~ ✅ COMPLETED
 
 **Priority:** 🟡 MEDIUM
 **File:** `ccda_to_fhir/converters/careplan.py`
+**Status:** ✅ COMPLETED (2025-12-21)
 **Issue:** Status always defaults to "active"
 **Estimated Effort:** 2 hours
 
-**Current Code (Lines 254-266):**
+**Implementation Summary:**
+- Implemented enhanced `_determine_status()` method with comprehensive status determination logic
+- Added `_get_intervention_status()` helper method to extract and map intervention statusCode values
+- Status determination hierarchy:
+  1. Period end date in past → "completed"
+  2. All interventions completed → "completed"
+  3. Any intervention cancelled → "revoked"
+  4. Document authenticated → "active"
+  5. Default → "active"
+- Handles both date and datetime formats for period comparison
+- Maps C-CDA statusCode vocabulary (completed, active, cancelled, aborted, suspended, new, held) to CarePlan-relevant statuses
+- Added 4 comprehensive unit tests covering all status determination scenarios
+- All 1,183 tests passing (no regressions)
+- Standards-compliant per C-CDA on FHIR IG mapping specification
+
+**Original Current Code (Lines 254-266):**
 ```python
 # ServiceEvent doesn't have statusCode in C-CDA, infer from context
 return "active"
@@ -1424,9 +1440,9 @@ def _create_pharmacy_location(
 |----------|-------|------------------|
 | 🔴 Critical | 0 (2 ✅) | 0 hours (5-6 hours completed) |
 | 🟠 High | 0 (4 ✅) | 0 hours (9-11 hours completed) |
-| 🟡 Medium | 5 (1 ✅) | 7-10 hours (3-4 hours completed) |
+| 🟡 Medium | 4 (2 ✅) | 5-8 hours (5-6 hours completed) |
 | 🟢 Low | 3 | 5-6 hours |
-| **Total** | **8 remaining** | **12-16 hours** |
+| **Total** | **7 remaining** | **10-14 hours** |
 
 ---
 

@@ -349,6 +349,154 @@ class TestStatusMapping:
             "unknown",
         ]
 
+    def test_status_completed_when_period_ended(
+        self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
+        basic_author, basic_custodian
+    ):
+        """Test status 'completed' when period.end in past."""
+        from datetime import datetime, timedelta, timezone
+
+        # Create document with past end date
+        past_date = datetime.now(timezone.utc) - timedelta(days=30)
+        past_date_str = past_date.strftime("%Y%m%d")
+
+        doc = ClinicalDocument(
+            realm_code=[CS(code="US")],
+            type_id=II(root="2.16.840.1.113883.1.3", extension="POCD_HD000040"),
+            template_id=[us_realm_header_template_id, care_plan_template_id],
+            id=II(root="2.16.840.1.113883.19.5", extension="cp-past"),
+            code=CE(code="52521-2", code_system="2.16.840.1.113883.6.1"),
+            title="Care Plan",
+            effective_time=TS(value="20240115"),
+            confidentiality_code=CE(code="N", code_system="2.16.840.1.113883.5.25"),
+            language_code=CS(code="en-US"),
+            record_target=[basic_record_target],
+            author=[basic_author],
+            custodian=basic_custodian,
+            documentation_of=[
+                DocumentationOf(
+                    service_event=ServiceEvent(
+                        class_code="PCPR",
+                        effective_time=IVL_TS(
+                            low=TS(value="20240101"),
+                            high=TS(value=past_date_str),
+                        ),
+                    )
+                )
+            ],
+        )
+
+        converter = CarePlanConverter()
+        careplan = converter.convert(doc)
+
+        assert careplan["status"] == "completed"
+
+    def test_status_completed_when_all_interventions_completed(
+        self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
+        basic_author, basic_custodian
+    ):
+        """Test status 'completed' when all interventions completed."""
+        # Create mock intervention entries with completed status
+        class MockIntervention:
+            def __init__(self, status_code_value):
+                self.status_code = CS(code=status_code_value)
+                self.id = [II(root="intervention-123")]
+
+        intervention_entries = [
+            MockIntervention("completed"),
+            MockIntervention("completed"),
+        ]
+
+        doc = ClinicalDocument(
+            realm_code=[CS(code="US")],
+            type_id=II(root="2.16.840.1.113883.1.3", extension="POCD_HD000040"),
+            template_id=[us_realm_header_template_id, care_plan_template_id],
+            id=II(root="2.16.840.1.113883.19.5", extension="cp-completed"),
+            code=CE(code="52521-2", code_system="2.16.840.1.113883.6.1"),
+            title="Care Plan",
+            effective_time=TS(value="20240115"),
+            confidentiality_code=CE(code="N", code_system="2.16.840.1.113883.5.25"),
+            language_code=CS(code="en-US"),
+            record_target=[basic_record_target],
+            author=[basic_author],
+            custodian=basic_custodian,
+        )
+
+        converter = CarePlanConverter(intervention_entries=intervention_entries)
+        careplan = converter.convert(doc)
+
+        assert careplan["status"] == "completed"
+
+    def test_status_revoked_when_intervention_cancelled(
+        self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
+        basic_author, basic_custodian
+    ):
+        """Test status 'revoked' when any intervention cancelled."""
+        # Create mock intervention entries with one cancelled
+        class MockIntervention:
+            def __init__(self, status_code_value):
+                self.status_code = CS(code=status_code_value)
+                self.id = [II(root=f"intervention-{status_code_value}")]
+
+        intervention_entries = [
+            MockIntervention("active"),
+            MockIntervention("cancelled"),
+        ]
+
+        doc = ClinicalDocument(
+            realm_code=[CS(code="US")],
+            type_id=II(root="2.16.840.1.113883.1.3", extension="POCD_HD000040"),
+            template_id=[us_realm_header_template_id, care_plan_template_id],
+            id=II(root="2.16.840.1.113883.19.5", extension="cp-revoked"),
+            code=CE(code="52521-2", code_system="2.16.840.1.113883.6.1"),
+            title="Care Plan",
+            effective_time=TS(value="20240115"),
+            confidentiality_code=CE(code="N", code_system="2.16.840.1.113883.5.25"),
+            language_code=CS(code="en-US"),
+            record_target=[basic_record_target],
+            author=[basic_author],
+            custodian=basic_custodian,
+        )
+
+        converter = CarePlanConverter(intervention_entries=intervention_entries)
+        careplan = converter.convert(doc)
+
+        assert careplan["status"] == "revoked"
+
+    def test_status_active_when_authenticated(
+        self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
+        basic_author, basic_custodian
+    ):
+        """Test status 'active' when document authenticated."""
+        from ccda_to_fhir.ccda.models.clinical_document import LegalAuthenticator
+
+        doc = ClinicalDocument(
+            realm_code=[CS(code="US")],
+            type_id=II(root="2.16.840.1.113883.1.3", extension="POCD_HD000040"),
+            template_id=[us_realm_header_template_id, care_plan_template_id],
+            id=II(root="2.16.840.1.113883.19.5", extension="cp-authenticated"),
+            code=CE(code="52521-2", code_system="2.16.840.1.113883.6.1"),
+            title="Care Plan",
+            effective_time=TS(value="20240115"),
+            confidentiality_code=CE(code="N", code_system="2.16.840.1.113883.5.25"),
+            language_code=CS(code="en-US"),
+            record_target=[basic_record_target],
+            author=[basic_author],
+            custodian=basic_custodian,
+            legal_authenticator=LegalAuthenticator(
+                time=TS(value="20240115120000-0500"),
+                signature_code=CS(code="S"),
+                assigned_entity=AssignedEntity(
+                    id=[II(root="2.16.840.1.113883.4.6", extension="auth-123")]
+                ),
+            ),
+        )
+
+        converter = CarePlanConverter()
+        careplan = converter.convert(doc)
+
+        assert careplan["status"] == "active"
+
 
 # ============================================================================
 # Subject Mapping Tests

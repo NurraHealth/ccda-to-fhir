@@ -245,7 +245,19 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         )
 
     def _determine_status(self, doc: ClinicalDocument) -> str:
-        """Determine CarePlan status from document.
+        """Determine CarePlan status from document context.
+
+        NOTE: This status hierarchy is implementation logic, not explicitly
+        mandated by C-CDA on FHIR IG. It represents best-practice inference
+        from available document context per C-CDA on FHIR mapping guidance
+        (docs/mapping/14-careplan.md lines 567-582).
+
+        Status hierarchy:
+        1. If period.end in past → completed
+        2. If all interventions completed → completed
+        3. If any intervention cancelled → revoked
+        4. If document authenticated → active
+        5. Default → active
 
         Args:
             doc: ClinicalDocument
@@ -253,10 +265,103 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         Returns:
             CarePlan status code (active, completed, etc.)
         """
-        # Note: ServiceEvent doesn't have statusCode in C-CDA
-        # We default to "active" for Care Plan Documents
-        # In the future, we could check other indicators like authentication status
+        from datetime import datetime, timezone
+
+        # Extract period for date comparison
+        period = None
+        if doc.documentation_of:
+            for doc_of in doc.documentation_of:
+                if doc_of.service_event and doc_of.service_event.effective_time:
+                    period = self._convert_service_event_period(
+                        doc_of.service_event.effective_time
+                    )
+                    if period:
+                        break
+
+        # 1. Check if period has ended (past end date → completed)
+        if period and period.get('end'):
+            try:
+                end_date_str = period['end']
+                # Handle both date (YYYY-MM-DD) and datetime formats
+                if 'T' in end_date_str:
+                    end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                else:
+                    # Date only - add time component for comparison
+                    end_date = datetime.fromisoformat(f"{end_date_str}T23:59:59+00:00")
+
+                if end_date < datetime.now(timezone.utc):
+                    return "completed"
+            except (ValueError, AttributeError):
+                # Invalid date format, skip this check
+                pass
+
+        # 2. Check intervention statuses
+        if self.intervention_entries:
+            intervention_statuses = [
+                self._get_intervention_status(interv)
+                for interv in self.intervention_entries
+            ]
+            # Filter out None values
+            intervention_statuses = [s for s in intervention_statuses if s is not None]
+
+            if intervention_statuses:
+                # If all interventions completed → care plan completed
+                if all(s == 'completed' for s in intervention_statuses):
+                    return "completed"
+
+                # If any intervention cancelled → care plan revoked
+                if 'cancelled' in intervention_statuses:
+                    return "revoked"
+
+        # 3. Check if document is authenticated (finalized)
+        if hasattr(doc, 'legal_authenticator') and doc.legal_authenticator:
+            return "active"
+
+        # 4. Default to active
         return "active"
+
+    def _get_intervention_status(self, intervention_entry) -> str | None:
+        """Extract status from intervention entry.
+
+        Maps C-CDA statusCode values to CarePlan-relevant status indicators.
+
+        Per C-CDA statusCode vocabulary:
+        - completed → completed
+        - active → active
+        - cancelled → cancelled
+        - aborted → cancelled
+        - suspended → suspended
+        - new, held → active (planned activities)
+
+        Args:
+            intervention_entry: C-CDA intervention entry element
+
+        Returns:
+            Status string (completed, active, cancelled, suspended) or None
+        """
+        if not hasattr(intervention_entry, 'status_code'):
+            return None
+
+        status_code = intervention_entry.status_code
+        if not status_code or not hasattr(status_code, 'code'):
+            return None
+
+        code = status_code.code.lower() if status_code.code else None
+        if not code:
+            return None
+
+        # Map common C-CDA status codes to CarePlan-relevant statuses
+        status_map = {
+            'completed': 'completed',
+            'active': 'active',
+            'cancelled': 'cancelled',
+            'aborted': 'cancelled',  # Treat aborted as cancelled
+            'suspended': 'suspended',
+            'new': 'active',  # New planned activities are active
+            'held': 'active',  # Held activities are still active (on hold)
+        }
+
+        return status_map.get(code)
 
     def _convert_service_event_period(self, effective_time) -> JSONObject | None:
         """Convert serviceEvent effectiveTime to FHIR Period.
