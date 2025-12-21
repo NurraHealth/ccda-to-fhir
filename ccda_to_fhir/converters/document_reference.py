@@ -704,8 +704,9 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
                 attachment["creation"] = creation_date
 
         # Format (C-CDA format coding)
+        # Uses HL7 CodeSystem as authoritative source for C-CDA format codes
         content["format"] = {
-            "system": "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem",
+            "system": "http://terminology.hl7.org/CodeSystem/v3-HL7DocumentFormatCodes",
             "code": "urn:hl7-org:sdwg:ccda-structuredBody:2.1",
             "display": "For documents following C-CDA 2.1 constraints using a structured body.",
         }

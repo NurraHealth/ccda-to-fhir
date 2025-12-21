@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-12-21
 **Status:** Action Items from Comprehensive Code Review
-**Total Items:** 15 (2 Critical ✅ Complete, 4 High ✅ Complete, 6 Medium, 3 Low)
+**Total Items:** 15 (2 Critical ✅ Complete, 4 High ✅ Complete, 5 Medium, 3 Low)
 
 ---
 
@@ -672,7 +672,7 @@ def test_ehr_device_version_patterns():
 
 ---
 
-## 🟡 MEDIUM PRIORITY - Enhance When Possible (4 items)
+## 🟡 MEDIUM PRIORITY - Enhance When Possible (3 items - 1 ✅ Complete)
 
 ### ~~7. CarePlan: Implement Narrative Generation~~ ✅ COMPLETED
 
@@ -978,14 +978,27 @@ def test_status_active_when_authenticated():
 
 ---
 
-### 9. DocumentReference: Fix format.system URI
+### ~~9. DocumentReference: Fix format.system URI~~ ✅ COMPLETED
 
 **Priority:** 🟡 MEDIUM
 **File:** `ccda_to_fhir/converters/document_reference.py`
+**Status:** ✅ COMPLETED (2025-12-21)
 **Issue:** Using non-standard IHE URI instead of HL7 standard
 **Estimated Effort:** 15 minutes
 
-**Current Code (Line 708):**
+**Implementation Summary:**
+- Changed format.system URI from non-standard IHE ValueSet URI to authoritative HL7 CodeSystem URI
+- Updated from `http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem` to `http://terminology.hl7.org/CodeSystem/v3-HL7DocumentFormatCodes`
+- Added test `test_format_uses_hl7_system()` to verify correct system URI
+- Change aligns with HL7 FHIR R4 specification and C-CDA on FHIR IG
+- HL7 is the authoritative source for C-CDA format codes, not IHE
+- All 1,184 tests passing (added 1 new test)
+- Standards-compliant implementation verified against official HL7 terminology
+
+**Current Behavior:**
+format.system now uses the correct HL7 standard CodeSystem URI for C-CDA format codes.
+
+**Original Current Code (Line 708):**
 ```python
 "system": "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem"
 ```
@@ -1440,9 +1453,9 @@ def _create_pharmacy_location(
 |----------|-------|------------------|
 | 🔴 Critical | 0 (2 ✅) | 0 hours (5-6 hours completed) |
 | 🟠 High | 0 (4 ✅) | 0 hours (9-11 hours completed) |
-| 🟡 Medium | 4 (2 ✅) | 5-8 hours (5-6 hours completed) |
+| 🟡 Medium | 3 (3 ✅) | 4-7 hours (6-7 hours completed) |
 | 🟢 Low | 3 | 5-6 hours |
-| **Total** | **7 remaining** | **10-14 hours** |
+| **Total** | **6 remaining** | **9-13 hours** |
 
 ---
 
@@ -1484,7 +1497,7 @@ Before marking this document as complete:
 - [x] All 2 Critical items resolved
 - [x] All 4 High priority items resolved (4 of 4 complete ✅)
 - [x] All new code has test coverage >90%
-- [x] All 1169 tests passing (was 1097, added 72 new tests)
+- [x] All 1184 tests passing (was 1097, added 87 new tests)
 - [ ] US Core validation passes for all converters
 - [ ] FHIR R4 validation passes for all resources
 - [x] No regressions introduced

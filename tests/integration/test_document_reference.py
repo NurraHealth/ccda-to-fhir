@@ -191,6 +191,16 @@ class TestDocumentReferenceConversion:
         # Should indicate C-CDA structured body format
         assert "ccda" in content["format"]["code"].lower()
 
+    def test_format_uses_hl7_system(self) -> None:
+        """Test format.system uses HL7 standard URI."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+        format_coding = doc_ref["content"][0]["format"]
+        assert format_coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-HL7DocumentFormatCodes"
+
     def test_resource_type_is_document_reference(self) -> None:
         """Test that resourceType is DocumentReference."""
         ccda_doc = wrap_in_ccda_document("")
