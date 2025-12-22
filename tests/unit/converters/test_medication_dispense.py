@@ -1549,3 +1549,179 @@ class TestPerformerFunction:
         # Verify it's an organization reference
         assert "actor" in result["performer"][0]
         assert result["performer"][0]["actor"]["reference"].startswith("Organization/")
+
+
+class TestLocationManagingOrganization:
+    """Test Location.managingOrganization population."""
+
+    def test_location_includes_managing_organization_reference(self):
+        """Test Location created with managingOrganization reference to pharmacy Organization."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedEntity,
+            AssignedPerson,
+            Performer,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+        patient = {"resourceType": "Patient", "id": "patient-123"}
+        registry.register_resource(patient)
+
+        dispense = create_minimal_dispense()
+
+        # Create performer with representedOrganization
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        org = RepresentedOrganization()
+        org.name = ["Community Pharmacy"]
+        org.id = [II(root="1.2.3.4", extension="PHARM-001")]
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+        dispense.performer = [performer]
+
+        converter = MedicationDispenseConverter(reference_registry=registry)
+        result = converter.convert(dispense)
+
+        # Should have location reference
+        assert "location" in result
+        location_id = result["location"]["reference"].split("/")[1]
+
+        # Get the Location resource
+        location = registry.get_resource("Location", location_id)
+
+        # Should have managingOrganization
+        assert "managingOrganization" in location
+        assert "reference" in location["managingOrganization"]
+        org_ref = location["managingOrganization"]["reference"]
+        assert org_ref.startswith("Organization/")
+
+        # Verify the Organization exists
+        org_id = org_ref.split("/")[1]
+        organization = registry.get_resource("Organization", org_id)
+        assert organization is not None
+        assert organization["resourceType"] == "Organization"
+        assert organization["name"] == "Community Pharmacy"
+
+    def test_location_managing_organization_with_organization_performer(self):
+        """Test Location managingOrganization when performer is an Organization."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedEntity,
+            Performer,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+        patient = {"resourceType": "Patient", "id": "patient-123"}
+        registry.register_resource(patient)
+
+        dispense = create_minimal_dispense()
+
+        # Create organization performer (no assignedPerson)
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="ORG-123")]
+
+        org = RepresentedOrganization()
+        org.name = ["Pharmacy Corp"]
+        org.id = [II(root="1.2.3.4.5", extension="ORG-456")]
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+        dispense.performer = [performer]
+
+        converter = MedicationDispenseConverter(reference_registry=registry)
+        result = converter.convert(dispense)
+
+        # Should have both performer and location
+        assert "performer" in result
+        assert "location" in result
+
+        # Get performer Organization ID
+        performer_org_ref = result["performer"][0]["actor"]["reference"]
+        performer_org_id = performer_org_ref.split("/")[1]
+
+        # Get Location managingOrganization ID
+        location_id = result["location"]["reference"].split("/")[1]
+        location = registry.get_resource("Location", location_id)
+        managing_org_ref = location["managingOrganization"]["reference"]
+        managing_org_id = managing_org_ref.split("/")[1]
+
+        # They should reference the same Organization
+        assert performer_org_id == managing_org_id
+
+        # Verify the Organization exists and is correct
+        organization = registry.get_resource("Organization", managing_org_id)
+        assert organization["name"] == "Pharmacy Corp"
+
+    def test_location_managing_organization_reuses_existing_organization(self):
+        """Test Location managingOrganization references existing Organization if already created."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedEntity,
+            AssignedPerson,
+            Performer,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+        patient = {"resourceType": "Patient", "id": "patient-123"}
+        registry.register_resource(patient)
+
+        dispense = create_minimal_dispense()
+
+        # Create two performers with the same representedOrganization
+        org = RepresentedOrganization()
+        org.name = ["Shared Pharmacy"]
+        org.id = [II(root="1.2.3.4", extension="SHARED-001")]
+
+        # First performer - practitioner at pharmacy
+        assigned_entity1 = AssignedEntity()
+        assigned_entity1.id = [II(root="2.16.840.1.113883.4.6", extension="PRACT-001")]
+        assigned_entity1.assigned_person = AssignedPerson()
+        assigned_entity1.represented_organization = org
+
+        performer1 = Performer()
+        performer1.assigned_entity = assigned_entity1
+
+        # Second performer - organization only
+        assigned_entity2 = AssignedEntity()
+        assigned_entity2.id = [II(root="2.16.840.1.113883.4.6", extension="SHARED-001")]
+        assigned_entity2.represented_organization = org
+
+        performer2 = Performer()
+        performer2.assigned_entity = assigned_entity2
+
+        dispense.performer = [performer1, performer2]
+
+        converter = MedicationDispenseConverter(reference_registry=registry)
+        result = converter.convert(dispense)
+
+        # Should have location
+        assert "location" in result
+        location_id = result["location"]["reference"].split("/")[1]
+        location = registry.get_resource("Location", location_id)
+
+        # Should have managingOrganization
+        assert "managingOrganization" in location
+        managing_org_id = location["managingOrganization"]["reference"].split("/")[1]
+
+        # Get second performer's organization reference
+        org_performer_id = result["performer"][1]["actor"]["reference"].split("/")[1]
+
+        # Should be the same Organization (reused, not duplicated)
+        assert managing_org_id == org_performer_id
+
+        # Verify the Organization exists and was created
+        organization = registry.get_resource("Organization", managing_org_id)
+        assert organization is not None
+        assert organization["resourceType"] == "Organization"
+        assert organization["name"] == "Shared Pharmacy"

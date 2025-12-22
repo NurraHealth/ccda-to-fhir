@@ -619,6 +619,13 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             if identifiers:
                 location["identifier"] = identifiers
 
+        # Add managingOrganization (US Core Must Support)
+        # Create Organization resource from the same representedOrganization and reference it
+        # Per US Core: "Must be supported if the data is present in the sending system"
+        org_id = self._create_pharmacy_organization(organization)
+        if org_id:
+            location["managingOrganization"] = {"reference": f"Organization/{org_id}"}
+
         # Register Location resource
         self.reference_registry.register_resource(location)
 

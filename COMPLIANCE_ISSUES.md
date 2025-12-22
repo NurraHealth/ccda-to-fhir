@@ -2,7 +2,7 @@
 
 **Review Date:** 2025-12-22
 **Review Scope:** CareTeam, MedicationDispense converters
-**Test Status:** ✅ All 1254 tests passing - no regressions
+**Test Status:** ✅ All 1257 tests passing - no regressions
 
 ## Overview
 
@@ -450,21 +450,57 @@ Keep as-is but document the deviation.
 
 ---
 
-### MEDIUM-4: MedicationDispense - Location.managingOrganization Not Populated
+### ~~MEDIUM-4: MedicationDispense - Location.managingOrganization Not Populated~~ ✅ FIXED
 
+**Status:** ✅ Fixed on 2025-12-22
 **Severity:** Medium
 **Component:** MedicationDispense Converter - Location creation
-**Location:** `ccda_to_fhir/converters/medication_dispense.py:532-590`
+**Location:** `ccda_to_fhir/converters/medication_dispense.py:622-627`
 
 **Issue:**
-US Core Must Support element `managingOrganization` not populated when creating Location.
+US Core Must Support element `managingOrganization` not populated when creating Location resources for pharmacy organizations.
 
-**Fix:**
+**US Core Must Support Rule:**
+> "Must be supported if the data is present in the sending system"
+
+Since the Location is created from C-CDA `representedOrganization`, the managing organization data is present and should be populated per US Core requirements.
+
+**Fix Applied:**
+Added `managingOrganization` reference to Location resources:
+
 ```python
-# The organization is already created - just add reference
-if org_id:  # org_id already generated at line 521
+# Add managingOrganization (US Core Must Support)
+# Create Organization resource from the same representedOrganization and reference it
+# Per US Core: "Must be supported if the data is present in the sending system"
+org_id = self._create_pharmacy_organization(organization)
+if org_id:
     location["managingOrganization"] = {"reference": f"Organization/{org_id}"}
 ```
+
+**Implementation:**
+- Modified: `ccda_to_fhir/converters/medication_dispense.py`
+  - Lines 622-627: Added managingOrganization reference in `_create_pharmacy_location()` method
+  - Reuses existing Organization creation logic to ensure consistency
+  - Organization is created/retrieved before Location registration
+- Added comprehensive tests: `tests/unit/converters/test_medication_dispense.py`
+  - `test_location_includes_managing_organization_reference()` - Basic functionality
+  - `test_location_managing_organization_with_organization_performer()` - Same org for performer and location
+  - `test_location_managing_organization_reuses_existing_organization()` - No duplication when org referenced multiple times
+- Test Status: ✅ All 1257 tests passing (+3 new tests) - no regressions
+
+**Behavior:**
+- When Location is created from `representedOrganization`, also creates Organization resource
+- Location.managingOrganization references the Organization
+- Organization is reused if already created (no duplication)
+- Both performer.actor and location.managingOrganization can reference the same Organization
+
+**Standards Compliance:**
+- Implements US Core Must Support requirement for Location.managingOrganization
+- Populates field when source data is available per US Core guidance
+- Maintains referential integrity between Location and Organization resources
+
+**References:**
+- [US Core Location Profile](http://hl7.org/fhir/us/core/STU7/StructureDefinition-us-core-location.html)
 
 ---
 
@@ -569,11 +605,11 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 ### By Severity
 - **Critical:** ~~2~~ 0 remaining (2 fixed)
 - **High:** ~~3~~ ~~2~~ ~~1~~ 0 remaining (3 fixed)
-- **Medium:** 5 (intentional leniency vs strict compliance)
+- **Medium:** ~~5~~ 4 remaining (1 fixed, 3 intentional leniency, 1 enhancement)
 - **Low:** 2 (nice-to-have validations)
 
 ### By Component
-- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ ~~4~~ 3 issues remaining (4 fixed)
+- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ ~~4~~ ~~3~~ 2 issues remaining (5 fixed)
 - **CareTeam:** ~~5~~ 4 issues remaining (1 fixed)
 
 ### Key Takeaways
@@ -584,6 +620,7 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 3. ✅ MedicationDispense: Handle Organization performers - FIXED 2025-12-22
 4. ✅ CareTeam: Validate template extensions for all three templates - FIXED 2025-12-22
 5. ✅ MedicationDispense: Performer function assignment with functionCode mapping - FIXED 2025-12-22
+6. ✅ MedicationDispense: Populate Location.managingOrganization reference - FIXED 2025-12-22
 
 **Intentional Design Choices:**
 - CareTeam accepts missing required elements (statusCode, effectiveTime, type observation)
