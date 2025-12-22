@@ -119,8 +119,19 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         # 5. Medication (required) - use medicationCodeableConcept for simple cases
         medication = self._extract_medication(supply)
-        if medication:
+        if medication and medication.get("coding"):
             med_dispense["medicationCodeableConcept"] = medication
+        else:
+            # Fallback: medication[x] is required (1..1 cardinality)
+            # Use data-absent-reason when code unavailable
+            med_dispense["medicationCodeableConcept"] = {
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+                    "code": "unknown",
+                    "display": "Unknown"
+                }],
+                "text": medication.get("text", "Unknown medication") if medication else "Unknown medication"
+            }
 
         # 6. Subject (patient reference) - required
         if self.reference_registry:
