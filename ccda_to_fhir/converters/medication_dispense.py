@@ -182,13 +182,16 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                 med_dispense["whenHandedOver"] = timing["whenHandedOver"]
 
         # US Core constraint: whenHandedOver SHALL be present if status='completed'
-        # If status is completed but no whenHandedOver, adjust status to unknown
+        # If status is completed but no whenHandedOver, adjust status to in-progress
+        # Rationale: Per FHIR spec, "in-progress" means "dispensed product is ready for pickup"
+        # which is more semantically accurate than "unknown" when we know preparation occurred
+        # but lack confirmation of handover
         if med_dispense["status"] == "completed" and "whenHandedOver" not in med_dispense:
             logger.warning(
                 "MedicationDispense has status='completed' but no whenHandedOver timestamp. "
-                "Setting status to 'unknown' per US Core constraint us-core-20."
+                "Setting status to 'in-progress' (ready for pickup) per US Core constraint us-core-20."
             )
-            med_dispense["status"] = "unknown"
+            med_dispense["status"] = "in-progress"
 
         # 13. Substitution (detect if medication differs from parent)
         # Note: Cannot fully implement without parent medication reference

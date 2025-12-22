@@ -504,42 +504,70 @@ if org_id:
 
 ---
 
-### MEDIUM-5: MedicationDispense - us-core-20 Status Fallback
+### ~~MEDIUM-5: MedicationDispense - us-core-20 Status Fallback~~ ✅ FIXED
 
-**Severity:** Medium
+**Status:** ✅ Fixed on 2025-12-22
+**Severity:** Medium (Enhancement)
 **Component:** MedicationDispense Converter
-**Location:** `ccda_to_fhir/converters/medication_dispense.py:186-191`
+**Location:** `ccda_to_fhir/converters/medication_dispense.py:184-194`
 
 **Issue:**
-When status is "completed" but whenHandedOver is missing, status is changed to "unknown". This may not be appropriate in all cases.
+When status is "completed" but whenHandedOver is missing, status was changed to "unknown". However, "unknown" is not semantically accurate according to FHIR status definitions.
 
 **US Core Constraint us-core-20:**
-```
-whenHandedOver SHALL be present if the status is 'completed'
-```
+> whenHandedOver SHALL be present if the status is 'completed'
 
-**Current Code:**
+**FHIR Status Semantics:**
+Per FHIR R4B MedicationDispense status value set:
+- **completed**: "The dispensed product has been picked up"
+- **in-progress**: "The dispensed product is ready for pickup"
+- **unknown**: "The authoring system does not know which of the status values applies"
+
+**Problem:**
+When we know the medication was prepared (C-CDA indicates completion) but lack the handover timestamp, using "unknown" suggests we don't know anything about the status. In reality, we know the medication is at least prepared and likely ready for pickup.
+
+**Fix Applied:**
+Changed status fallback from "unknown" to "in-progress":
+
 ```python
+# US Core constraint: whenHandedOver SHALL be present if status='completed'
+# If status is completed but no whenHandedOver, adjust status to in-progress
+# Rationale: Per FHIR spec, "in-progress" means "dispensed product is ready for pickup"
+# which is more semantically accurate than "unknown" when we know preparation occurred
+# but lack confirmation of handover
 if med_dispense["status"] == "completed" and "whenHandedOver" not in med_dispense:
     logger.warning(
         "MedicationDispense has status='completed' but no whenHandedOver timestamp. "
-        "Setting status to 'unknown' per US Core constraint us-core-20."
+        "Setting status to 'in-progress' (ready for pickup) per US Core constraint us-core-20."
     )
-    med_dispense["status"] = "unknown"
+    med_dispense["status"] = "in-progress"
 ```
 
-**Current Approach:**
-Changes status to "unknown" when timing missing.
+**Implementation:**
+- Modified: `ccda_to_fhir/converters/medication_dispense.py:184-194`
+  - Changed status fallback from "unknown" to "in-progress"
+  - Updated comment with semantic rationale
+  - Updated log message to clarify meaning
+- Updated tests: `tests/unit/converters/test_medication_dispense.py`
+  - Renamed `test_completed_without_when_handed_over_sets_unknown()` → `test_completed_without_when_handed_over_sets_in_progress()`
+  - Updated test assertions and documentation
+  - Added semantic explanation in test docstring
+- Test Status: ✅ All 1257 tests passing - no regressions
 
-**Concern:**
-"unknown" may not be semantically correct - "in-progress" might be better.
+**Semantic Improvement:**
+- **Before**: "unknown" - implies complete lack of knowledge about status
+- **After**: "in-progress" - accurately reflects that medication is prepared/ready for pickup
+- More informative for downstream systems and users
+- Better aligns with actual workflow state
 
-**Alternative:**
-```python
-med_dispense["status"] = "in-progress"  # Instead of "unknown"
-```
+**Standards Compliance:**
+- Satisfies US Core constraint us-core-20 (completed requires whenHandedOver)
+- Uses semantically appropriate FHIR status code
+- Maintains data quality by not claiming completion without evidence
 
-**Recommendation:** Current approach is acceptable, alternative is slightly more semantically accurate.
+**References:**
+- [FHIR MedicationDispense Status Codes](https://hl7.org/fhir/R4B/valueset-medicationdispense-status.html)
+- [US Core MedicationDispense](http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationdispense)
 
 ---
 
@@ -605,11 +633,11 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 ### By Severity
 - **Critical:** ~~2~~ 0 remaining (2 fixed)
 - **High:** ~~3~~ ~~2~~ ~~1~~ 0 remaining (3 fixed)
-- **Medium:** ~~5~~ 4 remaining (1 fixed, 3 intentional leniency, 1 enhancement)
+- **Medium:** ~~5~~ ~~4~~ 3 remaining (2 fixed, 3 intentional leniency)
 - **Low:** 2 (nice-to-have validations)
 
 ### By Component
-- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ ~~4~~ ~~3~~ 2 issues remaining (5 fixed)
+- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ ~~4~~ ~~3~~ ~~2~~ 1 issue remaining (6 fixed)
 - **CareTeam:** ~~5~~ 4 issues remaining (1 fixed)
 
 ### Key Takeaways
@@ -621,6 +649,7 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 4. ✅ CareTeam: Validate template extensions for all three templates - FIXED 2025-12-22
 5. ✅ MedicationDispense: Performer function assignment with functionCode mapping - FIXED 2025-12-22
 6. ✅ MedicationDispense: Populate Location.managingOrganization reference - FIXED 2025-12-22
+7. ✅ MedicationDispense: Use semantically accurate status fallback (in-progress vs unknown) - FIXED 2025-12-22
 
 **Intentional Design Choices:**
 - CareTeam accepts missing required elements (statusCode, effectiveTime, type observation)

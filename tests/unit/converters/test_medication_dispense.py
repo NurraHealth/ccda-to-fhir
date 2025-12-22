@@ -274,8 +274,9 @@ class TestMedicationDispenseTiming:
         # Should not have timing fields
         assert "whenHandedOver" not in result
         assert "whenPrepared" not in result
-        # Status should be changed to unknown due to missing whenHandedOver
-        assert result["status"] == "unknown"
+        # Status should be changed to in-progress due to missing whenHandedOver
+        # (semantically more accurate than "unknown" - indicates medication ready for pickup)
+        assert result["status"] == "in-progress"
 
 
 class TestMedicationDispenseType:
@@ -685,8 +686,13 @@ class TestMedicationDispenseValidation:
         with pytest.raises(ValueError, match="moodCode"):
             converter.convert(dispense)
 
-    def test_completed_without_when_handed_over_sets_unknown(self):
-        """Test US Core constraint: completed status requires whenHandedOver."""
+    def test_completed_without_when_handed_over_sets_in_progress(self):
+        """Test US Core constraint: completed status requires whenHandedOver.
+
+        When status is 'completed' but whenHandedOver is missing, status is changed
+        to 'in-progress' (ready for pickup) which is more semantically accurate than
+        'unknown' per FHIR status definitions.
+        """
         dispense = Supply()
         dispense.class_code = "SPLY"
         dispense.mood_code = "EVN"
@@ -708,8 +714,9 @@ class TestMedicationDispenseValidation:
         converter = MedicationDispenseConverter()
         result = converter.convert(dispense)
 
-        # Should adjust status to 'unknown' per US Core constraint
-        assert result["status"] == "unknown"
+        # Should adjust status to 'in-progress' per US Core constraint
+        # in-progress = "dispensed product is ready for pickup" (FHIR spec)
+        assert result["status"] == "in-progress"
         assert "whenHandedOver" not in result
 
 
