@@ -52,11 +52,11 @@ def create_minimal_dispense() -> Supply:
 class TestMedicationDispenseConverter:
     """Test MedicationDispense converter basic mappings."""
 
-    def test_basic_conversion(self):
+    def test_basic_conversion(self, mock_reference_registry):
         """Test basic medication dispense conversion."""
         dispense = create_minimal_dispense()
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert result["resourceType"] == "MedicationDispense"
@@ -65,7 +65,7 @@ class TestMedicationDispenseConverter:
         assert "medicationCodeableConcept" in result
         assert result["medicationCodeableConcept"]["coding"][0]["code"] == "314076"
 
-    def test_identifier_mapping(self):
+    def test_identifier_mapping(self, mock_reference_registry):
         """Test identifier mapping from supply.id."""
         dispense = create_minimal_dispense()
         dispense.id = [
@@ -73,7 +73,7 @@ class TestMedicationDispenseConverter:
             II(root="1.2.3.4", extension="alt-id"),
         ]
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "identifier" in result
@@ -82,7 +82,7 @@ class TestMedicationDispenseConverter:
         assert result["identifier"][0]["value"] == "dispense-123"
         assert result["identifier"][1]["value"] == "alt-id"
 
-    def test_status_mapping(self):
+    def test_status_mapping(self, mock_reference_registry):
         """Test status code mapping from supply.code element.
 
         Per C-CDA spec: statusCode is fixed to "completed",
@@ -112,7 +112,7 @@ class TestMedicationDispenseConverter:
                 display_name=fhir_status.title(),
             )
 
-            converter = MedicationDispenseConverter()
+            converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
             result = converter.convert(dispense)
 
             assert result["status"] == fhir_status, f"Failed for FHIR code {fhir_status}"
@@ -137,12 +137,12 @@ class TestMedicationDispenseConverter:
                 display_name=legacy_code.title(),
             )
 
-            converter = MedicationDispenseConverter()
+            converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
             result = converter.convert(dispense)
 
             assert result["status"] == expected_fhir, f"Failed for legacy code {legacy_code}"
 
-    def test_medication_code_mapping(self):
+    def test_medication_code_mapping(self, mock_reference_registry):
         """Test medication code mapping with RxNorm."""
         dispense = create_minimal_dispense()
         material = ManufacturedMaterial()
@@ -155,7 +155,7 @@ class TestMedicationDispenseConverter:
         product.manufactured_material = material
         dispense.product = product
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "medicationCodeableConcept" in result
@@ -164,7 +164,7 @@ class TestMedicationDispenseConverter:
         assert coding["code"] == "314076"
         assert coding["display"] == "Lisinopril 10 MG Oral Tablet"
 
-    def test_medication_code_with_translation(self):
+    def test_medication_code_with_translation(self, mock_reference_registry):
         """Test medication code with NDC translation."""
         dispense = create_minimal_dispense()
         material = ManufacturedMaterial()
@@ -184,7 +184,7 @@ class TestMedicationDispenseConverter:
         product.manufactured_material = material
         dispense.product = product
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "medicationCodeableConcept" in result
@@ -194,12 +194,12 @@ class TestMedicationDispenseConverter:
         assert codings[1]["system"] == "http://hl7.org/fhir/sid/ndc"
         assert codings[1]["code"] == "00591-3772-01"
 
-    def test_quantity_mapping(self):
+    def test_quantity_mapping(self, mock_reference_registry):
         """Test quantity mapping with UCUM units."""
         dispense = create_minimal_dispense()
         dispense.quantity = PQ(value="30", unit="{tbl}")
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "quantity" in result
@@ -236,25 +236,25 @@ class TestMedicationDispenseTiming:
 
         return dispense
 
-    def test_single_timestamp_maps_to_when_handed_over(self):
+    def test_single_timestamp_maps_to_when_handed_over(self, mock_reference_registry):
         """Test single effectiveTime maps to whenHandedOver."""
         dispense = create_minimal_dispense()
         dispense.effective_time = IVL_TS(value="20200301143000-0500")
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "whenHandedOver" in result
         assert result["whenHandedOver"] == "2020-03-01T14:30:00-05:00"
 
-    def test_period_maps_to_when_prepared_and_handed_over(self):
+    def test_period_maps_to_when_prepared_and_handed_over(self, mock_reference_registry):
         """Test IVL_TS period maps to whenPrepared and whenHandedOver."""
         dispense = create_minimal_dispense()
         dispense.effective_time = IVL_TS(
             low=TS(value="20200301090000-0500"), high=TS(value="20200301143000-0500")
         )
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "whenPrepared" in result
@@ -262,13 +262,13 @@ class TestMedicationDispenseTiming:
         assert "whenHandedOver" in result
         assert result["whenHandedOver"] == "2020-03-01T14:30:00-05:00"
 
-    def test_missing_effective_time(self):
+    def test_missing_effective_time(self, mock_reference_registry):
         """Test handling of missing effectiveTime."""
         dispense = create_minimal_dispense()
         # Remove effective_time to test missing scenario
         dispense.effective_time = None
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Should not have timing fields
@@ -278,7 +278,7 @@ class TestMedicationDispenseTiming:
         # (semantically more accurate than "unknown" - indicates medication ready for pickup)
         assert result["status"] == "in-progress"
 
-    def test_when_handed_over_after_when_prepared_is_valid(self):
+    def test_when_handed_over_after_when_prepared_is_valid(self, mock_reference_registry):
         """Test FHIR invariant mdd-1: whenHandedOver after whenPrepared is valid."""
         dispense = create_minimal_dispense()
         # whenPrepared at 9:00 AM, whenHandedOver at 2:30 PM (valid)
@@ -286,7 +286,7 @@ class TestMedicationDispenseTiming:
             low=TS(value="20200301090000-0500"), high=TS(value="20200301143000-0500")
         )
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Both timestamps should be present and unchanged
@@ -295,7 +295,7 @@ class TestMedicationDispenseTiming:
         assert "whenHandedOver" in result
         assert result["whenHandedOver"] == "2020-03-01T14:30:00-05:00"
 
-    def test_when_handed_over_equals_when_prepared_is_valid(self):
+    def test_when_handed_over_equals_when_prepared_is_valid(self, mock_reference_registry):
         """Test FHIR invariant mdd-1: whenHandedOver equal to whenPrepared is valid."""
         dispense = create_minimal_dispense()
         # Both at same time (edge case, but valid per mdd-1: whenHandedOver >= whenPrepared)
@@ -303,7 +303,7 @@ class TestMedicationDispenseTiming:
             low=TS(value="20200301090000-0500"), high=TS(value="20200301090000-0500")
         )
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Both timestamps should be present and unchanged
@@ -312,7 +312,7 @@ class TestMedicationDispenseTiming:
         assert "whenHandedOver" in result
         assert result["whenHandedOver"] == "2020-03-01T09:00:00-05:00"
 
-    def test_when_handed_over_before_when_prepared_triggers_mdd1_violation(self, caplog):
+    def test_when_handed_over_before_when_prepared_triggers_mdd1_violation(self, caplog, mock_reference_registry):
         """Test FHIR invariant mdd-1: whenHandedOver before whenPrepared is invalid.
 
         Per FHIR invariant mdd-1: "whenHandedOver cannot be before whenPrepared"
@@ -328,7 +328,7 @@ class TestMedicationDispenseTiming:
             low=TS(value="20200301143000-0500"), high=TS(value="20200301090000-0500")
         )
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         with caplog.at_level("WARNING"):
             result = converter.convert(dispense)
 
@@ -344,7 +344,7 @@ class TestMedicationDispenseTiming:
         assert any("2020-03-01T09:00:00-05:00" in record.message for record in caplog.records)
         assert any("2020-03-01T14:30:00-05:00" in record.message for record in caplog.records)
 
-    def test_only_when_prepared_does_not_trigger_mdd1(self):
+    def test_only_when_prepared_does_not_trigger_mdd1(self, mock_reference_registry):
         """Test FHIR invariant mdd-1: only whenPrepared present does not violate invariant.
 
         Per FHIR invariant mdd-1, if whenHandedOver is empty, the constraint is satisfied.
@@ -353,7 +353,7 @@ class TestMedicationDispenseTiming:
         # Only low (whenPrepared), no high (whenHandedOver)
         dispense.effective_time = IVL_TS(low=TS(value="20200301090000-0500"))
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Only whenPrepared should be present
@@ -361,7 +361,7 @@ class TestMedicationDispenseTiming:
         assert result["whenPrepared"] == "2020-03-01T09:00:00-05:00"
         assert "whenHandedOver" not in result
 
-    def test_only_when_handed_over_does_not_trigger_mdd1(self):
+    def test_only_when_handed_over_does_not_trigger_mdd1(self, mock_reference_registry):
         """Test FHIR invariant mdd-1: only whenHandedOver present does not violate invariant.
 
         Per FHIR invariant mdd-1, if whenPrepared is empty, the constraint is satisfied.
@@ -370,7 +370,7 @@ class TestMedicationDispenseTiming:
         # Single value (whenHandedOver only)
         dispense.effective_time = IVL_TS(value="20200301143000-0500")
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Only whenHandedOver should be present
@@ -406,12 +406,12 @@ class TestMedicationDispenseType:
 
         return dispense
 
-    def test_repeat_number_1_maps_to_first_fill(self):
+    def test_repeat_number_1_maps_to_first_fill(self, mock_reference_registry):
         """Test repeatNumber=1 maps to first fill (FF)."""
         dispense = create_minimal_dispense()
         dispense.repeat_number = IVL_INT(low=INT(value=1))
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "type" in result
@@ -420,12 +420,12 @@ class TestMedicationDispenseType:
         assert coding["code"] == "FF"
         assert coding["display"] == "First Fill"
 
-    def test_repeat_number_2_maps_to_refill(self):
+    def test_repeat_number_2_maps_to_refill(self, mock_reference_registry):
         """Test repeatNumber>1 maps to refill (RF)."""
         dispense = create_minimal_dispense()
         dispense.repeat_number = IVL_INT(low=INT(value=2))
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "type" in result
@@ -433,17 +433,17 @@ class TestMedicationDispenseType:
         assert coding["code"] == "RF"
         assert coding["display"] == "Refill"
 
-    def test_no_repeat_number_no_type(self):
+    def test_no_repeat_number_no_type(self, mock_reference_registry):
         """Test missing repeatNumber does not set type."""
         dispense = create_minimal_dispense()
         # No repeat_number set
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "type" not in result
 
-    def test_days_supply_extraction(self):
+    def test_days_supply_extraction(self, mock_reference_registry):
         """Test days supply extraction from nested Days Supply template."""
         from ccda_to_fhir.ccda.models.observation import EntryRelationship
 
@@ -463,7 +463,7 @@ class TestMedicationDispenseType:
 
         dispense.entry_relationship = [entry_rel]
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "daysSupply" in result
@@ -500,7 +500,7 @@ class TestMedicationDispensePerformer:
 
         return dispense
 
-    def test_performer_with_person_creates_practitioner(self):
+    def test_performer_with_person_creates_practitioner(self, mock_reference_registry):
         """Test performer with assignedPerson creates Practitioner reference."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
@@ -523,7 +523,7 @@ class TestMedicationDispensePerformer:
 
         dispense.performer = [performer]
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "performer" in result
@@ -531,7 +531,7 @@ class TestMedicationDispensePerformer:
         assert "actor" in result["performer"][0]
         assert result["performer"][0]["actor"]["reference"].startswith("Practitioner/")
 
-    def test_performer_with_only_organization_creates_organization_performer(self):
+    def test_performer_with_only_organization_creates_organization_performer(self, mock_reference_registry):
         """Test performer with only representedOrganization (no assignedPerson) creates Organization reference."""
         from ccda_to_fhir.ccda.models.performer import RepresentedOrganization
         from ccda_to_fhir.converters.references import ReferenceRegistry
@@ -578,7 +578,7 @@ class TestMedicationDispensePerformer:
         org_id = org_ref.split("/")[1]
         assert registry.has_resource("Organization", org_id)
 
-    def test_performer_with_both_person_and_organization(self):
+    def test_performer_with_both_person_and_organization(self, mock_reference_registry):
         """Test performer with both assignedPerson and representedOrganization creates Practitioner performer."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
@@ -620,7 +620,7 @@ class TestMedicationDispensePerformer:
         assert "location" in result
         assert result["location"]["reference"].startswith("Location/")
 
-    def test_author_creates_performer_with_packager_function(self):
+    def test_author_creates_performer_with_packager_function(self, mock_reference_registry):
         """Test author creates performer entry with packager function."""
         dispense = create_minimal_dispense()
 
@@ -636,7 +636,7 @@ class TestMedicationDispensePerformer:
 
         dispense.author = [author]
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "performer" in result
@@ -675,11 +675,11 @@ class TestMedicationDispenseCategory:
 
         return dispense
 
-    def test_default_category_community(self):
+    def test_default_category_community(self, mock_reference_registry):
         """Test default category is community."""
         dispense = create_minimal_dispense()
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "category" in result
@@ -716,22 +716,22 @@ class TestMedicationDispenseUSCoreProfile:
 
         return dispense
 
-    def test_us_core_profile_in_meta(self):
+    def test_us_core_profile_in_meta(self, mock_reference_registry):
         """Test US Core profile is included in meta.profile."""
         dispense = create_minimal_dispense()
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         assert "meta" in result
         assert "profile" in result["meta"]
         assert "http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationdispense" in result["meta"]["profile"]
 
-    def test_required_elements_present(self):
+    def test_required_elements_present(self, mock_reference_registry):
         """Test all US Core required elements are present."""
         dispense = create_minimal_dispense()
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # US Core SHALL elements
@@ -743,7 +743,7 @@ class TestMedicationDispenseUSCoreProfile:
 class TestMedicationDispenseValidation:
     """Test validation and error handling."""
 
-    def test_missing_product_raises_error(self):
+    def test_missing_product_raises_error(self, mock_reference_registry):
         """Test that missing product raises ValueError."""
         dispense = Supply()
         dispense.class_code = "SPLY"
@@ -757,12 +757,12 @@ class TestMedicationDispenseValidation:
         )
         # No product set
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
 
         with pytest.raises(ValueError, match="product"):
             converter.convert(dispense)
 
-    def test_invalid_mood_code_raises_error(self):
+    def test_invalid_mood_code_raises_error(self, mock_reference_registry):
         """Test that moodCode != EVN raises error."""
         dispense = Supply()
         dispense.class_code = "SPLY"
@@ -781,12 +781,12 @@ class TestMedicationDispenseValidation:
         product.manufactured_material = material
         dispense.product = product
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
 
         with pytest.raises(ValueError, match="moodCode"):
             converter.convert(dispense)
 
-    def test_completed_without_when_handed_over_sets_in_progress(self):
+    def test_completed_without_when_handed_over_sets_in_progress(self, mock_reference_registry):
         """Test US Core constraint: completed status requires whenHandedOver.
 
         When status is 'completed' but whenHandedOver is missing, status is changed
@@ -811,7 +811,7 @@ class TestMedicationDispenseValidation:
         product.manufactured_material = material
         dispense.product = product
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Should adjust status to 'in-progress' per US Core constraint
@@ -823,7 +823,7 @@ class TestMedicationDispenseValidation:
 class TestMedicationDispenseWithRegistry:
     """Integration tests with ReferenceRegistry."""
 
-    def test_context_populated_when_encounter_registered(self):
+    def test_context_populated_when_encounter_registered(self, mock_reference_registry):
         """Test that context is populated when encounter exists in registry."""
         from ccda_to_fhir.converters.references import ReferenceRegistry
 
@@ -854,7 +854,7 @@ class TestMedicationDispenseWithRegistry:
         assert "context" in result
         assert result["context"] == {"reference": "Encounter/encounter-abc"}
 
-    def test_context_not_populated_when_no_encounter(self):
+    def test_context_not_populated_when_no_encounter(self, mock_reference_registry):
         """Test that context is not populated when no encounter in registry."""
         from ccda_to_fhir.converters.references import ReferenceRegistry
 
@@ -879,7 +879,7 @@ class TestMedicationDispenseWithRegistry:
         # Should NOT have context reference
         assert "context" not in result
 
-    def test_subject_uses_registry_patient(self):
+    def test_subject_uses_registry_patient(self, mock_reference_registry):
         """Test that subject references patient from registry."""
         from ccda_to_fhir.converters.references import ReferenceRegistry
 
@@ -933,7 +933,7 @@ class TestMedicationDispensePharmacyLocation:
 
         return dispense
 
-    def test_location_created_when_represented_organization_present(self):
+    def test_location_created_when_represented_organization_present(self, mock_reference_registry):
         """Test Location resource created for representedOrganization."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
@@ -1019,7 +1019,7 @@ class TestMedicationDispensePharmacyLocation:
         assert location["telecom"][0]["value"] == "(555)555-1000"
         assert location["telecom"][0]["use"] == "work"
 
-    def test_location_includes_identifiers_from_organization(self):
+    def test_location_includes_identifiers_from_organization(self, mock_reference_registry):
         """Test Location.identifier populated from organization identifiers (US Core Must Support)."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
@@ -1084,7 +1084,7 @@ class TestMedicationDispensePharmacyLocation:
         assert id2["value"] == "PHARM-001"
         assert id2["system"] == "urn:oid:1.2.3.4.5.6"
 
-    def test_location_not_created_without_represented_organization(self):
+    def test_location_not_created_without_represented_organization(self, mock_reference_registry):
         """Test Location not created when representedOrganization is absent."""
         from ccda_to_fhir.ccda.models.performer import AssignedPerson
         from ccda_to_fhir.converters.references import ReferenceRegistry
@@ -1119,7 +1119,7 @@ class TestMedicationDispensePharmacyLocation:
         # Should NOT have location reference
         assert "location" not in result
 
-    def test_location_not_created_without_organization_name(self):
+    def test_location_not_created_without_organization_name(self, mock_reference_registry):
         """Test Location not created when organization lacks name."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
@@ -1161,15 +1161,19 @@ class TestMedicationDispensePharmacyLocation:
         # Should NOT have location reference (name is required)
         assert "location" not in result
 
-    def test_location_not_created_without_registry(self):
-        """Test Location not created when no reference registry."""
+    def test_location_not_created_without_registry(self, mock_reference_registry):
+        """Test that MedicationDispense conversion requires reference registry.
+
+        Since reference_registry is now required for FHIR compliance,
+        attempting to convert without it should raise ValueError.
+        """
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
             RepresentedOrganization,
         )
 
-        # Create converter WITHOUT registry
-        converter = MedicationDispenseConverter()
+        # Create converter WITHOUT registry (None)
+        converter = MedicationDispenseConverter(reference_registry=None)
 
         # Create dispense with pharmacy organization
         dispense = self.create_minimal_dispense()
@@ -1188,12 +1192,11 @@ class TestMedicationDispensePharmacyLocation:
 
         dispense.performer = [performer]
 
-        result = converter.convert(dispense)
+        # Should raise ValueError when registry is missing
+        with pytest.raises(ValueError, match="reference_registry is required"):
+            converter.convert(dispense)
 
-        # Should NOT have location reference (no registry to register Location)
-        assert "location" not in result
-
-    def test_location_reused_for_same_organization(self):
+    def test_location_reused_for_same_organization(self, mock_reference_registry):
         """Test same Location resource reused for same organization."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
@@ -1256,7 +1259,7 @@ class TestMedicationDispensePharmacyLocation:
         # Both should reference the SAME Location resource
         assert result1["location"]["reference"] == result2["location"]["reference"]
 
-    def test_location_with_multiple_address_lines(self):
+    def test_location_with_multiple_address_lines(self, mock_reference_registry):
         """Test Location address with multiple street lines."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
@@ -1311,7 +1314,7 @@ class TestMedicationDispensePharmacyLocation:
         assert location["address"]["line"] == ["Suite 200", "456 Main Street"]
         assert location["address"]["city"] == "Springfield"
 
-    def test_location_with_minimal_organization_info(self):
+    def test_location_with_minimal_organization_info(self, mock_reference_registry):
         """Test Location created with minimal organization info (name only)."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
@@ -1372,7 +1375,7 @@ class TestMedicationDispensePharmacyLocation:
 class TestPerformerFunction:
     """Test performer function determination and mapping."""
 
-    def test_performer_with_function_code_pcp_maps_to_finalchecker(self):
+    def test_performer_with_function_code_pcp_maps_to_finalchecker(self, mock_reference_registry):
         """Test performer with PCP functionCode maps to finalchecker."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1396,7 +1399,7 @@ class TestPerformerFunction:
         performer.assigned_entity = assigned_entity
         dispense.performer = [performer]
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Should have performer with finalchecker function
@@ -1406,7 +1409,7 @@ class TestPerformerFunction:
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
 
-    def test_performer_with_function_code_packpharm_maps_to_packager(self):
+    def test_performer_with_function_code_packpharm_maps_to_packager(self, mock_reference_registry):
         """Test performer with PACKPHARM functionCode maps to packager."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1430,7 +1433,7 @@ class TestPerformerFunction:
         performer.assigned_entity = assigned_entity
         dispense.performer = [performer]
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Should have performer with packager function
@@ -1440,7 +1443,7 @@ class TestPerformerFunction:
         assert result["performer"][0]["function"]["coding"][0]["code"] == "packager"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Packager"
 
-    def test_performer_without_function_code_defaults_to_finalchecker(self):
+    def test_performer_without_function_code_defaults_to_finalchecker(self, mock_reference_registry):
         """Test performer without functionCode defaults to finalchecker."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1460,7 +1463,7 @@ class TestPerformerFunction:
         performer.assigned_entity = assigned_entity
         dispense.performer = [performer]
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Should have performer with default finalchecker function
@@ -1470,7 +1473,7 @@ class TestPerformerFunction:
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
 
-    def test_author_without_function_code_defaults_to_packager(self):
+    def test_author_without_function_code_defaults_to_packager(self, mock_reference_registry):
         """Test author performer without functionCode defaults to packager."""
         from ccda_to_fhir.ccda.models.author import (
             AssignedAuthor,
@@ -1489,7 +1492,7 @@ class TestPerformerFunction:
         author.assigned_author = assigned_author
         dispense.author = [author]
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Should have author performer with packager function
@@ -1499,7 +1502,7 @@ class TestPerformerFunction:
         assert result["performer"][0]["function"]["coding"][0]["code"] == "packager"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Packager"
 
-    def test_author_with_function_code_uses_mapped_function(self):
+    def test_author_with_function_code_uses_mapped_function(self, mock_reference_registry):
         """Test author with functionCode uses mapped function."""
         from ccda_to_fhir.ccda.models.author import (
             AssignedAuthor,
@@ -1523,7 +1526,7 @@ class TestPerformerFunction:
         author.assigned_author = assigned_author
         dispense.author = [author]
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Should have author performer with finalchecker function (mapped from ADMPHYS)
@@ -1533,7 +1536,7 @@ class TestPerformerFunction:
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
 
-    def test_performer_with_unknown_function_code_uses_default(self):
+    def test_performer_with_unknown_function_code_uses_default(self, mock_reference_registry):
         """Test performer with unknown functionCode falls back to default."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1557,7 +1560,7 @@ class TestPerformerFunction:
         performer.assigned_entity = assigned_entity
         dispense.performer = [performer]
 
-        converter = MedicationDispenseConverter()
+        converter = MedicationDispenseConverter(reference_registry=mock_reference_registry)
         result = converter.convert(dispense)
 
         # Should fall back to default finalchecker function
@@ -1567,7 +1570,7 @@ class TestPerformerFunction:
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
 
-    def test_organization_performer_without_function_code_defaults_to_finalchecker(self):
+    def test_organization_performer_without_function_code_defaults_to_finalchecker(self, mock_reference_registry):
         """Test organization performer without functionCode defaults to finalchecker."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1610,7 +1613,7 @@ class TestPerformerFunction:
         assert "actor" in result["performer"][0]
         assert result["performer"][0]["actor"]["reference"].startswith("Organization/")
 
-    def test_organization_performer_with_function_code_uses_mapped_function(self):
+    def test_organization_performer_with_function_code_uses_mapped_function(self, mock_reference_registry):
         """Test organization performer with functionCode uses mapped function."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1661,7 +1664,7 @@ class TestPerformerFunction:
 class TestLocationManagingOrganization:
     """Test Location.managingOrganization population."""
 
-    def test_location_includes_managing_organization_reference(self):
+    def test_location_includes_managing_organization_reference(self, mock_reference_registry):
         """Test Location created with managingOrganization reference to pharmacy Organization."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1715,7 +1718,7 @@ class TestLocationManagingOrganization:
         assert organization["resourceType"] == "Organization"
         assert organization["name"] == "Community Pharmacy"
 
-    def test_location_managing_organization_with_organization_performer(self):
+    def test_location_managing_organization_with_organization_performer(self, mock_reference_registry):
         """Test Location managingOrganization when performer is an Organization."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1768,7 +1771,7 @@ class TestLocationManagingOrganization:
         organization = registry.get_resource("Organization", managing_org_id)
         assert organization["name"] == "Pharmacy Corp"
 
-    def test_location_managing_organization_reuses_existing_organization(self):
+    def test_location_managing_organization_reuses_existing_organization(self, mock_reference_registry):
         """Test Location managingOrganization references existing Organization if already created."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,

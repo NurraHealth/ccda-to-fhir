@@ -56,14 +56,14 @@ class TestConditionRecorder:
         act.author = authors
         return act
 
-    def test_single_author_with_time_creates_recorder(self):
+    def test_single_author_with_time_creates_recorder(self, mock_reference_registry):
         """Test that single author with time creates recorder reference."""
         import uuid as uuid_module
 
         author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
         obs = self.create_observation_with_authors([author])
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -75,7 +75,7 @@ class TestConditionRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_multiple_authors_chronological_returns_latest(self):
+    def test_multiple_authors_chronological_returns_latest(self, mock_reference_registry):
         """Test that latest author by timestamp is used for recorder."""
         import uuid as uuid_module
 
@@ -86,7 +86,7 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -98,7 +98,7 @@ class TestConditionRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_multiple_authors_reverse_chronological_returns_latest(self):
+    def test_multiple_authors_reverse_chronological_returns_latest(self, mock_reference_registry):
         """Test that latest author is found even if not last in list."""
         import uuid as uuid_module
 
@@ -109,7 +109,7 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -121,7 +121,7 @@ class TestConditionRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_author_without_time_excluded(self):
+    def test_author_without_time_excluded(self, mock_reference_registry):
         """Test that authors without time are excluded from recorder selection."""
         import uuid as uuid_module
 
@@ -131,7 +131,7 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -143,7 +143,7 @@ class TestConditionRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_all_authors_without_time_no_recorder(self):
+    def test_all_authors_without_time_no_recorder(self, mock_reference_registry):
         """Test that no recorder is created if all authors lack time."""
         authors = [
             self.create_author(time=None, practitioner_ext="NO-TIME-1"),
@@ -151,22 +151,22 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         assert "recorder" not in condition
 
-    def test_author_without_id_no_recorder(self):
+    def test_author_without_id_no_recorder(self, mock_reference_registry):
         """Test that author without ID cannot create recorder reference."""
         author = self.create_author(time="20240115", practitioner_ext=None)
         obs = self.create_observation_with_authors([author])
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         assert "recorder" not in condition
 
-    def test_device_author_creates_device_reference(self):
+    def test_device_author_creates_device_reference(self, mock_reference_registry):
         """Test that device author creates Device reference."""
         import uuid as uuid_module
 
@@ -178,7 +178,7 @@ class TestConditionRecorder:
         )
         obs = self.create_observation_with_authors([author])
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -190,7 +190,7 @@ class TestConditionRecorder:
         except ValueError:
             pytest.fail(f"ID {device_id} is not a valid UUID v4")
 
-    def test_practitioner_and_device_authors_returns_latest_by_time(self):
+    def test_practitioner_and_device_authors_returns_latest_by_time(self, mock_reference_registry):
         """Test that latest author is selected regardless of type."""
         import uuid as uuid_module
 
@@ -201,7 +201,7 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -213,25 +213,25 @@ class TestConditionRecorder:
         except ValueError:
             pytest.fail(f"ID {device_id} is not a valid UUID v4")
 
-    def test_empty_authors_list_no_recorder(self):
+    def test_empty_authors_list_no_recorder(self, mock_reference_registry):
         """Test that empty authors list does not create recorder."""
         obs = self.create_observation_with_authors([])
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         assert "recorder" not in condition
 
-    def test_none_authors_no_recorder(self):
+    def test_none_authors_no_recorder(self, mock_reference_registry):
         """Test that None authors does not create recorder."""
         obs = self.create_observation_with_authors(None)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         assert "recorder" not in condition
 
-    def test_concern_act_and_observation_authors_both_considered(self):
+    def test_concern_act_and_observation_authors_both_considered(self, mock_reference_registry):
         """Test that authors from both concern act and observation are considered."""
         import uuid as uuid_module
 
@@ -248,7 +248,8 @@ class TestConditionRecorder:
         converter = ConditionConverter(
             code_system_mapper=None,
             section_code="11450-4",
-            concern_act=concern_act
+            concern_act=concern_act,
+            reference_registry=mock_reference_registry
         )
         condition = converter.convert(obs)
 
@@ -261,7 +262,7 @@ class TestConditionRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_latest_from_concern_act_used_if_later_than_observation(self):
+    def test_latest_from_concern_act_used_if_later_than_observation(self, mock_reference_registry):
         """Test that concern act author is used if it's latest."""
         import uuid as uuid_module
 
@@ -278,7 +279,8 @@ class TestConditionRecorder:
         converter = ConditionConverter(
             code_system_mapper=None,
             section_code="11450-4",
-            concern_act=concern_act
+            concern_act=concern_act,
+            reference_registry=mock_reference_registry
         )
         condition = converter.convert(obs)
 
@@ -291,7 +293,7 @@ class TestConditionRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_recorded_date_still_uses_earliest_author(self):
+    def test_recorded_date_still_uses_earliest_author(self, mock_reference_registry):
         """Test that recordedDate still uses earliest author time (existing behavior)."""
         import uuid as uuid_module
 
@@ -301,7 +303,7 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
         condition = converter.convert(obs)
 
         # recordedDate should still use earliest
@@ -318,7 +320,7 @@ class TestConditionRecorder:
 class TestConditionIDGeneration:
     """Test Condition ID generation, especially for observations without IDs."""
 
-    def test_condition_without_observation_id_gets_unique_id(self):
+    def test_condition_without_observation_id_gets_unique_id(self, mock_reference_registry):
         """Verify Condition ID generation when C-CDA observation lacks ID.
 
         Bug #9 Fix: Ensures Conditions always get IDs even when observation.id is missing,
@@ -337,7 +339,7 @@ class TestConditionIDGeneration:
         obs2.value = CE(code="73211009", code_system="2.16.840.1.113883.6.96", display_name="Diabetes")
         # Intentionally no id field set
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
 
         condition1 = converter.convert(obs1)
         condition2 = converter.convert(obs2)

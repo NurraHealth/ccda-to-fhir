@@ -64,14 +64,14 @@ class TestMedicationRequester:
         author.assigned_author = assigned_author
         return author
 
-    def test_single_author_with_time_creates_requester(self):
+    def test_single_author_with_time_creates_requester(self, mock_reference_registry):
         """Test that single author with time creates requester reference."""
         import uuid as uuid_module
 
         author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
         sa = self.create_substance_admin_with_authors([author])
 
-        converter = MedicationRequestConverter(code_system_mapper=None)
+        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
@@ -83,7 +83,7 @@ class TestMedicationRequester:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_multiple_authors_chronological_returns_latest(self):
+    def test_multiple_authors_chronological_returns_latest(self, mock_reference_registry):
         """Test that latest author by timestamp is used for requester."""
         import uuid as uuid_module
 
@@ -94,7 +94,7 @@ class TestMedicationRequester:
         ]
         sa = self.create_substance_admin_with_authors(authors)
 
-        converter = MedicationRequestConverter(code_system_mapper=None)
+        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
@@ -106,7 +106,7 @@ class TestMedicationRequester:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_author_without_time_excluded(self):
+    def test_author_without_time_excluded(self, mock_reference_registry):
         """Test that authors without time are excluded from requester selection."""
         import uuid as uuid_module
 
@@ -116,7 +116,7 @@ class TestMedicationRequester:
         ]
         sa = self.create_substance_admin_with_authors(authors)
 
-        converter = MedicationRequestConverter(code_system_mapper=None)
+        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
@@ -128,7 +128,7 @@ class TestMedicationRequester:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_all_authors_without_time_no_requester(self):
+    def test_all_authors_without_time_no_requester(self, mock_reference_registry):
         """Test that no requester is created if all authors lack time."""
         authors = [
             self.create_author(time=None, practitioner_ext="NO-TIME-1"),
@@ -136,12 +136,12 @@ class TestMedicationRequester:
         ]
         sa = self.create_substance_admin_with_authors(authors)
 
-        converter = MedicationRequestConverter(code_system_mapper=None)
+        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         med_request = converter.convert(sa)
 
         assert "requester" not in med_request
 
-    def test_device_author_creates_device_reference(self):
+    def test_device_author_creates_device_reference(self, mock_reference_registry):
         """Test that device author creates Device reference."""
         import uuid as uuid_module
 
@@ -153,7 +153,7 @@ class TestMedicationRequester:
         )
         sa = self.create_substance_admin_with_authors([author])
 
-        converter = MedicationRequestConverter(code_system_mapper=None)
+        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
@@ -165,7 +165,7 @@ class TestMedicationRequester:
         except ValueError:
             pytest.fail(f"ID {device_id} is not a valid UUID v4")
 
-    def test_authored_on_still_uses_earliest_author(self):
+    def test_authored_on_still_uses_earliest_author(self, mock_reference_registry):
         """Test that authoredOn still uses earliest author time (existing behavior)."""
         import uuid as uuid_module
 
@@ -175,7 +175,7 @@ class TestMedicationRequester:
         ]
         sa = self.create_substance_admin_with_authors(authors)
 
-        converter = MedicationRequestConverter(code_system_mapper=None)
+        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         med_request = converter.convert(sa)
 
         # authoredOn should still use earliest

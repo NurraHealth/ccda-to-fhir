@@ -15,9 +15,9 @@ from ccda_to_fhir.converters.device import DeviceConverter
 
 
 @pytest.fixture
-def device_converter() -> DeviceConverter:
+def device_converter(mock_reference_registry) -> DeviceConverter:
     """Create a DeviceConverter instance for testing."""
-    return DeviceConverter()
+    return DeviceConverter(reference_registry=mock_reference_registry)
 
 
 @pytest.fixture
@@ -203,16 +203,19 @@ class TestDeviceConverter:
     def test_device_without_identifiers(
         self, device_converter: DeviceConverter, sample_device: AssignedAuthoringDevice
     ) -> None:
-        """Test device without identifiers uses fallback ID."""
+        """Test device without identifiers raises ValueError.
+
+        Per FHIR R4B spec and strict validation requirements,
+        Device resources require identifiers. Without identifiers,
+        the converter should raise an error rather than using a placeholder.
+        """
         assigned_author = AssignedAuthor(
             id=None,
             assigned_authoring_device=sample_device
         )
 
-        device = device_converter.convert(assigned_author)
-
-        assert "id" in device
-        assert device["id"] == "device-unknown"
+        with pytest.raises(ValueError, match="Cannot generate Device ID"):
+            device_converter.convert(assigned_author)
 
     def test_device_with_only_manufacturer_name(
         self, device_converter: DeviceConverter

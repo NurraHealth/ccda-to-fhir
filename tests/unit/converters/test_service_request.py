@@ -102,29 +102,29 @@ def mock_reference_registry() -> ReferenceRegistry:
 class TestMoodCodeValidation:
     """Test moodCode validation and error handling."""
 
-    def test_mood_code_int_accepted(self, basic_planned_procedure):
+    def test_mood_code_int_accepted(self, basic_planned_procedure, mock_reference_registry):
         """Test moodCode='INT' (Intent) is accepted."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(basic_planned_procedure)
 
         assert service_request["resourceType"] == FHIRCodes.ResourceTypes.SERVICE_REQUEST
         assert service_request["intent"] in ["proposal", "plan", "order"]
 
-    def test_mood_code_rqo_accepted(self, planned_procedure_with_priority):
+    def test_mood_code_rqo_accepted(self, planned_procedure_with_priority, mock_reference_registry):
         """Test moodCode='RQO' (Request/Order) is accepted."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(planned_procedure_with_priority)
 
         assert service_request["resourceType"] == FHIRCodes.ResourceTypes.SERVICE_REQUEST
 
-    def test_mood_code_prp_accepted(self, planned_procedure_with_period):
+    def test_mood_code_prp_accepted(self, planned_procedure_with_period, mock_reference_registry):
         """Test moodCode='PRP' (Proposal) is accepted."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(planned_procedure_with_period)
 
         assert service_request["resourceType"] == FHIRCodes.ResourceTypes.SERVICE_REQUEST
 
-    def test_mood_code_evn_rejected(self):
+    def test_mood_code_evn_rejected(self, mock_reference_registry):
         """Test moodCode='EVN' (Event) raises ValueError."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -132,11 +132,11 @@ class TestMoodCodeValidation:
             code=CD(code="80146002", code_system="2.16.840.1.113883.6.96"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         with pytest.raises(ValueError, match="moodCode=EVN.*Procedure converter"):
             converter.convert(procedure)
 
-    def test_mood_code_gol_rejected(self):
+    def test_mood_code_gol_rejected(self, mock_reference_registry):
         """Test moodCode='GOL' (Goal) raises ValueError."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -144,11 +144,11 @@ class TestMoodCodeValidation:
             code=CD(code="80146002", code_system="2.16.840.1.113883.6.96"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         with pytest.raises(ValueError, match="moodCode=GOL.*Goal converter"):
             converter.convert(procedure)
 
-    def test_mood_code_missing_rejected(self):
+    def test_mood_code_missing_rejected(self, mock_reference_registry):
         """Test missing moodCode raises ValueError."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -156,11 +156,11 @@ class TestMoodCodeValidation:
             code=CD(code="80146002", code_system="2.16.840.1.113883.6.96"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         with pytest.raises(ValueError, match="must have a moodCode"):
             converter.convert(procedure)
 
-    def test_mood_code_invalid_value_rejected(self):
+    def test_mood_code_invalid_value_rejected(self, mock_reference_registry):
         """Test invalid moodCode value raises ValueError."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -168,7 +168,7 @@ class TestMoodCodeValidation:
             code=CD(code="80146002", code_system="2.16.840.1.113883.6.96"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         with pytest.raises(ValueError, match="Invalid moodCode"):
             converter.convert(procedure)
 
@@ -181,7 +181,7 @@ class TestMoodCodeValidation:
 class TestStatusMapping:
     """Test status mapping including nullFlavor handling."""
 
-    def test_status_active_from_code(self):
+    def test_status_active_from_code(self, mock_reference_registry):
         """Test statusCode='active' maps to 'active'."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -190,12 +190,12 @@ class TestStatusMapping:
             status_code=CS(code="active"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(procedure)
 
         assert service_request["status"] == "active"
 
-    def test_status_completed_from_code(self):
+    def test_status_completed_from_code(self, mock_reference_registry):
         """Test statusCode='completed' maps to 'completed'."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -204,12 +204,12 @@ class TestStatusMapping:
             status_code=CS(code="completed"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(procedure)
 
         assert service_request["status"] == "completed"
 
-    def test_status_null_flavor_unk_maps_to_unknown(self):
+    def test_status_null_flavor_unk_maps_to_unknown(self, mock_reference_registry):
         """Test statusCode with nullFlavor='UNK' maps to 'unknown'."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -218,12 +218,12 @@ class TestStatusMapping:
             status_code=CS(null_flavor="UNK"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(procedure)
 
         assert service_request["status"] == "unknown"
 
-    def test_status_null_flavor_other_defaults_to_active(self):
+    def test_status_null_flavor_other_defaults_to_active(self, mock_reference_registry):
         """Test statusCode with other nullFlavors defaults to 'active'."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -232,12 +232,12 @@ class TestStatusMapping:
             status_code=CS(null_flavor="NI"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(procedure)
 
         assert service_request["status"] == "active"
 
-    def test_status_missing_defaults_to_active(self):
+    def test_status_missing_defaults_to_active(self, mock_reference_registry):
         """Test missing statusCode defaults to 'active'."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -246,7 +246,7 @@ class TestStatusMapping:
             status_code=None,
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(procedure)
 
         assert service_request["status"] == "active"
@@ -260,7 +260,7 @@ class TestStatusMapping:
 class TestIntentMapping:
     """Test intent mapping from moodCode."""
 
-    def test_intent_from_mood_code_int(self):
+    def test_intent_from_mood_code_int(self, mock_reference_registry):
         """Test moodCode='INT' maps to appropriate intent."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -268,12 +268,12 @@ class TestIntentMapping:
             code=CD(code="80146002", code_system="2.16.840.1.113883.6.96"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(procedure)
 
         assert service_request["intent"] in ["proposal", "plan", "order"]
 
-    def test_intent_from_mood_code_rqo(self):
+    def test_intent_from_mood_code_rqo(self, mock_reference_registry):
         """Test moodCode='RQO' maps to 'order'."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -281,12 +281,12 @@ class TestIntentMapping:
             code=CD(code="80146002", code_system="2.16.840.1.113883.6.96"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(procedure)
 
         assert service_request["intent"] in ["order", "plan"]
 
-    def test_intent_from_mood_code_prp(self):
+    def test_intent_from_mood_code_prp(self, mock_reference_registry):
         """Test moodCode='PRP' maps to 'proposal'."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -294,7 +294,7 @@ class TestIntentMapping:
             code=CD(code="80146002", code_system="2.16.840.1.113883.6.96"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(procedure)
 
         assert service_request["intent"] in ["proposal", "plan"]
@@ -308,7 +308,7 @@ class TestIntentMapping:
 class TestCodeValidation:
     """Test code element validation."""
 
-    def test_code_required(self):
+    def test_code_required(self, mock_reference_registry):
         """Test procedure without code raises ValueError."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -316,11 +316,11 @@ class TestCodeValidation:
             code=None,
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         with pytest.raises(ValueError, match="must have a code"):
             converter.convert(procedure)
 
-    def test_code_with_null_flavor_rejected(self):
+    def test_code_with_null_flavor_rejected(self, mock_reference_registry):
         """Test code with nullFlavor raises ValueError."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -328,11 +328,11 @@ class TestCodeValidation:
             code=CD(null_flavor="UNK"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         with pytest.raises(ValueError, match="must have a valid code value"):
             converter.convert(procedure)
 
-    def test_code_without_code_value_rejected(self):
+    def test_code_without_code_value_rejected(self, mock_reference_registry):
         """Test code without code value raises ValueError."""
         procedure = CCDAProcedure(
             class_code="PROC",
@@ -340,7 +340,7 @@ class TestCodeValidation:
             code=CD(code_system="2.16.840.1.113883.6.96"),  # No code value
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         with pytest.raises(ValueError, match="must have a valid code value"):
             converter.convert(procedure)
 
@@ -353,17 +353,17 @@ class TestCodeValidation:
 class TestPriorityMapping:
     """Test priority mapping."""
 
-    def test_priority_routine(self, planned_procedure_with_priority):
+    def test_priority_routine(self, planned_procedure_with_priority, mock_reference_registry):
         """Test priorityCode='R' maps to 'routine'."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(planned_procedure_with_priority)
 
         assert "priority" in service_request
         assert service_request["priority"] in ["routine", "asap", "urgent", "stat"]
 
-    def test_priority_missing_omitted(self, basic_planned_procedure):
+    def test_priority_missing_omitted(self, basic_planned_procedure, mock_reference_registry):
         """Test missing priorityCode results in no priority field."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(basic_planned_procedure)
 
         # Priority should either be omitted or have a default value
@@ -381,10 +381,10 @@ class TestOccurrenceTime:
     """Test occurrenceDateTime vs occurrencePeriod mapping."""
 
     def test_occurrence_period_from_effective_time(
-        self, planned_procedure_with_period
+        self, planned_procedure_with_period, mock_reference_registry
     ):
         """Test effectiveTime with low/high maps to occurrencePeriod."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(planned_procedure_with_period)
 
         # Should have either occurrenceDateTime or occurrencePeriod
@@ -394,9 +394,9 @@ class TestOccurrenceTime:
         )
         assert has_occurrence
 
-    def test_occurrence_missing_when_no_effective_time(self, basic_planned_procedure):
+    def test_occurrence_missing_when_no_effective_time(self, basic_planned_procedure, mock_reference_registry):
         """Test missing effectiveTime results in no occurrence field."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(basic_planned_procedure)
 
         # Occurrence fields should be optional
@@ -411,9 +411,9 @@ class TestOccurrenceTime:
 class TestRequiredFields:
     """Test required FHIR fields are present."""
 
-    def test_required_fields_present(self, basic_planned_procedure):
+    def test_required_fields_present(self, basic_planned_procedure, mock_reference_registry):
         """Test all required US Core fields are present."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(basic_planned_procedure)
 
         # US Core required fields
@@ -422,9 +422,9 @@ class TestRequiredFields:
         assert "code" in service_request
         assert "subject" in service_request
 
-    def test_resource_type_is_service_request(self, basic_planned_procedure):
+    def test_resource_type_is_service_request(self, basic_planned_procedure, mock_reference_registry):
         """Test resourceType is 'ServiceRequest'."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(basic_planned_procedure)
 
         assert service_request["resourceType"] == "ServiceRequest"
@@ -438,9 +438,9 @@ class TestRequiredFields:
 class TestUSCoreProfile:
     """Test US Core ServiceRequest profile compliance."""
 
-    def test_us_core_profile_in_meta(self, basic_planned_procedure):
+    def test_us_core_profile_in_meta(self, basic_planned_procedure, mock_reference_registry):
         """Test US Core ServiceRequest profile URL in meta."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(basic_planned_procedure)
 
         assert "meta" in service_request
@@ -453,9 +453,9 @@ class TestUSCoreProfile:
         )
         assert profile_url in service_request["meta"]["profile"]
 
-    def test_subject_reference_present(self, basic_planned_procedure):
+    def test_subject_reference_present(self, basic_planned_procedure, mock_reference_registry):
         """Test subject reference is present (US Core required)."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(basic_planned_procedure)
 
         assert "subject" in service_request
@@ -471,16 +471,16 @@ class TestUSCoreProfile:
 class TestIDGeneration:
     """Test ID generation uses centralized function."""
 
-    def test_id_generated_from_identifiers(self, basic_planned_procedure):
+    def test_id_generated_from_identifiers(self, basic_planned_procedure, mock_reference_registry):
         """Test ServiceRequest ID is generated from identifiers."""
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(basic_planned_procedure)
 
         assert "id" in service_request
         assert isinstance(service_request["id"], str)
         assert len(service_request["id"]) > 0
 
-    def test_id_generation_is_consistent(self):
+    def test_id_generation_is_consistent(self, mock_reference_registry):
         """Test ID generation is consistent for same identifiers."""
         procedure1 = CCDAProcedure(
             class_code="PROC",
@@ -496,7 +496,7 @@ class TestIDGeneration:
             id=[II(root="2.16.840.1.113883.19.5", extension="test-123")],
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         sr1 = converter.convert(procedure1)
         sr2 = converter.convert(procedure2)
 
@@ -511,7 +511,7 @@ class TestIDGeneration:
 class TestPlannedAct:
     """Test conversion of Planned Act (not just Planned Procedure)."""
 
-    def test_planned_act_converts_successfully(self):
+    def test_planned_act_converts_successfully(self, mock_reference_registry):
         """Test Planned Act converts to ServiceRequest."""
         act = CCDAAct(
             class_code="ACT",
@@ -525,7 +525,7 @@ class TestPlannedAct:
             status_code=CS(code="active"),
         )
 
-        converter = ServiceRequestConverter()
+        converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(act)
 
         assert service_request["resourceType"] == "ServiceRequest"

@@ -53,14 +53,14 @@ class TestProcedureRecorderFix:
         author.assigned_author = assigned_author
         return author
 
-    def test_single_author_with_time_creates_recorder(self):
+    def test_single_author_with_time_creates_recorder(self, mock_reference_registry):
         """Test that single author with time creates recorder reference."""
         import uuid as uuid_module
 
         author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
         proc = self.create_procedure_with_authors([author])
 
-        converter = ProcedureConverter(code_system_mapper=None)
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -72,7 +72,7 @@ class TestProcedureRecorderFix:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_multiple_authors_chronological_returns_latest(self):
+    def test_multiple_authors_chronological_returns_latest(self, mock_reference_registry):
         """Test that latest author by timestamp is used (not first)."""
         import uuid as uuid_module
 
@@ -83,7 +83,7 @@ class TestProcedureRecorderFix:
         ]
         proc = self.create_procedure_with_authors(authors)
 
-        converter = ProcedureConverter(code_system_mapper=None)
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -95,7 +95,7 @@ class TestProcedureRecorderFix:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_multiple_authors_reverse_chronological_returns_latest(self):
+    def test_multiple_authors_reverse_chronological_returns_latest(self, mock_reference_registry):
         """Test that latest author is selected even when listed first."""
         import uuid as uuid_module
 
@@ -106,7 +106,7 @@ class TestProcedureRecorderFix:
         ]
         proc = self.create_procedure_with_authors(authors)
 
-        converter = ProcedureConverter(code_system_mapper=None)
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -118,7 +118,7 @@ class TestProcedureRecorderFix:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_author_without_time_excluded(self):
+    def test_author_without_time_excluded(self, mock_reference_registry):
         """Test that authors without time are excluded from selection."""
         import uuid as uuid_module
 
@@ -128,7 +128,7 @@ class TestProcedureRecorderFix:
         ]
         proc = self.create_procedure_with_authors(authors)
 
-        converter = ProcedureConverter(code_system_mapper=None)
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -140,7 +140,7 @@ class TestProcedureRecorderFix:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_all_authors_without_time_no_recorder(self):
+    def test_all_authors_without_time_no_recorder(self, mock_reference_registry):
         """Test that no recorder is created if all authors lack time."""
         authors = [
             self.create_author(time=None, practitioner_ext="NO-TIME-1"),
@@ -148,12 +148,12 @@ class TestProcedureRecorderFix:
         ]
         proc = self.create_procedure_with_authors(authors)
 
-        converter = ProcedureConverter(code_system_mapper=None)
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         procedure = converter.convert(proc)
 
         assert "recorder" not in procedure
 
-    def test_device_author_creates_device_reference(self):
+    def test_device_author_creates_device_reference(self, mock_reference_registry):
         """Test that device author creates Device reference."""
         import uuid as uuid_module
 
@@ -165,7 +165,7 @@ class TestProcedureRecorderFix:
         )
         proc = self.create_procedure_with_authors([author])
 
-        converter = ProcedureConverter(code_system_mapper=None)
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -177,7 +177,7 @@ class TestProcedureRecorderFix:
         except ValueError:
             pytest.fail(f"ID {device_id} is not a valid UUID v4")
 
-    def test_mixed_practitioner_and_device_authors_returns_latest(self):
+    def test_mixed_practitioner_and_device_authors_returns_latest(self, mock_reference_registry):
         """Test that latest author is selected regardless of type."""
         import uuid as uuid_module
 
@@ -187,7 +187,7 @@ class TestProcedureRecorderFix:
         ]
         proc = self.create_procedure_with_authors(authors)
 
-        converter = ProcedureConverter(code_system_mapper=None)
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure

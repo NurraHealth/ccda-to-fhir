@@ -69,14 +69,14 @@ class TestAllergyRecorder:
         act.author = authors
         return act
 
-    def test_single_author_with_time_creates_recorder(self):
+    def test_single_author_with_time_creates_recorder(self, mock_reference_registry):
         """Test that single author with time creates recorder reference."""
         import uuid as uuid_module
 
         author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
         obs = self.create_observation_with_authors([author])
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None)
+        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
@@ -88,7 +88,7 @@ class TestAllergyRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_multiple_authors_chronological_returns_latest(self):
+    def test_multiple_authors_chronological_returns_latest(self, mock_reference_registry):
         """Test that latest author by timestamp is used for recorder."""
         import uuid as uuid_module
 
@@ -99,7 +99,7 @@ class TestAllergyRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None)
+        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
@@ -111,7 +111,7 @@ class TestAllergyRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_author_without_time_excluded(self):
+    def test_author_without_time_excluded(self, mock_reference_registry):
         """Test that authors without time are excluded from recorder selection."""
         import uuid as uuid_module
 
@@ -121,7 +121,7 @@ class TestAllergyRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None)
+        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
@@ -133,7 +133,7 @@ class TestAllergyRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_all_authors_without_time_no_recorder(self):
+    def test_all_authors_without_time_no_recorder(self, mock_reference_registry):
         """Test that no recorder is created if all authors lack time."""
         authors = [
             self.create_author(time=None, practitioner_ext="NO-TIME-1"),
@@ -141,12 +141,12 @@ class TestAllergyRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None)
+        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
         allergy = converter.convert(obs)
 
         assert "recorder" not in allergy
 
-    def test_device_author_creates_device_reference(self):
+    def test_device_author_creates_device_reference(self, mock_reference_registry):
         """Test that device author creates Device reference."""
         import uuid as uuid_module
 
@@ -158,7 +158,7 @@ class TestAllergyRecorder:
         )
         obs = self.create_observation_with_authors([author])
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None)
+        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
@@ -170,7 +170,7 @@ class TestAllergyRecorder:
         except ValueError:
             pytest.fail(f"ID {device_id} is not a valid UUID v4")
 
-    def test_concern_act_and_observation_authors_both_considered(self):
+    def test_concern_act_and_observation_authors_both_considered(self, mock_reference_registry):
         """Test that authors from both concern act and observation are considered."""
         import uuid as uuid_module
 
@@ -186,7 +186,8 @@ class TestAllergyRecorder:
 
         converter = AllergyIntoleranceConverter(
             code_system_mapper=None,
-            concern_act=concern_act
+            concern_act=concern_act,
+            reference_registry=mock_reference_registry
         )
         allergy = converter.convert(obs)
 
@@ -199,7 +200,7 @@ class TestAllergyRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_latest_from_concern_act_used_if_later_than_observation(self):
+    def test_latest_from_concern_act_used_if_later_than_observation(self, mock_reference_registry):
         """Test that concern act author is used if it's latest."""
         import uuid as uuid_module
 
@@ -215,7 +216,8 @@ class TestAllergyRecorder:
 
         converter = AllergyIntoleranceConverter(
             code_system_mapper=None,
-            concern_act=concern_act
+            concern_act=concern_act,
+            reference_registry=mock_reference_registry
         )
         allergy = converter.convert(obs)
 
@@ -228,7 +230,7 @@ class TestAllergyRecorder:
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
 
-    def test_recorded_date_still_uses_earliest_author(self):
+    def test_recorded_date_still_uses_earliest_author(self, mock_reference_registry):
         """Test that recordedDate still uses earliest author time (existing behavior)."""
         import uuid as uuid_module
 
@@ -238,7 +240,7 @@ class TestAllergyRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None)
+        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
         allergy = converter.convert(obs)
 
         # recordedDate should still use earliest

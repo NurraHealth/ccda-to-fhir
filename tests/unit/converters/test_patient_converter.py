@@ -329,7 +329,7 @@ class TestBasicDemographics:
     - birthDate (if known)
     """
 
-    def test_converts_basic_patient_minimal_fields(self, basic_patient):
+    def test_converts_basic_patient_minimal_fields(self, basic_patient, mock_reference_registry):
         """Test patient with only required fields.
 
         Validates minimal compliant patient record.
@@ -362,7 +362,7 @@ class TestBasicDemographics:
         assert len(result["identifier"]) == 1
         assert result["identifier"][0]["value"] == "12345"
 
-    def test_converts_complete_demographics(self, complete_patient):
+    def test_converts_complete_demographics(self, complete_patient, mock_reference_registry):
         """Test patient with all demographic fields.
 
         Validates comprehensive demographic capture per USCDI v2.
@@ -395,7 +395,7 @@ class TestBasicDemographics:
         assert result["maritalStatus"]["coding"][0]["code"] == "M"
         assert "Married" in result["maritalStatus"]["coding"][0]["display"]
 
-    def test_converts_multiple_languages(self, complete_patient):
+    def test_converts_multiple_languages(self, complete_patient, mock_reference_registry):
         """Test language communication preferences.
 
         Important for:
@@ -442,7 +442,7 @@ class TestPatientIdentifiers:
     - Identity verification
     """
 
-    def test_converts_mrn_identifier(self, patient_role_with_identifiers, basic_patient):
+    def test_converts_mrn_identifier(self, patient_role_with_identifiers, basic_patient, mock_reference_registry):
         """Test Medical Record Number conversion.
 
         MRN is the primary patient identifier in most EHR systems.
@@ -462,7 +462,7 @@ class TestPatientIdentifiers:
         assert mrn["value"] == "E12345"
         assert "1.2.840.114350" in mrn["system"]  # Epic OID
 
-    def test_converts_ssn_identifier(self, patient_role_with_identifiers, basic_patient):
+    def test_converts_ssn_identifier(self, patient_role_with_identifiers, basic_patient, mock_reference_registry):
         """Test SSN conversion with proper type coding.
 
         SSN requires special handling per:
@@ -482,7 +482,7 @@ class TestPatientIdentifiers:
         assert ssn["value"] == "123-45-6789"
         assert ssn["system"] == "http://hl7.org/fhir/sid/us-ssn"  # Canonical URI (not raw OID)
 
-    def test_handles_missing_identifiers_gracefully(self, basic_patient):
+    def test_handles_missing_identifiers_gracefully(self, basic_patient, mock_reference_registry):
         """Test patient with no identifiers.
 
         Edge case: Some systems may not provide identifiers
@@ -515,7 +515,7 @@ class TestContactInformation:
     - Phone number (required if known)
     """
 
-    def test_converts_home_address(self, patient_role_with_contacts, basic_patient):
+    def test_converts_home_address(self, patient_role_with_contacts, basic_patient, mock_reference_registry):
         """Test home address conversion with all components.
 
         Address validation important for:
@@ -541,7 +541,7 @@ class TestContactInformation:
         assert home["postalCode"] == "02101"
         assert home["country"] == "USA"
 
-    def test_converts_multiple_addresses(self, patient_role_with_contacts, basic_patient):
+    def test_converts_multiple_addresses(self, patient_role_with_contacts, basic_patient, mock_reference_registry):
         """Test multiple addresses (home + work).
 
         Realistic for working patients with separate contact points.
@@ -557,7 +557,7 @@ class TestContactInformation:
         assert result["address"][0]["use"] == "home"
         assert result["address"][1]["use"] == "work"
 
-    def test_converts_telecom_with_use_codes(self, patient_role_with_contacts, basic_patient):
+    def test_converts_telecom_with_use_codes(self, patient_role_with_contacts, basic_patient, mock_reference_registry):
         """Test phone/email conversion with proper use codes.
 
         Use codes critical for:
@@ -600,7 +600,7 @@ class TestUSCoreExtensions:
     - Birth sex (optional)
     """
 
-    def test_converts_race_extension_omb_compliant(self, complete_patient):
+    def test_converts_race_extension_omb_compliant(self, complete_patient, mock_reference_registry):
         """Test race extension per OMB standard.
 
         OMB (Office of Management and Budget) categories:
@@ -640,7 +640,7 @@ class TestUSCoreExtensions:
         assert omb_category["valueCoding"]["code"] == "2106-3"
         assert "White" in omb_category["valueCoding"]["display"]
 
-    def test_converts_ethnicity_extension_omb_compliant(self, complete_patient):
+    def test_converts_ethnicity_extension_omb_compliant(self, complete_patient, mock_reference_registry):
         """Test ethnicity extension per OMB standard.
 
         OMB categories:
@@ -688,7 +688,7 @@ class TestUSCoreExtensions:
 class TestSpecialCases:
     """Test edge cases and special patient scenarios."""
 
-    def test_converts_pediatric_patient_with_guardian(self, patient_with_guardian):
+    def test_converts_pediatric_patient_with_guardian(self, patient_with_guardian, mock_reference_registry):
         """Test child patient with guardian/parent.
 
         Pediatric records require:
@@ -732,7 +732,7 @@ class TestSpecialCases:
         # Guardian phone
         assert len(contact["telecom"]) >= 1
 
-    def test_converts_deceased_patient(self, deceased_patient):
+    def test_converts_deceased_patient(self, deceased_patient, mock_reference_registry):
         """Test deceased patient with death date.
 
         Important for:
@@ -758,7 +758,7 @@ class TestSpecialCases:
         elif "deceasedBoolean" in result:
             assert result["deceasedBoolean"] is True
 
-    def test_converts_birthplace_international(self, patient_with_birthplace):
+    def test_converts_birthplace_international(self, patient_with_birthplace, mock_reference_registry):
         """Test patient born outside USA.
 
         Birthplace extension important for:
@@ -802,7 +802,7 @@ class TestSpecialCases:
 class TestErrorHandling:
     """Test converter error handling and edge cases."""
 
-    def test_handles_missing_patient_gracefully(self):
+    def test_handles_missing_patient_gracefully(self, mock_reference_registry):
         """Test RecordTarget with no patient (malformed C-CDA)."""
         record_target = RecordTarget(
             patient_role=PatientRole(
@@ -816,7 +816,7 @@ class TestErrorHandling:
         with pytest.raises((ValueError, AttributeError)):
             converter.convert(record_target)
 
-    def test_handles_invalid_gender_code(self, basic_patient):
+    def test_handles_invalid_gender_code(self, basic_patient, mock_reference_registry):
         """Test invalid administrative gender code.
 
         Per HL7, only M/F/UN are valid. Invalid codes should map to 'unknown'.
@@ -840,7 +840,7 @@ class TestErrorHandling:
         # Should default to unknown
         assert result["gender"] == "unknown"
 
-    def test_handles_malformed_dates(self, basic_patient):
+    def test_handles_malformed_dates(self, basic_patient, mock_reference_registry):
         """Test malformed birth date."""
         basic_patient.birth_time = TS(value="20XX0101")  # Invalid year
 
@@ -866,7 +866,7 @@ class TestErrorHandling:
 class TestPatientIDGeneration:
     """Test patient resource ID generation with new method."""
 
-    def test_generates_id_from_mrn(self, basic_patient):
+    def test_generates_id_from_mrn(self, basic_patient, mock_reference_registry):
         """Test ID generation from MRN extension."""
         import re
         import uuid
@@ -893,7 +893,7 @@ class TestPatientIDGeneration:
         except ValueError:
             pytest.fail(f"ID {result['id']} is not a valid UUID v4")
 
-    def test_generates_deterministic_id(self, basic_patient):
+    def test_generates_deterministic_id(self, basic_patient, mock_reference_registry):
         """Test that same input produces same ID."""
         record_target = RecordTarget(
             patient_role=PatientRole(

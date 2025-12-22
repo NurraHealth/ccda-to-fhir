@@ -15,7 +15,7 @@ from ccda_to_fhir.types import FHIRResourceDict
 class TestResourceRegistration:
     """Test registering FHIR resources in the registry."""
 
-    def test_registers_patient_resource(self):
+    def test_registers_patient_resource(self, mock_reference_registry):
         """Test registering a Patient resource."""
         registry = ReferenceRegistry()
 
@@ -30,7 +30,7 @@ class TestResourceRegistration:
         assert registry.has_resource("Patient", "patient-123")
         assert registry.get_resource("Patient", "patient-123") == patient
 
-    def test_registers_practitioner_resource(self):
+    def test_registers_practitioner_resource(self, mock_reference_registry):
         """Test registering a Practitioner resource."""
         registry = ReferenceRegistry()
 
@@ -44,7 +44,7 @@ class TestResourceRegistration:
 
         assert registry.has_resource("Practitioner", "prac-456")
 
-    def test_registers_multiple_resource_types(self):
+    def test_registers_multiple_resource_types(self, mock_reference_registry):
         """Test registering different resource types in same registry."""
         registry = ReferenceRegistry()
 
@@ -72,7 +72,7 @@ class TestResourceRegistration:
         assert registry.has_resource("Practitioner", "prac-1")
         assert registry.has_resource("Organization", "org-1")
 
-    def test_registers_multiple_resources_same_type(self):
+    def test_registers_multiple_resources_same_type(self, mock_reference_registry):
         """Test registering multiple resources of the same type."""
         registry = ReferenceRegistry()
 
@@ -96,7 +96,7 @@ class TestResourceRegistration:
         assert registry.get_resource("Patient", "patient-1") == patient1
         assert registry.get_resource("Patient", "patient-2") == patient2
 
-    def test_warns_on_duplicate_resource_id(self, caplog):
+    def test_warns_on_duplicate_resource_id(self, caplog, mock_reference_registry):
         """Test that duplicate resource IDs trigger a warning."""
         registry = ReferenceRegistry()
 
@@ -119,7 +119,7 @@ class TestResourceRegistration:
         # Second registration is ignored, first one wins
         assert registry.get_resource("Patient", "patient-123") == patient1
 
-    def test_ignores_resource_without_resource_type(self, caplog):
+    def test_ignores_resource_without_resource_type(self, caplog, mock_reference_registry):
         """Test that resources without resourceType are rejected."""
         registry = ReferenceRegistry()
 
@@ -133,7 +133,7 @@ class TestResourceRegistration:
         assert "Cannot register resource without resourceType" in caplog.text
         assert not registry.has_resource("", "test-123")
 
-    def test_ignores_resource_without_id(self, caplog):
+    def test_ignores_resource_without_id(self, caplog, mock_reference_registry):
         """Test that resources without id are rejected."""
         registry = ReferenceRegistry()
 
@@ -150,7 +150,7 @@ class TestResourceRegistration:
 class TestReferenceResolution:
     """Test resolving references between FHIR resources."""
 
-    def test_resolves_valid_patient_reference(self):
+    def test_resolves_valid_patient_reference(self, mock_reference_registry):
         """Test resolving a reference to a registered Patient."""
         registry = ReferenceRegistry()
 
@@ -166,7 +166,7 @@ class TestReferenceResolution:
         assert reference is not None
         assert reference == {"reference": "Patient/patient-123"}
 
-    def test_resolves_valid_practitioner_reference(self):
+    def test_resolves_valid_practitioner_reference(self, mock_reference_registry):
         """Test resolving a reference to a registered Practitioner."""
         registry = ReferenceRegistry()
 
@@ -181,7 +181,7 @@ class TestReferenceResolution:
 
         assert reference == {"reference": "Practitioner/prac-456"}
 
-    def test_raises_error_for_unregistered_resource_type(self):
+    def test_raises_error_for_unregistered_resource_type(self, mock_reference_registry):
         """Test that references to unregistered resource types raise MissingReferenceError."""
         registry = ReferenceRegistry()
 
@@ -200,7 +200,7 @@ class TestReferenceResolution:
         assert exc_info.value.resource_id == "prac-456"
         assert "Resource type not registered" in str(exc_info.value)
 
-    def test_raises_error_for_unregistered_resource_id(self):
+    def test_raises_error_for_unregistered_resource_id(self, mock_reference_registry):
         """Test that references to non-existent resource IDs raise MissingReferenceError."""
         registry = ReferenceRegistry()
 
@@ -219,7 +219,7 @@ class TestReferenceResolution:
         assert exc_info.value.resource_id == "patient-456"
         assert "patient-456" in str(exc_info.value)
 
-    def test_realistic_condition_to_patient_reference(self):
+    def test_realistic_condition_to_patient_reference(self, mock_reference_registry):
         """Test a realistic scenario: Condition references Patient.
 
         This is the most common reference in C-CDA conversion - every clinical
@@ -261,7 +261,7 @@ class TestReferenceResolution:
         # Verify the reference is correct
         assert condition["subject"]["reference"] == "Patient/patient-newman"
 
-    def test_realistic_observation_to_practitioner_reference(self):
+    def test_realistic_observation_to_practitioner_reference(self, mock_reference_registry):
         """Test realistic scenario: Observation references Practitioner as performer.
 
         In C-CDA, observations often have authors that become performers in FHIR.
@@ -289,7 +289,7 @@ class TestReferenceResolution:
 
         assert performer_ref == {"reference": "Practitioner/npi-1234567890"}
 
-    def test_realistic_medication_request_to_practitioner_reference(self):
+    def test_realistic_medication_request_to_practitioner_reference(self, mock_reference_registry):
         """Test realistic scenario: MedicationRequest references Practitioner as requester.
 
         C-CDA medication activities have authors that map to MedicationRequest.requester.
@@ -313,7 +313,7 @@ class TestReferenceResolution:
 class TestReferenceValidationIntegration:
     """Test realistic end-to-end scenarios with reference validation."""
 
-    def test_detects_broken_reference_in_bundle(self):
+    def test_detects_broken_reference_in_bundle(self, mock_reference_registry):
         """Test detecting a broken reference during bundle creation.
 
         Simulates what would happen if code tries to reference a Practitioner
@@ -337,7 +337,7 @@ class TestReferenceValidationIntegration:
         assert exc_info.value.resource_type == "Practitioner"
         assert exc_info.value.resource_id == "prac-failed"
 
-    def test_validates_composition_section_entries(self):
+    def test_validates_composition_section_entries(self, mock_reference_registry):
         """Test validating references in Composition.section.entry.
 
         Composition sections reference the resources they contain. All these
@@ -369,7 +369,7 @@ class TestReferenceValidationIntegration:
 class TestRegistryStatistics:
     """Test registry statistics tracking."""
 
-    def test_tracks_registered_count(self):
+    def test_tracks_registered_count(self, mock_reference_registry):
         """Test that registry tracks number of resources registered."""
         registry = ReferenceRegistry()
 
@@ -382,7 +382,7 @@ class TestRegistryStatistics:
         stats = registry.get_stats()
         assert stats["registered"] == 2
 
-    def test_tracks_resolved_count(self):
+    def test_tracks_resolved_count(self, mock_reference_registry):
         """Test that registry tracks successful reference resolutions."""
         registry = ReferenceRegistry()
 
@@ -396,7 +396,7 @@ class TestRegistryStatistics:
         stats = registry.get_stats()
         assert stats["resolved"] == 2
 
-    def test_tracks_failed_count(self):
+    def test_tracks_failed_count(self, mock_reference_registry):
         """Test that registry tracks failed reference resolutions."""
         registry = ReferenceRegistry()
 
@@ -414,7 +414,7 @@ class TestRegistryStatistics:
         stats = registry.get_stats()
         assert stats["failed"] == 2
 
-    def test_clear_resets_registry(self):
+    def test_clear_resets_registry(self, mock_reference_registry):
         """Test that clear() removes all resources and resets stats."""
         registry = ReferenceRegistry()
 
@@ -433,7 +433,7 @@ class TestRegistryStatistics:
 class TestGetAllResources:
     """Test retrieving all registered resources."""
 
-    def test_returns_all_registered_resources(self):
+    def test_returns_all_registered_resources(self, mock_reference_registry):
         """Test that get_all_resources() returns all resources."""
         registry = ReferenceRegistry()
 
@@ -452,7 +452,7 @@ class TestGetAllResources:
         assert practitioner in all_resources
         assert organization in all_resources
 
-    def test_returns_empty_list_when_no_resources(self):
+    def test_returns_empty_list_when_no_resources(self, mock_reference_registry):
         """Test that get_all_resources() returns empty list when registry is empty."""
         registry = ReferenceRegistry()
 
@@ -464,7 +464,7 @@ class TestGetAllResources:
 class TestEncounterReference:
     """Test encounter reference retrieval methods."""
 
-    def test_has_encounter_returns_true_when_encounter_registered(self):
+    def test_has_encounter_returns_true_when_encounter_registered(self, mock_reference_registry):
         """Test that has_encounter() returns True when an encounter is registered."""
         registry = ReferenceRegistry()
 
@@ -477,13 +477,13 @@ class TestEncounterReference:
 
         assert registry.has_encounter() is True
 
-    def test_has_encounter_returns_false_when_no_encounter(self):
+    def test_has_encounter_returns_false_when_no_encounter(self, mock_reference_registry):
         """Test that has_encounter() returns False when no encounter is registered."""
         registry = ReferenceRegistry()
 
         assert registry.has_encounter() is False
 
-    def test_get_encounter_reference_returns_reference(self):
+    def test_get_encounter_reference_returns_reference(self, mock_reference_registry):
         """Test that get_encounter_reference() returns reference when encounter exists."""
         registry = ReferenceRegistry()
 
@@ -504,7 +504,7 @@ class TestEncounterReference:
         assert reference is not None
         assert reference == {"reference": "Encounter/encounter-abc"}
 
-    def test_get_encounter_reference_returns_none_when_no_encounter(self):
+    def test_get_encounter_reference_returns_none_when_no_encounter(self, mock_reference_registry):
         """Test that get_encounter_reference() returns None when no encounter exists."""
         registry = ReferenceRegistry()
 
@@ -512,7 +512,7 @@ class TestEncounterReference:
 
         assert reference is None
 
-    def test_get_encounter_reference_returns_first_when_multiple(self):
+    def test_get_encounter_reference_returns_first_when_multiple(self, mock_reference_registry):
         """Test that get_encounter_reference() returns first encounter when multiple exist."""
         registry = ReferenceRegistry()
 
@@ -534,7 +534,7 @@ class TestEncounterReference:
         # Should return first encounter (dict iteration order is insertion order in Python 3.7+)
         assert reference == {"reference": "Encounter/encounter-1"}
 
-    def test_get_encounter_reference_increments_stats(self):
+    def test_get_encounter_reference_increments_stats(self, mock_reference_registry):
         """Test that get_encounter_reference() increments resolved count."""
         registry = ReferenceRegistry()
 

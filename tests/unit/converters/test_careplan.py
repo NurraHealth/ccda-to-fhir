@@ -218,9 +218,9 @@ def mock_reference_registry() -> ReferenceRegistry:
 class TestBasicCarePlanConversion:
     """Test basic CarePlan resource creation."""
 
-    def test_basic_care_plan_conversion(self, minimal_care_plan_document):
+    def test_basic_care_plan_conversion(self, minimal_care_plan_document, mock_reference_registry):
         """Test basic CarePlan creation from Care Plan Document."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         # Verify resource type
@@ -236,9 +236,9 @@ class TestBasicCarePlanConversion:
         assert careplan["intent"] == "plan"
         assert careplan["status"] == "active"
 
-    def test_care_plan_with_minimal_data(self, minimal_care_plan_document):
+    def test_care_plan_with_minimal_data(self, minimal_care_plan_document, mock_reference_registry):
         """Test CarePlan with only required elements."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         # Should have required fields
@@ -291,9 +291,9 @@ class TestBasicCarePlanConversion:
 class TestIdentifierMapping:
     """Test document.id maps to CarePlan.identifier."""
 
-    def test_identifier_mapping(self, minimal_care_plan_document):
+    def test_identifier_mapping(self, minimal_care_plan_document, mock_reference_registry):
         """Test document.setId maps to CarePlan.identifier."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         # Verify identifier array exists
@@ -305,11 +305,11 @@ class TestIdentifierMapping:
         identifier = careplan["identifier"][0]
         assert "system" in identifier or "value" in identifier
 
-    def test_identifier_with_version(self, complete_care_plan_document):
+    def test_identifier_with_version(self, complete_care_plan_document, mock_reference_registry):
         """Test identifier includes document version information."""
         # Note: Current implementation doesn't use versionNumber in identifier
         # This test documents current behavior
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(complete_care_plan_document)
 
         # Verify identifier exists
@@ -325,18 +325,18 @@ class TestIdentifierMapping:
 class TestStatusMapping:
     """Test CarePlan status determination."""
 
-    def test_status_defaults_to_active(self, minimal_care_plan_document):
+    def test_status_defaults_to_active(self, minimal_care_plan_document, mock_reference_registry):
         """Test status defaults to 'active'."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert careplan["status"] == "active"
 
-    def test_status_from_document_context(self, complete_care_plan_document):
+    def test_status_from_document_context(self, complete_care_plan_document, mock_reference_registry):
         """Test status determination from document context."""
         # Current implementation always returns "active"
         # This test documents current behavior
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(complete_care_plan_document)
 
         assert careplan["status"] in [
@@ -351,8 +351,7 @@ class TestStatusMapping:
 
     def test_status_completed_when_period_ended(
         self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
-        basic_author, basic_custodian
-    ):
+        basic_author, basic_custodian, mock_reference_registry):
         """Test status 'completed' when period.end in past."""
         from datetime import datetime, timedelta, timezone
 
@@ -386,14 +385,14 @@ class TestStatusMapping:
             ],
         )
 
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(doc)
 
         assert careplan["status"] == "completed"
 
     def test_status_completed_when_all_interventions_completed(
         self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
-        basic_author, basic_custodian
+        basic_author, basic_custodian, mock_reference_registry
     ):
         """Test status 'completed' when all interventions completed."""
         # Create mock intervention entries with completed status
@@ -422,15 +421,14 @@ class TestStatusMapping:
             custodian=basic_custodian,
         )
 
-        converter = CarePlanConverter(intervention_entries=intervention_entries)
+        converter = CarePlanConverter(reference_registry=mock_reference_registry, intervention_entries=intervention_entries)
         careplan = converter.convert(doc)
 
         assert careplan["status"] == "completed"
 
     def test_status_revoked_when_intervention_cancelled(
         self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
-        basic_author, basic_custodian
-    ):
+        basic_author, basic_custodian, mock_reference_registry):
         """Test status 'revoked' when any intervention cancelled."""
         # Create mock intervention entries with one cancelled
         class MockIntervention:
@@ -458,15 +456,14 @@ class TestStatusMapping:
             custodian=basic_custodian,
         )
 
-        converter = CarePlanConverter(intervention_entries=intervention_entries)
+        converter = CarePlanConverter(reference_registry=mock_reference_registry, intervention_entries=intervention_entries)
         careplan = converter.convert(doc)
 
         assert careplan["status"] == "revoked"
 
     def test_status_active_when_authenticated(
         self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
-        basic_author, basic_custodian
-    ):
+        basic_author, basic_custodian, mock_reference_registry):
         """Test status 'active' when document authenticated."""
         from ccda_to_fhir.ccda.models.clinical_document import LegalAuthenticator
 
@@ -492,7 +489,7 @@ class TestStatusMapping:
             ),
         )
 
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(doc)
 
         assert careplan["status"] == "active"
@@ -517,16 +514,16 @@ class TestSubjectMapping:
         assert careplan["subject"]["reference"] == "Patient/test-patient"
         mock_reference_registry.get_patient_reference.assert_called_once()
 
-    def test_subject_from_document_recordtarget(self, minimal_care_plan_document):
+    def test_subject_from_document_recordtarget(self, minimal_care_plan_document, mock_reference_registry):
         """Test subject fallback to document recordTarget."""
-        converter = CarePlanConverter()  # No registry
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)  # No registry
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "subject" in careplan
         assert "reference" in careplan["subject"]
         assert careplan["subject"]["reference"].startswith("Patient/")
 
-    def test_subject_placeholder_when_missing(self, care_plan_template_id):
+    def test_subject_placeholder_when_missing(self, care_plan_template_id, mock_reference_registry):
         """Test subject uses placeholder when unavailable."""
         # Create document without recordTarget
         doc = ClinicalDocument(
@@ -556,11 +553,10 @@ class TestSubjectMapping:
             ),
         )
 
+        # Don't pass reference_registry to test the fallback to document data
         converter = CarePlanConverter()
-        careplan = converter.convert(doc)
-
-        assert "subject" in careplan
-        assert careplan["subject"]["reference"] == "Patient/patient-unknown"
+        with pytest.raises(ValueError, match="patient identifier missing"):
+            converter.convert(doc)
 
 
 # ============================================================================
@@ -571,9 +567,9 @@ class TestSubjectMapping:
 class TestPeriodMapping:
     """Test CarePlan period from serviceEvent."""
 
-    def test_period_from_service_event(self, complete_care_plan_document):
+    def test_period_from_service_event(self, complete_care_plan_document, mock_reference_registry):
         """Test period extracted from serviceEvent.effectiveTime."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(complete_care_plan_document)
 
         assert "period" in careplan
@@ -583,8 +579,7 @@ class TestPeriodMapping:
         assert careplan["period"]["end"] == "2024-04-15"
 
     def test_period_with_only_start_date(
-        self, minimal_care_plan_document, care_plan_template_id
-    ):
+        self, minimal_care_plan_document, care_plan_template_id, mock_reference_registry):
         """Test period with only effectiveTime.low."""
         # Add documentation_of with only low date
         minimal_care_plan_document.documentation_of = [
@@ -596,7 +591,7 @@ class TestPeriodMapping:
             )
         ]
 
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "period" in careplan
@@ -605,10 +600,10 @@ class TestPeriodMapping:
         # end should not be present if not in source
         assert "end" not in careplan["period"]
 
-    def test_period_missing(self, minimal_care_plan_document):
+    def test_period_missing(self, minimal_care_plan_document, mock_reference_registry):
         """Test CarePlan without period when not available."""
         # minimal_care_plan_document has no documentation_of
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         # Period should not be present
@@ -623,16 +618,16 @@ class TestPeriodMapping:
 class TestAuthorAndContributor:
     """Test author and contributor mapping."""
 
-    def test_author_from_first_author(self, minimal_care_plan_document):
+    def test_author_from_first_author(self, minimal_care_plan_document, mock_reference_registry):
         """Test author from document.author[0]."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "author" in careplan
         assert "reference" in careplan["author"]
         assert careplan["author"]["reference"].startswith("Practitioner/")
 
-    def test_contributor_from_all_authors(self, minimal_care_plan_document):
+    def test_contributor_from_all_authors(self, minimal_care_plan_document, mock_reference_registry):
         """Test contributor includes all authors."""
         # Add second author
         second_author = Author(
@@ -651,7 +646,7 @@ class TestAuthorAndContributor:
         )
         minimal_care_plan_document.author.append(second_author)
 
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "contributor" in careplan
@@ -661,21 +656,20 @@ class TestAuthorAndContributor:
             assert "reference" in contributor
 
     def test_contributor_includes_performers(
-        self, minimal_care_plan_document, service_event_with_performer
-    ):
+        self, minimal_care_plan_document, service_event_with_performer, mock_reference_registry):
         """Test contributor includes serviceEvent.performer."""
         minimal_care_plan_document.documentation_of = [
             DocumentationOf(service_event=service_event_with_performer)
         ]
 
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "contributor" in careplan
         # Should have original author + performer
         assert len(careplan["contributor"]) >= 2
 
-    def test_contributor_deduplication(self, minimal_care_plan_document):
+    def test_contributor_deduplication(self, minimal_care_plan_document, mock_reference_registry):
         """Test same practitioner not duplicated in contributors."""
         # Add duplicate author with same ID
         duplicate_author = Author(
@@ -694,7 +688,7 @@ class TestAuthorAndContributor:
         )
         minimal_care_plan_document.author.append(duplicate_author)
 
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "contributor" in careplan
@@ -832,9 +826,9 @@ class TestActivityMapping:
 class TestNarrative:
     """Test CarePlan.text narrative generation."""
 
-    def test_narrative_generation(self, minimal_care_plan_document):
+    def test_narrative_generation(self, minimal_care_plan_document, mock_reference_registry):
         """Test text.div generated from sections."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
@@ -846,27 +840,27 @@ class TestNarrative:
         assert 'xmlns="http://www.w3.org/1999/xhtml"' in careplan["text"]["div"]
         assert "</div>" in careplan["text"]["div"]
 
-    def test_narrative_status_generated(self, minimal_care_plan_document):
+    def test_narrative_status_generated(self, minimal_care_plan_document, mock_reference_registry):
         """Test text.status is 'generated'."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
         assert careplan["text"]["status"] == "generated"
 
-    def test_narrative_includes_title(self, minimal_care_plan_document):
+    def test_narrative_includes_title(self, minimal_care_plan_document, mock_reference_registry):
         """Test narrative includes care plan title."""
         minimal_care_plan_document.title = "Patient Care Plan 2024"
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
         assert "Patient Care Plan 2024" in careplan["text"]["div"]
         assert "<h2>" in careplan["text"]["div"]
 
-    def test_narrative_includes_period(self, complete_care_plan_document):
+    def test_narrative_includes_period(self, complete_care_plan_document, mock_reference_registry):
         """Test narrative includes care plan period."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(complete_care_plan_document)
 
         assert "text" in careplan
@@ -940,11 +934,11 @@ class TestNarrative:
         assert "<ul>" in div
         assert "<li>" in div
 
-    def test_narrative_html_escaped(self, minimal_care_plan_document):
+    def test_narrative_html_escaped(self, minimal_care_plan_document, mock_reference_registry):
         """Test special characters are HTML escaped."""
         # Use title with special characters
         minimal_care_plan_document.title = "Care Plan <Test> & 'Special' \"Chars\""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
@@ -957,8 +951,7 @@ class TestNarrative:
         assert "Care Plan <Test>" not in div or "<h2>Care Plan" not in div
 
     def test_narrative_minimal_with_no_data(
-        self, care_plan_template_id, us_realm_header_template_id
-    ):
+        self, care_plan_template_id, us_realm_header_template_id, mock_reference_registry):
         """Test narrative generation with minimal data."""
         # Create a bare minimum document
         doc = ClinicalDocument(
@@ -1002,7 +995,7 @@ class TestNarrative:
             ),
         )
 
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(doc)
 
         assert "text" in careplan
@@ -1013,8 +1006,7 @@ class TestNarrative:
         assert "<h2>Care Plan</h2>" in careplan["text"]["div"]
 
     def test_narrative_period_with_start_only(
-        self, minimal_care_plan_document, care_plan_template_id
-    ):
+        self, minimal_care_plan_document, care_plan_template_id, mock_reference_registry):
         """Test narrative period formatting with only start date."""
         minimal_care_plan_document.documentation_of = [
             DocumentationOf(
@@ -1024,7 +1016,7 @@ class TestNarrative:
             )
         ]
 
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
@@ -1102,7 +1094,7 @@ class TestNarrative:
 class TestValidation:
     """Test CarePlan validation requirements."""
 
-    def test_validation_requires_care_plan_document(self):
+    def test_validation_requires_care_plan_document(self, mock_reference_registry):
         """Test ValueError when not Care Plan Document."""
         # Create document without Care Plan template ID
         doc = ClinicalDocument(
@@ -1138,11 +1130,11 @@ class TestValidation:
             ),
         )
 
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         with pytest.raises(ValueError, match="Care Plan Document"):
             converter.convert(doc)
 
-    def test_validation_template_id_required(self):
+    def test_validation_template_id_required(self, mock_reference_registry):
         """Test ValueError when template ID missing."""
         # Create document without template_id
         doc = ClinicalDocument(
@@ -1176,13 +1168,13 @@ class TestValidation:
             ),
         )
 
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         with pytest.raises(ValueError, match="Care Plan Document"):
             converter.convert(doc)
 
-    def test_validation_requires_clinical_document(self):
+    def test_validation_requires_clinical_document(self, mock_reference_registry):
         """Test ValueError when ClinicalDocument is None."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         with pytest.raises(ValueError, match="ClinicalDocument is required"):
             converter.convert(None)
 
@@ -1195,9 +1187,9 @@ class TestValidation:
 class TestUSCoreProfile:
     """Test US Core CarePlan profile compliance."""
 
-    def test_us_core_profile_in_meta(self, minimal_care_plan_document):
+    def test_us_core_profile_in_meta(self, minimal_care_plan_document, mock_reference_registry):
         """Test US Core CarePlan profile URL in meta."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "meta" in careplan
@@ -1208,9 +1200,9 @@ class TestUSCoreProfile:
         profile_url = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careplan"
         assert profile_url in careplan["meta"]["profile"]
 
-    def test_category_assess_plan(self, minimal_care_plan_document):
+    def test_category_assess_plan(self, minimal_care_plan_document, mock_reference_registry):
         """Test category includes 'assess-plan' from US Core."""
-        converter = CarePlanConverter()
+        converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "category" in careplan

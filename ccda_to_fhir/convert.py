@@ -738,8 +738,7 @@ class DocumentConverter:
                             informant_info.informant.assigned_entity
                         )
                         # Check if practitioner already exists (deduplication)
-                        practitioner_ref = f"Practitioner/{practitioner['id']}"
-                        if not self.reference_registry.resource_exists(practitioner_ref):
+                        if not self.reference_registry.has_resource("Practitioner", practitioner['id']):
                             resources.append(practitioner)
                             self.reference_registry.register_resource(practitioner)
                     except Exception as e:
@@ -747,7 +746,12 @@ class DocumentConverter:
 
                 elif informant_info.is_related_person and informant_info.informant.related_entity:
                     try:
-                        patient_id = getattr(self, "_patient_id", "patient-unknown")
+                        if not hasattr(self, "_patient_id"):
+                            raise ValueError(
+                                "Cannot create RelatedPerson: patient_id is required. "
+                                "Patient must be processed before informants."
+                            )
+                        patient_id = self._patient_id
                         from .converters.related_person import RelatedPersonConverter
                         related_person_converter = RelatedPersonConverter(patient_id=patient_id)
                         related_person = related_person_converter.convert(
@@ -2657,7 +2661,11 @@ class DocumentConverter:
             elif first_id.root:
                 encounter_id = first_id.root.replace(".", "-").replace(":", "-").lower()
             else:
-                encounter_id = "encounter-header-unknown"
+                raise ValueError(
+                    "Cannot create header Encounter: no valid identifiers. "
+                    "Encounter id element has no root or extension (may have nullFlavor). "
+                    "C-CDA encompassingEncounter requires at least one valid id element."
+                )
 
             fhir_encounter["id"] = encounter_id
 
@@ -3458,9 +3466,12 @@ class DocumentConverter:
                         if related_person_id and related_person_id not in seen_related_persons:
                             # Get patient_id from the first patient resource in the bundle
                             # (All informants will reference the same patient)
-                            patient_id = "patient-unknown"  # Default fallback
-                            if hasattr(self, "_patient_id"):
-                                patient_id = self._patient_id
+                            if not hasattr(self, "_patient_id"):
+                                raise ValueError(
+                                    "Cannot create RelatedPerson: patient_id is required. "
+                                    "Patient must be processed before informants."
+                                )
+                            patient_id = self._patient_id
 
                             from .converters.related_person import RelatedPersonConverter
                             related_person_converter = RelatedPersonConverter(patient_id=patient_id)

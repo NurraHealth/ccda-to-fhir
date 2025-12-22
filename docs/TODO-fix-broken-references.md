@@ -1,12 +1,14 @@
 # TODO: Fix All Broken References and Placeholder IDs
 
-**Status:** Not Started
+**Status:** ✅ COMPLETED (2025-12-22)
 **Priority:** CRITICAL
 **Created:** 2025-12-22
 
 ## Overview
 
-The codebase contains multiple instances of broken references (e.g., `"Patient/patient-unknown"`) and placeholder IDs (e.g., `"device-unknown"`) that violate FHIR referential integrity. These must be removed and replaced with proper error handling.
+~~The codebase contains multiple instances of broken references (e.g., `"Patient/patient-unknown"`) and placeholder IDs (e.g., `"device-unknown"`) that violate FHIR referential integrity. These must be removed and replaced with proper error handling.~~
+
+**All broken references and placeholder IDs have been removed.** The codebase now uses strict validation with clear error messages when required data is missing.
 
 ## Problem
 
@@ -194,23 +196,30 @@ All ID generation methods now raise ValueError instead of returning placeholders
 
 ---
 
-## CATEGORY 4: Related Fallbacks (3 instances)
+## CATEGORY 4: Related Fallbacks (3 instances) ✅ **FIXED: 2025-12-22**
 
-These use patient-unknown as defaults in convert.py.
+~~These use patient-unknown as defaults in convert.py.~~
 
-### Files to Fix:
+**Fix Applied:**
+- Removed all 3 placeholder patient/encounter ID fallbacks in convert.py
+- All instances now raise ValueError with clear error messages when required IDs are missing
+- RelatedPerson conversions require patient_id to be available (must be processed before informants)
+- Header Encounter requires valid identifiers (no nullFlavor-only ids)
+- All 737 integration tests pass
 
-- [ ] **ccda_to_fhir/convert.py:750**
-  - Line: `patient_id = getattr(self, "_patient_id", "patient-unknown")`
-  - Context: RelatedPerson converter patient_id default
+### Files Fixed:
 
-- [ ] **ccda_to_fhir/convert.py:2669**
-  - Line: `encounter_id = "encounter-header-unknown"`
-  - Context: Header encounter ID fallback
+- [x] **ccda_to_fhir/convert.py:750**
+  - ~~Line: `patient_id = getattr(self, "_patient_id", "patient-unknown")`~~
+  - **Fixed:** Now checks if _patient_id exists and raises ValueError if not available
 
-- [ ] **ccda_to_fhir/convert.py:3468**
-  - Line: `patient_id = "patient-unknown"`
-  - Context: Informant extraction patient_id default
+- [x] **ccda_to_fhir/convert.py:2660**
+  - ~~Line: `encounter_id = "encounter-header-unknown"`~~
+  - **Fixed:** Raises ValueError when encounter id has no root or extension
+
+- [x] **ccda_to_fhir/convert.py:3461**
+  - ~~Line: `patient_id = "patient-unknown"`~~
+  - **Fixed:** Now checks if _patient_id exists and raises ValueError if not available
 
 ---
 
