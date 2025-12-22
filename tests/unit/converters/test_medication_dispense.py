@@ -430,6 +430,95 @@ class TestMedicationDispensePerformer:
         assert "actor" in result["performer"][0]
         assert result["performer"][0]["actor"]["reference"].startswith("Practitioner/")
 
+    def test_performer_with_only_organization_creates_organization_performer(self):
+        """Test performer with only representedOrganization (no assignedPerson) creates Organization reference."""
+        from ccda_to_fhir.ccda.models.performer import RepresentedOrganization
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        dispense = create_minimal_dispense()
+
+        # Create assignedEntity with ONLY representedOrganization (no assignedPerson)
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="1234567890")]
+
+        # representedOrganization only
+        org = RepresentedOrganization()
+        org.id = [II(root="2.16.840.1.113883.4.6", extension="1234567890")]
+        org.name = ["Community Pharmacy"]
+        assigned_entity.represented_organization = org
+
+        # Explicitly ensure no assigned_person
+        # (no assigned_entity.assigned_person = ...)
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+
+        dispense.performer = [performer]
+
+        # Set up registry with patient reference
+        registry = ReferenceRegistry()
+        registry.register_resource({"resourceType": "Patient", "id": "test-patient"})
+
+        converter = MedicationDispenseConverter(reference_registry=registry)
+        result = converter.convert(dispense)
+
+        # Should have performer entry with Organization reference
+        assert "performer" in result
+        assert len(result["performer"]) >= 1
+        assert "actor" in result["performer"][0]
+        assert result["performer"][0]["actor"]["reference"].startswith("Organization/")
+
+        # Should have function code
+        assert "function" in result["performer"][0]
+        assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
+
+        # Should have created Organization resource in registry
+        org_ref = result["performer"][0]["actor"]["reference"]
+        org_id = org_ref.split("/")[1]
+        assert registry.has_resource("Organization", org_id)
+
+    def test_performer_with_both_person_and_organization(self):
+        """Test performer with both assignedPerson and representedOrganization creates Practitioner performer."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedPerson,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        dispense = create_minimal_dispense()
+
+        # Create assignedEntity with BOTH assignedPerson and representedOrganization
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        org = RepresentedOrganization()
+        org.id = [II(root="2.16.840.1.113883.4.6", extension="1234567890")]
+        org.name = ["Community Pharmacy"]
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        performer.assigned_entity = assigned_entity
+
+        dispense.performer = [performer]
+
+        # Set up registry with patient reference
+        registry = ReferenceRegistry()
+        registry.register_resource({"resourceType": "Patient", "id": "test-patient"})
+
+        converter = MedicationDispenseConverter(reference_registry=registry)
+        result = converter.convert(dispense)
+
+        # Should have performer entry with Practitioner reference (person takes precedence)
+        assert "performer" in result
+        assert len(result["performer"]) >= 1
+        assert "actor" in result["performer"][0]
+        assert result["performer"][0]["actor"]["reference"].startswith("Practitioner/")
+
+        # Should also have location (from representedOrganization)
+        assert "location" in result
+        assert result["location"]["reference"].startswith("Location/")
+
     def test_author_creates_performer_with_packager_function(self):
         """Test author creates performer entry with packager function."""
         dispense = create_minimal_dispense()

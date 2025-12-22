@@ -89,44 +89,55 @@ if hasattr(organization, "id") and organization.id:
 
 ## High Priority Issues
 
-### HIGH-1: MedicationDispense - Organization Performer Not Handled
+### ~~HIGH-1: MedicationDispense - Organization Performer Not Handled~~ ✅ FIXED
 
+**Status:** ✅ Fixed on 2025-12-22
 **Severity:** High
 **Component:** MedicationDispense Converter
-**Location:** `ccda_to_fhir/converters/medication_dispense.py:293-322`
+**Location:** `ccda_to_fhir/converters/medication_dispense.py:370-386`
 
 **Issue:**
-When `performer/assignedEntity` represents an Organization (no assignedPerson), no performer entry is created. Only handles Practitioner cases.
+When `performer/assignedEntity` represents an Organization (no assignedPerson), no performer entry was created. Only Practitioner cases were handled.
 
-**Current Code:**
-```python
-if hasattr(assigned, "assigned_person") and assigned.assigned_person:
-    # Practitioner case - handled
-    # ...
-else:
-    # Organization case - NOT handled, silently skipped
-    pass
-```
+**C-CDA Spec:**
+Per C-CDA Medication Dispense specification, the performer element can contain:
+- `assignedPerson` - Individual pharmacist/practitioner
+- `representedOrganization` - Pharmacy organization (or both)
 
-**Impact:**
-Pharmacy organizations acting as performers are not represented in MedicationDispense.
+When only `representedOrganization` is present (no `assignedPerson`), this represents an organization performer.
 
-**Fix:**
-```python
-if hasattr(assigned, "assigned_person") and assigned.assigned_person:
-    # Handle Practitioner
-    # ... existing code ...
-elif hasattr(assigned, "represented_organization") and assigned.represented_organization:
-    # Handle Organization performer
-    org = assigned.represented_organization
-    if hasattr(org, "id") and org.id:
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-        org_id = generate_id_from_identifiers(
-            "Organization", org.id[0].root, org.id[0].extension
-        )
-        performer_obj["actor"] = {"reference": f"Organization/{org_id}"}
-        performers.append(performer_obj)
-```
+**FHIR Spec:**
+Per FHIR R4B MedicationDispense, `performer.actor` supports Reference to:
+- Practitioner | PractitionerRole | **Organization** | Patient | Device | RelatedPerson
+
+**Fix Applied:**
+Updated `_extract_performers_and_location()` method to handle organization-only performers:
+
+1. Added `elif` branch to handle organization performers when no assignedPerson is present
+2. Created new `_create_pharmacy_organization()` method to:
+   - Generate Organization resource from representedOrganization
+   - Use OrganizationConverter for consistent resource creation
+   - Register Organization resource in reference registry
+   - Return Organization ID for performer.actor reference
+3. Set performer function to "finalchecker" (consistent with practitioner performers)
+
+**Implementation:**
+- Modified: `ccda_to_fhir/converters/medication_dispense.py:370-386`
+- Added: `_create_pharmacy_organization()` method at line 651-721
+- Added tests:
+  - `test_performer_with_only_organization_creates_organization_performer()`
+  - `test_performer_with_both_person_and_organization()`
+- Test Status: ✅ All 1237 tests passing - no regressions
+
+**Behavior:**
+- Practitioner only → Practitioner performer + Location
+- Organization only → **Organization performer + Location** (newly fixed)
+- Both → Practitioner performer + Location (practitioner takes precedence)
+
+**References:**
+- [C-CDA Medication Dispense Spec](https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-MedicationDispense.html)
+- [FHIR MedicationDispense](https://hl7.org/fhir/R4B/medicationdispense.html)
+- [US Core MedicationDispense](http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationdispense)
 
 ---
 
@@ -472,12 +483,12 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 
 ### By Severity
 - **Critical:** ~~2~~ 0 remaining (~~2 fixed~~)
-- **High:** 3 (functionality gaps)
+- **High:** ~~3~~ 2 remaining (~~1 fixed~~)
 - **Medium:** 5 (intentional leniency vs strict compliance)
 - **Low:** 2 (nice-to-have validations)
 
 ### By Component
-- **MedicationDispense:** ~~7~~ ~~6~~ 5 issues remaining (~~2 fixed~~)
+- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ 4 issues remaining (~~3 fixed~~)
 - **CareTeam:** 5 issues
 
 ### Key Takeaways
@@ -485,9 +496,7 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 **Fixed:**
 1. ✅ Extract supply.code element (contains actual status) - FIXED 2025-12-22
 2. ✅ Populate Location.identifier from organization - FIXED 2025-12-22
-
-**Must Fix:**
-1. Handle Organization performers
+3. ✅ Handle Organization performers - FIXED 2025-12-22
 
 **Intentional Design Choices:**
 - CareTeam accepts missing required elements (statusCode, effectiveTime, type observation)

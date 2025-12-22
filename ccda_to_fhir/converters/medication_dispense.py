@@ -338,7 +338,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
                 # Determine if it's a practitioner or organization
                 if hasattr(assigned, "assigned_person") and assigned.assigned_person:
-                    # Practitioner
+                    # Practitioner performer case
                     if hasattr(assigned, "id") and assigned.id:
                         for id_elem in assigned.id:
                             if id_elem.root:
@@ -353,7 +353,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                                 }
                                 break
 
-                    # Add function (default to finalchecker)
+                    # Add function (default to finalchecker for practitioner)
                     performer_obj["function"] = {
                         "coding": [
                             {
@@ -365,6 +365,24 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     }
 
                     if performer_obj.get("actor"):
+                        performers.append(performer_obj)
+
+                elif hasattr(assigned, "represented_organization") and assigned.represented_organization:
+                    # Organization performer case (no assigned_person)
+                    org = assigned.represented_organization
+                    org_id = self._create_pharmacy_organization(org)
+                    if org_id:
+                        performer_obj["actor"] = {"reference": f"Organization/{org_id}"}
+                        # Add function (default to finalchecker for organization)
+                        performer_obj["function"] = {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/medicationdispense-performer-function",
+                                    "code": "finalchecker",
+                                    "display": "Final Checker",
+                                }
+                            ]
+                        }
                         performers.append(performer_obj)
 
                 # Create Location resource from representedOrganization
@@ -629,6 +647,78 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         self.reference_registry.register_resource(location)
 
         return f"Location/{location_id}"
+
+    def _create_pharmacy_organization(
+        self,
+        organization: "RepresentedOrganization"
+    ) -> str | None:
+        """Create Organization resource for pharmacy.
+
+        Maps C-CDA performer/representedOrganization to FHIR Organization resource.
+        When a performer has only representedOrganization (no assignedPerson), this
+        creates an Organization resource to serve as the performer.actor reference.
+
+        Args:
+            organization: The representedOrganization element from performer
+
+        Returns:
+            Organization ID or None if creation fails
+
+        Examples:
+            >>> org = RepresentedOrganization(
+            ...     id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+            ...     name=["Community Pharmacy"]
+            ... )
+            >>> org_id = self._create_pharmacy_organization(org)
+            >>> # Returns: "org-1234567890" or similar
+        """
+        if not organization:
+            return None
+
+        if not self.reference_registry:
+            # Cannot create Organization without registry
+            return None
+
+        # Generate Organization ID from identifiers
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        org_id = None
+        if hasattr(organization, "id") and organization.id:
+            for id_elem in organization.id:
+                if id_elem.root:
+                    org_id = generate_id_from_identifiers(
+                        "Organization",
+                        id_elem.root,
+                        id_elem.extension
+                    )
+                    break
+
+        # Fallback: Generate from organization name
+        if not org_id:
+            name = self._extract_organization_name(organization)
+            if name:
+                org_id = generate_id_from_identifiers("Organization", None, name)
+            else:
+                org_id = generate_id_from_identifiers("Organization", None, None)
+
+        # Check if already created
+        if self.reference_registry.has_resource("Organization", org_id):
+            return org_id
+
+        # Create Organization resource using OrganizationConverter
+        from ccda_to_fhir.converters.organization import OrganizationConverter
+
+        org_converter = OrganizationConverter(reference_registry=self.reference_registry)
+        org_resource = org_converter.convert(organization)
+
+        # Add ID if not already set
+        if "id" not in org_resource:
+            org_resource["id"] = org_id
+
+        # Register the Organization resource
+        self.reference_registry.register_resource(org_resource)
+
+        return org_id
 
     def _generate_location_id(self, organization: "RepresentedOrganization") -> str:
         """Generate FHIR Location ID from pharmacy organization.
