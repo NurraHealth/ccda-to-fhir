@@ -130,6 +130,31 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         if not organizer.id or len(organizer.id) == 0:
             raise ValueError("Care Team Organizer identifier is required")
 
+        # ====================================================================
+        # DESIGN DECISION: Lenient effectiveTime validation
+        # ====================================================================
+        # C-CDA SHALL Requirement:
+        #   Care Team Organizer SHALL contain exactly one [1..1] effectiveTime
+        #   (Template 2.16.840.1.113883.10.20.22.4.500, line 272)
+        #
+        # Implementation Choice:
+        #   This implementation treats effectiveTime as optional (does not enforce presence)
+        #   but strictly validates structure when present (low element required).
+        #
+        # Rationale:
+        #   - Real-world C-CDA documents often omit effectiveTime for ongoing care teams
+        #   - Missing effectiveTime does not prevent meaningful FHIR resource creation
+        #   - Rejecting documents would reduce interoperability with imperfect data
+        #   - When missing, CareTeam.period is derived from document effectiveTime or omitted
+        #
+        # Trade-offs:
+        #   ✓ Robustness: Accepts real-world data variations
+        #   ✓ Usability: Does not block conversion for minor omissions
+        #   ✗ Strict Compliance: Deviates from C-CDA SHALL requirement
+        #
+        # See: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-CareTeamOrganizer.html
+        # ====================================================================
+
         # Validate effectiveTime.low when effectiveTime is present
         if organizer.effective_time:
             if hasattr(organizer.effective_time, "low"):
@@ -297,6 +322,43 @@ class CareTeamConverter(BaseConverter["Organizer"]):
     def _map_status(self, status_code) -> str:
         """Map C-CDA statusCode to FHIR CareTeam status.
 
+        ====================================================================
+        DESIGN DECISION: Lenient statusCode validation
+        ====================================================================
+        C-CDA SHALL Requirement:
+          Care Team Organizer SHALL contain exactly one [1..1] statusCode
+          statusCode SHALL contain exactly one [1..1] @code from ActStatus value set
+          (Template 2.16.840.1.113883.10.20.22.4.500, line 271)
+
+        Implementation Choice:
+          This implementation accepts missing statusCode and defaults to "active"
+          rather than rejecting the document or raising an error.
+
+        Rationale:
+          - Real-world C-CDA documents may omit statusCode for active care teams
+          - "active" is the most common and reasonable default for ongoing teams
+          - Missing statusCode does not indicate invalid clinical data
+          - Defaulting enables successful conversion of imperfect but usable data
+
+        Trade-offs:
+          ✓ Robustness: Handles documents with missing required elements
+          ✓ Usability: Provides sensible default behavior
+          ✓ Safety: "active" is conservative assumption for ongoing teams
+          ✗ Strict Compliance: Deviates from C-CDA SHALL requirement
+
+        Mapping:
+          C-CDA statusCode  →  FHIR CareTeam.status
+          active            →  active
+          completed         →  inactive
+          aborted           →  inactive
+          suspended         →  suspended
+          nullified         →  entered-in-error
+          obsolete          →  inactive
+          missing/unknown   →  active (default)
+
+        See: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-CareTeamOrganizer.html
+        ====================================================================
+
         Args:
             status_code: C-CDA statusCode element
 
@@ -304,7 +366,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             FHIR status code
         """
         if not status_code or not status_code.code:
-            return "active"  # Default to active
+            return "active"  # Default to active when statusCode missing (lenient)
 
         ccda_status = status_code.code.lower()
         return self.STATUS_MAP.get(ccda_status, "active")
@@ -337,16 +399,51 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         Validates both root OID and extension date per C-CDA specification.
 
+        ====================================================================
+        DESIGN DECISION: Lenient Care Team Type Observation validation
+        ====================================================================
+        C-CDA Specification Note:
+          The C-CDA Care Team Organizer template documentation shows Care Team Type
+          Observation as component with cardinality 0..* (MAY contain) per the
+          specification's conformance table, though some implementations may expect
+          at least one type observation for proper categorization.
+
+        Implementation Choice:
+          This implementation treats Care Team Type Observation as fully optional.
+          When missing, CareTeam.category will be an empty array, and the care team
+          will still be created without categorization.
+
+        Rationale:
+          - Care Team Type Observation is marked as 0..* MAY in C-CDA spec
+          - Real-world documents may omit team type for generic care teams
+          - Missing category does not prevent meaningful care team representation
+          - US Core CareTeam profile does not require category (0..*)
+          - Team members and period are more critical than categorization
+
+        Trade-offs:
+          ✓ Robustness: Accepts care teams without explicit type
+          ✓ Flexibility: Works with minimal C-CDA implementations
+          ✓ Standards Aligned: Follows C-CDA MAY conformance level
+          ~ Discoverability: Care teams without category may be harder to filter
+
+        When Type Observation is present:
+          - Extracts LOINC codes (LA27976-2, LA27977-0, LA28865-6, etc.)
+          - Validates template ID root and extension (lenient on extension)
+          - Maps to CareTeam.category for FHIR US Core compliance
+
+        See: C-CDA Care Team Organizer template documentation
+        ====================================================================
+
         Args:
             organizer: Care Team Organizer
 
         Returns:
-            List of FHIR CodeableConcept for categories
+            List of FHIR CodeableConcept for categories (may be empty)
         """
         categories: list[JSONObject] = []
 
         if not organizer.component:
-            return categories
+            return categories  # No components - acceptable per MAY conformance
 
         for component in organizer.component:
             # Look for Care Team Type Observation
