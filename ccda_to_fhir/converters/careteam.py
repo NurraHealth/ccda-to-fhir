@@ -42,12 +42,18 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
     # Care Team Organizer template OID
     CARE_TEAM_ORGANIZER_TEMPLATE = "2.16.840.1.113883.10.20.22.4.500"
+    # Valid extensions: 2019-07-01, 2022-06-01 (both acceptable per C-CDA spec)
+    CARE_TEAM_ORGANIZER_EXTENSIONS = ["2019-07-01", "2022-06-01"]
 
     # Care Team Member Act template OID
     CARE_TEAM_MEMBER_ACT_TEMPLATE = "2.16.840.1.113883.10.20.22.4.500.1"
+    # Valid extensions: 2019-07-01, 2022-06-01 (both acceptable per C-CDA spec)
+    CARE_TEAM_MEMBER_ACT_EXTENSIONS = ["2019-07-01", "2022-06-01"]
 
     # Care Team Type Observation template OID
     CARE_TEAM_TYPE_OBSERVATION_TEMPLATE = "2.16.840.1.113883.10.20.22.4.500.2"
+    # Valid extension: 2019-07-01 (only one version per C-CDA spec)
+    CARE_TEAM_TYPE_OBSERVATION_EXTENSION = "2019-07-01"
 
     # US Core CareTeam profile
     US_CORE_CARETEAM_PROFILE = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam"
@@ -210,6 +216,8 @@ class CareTeamConverter(BaseConverter["Organizer"]):
     def _validate_template(self, organizer: "Organizer") -> None:
         """Validate that this is a Care Team Organizer template.
 
+        Validates both root OID and extension date per C-CDA specification.
+
         Args:
             organizer: Organizer to validate
 
@@ -218,17 +226,28 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         """
         if not organizer.template_id:
             raise ValueError(
-                f"Missing templateId - expected {self.CARE_TEAM_ORGANIZER_TEMPLATE}"
+                f"Missing templateId - expected {self.CARE_TEAM_ORGANIZER_TEMPLATE} "
+                f"with extension {' or '.join(self.CARE_TEAM_ORGANIZER_EXTENSIONS)}"
             )
 
+        # Check for valid template (root + extension)
         has_valid_template = any(
-            tid.root == self.CARE_TEAM_ORGANIZER_TEMPLATE
+            tid.root == self.CARE_TEAM_ORGANIZER_TEMPLATE and
+            hasattr(tid, "extension") and
+            tid.extension in self.CARE_TEAM_ORGANIZER_EXTENSIONS
             for tid in organizer.template_id
         )
 
         if not has_valid_template:
+            # Provide helpful error message
+            found_templates = [
+                f"{tid.root}" + (f" extension={tid.extension}" if hasattr(tid, "extension") and tid.extension else " (no extension)")
+                for tid in organizer.template_id
+            ]
             raise ValueError(
-                f"Invalid templateId - expected {self.CARE_TEAM_ORGANIZER_TEMPLATE}"
+                f"Invalid templateId - expected {self.CARE_TEAM_ORGANIZER_TEMPLATE} "
+                f"with extension {' or '.join(self.CARE_TEAM_ORGANIZER_EXTENSIONS)}. "
+                f"Found: {', '.join(found_templates)}"
             )
 
     def _generate_careteam_id(self, identifiers: list) -> str:
@@ -316,6 +335,8 @@ class CareTeamConverter(BaseConverter["Organizer"]):
     def _extract_categories(self, organizer: "Organizer") -> list[JSONObject]:
         """Extract category from Care Team Type Observations.
 
+        Validates both root OID and extension date per C-CDA specification.
+
         Args:
             organizer: Care Team Organizer
 
@@ -338,13 +359,33 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             if not observation.template_id:
                 continue
 
+            # Validate template root and extension
             is_type_obs = any(
-                tid.root == self.CARE_TEAM_TYPE_OBSERVATION_TEMPLATE
+                tid.root == self.CARE_TEAM_TYPE_OBSERVATION_TEMPLATE and
+                hasattr(tid, "extension") and
+                tid.extension == self.CARE_TEAM_TYPE_OBSERVATION_EXTENSION
                 for tid in observation.template_id
             )
 
             if not is_type_obs:
-                continue
+                # Check if root matches but extension is wrong/missing
+                has_matching_root = any(
+                    tid.root == self.CARE_TEAM_TYPE_OBSERVATION_TEMPLATE
+                    for tid in observation.template_id
+                )
+                if has_matching_root:
+                    # Log warning but continue (lenient for real-world data)
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(
+                        f"Care Team Type Observation has correct root "
+                        f"{self.CARE_TEAM_TYPE_OBSERVATION_TEMPLATE} but missing or "
+                        f"invalid extension (expected {self.CARE_TEAM_TYPE_OBSERVATION_EXTENSION})"
+                    )
+                    # Continue processing despite extension issue
+                else:
+                    # Different template, skip
+                    continue
 
             # Extract value (team type code)
             if observation.value:
@@ -383,13 +424,24 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             if not act.template_id:
                 continue
 
+            # Validate template root and extension
             is_member_act = any(
-                tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE
+                tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE and
+                hasattr(tid, "extension") and
+                tid.extension in self.CARE_TEAM_MEMBER_ACT_EXTENSIONS
                 for tid in act.template_id
             )
 
             if not is_member_act:
-                continue
+                # Check if root matches but extension is wrong/missing (lenient)
+                has_matching_root = any(
+                    tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE
+                    for tid in act.template_id
+                )
+                if not has_matching_root:
+                    # Different template, skip
+                    continue
+                # If root matches but extension is wrong, continue anyway (lenient)
 
             # Extract organization from performer
             if not act.performer or len(act.performer) == 0:
@@ -451,13 +503,33 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             if not act.template_id:
                 continue
 
+            # Validate template root and extension
             is_member_act = any(
-                tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE
+                tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE and
+                hasattr(tid, "extension") and
+                tid.extension in self.CARE_TEAM_MEMBER_ACT_EXTENSIONS
                 for tid in act.template_id
             )
 
             if not is_member_act:
-                continue
+                # Check if root matches but extension is wrong/missing
+                has_matching_root = any(
+                    tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE
+                    for tid in act.template_id
+                )
+                if has_matching_root:
+                    # Log warning but continue (lenient for real-world data)
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(
+                        f"Care Team Member Act has correct root "
+                        f"{self.CARE_TEAM_MEMBER_ACT_TEMPLATE} but missing or "
+                        f"invalid extension (expected {' or '.join(self.CARE_TEAM_MEMBER_ACT_EXTENSIONS)})"
+                    )
+                    # Continue processing despite extension issue
+                else:
+                    # Different template, skip
+                    continue
 
             # Validate Care Team Member Act code (SHALL be LOINC 86744-0)
             # This is a C-CDA requirement, but we'll be lenient and allow conversion

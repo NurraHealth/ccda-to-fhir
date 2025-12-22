@@ -141,64 +141,126 @@ Updated `_extract_performers_and_location()` method to handle organization-only 
 
 ---
 
-### HIGH-2: CareTeam - Template Extension Not Validated
+### ~~HIGH-2: CareTeam - Template Extension Not Validated~~ ✅ FIXED
 
+**Status:** ✅ Fixed on 2025-12-22
 **Severity:** High
-**Component:** CareTeam Converter
-**Location:** `ccda_to_fhir/converters/careteam.py:224-232`
+**Component:** MedicationDispense Converter
+**Location:** `ccda_to_fhir/converters/medication_dispense.py:370-386`
 
 **Issue:**
-Template validation only checks root OID, not extension date. Applies to all three templates:
+When `performer/assignedEntity` represents an Organization (no assignedPerson), no performer entry was created. Only Practitioner cases were handled.
+
+**C-CDA Spec:**
+Per C-CDA Medication Dispense specification, the performer element can contain:
+- `assignedPerson` - Individual pharmacist/practitioner
+- `representedOrganization` - Pharmacy organization (or both)
+
+When only `representedOrganization` is present (no `assignedPerson`), this represents an organization performer.
+
+**FHIR Spec:**
+Per FHIR R4B MedicationDispense, `performer.actor` supports Reference to:
+- Practitioner | PractitionerRole | **Organization** | Patient | Device | RelatedPerson
+
+**Fix Applied:**
+Updated `_extract_performers_and_location()` method to handle organization-only performers:
+
+1. Added `elif` branch to handle organization performers when no assignedPerson is present
+2. Created new `_create_pharmacy_organization()` method to:
+   - Generate Organization resource from representedOrganization
+   - Use OrganizationConverter for consistent resource creation
+   - Register Organization resource in reference registry
+   - Return Organization ID for performer.actor reference
+3. Set performer function to "finalchecker" (consistent with practitioner performers)
+
+**Implementation:**
+- Modified: `ccda_to_fhir/converters/medication_dispense.py:370-386`
+- Added: `_create_pharmacy_organization()` method at line 651-721
+- Added tests:
+  - `test_performer_with_only_organization_creates_organization_performer()`
+  - `test_performer_with_both_person_and_organization()`
+- Test Status: ✅ All 1237 tests passing - no regressions
+
+**Behavior:**
+- Practitioner only → Practitioner performer + Location
+- Organization only → **Organization performer + Location** (newly fixed)
+- Both → Practitioner performer + Location (practitioner takes precedence)
+
+**References:**
+- [C-CDA Medication Dispense Spec](https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-MedicationDispense.html)
+- [FHIR MedicationDispense](https://hl7.org/fhir/R4B/medicationdispense.html)
+- [US Core MedicationDispense](http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationdispense)
+
+---
+
+### ~~HIGH-2: CareTeam - Template Extension Not Validated~~ ✅ FIXED
+
+**Status:** ✅ Fixed on 2025-12-22
+**Severity:** High
+**Component:** CareTeam Converter
+**Location:** `ccda_to_fhir/converters/careteam.py:210-251, 335-401, 425-522`
+
+**Issue:**
+Template validation only checked root OID, not extension date. Applies to all three templates:
 - Care Team Organizer (2.16.840.1.113883.10.20.22.4.500)
 - Care Team Member Act (2.16.840.1.113883.10.20.22.4.500.1)
 - Care Team Type Observation (2.16.840.1.113883.10.20.22.4.500.2)
 
 **C-CDA Requirements:**
-```
-Care Team Organizer SHALL contain:
-- templateId @root="2.16.840.1.113883.10.20.22.4.500" @extension="2022-06-01"
+Per C-CDA specification, valid extensions are:
+- Care Team Organizer: 2019-07-01 or 2022-06-01 (both valid)
+- Care Team Member Act: 2019-07-01 or 2022-06-01 (both valid)
+- Care Team Type Observation: 2019-07-01 (only version)
 
-Care Team Member Act SHALL contain:
-- templateId @root="2.16.840.1.113883.10.20.22.4.500.1" @extension="2022-06-01"
+**Fix Applied:**
+Updated template validation in three locations:
 
-Care Team Type Observation SHALL contain:
-- templateId @root="2.16.840.1.113883.10.20.22.4.500.2" @extension="2019-07-01"
-```
+1. **Care Team Organizer (`_validate_template`)** - Strict validation:
+   - Added `CARE_TEAM_ORGANIZER_EXTENSIONS = ["2019-07-01", "2022-06-01"]`
+   - Validates both root and extension
+   - Rejects templates without valid extension
+   - Provides helpful error messages showing found vs expected
 
-**Current Code:**
-```python
-has_valid_template = any(
-    tid.root == self.CARE_TEAM_ORGANIZER_TEMPLATE
-    for tid in organizer.template_id
-)
-```
+2. **Care Team Type Observation (`_extract_categories`)** - Lenient validation:
+   - Added `CARE_TEAM_TYPE_OBSERVATION_EXTENSION = "2019-07-01"`
+   - Validates both root and extension
+   - Logs warning but continues if extension missing/invalid (real-world compatibility)
+   - Still extracts category data from non-compliant observations
 
-**Impact:**
-May accept outdated or invalid template versions.
+3. **Care Team Member Act (`_extract_participants`)** - Lenient validation:
+   - Added `CARE_TEAM_MEMBER_ACT_EXTENSIONS = ["2019-07-01", "2022-06-01"]`
+   - Validates both root and extension
+   - Logs warning but continues if extension missing/invalid (real-world compatibility)
+   - Still extracts participant data from non-compliant acts
 
-**Recommendation:**
-```python
-# Update constants
-CARE_TEAM_ORGANIZER_EXTENSION = "2022-06-01"
-CARE_TEAM_MEMBER_ACT_EXTENSION = "2022-06-01"
-CARE_TEAM_TYPE_OBSERVATION_EXTENSION = "2019-07-01"
+**Implementation:**
+- Modified: `ccda_to_fhir/converters/careteam.py`
+  - Lines 43-56: Added extension constants
+  - Lines 216-251: Updated `_validate_template()` with strict extension checking
+  - Lines 335-401: Updated `_extract_categories()` with lenient extension checking
+  - Lines 425-445, 495-521: Updated participant extraction with lenient extension checking
+- Added comprehensive tests:
+  - `test_rejects_organizer_without_extension()`
+  - `test_rejects_organizer_with_invalid_extension()`
+  - `test_accepts_organizer_with_2019_extension()`
+  - `test_accepts_organizer_with_2022_extension()`
+  - `test_accepts_member_act_with_2019_extension()`
+  - `test_accepts_member_act_with_2022_extension()`
+  - `test_warns_but_accepts_member_act_without_extension()`
+  - `test_accepts_type_observation_with_correct_extension()`
+  - `test_warns_but_accepts_type_observation_without_extension()`
+- Updated all existing test fixtures to include proper extensions
+- Test Status: ✅ All 1246 tests passing - no regressions
 
-# Update validation
-has_valid_template = any(
-    tid.root == self.CARE_TEAM_ORGANIZER_TEMPLATE and
-    tid.extension == self.CARE_TEAM_ORGANIZER_EXTENSION
-    for tid in organizer.template_id
-)
-
-if not has_valid_template:
-    raise ValueError(
-        f"Invalid templateId - expected {self.CARE_TEAM_ORGANIZER_TEMPLATE} "
-        f"with extension {self.CARE_TEAM_ORGANIZER_EXTENSION}"
-    )
-```
+**Design Philosophy:**
+- **Strict for Organizer**: Entry point validation rejects non-compliant documents
+- **Lenient for Children**: Child elements warn but don't block processing (real-world compatibility)
+- Accepts both valid C-CDA extension versions (2019-07-01 and 2022-06-01) where applicable
 
 **References:**
-- C-CDA Care Team Organizer: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-CareTeamOrganizer.html
+- [C-CDA Care Team Organizer](https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-CareTeamOrganizer.html)
+- [C-CDA Care Team Member Act](https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-CareTeamMemberAct.html)
+- [C-CDA Care Team Type Observation](https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-CareTeamTypeObservation.html)
 
 ---
 
@@ -482,21 +544,22 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 ## Summary
 
 ### By Severity
-- **Critical:** ~~2~~ 0 remaining (~~2 fixed~~)
-- **High:** ~~3~~ 2 remaining (~~1 fixed~~)
+- **Critical:** ~~2~~ 0 remaining (2 fixed)
+- **High:** ~~3~~ ~~2~~ 1 remaining (2 fixed)
 - **Medium:** 5 (intentional leniency vs strict compliance)
 - **Low:** 2 (nice-to-have validations)
 
 ### By Component
-- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ 4 issues remaining (~~3 fixed~~)
-- **CareTeam:** 5 issues
+- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ 4 issues remaining (3 fixed)
+- **CareTeam:** ~~5~~ 4 issues remaining (1 fixed)
 
 ### Key Takeaways
 
 **Fixed:**
-1. ✅ Extract supply.code element (contains actual status) - FIXED 2025-12-22
-2. ✅ Populate Location.identifier from organization - FIXED 2025-12-22
-3. ✅ Handle Organization performers - FIXED 2025-12-22
+1. ✅ MedicationDispense: Extract supply.code element (contains actual status) - FIXED 2025-12-22
+2. ✅ MedicationDispense: Populate Location.identifier from organization - FIXED 2025-12-22
+3. ✅ MedicationDispense: Handle Organization performers - FIXED 2025-12-22
+4. ✅ CareTeam: Validate template extensions for all three templates - FIXED 2025-12-22
 
 **Intentional Design Choices:**
 - CareTeam accepts missing required elements (statusCode, effectiveTime, type observation)

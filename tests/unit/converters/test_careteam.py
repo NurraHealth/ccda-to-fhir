@@ -35,7 +35,7 @@ def minimal_care_team_member() -> Act:
     return Act(
         class_code="PCPR",
         mood_code="EVN",
-        template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.1")],
+        template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2022-06-01")],
         code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
         status_code=CS(code="active"),
         performer=[Performer(
@@ -282,7 +282,7 @@ class TestCareTeamConverter:
         member = Act(
             class_code="PCPR",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.1")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2022-06-01")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
             performer=[Performer(
@@ -297,7 +297,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[
                 II(root="2.16.840.1.113883.19.5", extension="team-001"),
                 II(root="2.16.840.1.113883.19.6", extension="team-002")
@@ -332,7 +332,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="completed"),
@@ -350,7 +350,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="aborted"),
@@ -368,7 +368,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="suspended"),
@@ -386,7 +386,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="nullified"),
@@ -404,7 +404,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=None,
@@ -454,7 +454,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -478,7 +478,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -521,7 +521,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -552,7 +552,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -591,7 +591,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -630,7 +630,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -715,7 +715,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -775,7 +775,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -840,7 +840,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=None,  # Missing status
@@ -859,7 +859,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=None,  # Missing ID
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -886,7 +886,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="WRONG", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -904,7 +904,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -943,7 +943,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -965,7 +965,7 @@ class TestCareTeamConverter:
         organizer = Organizer(
             class_code="CLUSTER",
             mood_code="EVN",
-            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
             id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
             code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
             status_code=CS(code="active"),
@@ -980,3 +980,283 @@ class TestCareTeamConverter:
         assert "div" in careteam["text"]
         assert "xmlns" in careteam["text"]["div"]
         assert "Care Team" in careteam["text"]["div"]
+
+    # ============================================================================
+    # Template Extension Validation Tests
+    # ============================================================================
+
+    def test_rejects_organizer_without_extension(
+        self, care_team_converter: CareTeamConverter, minimal_care_team_member: Act
+    ) -> None:
+        """Test that Care Team Organizer without extension is rejected."""
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500")],  # No extension
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[OrganizerComponent(act=minimal_care_team_member)]
+        )
+
+        with pytest.raises(ValueError, match="Invalid templateId.*extension"):
+            care_team_converter.convert(organizer)
+
+    def test_rejects_organizer_with_invalid_extension(
+        self, care_team_converter: CareTeamConverter, minimal_care_team_member: Act
+    ) -> None:
+        """Test that Care Team Organizer with invalid extension is rejected."""
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2018-01-01")],  # Invalid
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[OrganizerComponent(act=minimal_care_team_member)]
+        )
+
+        with pytest.raises(ValueError, match="Invalid templateId.*extension"):
+            care_team_converter.convert(organizer)
+
+    def test_accepts_organizer_with_2019_extension(
+        self, care_team_converter: CareTeamConverter, minimal_care_team_member: Act
+    ) -> None:
+        """Test that Care Team Organizer with 2019-07-01 extension is accepted."""
+        # Update minimal member to have extension
+        minimal_care_team_member.template_id = [
+            II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2019-07-01")
+        ]
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2019-07-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[OrganizerComponent(act=minimal_care_team_member)]
+        )
+
+        careteam = care_team_converter.convert(organizer)
+        assert careteam is not None
+        assert careteam["resourceType"] == FHIRCodes.ResourceTypes.CARETEAM
+
+    def test_accepts_organizer_with_2022_extension(
+        self, care_team_converter: CareTeamConverter, minimal_care_team_member: Act
+    ) -> None:
+        """Test that Care Team Organizer with 2022-06-01 extension is accepted."""
+        # Update minimal member to have extension
+        minimal_care_team_member.template_id = [
+            II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2022-06-01")
+        ]
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[OrganizerComponent(act=minimal_care_team_member)]
+        )
+
+        careteam = care_team_converter.convert(organizer)
+        assert careteam is not None
+        assert careteam["resourceType"] == FHIRCodes.ResourceTypes.CARETEAM
+
+    def test_accepts_member_act_with_2019_extension(
+        self, care_team_converter: CareTeamConverter
+    ) -> None:
+        """Test that Care Team Member Act with 2019-07-01 extension is accepted."""
+        member = Act(
+            class_code="PCPR",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2019-07-01")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            performer=[Performer(
+                function_code=CE(code="PCP", code_system="2.16.840.1.113883.5.88"),
+                assigned_entity=AssignedEntity(
+                    id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+                    assigned_person=AssignedPerson(
+                        name=[PN(given=[ENXP(value="John")], family=ENXP(value="Smith"))]
+                    )
+                )
+            )]
+        )
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[OrganizerComponent(act=member)]
+        )
+
+        careteam = care_team_converter.convert(organizer)
+        assert careteam is not None
+        assert len(careteam["participant"]) == 1
+
+    def test_accepts_member_act_with_2022_extension(
+        self, care_team_converter: CareTeamConverter
+    ) -> None:
+        """Test that Care Team Member Act with 2022-06-01 extension is accepted."""
+        member = Act(
+            class_code="PCPR",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2022-06-01")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            performer=[Performer(
+                function_code=CE(code="PCP", code_system="2.16.840.1.113883.5.88"),
+                assigned_entity=AssignedEntity(
+                    id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+                    assigned_person=AssignedPerson(
+                        name=[PN(given=[ENXP(value="John")], family=ENXP(value="Smith"))]
+                    )
+                )
+            )]
+        )
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[OrganizerComponent(act=member)]
+        )
+
+        careteam = care_team_converter.convert(organizer)
+        assert careteam is not None
+        assert len(careteam["participant"]) == 1
+
+    def test_warns_but_accepts_member_act_without_extension(
+        self, care_team_converter: CareTeamConverter, caplog
+    ) -> None:
+        """Test that Care Team Member Act without extension logs warning but continues."""
+        import logging
+
+        member = Act(
+            class_code="PCPR",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.1")],  # No extension
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            performer=[Performer(
+                function_code=CE(code="PCP", code_system="2.16.840.1.113883.5.88"),
+                assigned_entity=AssignedEntity(
+                    id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+                    assigned_person=AssignedPerson(
+                        name=[PN(given=[ENXP(value="John")], family=ENXP(value="Smith"))]
+                    )
+                )
+            )]
+        )
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[OrganizerComponent(act=member)]
+        )
+
+        with caplog.at_level(logging.WARNING):
+            careteam = care_team_converter.convert(organizer)
+
+        assert careteam is not None
+        assert len(careteam["participant"]) == 1
+        assert any("missing or invalid extension" in record.message for record in caplog.records)
+
+    def test_accepts_type_observation_with_correct_extension(
+        self, care_team_converter: CareTeamConverter, minimal_care_team_member: Act
+    ) -> None:
+        """Test that Care Team Type Observation with 2019-07-01 extension is accepted."""
+        # Update minimal member to have extension
+        minimal_care_team_member.template_id = [
+            II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2022-06-01")
+        ]
+
+        team_type_obs = Observation(
+            class_code="OBS",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.2", extension="2019-07-01")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            value=CE(code="LA27976-2", code_system="2.16.840.1.113883.6.1",
+                    display_name="Longitudinal care-coordination focused care team")
+        )
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[
+                OrganizerComponent(observation=team_type_obs),
+                OrganizerComponent(act=minimal_care_team_member)
+            ]
+        )
+
+        careteam = care_team_converter.convert(organizer)
+        assert careteam is not None
+        assert "category" in careteam
+        assert len(careteam["category"]) == 1
+
+    def test_warns_but_accepts_type_observation_without_extension(
+        self, care_team_converter: CareTeamConverter, minimal_care_team_member: Act, caplog
+    ) -> None:
+        """Test that Care Team Type Observation without extension logs warning but continues."""
+        import logging
+
+        # Update minimal member to have extension
+        minimal_care_team_member.template_id = [
+            II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2022-06-01")
+        ]
+
+        team_type_obs = Observation(
+            class_code="OBS",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.2")],  # No extension
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            value=CE(code="LA27976-2", code_system="2.16.840.1.113883.6.1",
+                    display_name="Longitudinal care-coordination focused care team")
+        )
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-001")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[
+                OrganizerComponent(observation=team_type_obs),
+                OrganizerComponent(act=minimal_care_team_member)
+            ]
+        )
+
+        with caplog.at_level(logging.WARNING):
+            careteam = care_team_converter.convert(organizer)
+
+        assert careteam is not None
+        assert "category" in careteam
+        assert len(careteam["category"]) == 1
+        assert any("missing or invalid extension" in record.message for record in caplog.records)
