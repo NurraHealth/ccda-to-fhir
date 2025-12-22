@@ -88,9 +88,8 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         immunization["status"] = status
 
         # 4. VaccineCode (required) - from consumable
-        vaccine_code = self._extract_vaccine_code(substance_admin)
-        if vaccine_code:
-            immunization["vaccineCode"] = vaccine_code
+        # Always present (method returns data-absent-reason if no code available)
+        immunization["vaccineCode"] = self._extract_vaccine_code(substance_admin)
 
         # 5. Patient (subject reference)
         if self.reference_registry:
@@ -239,28 +238,38 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         return status
 
-    def _extract_vaccine_code(self, substance_admin: SubstanceAdministration) -> JSONObject | None:
+    def _extract_vaccine_code(self, substance_admin: SubstanceAdministration) -> JSONObject:
         """Extract vaccine code from consumable.
 
         Args:
             substance_admin: The C-CDA SubstanceAdministration
 
         Returns:
-            FHIR CodeableConcept for vaccine code
+            FHIR CodeableConcept for vaccine code (required field, always returns a value)
         """
-        if not substance_admin.consumable:
-            return None
+        # Try to extract code from consumable
+        vaccine_code = None
+        if substance_admin.consumable:
+            manufactured_product = substance_admin.consumable.manufactured_product
+            if manufactured_product:
+                manufactured_material = manufactured_product.manufactured_material
+                if manufactured_material and manufactured_material.code:
+                    code = manufactured_material.code
+                    vaccine_code = self._convert_code_to_codeable_concept(code)
 
-        manufactured_product = substance_admin.consumable.manufactured_product
-        if not manufactured_product:
-            return None
+        # Ensure vaccineCode is always present (required 1..1 cardinality)
+        # If no code available, use data-absent-reason per C-CDA on FHIR IG
+        if not vaccine_code or not vaccine_code.get("coding"):
+            return {
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+                    "code": "unknown",
+                    "display": "Unknown"
+                }],
+                "text": "Unknown vaccine"
+            }
 
-        manufactured_material = manufactured_product.manufactured_material
-        if not manufactured_material or not manufactured_material.code:
-            return None
-
-        code = manufactured_material.code
-        return self._convert_code_to_codeable_concept(code)
+        return vaccine_code
 
     def _extract_occurrence_date(self, substance_admin: SubstanceAdministration) -> str | None:
         """Extract occurrence date from effectiveTime.
