@@ -379,6 +379,9 @@ Beyond that, I hope they are useful and "hooray" for government transparency! Jo
                     <country>United States of America</country>
                   </addr>
                   <telecom use="WP" value="tel:(555)555-1002" />
+                  <playingEntity classCode="PLC">
+                    <name>Neighborhood Physicians Practice</name>
+                  </playingEntity>
                 </participantRole>
               </participant>
               <entryRelationship typeCode="REFR">
@@ -464,6 +467,9 @@ Beyond that, I hope they are useful and "hooray" for government transparency! Jo
                     <country>United States of America</country>
                   </addr>
                   <telecom use="WP" value="tel:(555)555-1002" />
+                  <playingEntity classCode="PLC">
+                    <name>Neighborhood Physicians Practice</name>
+                  </playingEntity>
                 </participantRole>
               </participant>
             </encounter>

@@ -2543,27 +2543,16 @@ class DocumentConverter:
                                 # Look for location participants (typeCode="LOC")
                                 if hasattr(participant, "type_code") and participant.type_code == "LOC":
                                     if participant.participant_role:
-                                        try:
-                                            # Convert to Location resource
-                                            location = location_converter.convert(participant.participant_role)
+                                        # Convert to Location resource
+                                        location = location_converter.convert(participant.participant_role)
 
-                                            # Deduplicate by NPI or name+city
-                                            dedup_key = self._get_location_dedup_key(location)
+                                        # Deduplicate by NPI or name+city
+                                        dedup_key = self._get_location_dedup_key(location)
 
-                                            if dedup_key not in location_registry:
-                                                location_registry[dedup_key] = location
-                                                logger.debug(
-                                                    f"Created Location resource: {location.get('name')} (ID: {location.get('id')})"
-                                                )
-                                        except ValueError as e:
-                                            # Invalid location (missing required fields)
-                                            logger.warning(
-                                                f"Skipping invalid Service Delivery Location: {e}"
-                                            )
-                                        except Exception as e:
-                                            logger.error(
-                                                f"Error converting Service Delivery Location: {e}",
-                                                exc_info=True
+                                        if dedup_key not in location_registry:
+                                            location_registry[dedup_key] = location
+                                            logger.debug(
+                                                f"Created Location resource: {location.get('name')} (ID: {location.get('id')})"
                                             )
 
                     # Extract from procedures
@@ -2574,27 +2563,16 @@ class DocumentConverter:
                                 # Look for location participants (typeCode="LOC")
                                 if hasattr(participant, "type_code") and participant.type_code == "LOC":
                                     if participant.participant_role:
-                                        try:
-                                            # Convert to Location resource
-                                            location = location_converter.convert(participant.participant_role)
+                                        # Convert to Location resource
+                                        location = location_converter.convert(participant.participant_role)
 
-                                            # Deduplicate by NPI or name+city
-                                            dedup_key = self._get_location_dedup_key(location)
+                                        # Deduplicate by NPI or name+city
+                                        dedup_key = self._get_location_dedup_key(location)
 
-                                            if dedup_key not in location_registry:
-                                                location_registry[dedup_key] = location
-                                                logger.debug(
-                                                    f"Created Location resource from Procedure: {location.get('name')} (ID: {location.get('id')})"
-                                                )
-                                        except ValueError as e:
-                                            # Invalid location (missing required fields)
-                                            logger.warning(
-                                                f"Skipping invalid Procedure Service Delivery Location: {e}"
-                                            )
-                                        except Exception as e:
-                                            logger.error(
-                                                f"Error converting Procedure Service Delivery Location: {e}",
-                                                exc_info=True
+                                        if dedup_key not in location_registry:
+                                            location_registry[dedup_key] = location
+                                            logger.debug(
+                                                f"Created Location resource from Procedure: {location.get('name')} (ID: {location.get('id')})"
                                             )
 
             # Process nested sections

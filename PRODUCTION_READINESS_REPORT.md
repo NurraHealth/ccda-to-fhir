@@ -340,23 +340,19 @@ practice_fusion_jeremy_bates.xml:
 2. Or remove the extension references if Practitioners shouldn't exist
 3. Check why Practitioner creation is failing
 
-**Sub-Issue B: Procedure Location References**
+**Sub-Issue B: Procedure Location References** ✅ **FIXED (2025-12-22)**
 
-**Count:** 2 broken references
-**Severity:** HIGH
+~~**Count:** 2 broken references~~
+~~**Severity:** HIGH~~
 
-**Problem:** Procedure resources reference `Location/location-unknown` which is a placeholder ID.
+~~**Problem:** Procedure resources reference `Location/location-unknown` which is a placeholder ID.~~
 
-**Examples:**
-- Procedure/426908 → location: `Location/location-unknown`
-- Procedure/426909 → location: `Location/location-unknown`
-
-**Root Cause:** Procedure converter is using placeholder "location-unknown" when Location cannot be created/resolved.
-
-**Fix Required:** Either:
-1. Create the Location resource properly, OR
-2. Omit the location reference entirely (it's optional)
-3. NEVER use placeholder references
+**Fix Applied:**
+- Removed `"location-unknown"` sentinel value from `procedure.py:414`
+- Now raises `ValueError` when location ID cannot be generated
+- Removed permissive exception handling in `convert.py` - errors propagate immediately
+- Enforces US Core Location.name requirement (1..1 cardinality)
+- All tests pass with valid, US Core-compliant documents
 
 **Sub-Issue C: Encounter Diagnosis References**
 
@@ -560,7 +556,7 @@ These don't violate specs but impact document quality and portability:
    - **Note:** Not spec violations, but best practice for document Bundles per [FHIR Bundle](https://hl7.org/fhir/R4B/bundle.html)
    - **Fix:**
      - Sub-issue A: Ensure Practitioners are created/registered before Composition references them
-     - Sub-issue B: Remove "location-unknown" placeholder logic - make location optional
+     - ✅ Sub-issue B: ~~Remove "location-unknown" placeholder logic~~ **FIXED (2025-12-22)** - Strict validation enforced
      - Sub-issue C: Remove "condition-unknown" placeholder logic - make diagnosis optional
      - Add validation to prevent placeholder references
 

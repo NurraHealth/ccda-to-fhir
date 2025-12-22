@@ -1,0 +1,357 @@
+# TODO: Fix All Broken References and Placeholder IDs
+
+**Status:** Not Started
+**Priority:** CRITICAL
+**Created:** 2025-12-22
+
+## Overview
+
+The codebase contains multiple instances of broken references (e.g., `"Patient/patient-unknown"`) and placeholder IDs (e.g., `"device-unknown"`) that violate FHIR referential integrity. These must be removed and replaced with proper error handling.
+
+## Problem
+
+When the `reference_registry` is not available (primarily in unit tests), the code falls back to creating broken references instead of:
+1. Failing with a clear error message
+2. Providing proper mocks in tests
+3. Making the registry required
+
+This violates FHIR Bundle validation and creates invalid resources.
+
+---
+
+## CATEGORY 1: Broken Patient References (23 instances)
+
+These create `{"reference": "Patient/patient-unknown"}` when `reference_registry` is missing.
+
+### Files to Fix:
+
+- [ ] **ccda_to_fhir/converters/allergy_intolerance.py:187**
+  - Line: `allergy["patient"] = {"reference": "Patient/patient-unknown"}`
+  - Context: AllergyIntolerance.patient fallback
+
+- [ ] **ccda_to_fhir/converters/careplan.py:149**
+  - Line: `careplan["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: CarePlan.subject fallback (first instance)
+
+- [ ] **ccda_to_fhir/converters/careplan.py:151**
+  - Line: `careplan["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: CarePlan.subject fallback (second instance)
+
+- [ ] **ccda_to_fhir/converters/careplan.py:421**
+  - Line: `return {"reference": "Patient/patient-unknown"}`
+  - Context: CarePlan._get_subject_reference() fallback
+
+- [ ] **ccda_to_fhir/converters/composition.py:332**
+  - Line: `return {"reference": "Patient/patient-unknown"}`
+  - Context: Composition._convert_subject_reference() fallback
+
+- [ ] **ccda_to_fhir/converters/condition.py:226**
+  - Line: `condition["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Condition.subject fallback
+
+- [ ] **ccda_to_fhir/converters/diagnostic_report.py:101**
+  - Line: `report["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: DiagnosticReport.subject fallback
+
+- [ ] **ccda_to_fhir/converters/document_reference.py:307**
+  - Line: `return {"reference": "Patient/patient-unknown"}`
+  - Context: DocumentReference._convert_subject_reference() fallback
+
+- [ ] **ccda_to_fhir/converters/encounter.py:77**
+  - Line: `fhir_encounter["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Encounter.subject fallback
+
+- [ ] **ccda_to_fhir/converters/goal.py:130**
+  - Line: `fhir_goal["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Goal.subject fallback
+
+- [ ] **ccda_to_fhir/converters/goal.py:353**
+  - Line: `return {"reference": "Patient/patient-unknown"}`
+  - Context: Goal._extract_expressed_by() fallback
+
+- [ ] **ccda_to_fhir/converters/immunization.py:99**
+  - Line: `immunization["patient"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Immunization.patient fallback
+
+- [ ] **ccda_to_fhir/converters/immunization.py:632**
+  - Line: `observation_resource["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Immunization reaction Observation.subject fallback
+
+- [ ] **ccda_to_fhir/converters/immunization.py:735**
+  - Line: `observation_resource["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Immunization supporting Observation.subject fallback
+
+- [ ] **ccda_to_fhir/converters/immunization.py:873**
+  - Line: `observation_resource["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Immunization complication Observation.subject fallback
+
+- [ ] **ccda_to_fhir/converters/medication_dispense.py:141**
+  - Line: `med_dispense["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: MedicationDispense.subject fallback
+
+- [ ] **ccda_to_fhir/converters/medication_request.py:121**
+  - Line: `med_request["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: MedicationRequest.subject fallback
+
+- [ ] **ccda_to_fhir/converters/medication_statement.py:97**
+  - Line: `med_statement["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: MedicationStatement.subject fallback
+
+- [ ] **ccda_to_fhir/converters/note_activity.py:87**
+  - Line: `doc_ref["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: DocumentReference.subject fallback (from Note Activity)
+
+- [ ] **ccda_to_fhir/converters/observation.py:127**
+  - Line: `fhir_obs["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Observation.subject fallback
+
+- [ ] **ccda_to_fhir/converters/observation.py:322**
+  - Line: `panel["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Observation panel.subject fallback
+
+- [ ] **ccda_to_fhir/converters/observation.py:1286**
+  - Line: `bp_obs["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Blood pressure Observation.subject fallback
+
+- [ ] **ccda_to_fhir/converters/procedure.py:116**
+  - Line: `fhir_procedure["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Procedure.subject fallback
+
+- [ ] **ccda_to_fhir/converters/service_request.py:140**
+  - Line: `fhir_service_request["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: ServiceRequest.subject fallback
+
+- [ ] **ccda_to_fhir/convert.py:2907**
+  - Line: `fhir_encounter["subject"] = {"reference": "Patient/patient-unknown"}`
+  - Context: Header Encounter.subject fallback
+
+---
+
+## CATEGORY 2: Placeholder Resource IDs (18 instances)
+
+These return placeholder IDs like `"device-unknown"` when identifiers are missing.
+
+### Files to Fix:
+
+- [ ] **ccda_to_fhir/converters/allergy_intolerance.py:282**
+  - Line: `return "allergy-unknown"`
+  - Context: _generate_allergy_id() fallback
+
+- [ ] **ccda_to_fhir/converters/condition.py:751**
+  - Line: `return "observation-unknown"`
+  - Context: _generate_observation_id() fallback (Condition)
+
+- [ ] **ccda_to_fhir/converters/condition.py:777**
+  - Line: `obs_id = "observation-unknown"`
+  - Context: Evidence observation ID initialization
+
+- [ ] **ccda_to_fhir/converters/device.py:68**
+  - Line: `device["id"] = "device-unknown"`
+  - Context: Device ID fallback (from author)
+
+- [ ] **ccda_to_fhir/converters/device.py:238**
+  - Line: `device["id"] = "device-unknown"`
+  - Context: Device ID fallback (from participant)
+
+- [ ] **ccda_to_fhir/converters/diagnostic_report.py:157**
+  - Line: `return "report-unknown"`
+  - Context: _generate_report_id() fallback
+
+- [ ] **ccda_to_fhir/converters/document_reference.py:626**
+  - Line: `return "encounter-unknown"`
+  - Context: _extract_encounter_id() fallback
+
+- [ ] **ccda_to_fhir/converters/encounter.py:144**
+  - Line: `return "encounter-unknown"`
+  - Context: _generate_encounter_id() fallback
+
+- [ ] **ccda_to_fhir/converters/informant_extractor.py:114**
+  - Line: `return "relatedperson-unknown"`
+  - Context: _generate_related_person_id() fallback
+
+- [ ] **ccda_to_fhir/converters/medication.py:162**
+  - Line: `return "medication-unknown"`
+  - Context: _generate_medication_id() fallback
+
+- [ ] **ccda_to_fhir/converters/medication_request.py:195**
+  - Line: `return "medicationrequest-unknown"`
+  - Context: _generate_medication_request_id() fallback
+
+- [ ] **ccda_to_fhir/converters/medication_statement.py:179**
+  - Line: `return "medicationstatement-unknown"`
+  - Context: _generate_medication_statement_id() fallback
+
+- [ ] **ccda_to_fhir/converters/note_activity.py:645**
+  - Line: `return "encounter-unknown"`
+  - Context: _extract_encounter_id() fallback
+
+- [ ] **ccda_to_fhir/converters/observation.py:461**
+  - Line: `return "observation-unknown"`
+  - Context: _generate_observation_id() fallback
+
+- [ ] **ccda_to_fhir/converters/observation.py:1238**
+  - Line: `bp_id = systolic_obs.get("id", "bp-unknown")`
+  - Context: Blood pressure panel ID fallback
+
+- [ ] **ccda_to_fhir/converters/patient.py:218**
+  - Line: `return "patient-unknown"`
+  - Context: _generate_patient_id() fallback
+
+- [ ] **ccda_to_fhir/converters/procedure.py:230**
+  - Line: `return "procedure-unknown"`
+  - Context: _generate_procedure_id() fallback
+
+- [ ] **ccda_to_fhir/converters/procedure.py:677**
+  - Line: `return "condition-unknown"`
+  - Context: _extract_condition_id() fallback (Procedure)
+
+- [ ] **ccda_to_fhir/converters/related_person.py:124**
+  - Line: `return "relatedperson-unknown"`
+  - Context: _generate_related_person_id() fallback
+
+- [ ] **ccda_to_fhir/converters/service_request.py:707**
+  - Line: `return "condition-unknown"`
+  - Context: _extract_condition_id() fallback (ServiceRequest)
+
+---
+
+## CATEGORY 3: Location-Specific Issues (2 instances)
+
+~~These are partially fixed but still have placeholder initialization.~~ **FIXED: 2025-12-22**
+
+### Files to Fix:
+
+- [x] **ccda_to_fhir/converters/procedure.py:414-422** ✅ FIXED
+  - ~~Line: `location_id = "location-unknown"`~~
+  - **Fixed:** Removed sentinel value, now raises `ValueError` when location ID is missing
+  - **Also fixed:** Removed exception handling in `convert.py:2546-2576` - errors now propagate
+  - **Result:** Strict validation per US Core requirements (Location.name is 1..1)
+
+---
+
+## CATEGORY 4: Related Fallbacks (3 instances)
+
+These use patient-unknown as defaults in convert.py.
+
+### Files to Fix:
+
+- [ ] **ccda_to_fhir/convert.py:750**
+  - Line: `patient_id = getattr(self, "_patient_id", "patient-unknown")`
+  - Context: RelatedPerson converter patient_id default
+
+- [ ] **ccda_to_fhir/convert.py:2669**
+  - Line: `encounter_id = "encounter-header-unknown"`
+  - Context: Header encounter ID fallback
+
+- [ ] **ccda_to_fhir/convert.py:3468**
+  - Line: `patient_id = "patient-unknown"`
+  - Context: Informant extraction patient_id default
+
+---
+
+## Solution Strategy
+
+### Recommended Approach:
+
+1. **Make reference_registry required** - Remove all `else` branches that create broken references
+2. **Raise errors on missing identifiers** - Replace placeholder ID returns with clear ValueError exceptions
+3. **Fix unit tests** - Update all unit tests to provide proper mocks/fixtures for reference_registry
+4. **Add validation** - Implement FHIR Bundle validation to catch any remaining broken references
+
+### Example Fix Pattern:
+
+**BEFORE:**
+```python
+if self.reference_registry:
+    fhir_resource["subject"] = self.reference_registry.get_patient_reference()
+else:
+    # Fallback for unit tests without registry
+    fhir_resource["subject"] = {"reference": "Patient/patient-unknown"}
+```
+
+**AFTER:**
+```python
+if not self.reference_registry:
+    raise ValueError(
+        "reference_registry is required for conversion. "
+        "Provide a ReferenceRegistry instance to the converter."
+    )
+
+fhir_resource["subject"] = self.reference_registry.get_patient_reference()
+```
+
+### Example ID Generation Fix:
+
+**BEFORE:**
+```python
+def _generate_device_id(self, identifiers):
+    if identifiers:
+        # ... generate from identifiers
+        return device_id
+    return "device-unknown"
+```
+
+**AFTER:**
+```python
+def _generate_device_id(self, identifiers):
+    if not identifiers:
+        raise ValueError(
+            "Cannot generate Device ID: no identifiers provided. "
+            "C-CDA Device must have id element."
+        )
+    # ... generate from identifiers
+    return device_id
+```
+
+---
+
+## Impact Assessment
+
+**Total Issues:** 46+ instances across 20+ files
+
+**Risk Level:** HIGH - These broken references create invalid FHIR resources
+
+**Affected Areas:**
+- All resource converters
+- Unit tests (will need updates)
+- Integration tests (should continue to pass)
+
+---
+
+## Implementation Plan
+
+1. [ ] **Phase 1:** Fix Category 1 (Patient references) - Most common, highest impact
+2. [ ] **Phase 2:** Fix Category 2 (Placeholder IDs) - Prevents silent failures
+3. [ ] **Phase 3:** Fix Category 3 (Location issues) - Already partially addressed
+4. [ ] **Phase 4:** Fix Category 4 (Misc fallbacks) - Edge cases
+5. [ ] **Phase 5:** Update all unit tests to provide reference_registry mocks
+6. [ ] **Phase 6:** Add FHIR Bundle validation to CI/CD pipeline
+7. [ ] **Phase 7:** Test against real C-CDA documents to ensure no regressions
+
+---
+
+## Testing Requirements
+
+After fixes:
+- [ ] All integration tests must pass
+- [ ] All unit tests must be updated and pass
+- [ ] FHIR Bundle validation must pass
+- [ ] Test with missing/invalid C-CDA data to verify proper error messages
+- [ ] Document error handling behavior in user-facing docs
+
+---
+
+## Related Issues
+
+- Commit f5be04e partially addressed Location broken references
+- Need to extend that pattern to all resource types
+- Consider adding strict mode flag for gradual rollout
+
+---
+
+## Notes
+
+- The current "fallback for unit tests" pattern is an anti-pattern
+- Unit tests should always provide proper test fixtures/mocks
+- Production code should never have "test-only" fallback paths
+- Proper error handling is better than silent failures

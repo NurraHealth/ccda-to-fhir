@@ -410,13 +410,16 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 if hasattr(participant, "participant_role") and participant.participant_role:
                     role = participant.participant_role
 
-                    # Generate location ID from role ID
-                    location_id = "location-unknown"
+                    # Generate location ID from role ID - REQUIRED
+                    location_id = None
                     if hasattr(role, "id") and role.id:
                         for id_elem in role.id:
                             if id_elem.root:
                                 location_id = self._generate_location_id(id_elem.root, id_elem.extension)
                                 break
+
+                    if not location_id:
+                        raise ValueError("Cannot create Location reference: missing location identifier")
 
                     # Extract location name from playingEntity
                     display = None
@@ -428,16 +431,14 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                             elif hasattr(entity.name, "value"):
                                 display = entity.name.value
 
-                    # Only create reference if we have a valid location ID
-                    # Don't create broken references to "location-unknown"
-                    if location_id != "location-unknown":
-                        location_ref: JSONObject = {
-                            "reference": f"{FHIRCodes.ResourceTypes.LOCATION}/{location_id}"
-                        }
-                        if display:
-                            location_ref["display"] = display
+                    # Create location reference (or would have raised error above)
+                    location_ref: JSONObject = {
+                        "reference": f"{FHIRCodes.ResourceTypes.LOCATION}/{location_id}"
+                    }
+                    if display:
+                        location_ref["display"] = display
 
-                        return location_ref
+                    return location_ref
 
         return None
 

@@ -12,6 +12,7 @@
       <low value="202003151030-0500"/>
     </time>
     <participantRole classCode="SDLOC">
+      <templateId root="2.16.840.1.113883.10.20.22.4.32" />
       <id root="2.16.840.1.113883.19.5" extension="ROOM-102"/>
       <code code="1160-1" codeSystem="2.16.840.1.113883.6.259" displayName="Urgent Care Center"/>
       <playingEntity classCode="PLC">
