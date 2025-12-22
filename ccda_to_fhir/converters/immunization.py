@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
-from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, PQ, TS
+from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, IVL_TS, PQ, TS
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.constants import (
     FHIRCodes,
@@ -99,10 +99,14 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             # Fallback for unit tests without registry
             immunization["patient"] = {"reference": "Patient/patient-unknown"}
 
-        # 6. OccurrenceDateTime - from effectiveTime
+        # 6. OccurrenceDateTime - from effectiveTime (required field)
         occurrence_date = self._extract_occurrence_date(substance_admin)
         if occurrence_date:
             immunization["occurrenceDateTime"] = occurrence_date
+        else:
+            # Fallback: Use occurrenceString when date is unavailable
+            # This handles cases with nullFlavor on effectiveTime
+            immunization["occurrenceString"] = "unknown"
 
         # 7. DoseQuantity - from doseQuantity
         dose_quantity = self._extract_dose_quantity(substance_admin)
@@ -270,13 +274,19 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if not substance_admin.effective_time or len(substance_admin.effective_time) == 0:
             return None
 
-        # Use the first effectiveTime (typically a timestamp)
+        # Use the first effectiveTime (typically a timestamp or interval)
         effective_time = substance_admin.effective_time[0]
 
         # Extract value based on type
         if isinstance(effective_time, TS):
             if effective_time.value:
                 return self.convert_date(effective_time.value)
+        elif isinstance(effective_time, IVL_TS):
+            # For intervals, use low (administration date) over high
+            if effective_time.low and hasattr(effective_time.low, 'value') and effective_time.low.value:
+                return self.convert_date(effective_time.low.value)
+            elif effective_time.high and hasattr(effective_time.high, 'value') and effective_time.high.value:
+                return self.convert_date(effective_time.high.value)
 
         return None
 
@@ -988,6 +998,11 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if not code_elem:
             return None
 
+        # Check if main code has nullFlavor - if so, use first translation as primary
+        primary_code = code_elem.code
+        primary_system = code_elem.code_system
+        primary_display = code_elem.display_name
+
         # Extract translations
         translations = None
         if code_elem.translation:
@@ -1000,15 +1015,24 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                         "display_name": trans.display_name,
                     })
 
+        # If primary code is missing (nullFlavor), promote first translation to primary
+        if (not primary_code or hasattr(code_elem, 'null_flavor') and code_elem.null_flavor) and translations:
+            first_trans = translations[0]
+            primary_code = first_trans["code"]
+            primary_system = first_trans["code_system"]
+            primary_display = first_trans["display_name"]
+            # Remove from translations to avoid duplication
+            translations = translations[1:] if len(translations) > 1 else None
+
         # Get original text if available (with reference resolution)
         original_text = None
         if hasattr(code_elem, 'original_text') and code_elem.original_text:
             original_text = self.extract_original_text(code_elem.original_text, section=None)
 
         return self.create_codeable_concept(
-            code=code_elem.code,
-            code_system=code_elem.code_system,
-            display_name=code_elem.display_name,
+            code=primary_code,
+            code_system=primary_system,
+            display_name=primary_display,
             original_text=original_text,
             translations=translations,
         )

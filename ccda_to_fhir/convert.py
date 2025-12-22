@@ -2659,7 +2659,14 @@ class DocumentConverter:
         fhir_encounter["status"] = "finished"
 
         # Class: Map from code translations or CPT mapping, or default to ambulatory
-        # Check if code has a translation with V3 ActCode system
+        # Default to ambulatory first (required field)
+        fhir_encounter["class"] = {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "AMB",
+            "display": "ambulatory",
+        }
+
+        # Override with specific class if code exists
         if encompassing_encounter.code:
             class_code = None
             class_display = None
@@ -2688,19 +2695,13 @@ class DocumentConverter:
                     class_display = V3_ACTCODE_DISPLAY_NAMES.get(mapped_actcode)
 
             if class_code:
+                # Override default with specific class code
                 fhir_encounter["class"] = {
                     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
                     "code": class_code,
                 }
                 if class_display:
                     fhir_encounter["class"]["display"] = class_display
-            else:
-                # Default to ambulatory
-                fhir_encounter["class"] = {
-                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                    "code": "AMB",
-                    "display": "ambulatory",
-                }
 
             # Type: Main code goes to type
             if encompassing_encounter.code.code:
