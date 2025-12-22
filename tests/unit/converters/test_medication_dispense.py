@@ -1260,3 +1260,292 @@ class TestMedicationDispensePharmacyLocation:
         # Optional fields should not be present
         assert "address" not in location
         assert "telecom" not in location
+
+
+class TestPerformerFunction:
+    """Test performer function determination and mapping."""
+
+    def test_performer_with_function_code_pcp_maps_to_finalchecker(self):
+        """Test performer with PCP functionCode maps to finalchecker."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedEntity,
+            AssignedPerson,
+            Performer,
+        )
+
+        dispense = create_minimal_dispense()
+
+        # Create performer with functionCode="PCP"
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="1234567890")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        performer = Performer()
+        performer.function_code = CE(
+            code="PCP",
+            code_system="2.16.840.1.113883.5.88",
+            display_name="Primary Care Physician"
+        )
+        performer.assigned_entity = assigned_entity
+        dispense.performer = [performer]
+
+        converter = MedicationDispenseConverter()
+        result = converter.convert(dispense)
+
+        # Should have performer with finalchecker function
+        assert "performer" in result
+        assert len(result["performer"]) == 1
+        assert "function" in result["performer"][0]
+        assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
+        assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
+
+    def test_performer_with_function_code_packpharm_maps_to_packager(self):
+        """Test performer with PACKPHARM functionCode maps to packager."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedEntity,
+            AssignedPerson,
+            Performer,
+        )
+
+        dispense = create_minimal_dispense()
+
+        # Create performer with functionCode="PACKPHARM" (local extension)
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="1234567890")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        performer = Performer()
+        performer.function_code = CE(
+            code="PACKPHARM",
+            code_system="2.16.840.1.113883.5.88",
+            display_name="Packaging Pharmacist"
+        )
+        performer.assigned_entity = assigned_entity
+        dispense.performer = [performer]
+
+        converter = MedicationDispenseConverter()
+        result = converter.convert(dispense)
+
+        # Should have performer with packager function
+        assert "performer" in result
+        assert len(result["performer"]) == 1
+        assert "function" in result["performer"][0]
+        assert result["performer"][0]["function"]["coding"][0]["code"] == "packager"
+        assert result["performer"][0]["function"]["coding"][0]["display"] == "Packager"
+
+    def test_performer_without_function_code_defaults_to_finalchecker(self):
+        """Test performer without functionCode defaults to finalchecker."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedEntity,
+            AssignedPerson,
+            Performer,
+        )
+
+        dispense = create_minimal_dispense()
+
+        # Create performer without functionCode
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="1234567890")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        performer = Performer()
+        # No function_code set
+        performer.assigned_entity = assigned_entity
+        dispense.performer = [performer]
+
+        converter = MedicationDispenseConverter()
+        result = converter.convert(dispense)
+
+        # Should have performer with default finalchecker function
+        assert "performer" in result
+        assert len(result["performer"]) == 1
+        assert "function" in result["performer"][0]
+        assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
+        assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
+
+    def test_author_without_function_code_defaults_to_packager(self):
+        """Test author performer without functionCode defaults to packager."""
+        from ccda_to_fhir.ccda.models.author import (
+            AssignedAuthor,
+            Author,
+        )
+        from ccda_to_fhir.ccda.models.author import AssignedPerson as AuthorAssignedPerson
+
+        dispense = create_minimal_dispense()
+
+        # Create author without functionCode
+        assigned_author = AssignedAuthor()
+        assigned_author.id = [II(root="2.16.840.1.113883.4.6", extension="9999999999")]
+        assigned_author.assigned_person = AuthorAssignedPerson()
+
+        author = Author()
+        author.assigned_author = assigned_author
+        dispense.author = [author]
+
+        converter = MedicationDispenseConverter()
+        result = converter.convert(dispense)
+
+        # Should have author performer with packager function
+        assert "performer" in result
+        assert len(result["performer"]) == 1
+        assert "function" in result["performer"][0]
+        assert result["performer"][0]["function"]["coding"][0]["code"] == "packager"
+        assert result["performer"][0]["function"]["coding"][0]["display"] == "Packager"
+
+    def test_author_with_function_code_uses_mapped_function(self):
+        """Test author with functionCode uses mapped function."""
+        from ccda_to_fhir.ccda.models.author import (
+            AssignedAuthor,
+            Author,
+        )
+        from ccda_to_fhir.ccda.models.author import AssignedPerson as AuthorAssignedPerson
+
+        dispense = create_minimal_dispense()
+
+        # Create author with functionCode="ADMPHYS" (should map to finalchecker)
+        assigned_author = AssignedAuthor()
+        assigned_author.id = [II(root="2.16.840.1.113883.4.6", extension="9999999999")]
+        assigned_author.assigned_person = AuthorAssignedPerson()
+
+        author = Author()
+        author.function_code = CE(
+            code="ADMPHYS",
+            code_system="2.16.840.1.113883.5.88",
+            display_name="Admitting Physician"
+        )
+        author.assigned_author = assigned_author
+        dispense.author = [author]
+
+        converter = MedicationDispenseConverter()
+        result = converter.convert(dispense)
+
+        # Should have author performer with finalchecker function (mapped from ADMPHYS)
+        assert "performer" in result
+        assert len(result["performer"]) == 1
+        assert "function" in result["performer"][0]
+        assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
+        assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
+
+    def test_performer_with_unknown_function_code_uses_default(self):
+        """Test performer with unknown functionCode falls back to default."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedEntity,
+            AssignedPerson,
+            Performer,
+        )
+
+        dispense = create_minimal_dispense()
+
+        # Create performer with unknown functionCode
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="1234567890")]
+        assigned_entity.assigned_person = AssignedPerson()
+
+        performer = Performer()
+        performer.function_code = CE(
+            code="UNKNOWN_CODE",
+            code_system="2.16.840.1.113883.5.88",
+            display_name="Unknown Role"
+        )
+        performer.assigned_entity = assigned_entity
+        dispense.performer = [performer]
+
+        converter = MedicationDispenseConverter()
+        result = converter.convert(dispense)
+
+        # Should fall back to default finalchecker function
+        assert "performer" in result
+        assert len(result["performer"]) == 1
+        assert "function" in result["performer"][0]
+        assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
+        assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
+
+    def test_organization_performer_without_function_code_defaults_to_finalchecker(self):
+        """Test organization performer without functionCode defaults to finalchecker."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedEntity,
+            Performer,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+        patient = {"resourceType": "Patient", "id": "patient-123"}
+        registry.register_resource(patient)
+
+        dispense = create_minimal_dispense()
+
+        # Create organization performer without functionCode
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="ORG-001")]
+
+        org = RepresentedOrganization()
+        org.name = ["Community Pharmacy"]
+        org.id = [II(root="1.2.3.4", extension="PHARM-001")]
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        # No function_code set
+        performer.assigned_entity = assigned_entity
+        dispense.performer = [performer]
+
+        converter = MedicationDispenseConverter(reference_registry=registry)
+        result = converter.convert(dispense)
+
+        # Should have organization performer with default finalchecker function
+        assert "performer" in result
+        assert len(result["performer"]) == 1
+        assert "function" in result["performer"][0]
+        assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
+        assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
+        # Verify it's an organization reference
+        assert "actor" in result["performer"][0]
+        assert result["performer"][0]["actor"]["reference"].startswith("Organization/")
+
+    def test_organization_performer_with_function_code_uses_mapped_function(self):
+        """Test organization performer with functionCode uses mapped function."""
+        from ccda_to_fhir.ccda.models.performer import (
+            AssignedEntity,
+            Performer,
+            RepresentedOrganization,
+        )
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        # Create registry
+        registry = ReferenceRegistry()
+        patient = {"resourceType": "Patient", "id": "patient-123"}
+        registry.register_resource(patient)
+
+        dispense = create_minimal_dispense()
+
+        # Create organization performer with functionCode="PHARM"
+        assigned_entity = AssignedEntity()
+        assigned_entity.id = [II(root="2.16.840.1.113883.4.6", extension="ORG-001")]
+
+        org = RepresentedOrganization()
+        org.name = ["Community Pharmacy"]
+        org.id = [II(root="1.2.3.4", extension="PHARM-001")]
+        assigned_entity.represented_organization = org
+
+        performer = Performer()
+        performer.function_code = CE(
+            code="PHARM",
+            code_system="2.16.840.1.113883.5.88",
+            display_name="Pharmacist"
+        )
+        performer.assigned_entity = assigned_entity
+        dispense.performer = [performer]
+
+        converter = MedicationDispenseConverter(reference_registry=registry)
+        result = converter.convert(dispense)
+
+        # Should have organization performer with finalchecker function (mapped from PHARM)
+        assert "performer" in result
+        assert len(result["performer"]) == 1
+        assert "function" in result["performer"][0]
+        assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
+        assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
+        # Verify it's an organization reference
+        assert "actor" in result["performer"][0]
+        assert result["performer"][0]["actor"]["reference"].startswith("Organization/")

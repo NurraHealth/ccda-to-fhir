@@ -2,7 +2,7 @@
 
 **Review Date:** 2025-12-22
 **Review Scope:** CareTeam, MedicationDispense converters
-**Test Status:** ✅ All 1234 tests passing - no regressions
+**Test Status:** ✅ All 1254 tests passing - no regressions
 
 ## Overview
 
@@ -264,49 +264,72 @@ Updated template validation in three locations:
 
 ---
 
-### HIGH-3: MedicationDispense - Performer Function Assignment
+### ~~HIGH-3: MedicationDispense - Performer Function Assignment~~ ✅ FIXED
 
+**Status:** ✅ Fixed on 2025-12-22
 **Severity:** Medium-High
 **Component:** MedicationDispense Converter
-**Location:** `ccda_to_fhir/converters/medication_dispense.py:310-319`
+**Location:** `ccda_to_fhir/converters/medication_dispense.py:936-1051`
 
 **Issue:**
-Performer from `supply/performer` always gets function="finalchecker", but this may not be accurate. The C-CDA performer represents the dispensing pharmacist/pharmacy, which could be "packager", "finalchecker", or other roles.
+Performer from `supply/performer` always gets function="finalchecker", but this may not be accurate. The C-CDA performer represents the dispensing pharmacist/pharmacy, which could have different roles based on the C-CDA functionCode element.
 
-**Current Code:**
-```python
-# From supply/performer
-performer_obj["function"] = {
-    "coding": [
-        {
-            "system": "http://terminology.hl7.org/CodeSystem/medicationdispense-performer-function",
-            "code": "finalchecker",
-            "display": "Final Checker",
-        }
-    ]
-}
-```
+**Fix Applied:**
+Implemented intelligent performer function determination:
 
-**Recommendation:**
-```python
-# Infer function from context or make configurable
-# Default to "finalchecker" but allow override
-def _determine_performer_function(self, performer) -> str:
-    """Determine performer function code.
+1. **Added `_map_participation_function_to_fhir()` method** (lines 936-980):
+   - Maps C-CDA ParticipationFunction codes to FHIR MedicationDispense performer function codes
+   - Supports standard codes: PCP, ADMPHYS, ATTPHYS → "finalchecker"
+   - Supports pharmacy local extensions: PHARM, DISPPHARM → "finalchecker", PACKPHARM → "packager"
+   - Logs debug message for unmapped codes and returns None to use default
 
-    Returns:
-        "packager" - assembled medication
-        "finalchecker" - verified medication
-        "dataenterer" - entered dispense record
-    """
-    # Could check functionCode if present in C-CDA
-    if hasattr(performer, "function_code") and performer.function_code:
-        # Map C-CDA function code to FHIR
-        return self._map_function_code(performer.function_code)
+2. **Added `_determine_performer_function()` method** (lines 982-1051):
+   - Checks for C-CDA functionCode element in performer
+   - Maps functionCode to FHIR codes if present
+   - Falls back to context-based defaults:
+     - supply.performer → "finalchecker" (dispensing pharmacist/pharmacy)
+     - supply.author → "packager" (pharmacist who packaged)
+   - Returns proper FHIR CodeableConcept with system, code, and display
 
-    # Default to finalchecker for dispensing pharmacist
-    return "finalchecker"
-```
+3. **Updated performer creation** (lines 357, 369, 395):
+   - Replaced hardcoded function assignments with `_determine_performer_function()` calls
+   - Works for practitioner performers, organization performers, and author performers
+   - Maintains backward compatibility (same defaults when functionCode absent)
+
+**Implementation:**
+- Modified: `ccda_to_fhir/converters/medication_dispense.py`
+  - Lines 936-1051: New methods for function determination and mapping
+  - Line 357: Updated practitioner performer function
+  - Line 369: Updated organization performer function
+  - Line 395: Updated author performer function
+- Added comprehensive tests: `tests/unit/converters/test_medication_dispense.py`
+  - `test_performer_with_function_code_pcp_maps_to_finalchecker()`
+  - `test_performer_with_function_code_packpharm_maps_to_packager()`
+  - `test_performer_without_function_code_defaults_to_finalchecker()`
+  - `test_author_without_function_code_defaults_to_packager()`
+  - `test_author_with_function_code_uses_mapped_function()`
+  - `test_performer_with_unknown_function_code_uses_default()`
+  - `test_organization_performer_without_function_code_defaults_to_finalchecker()`
+  - `test_organization_performer_with_function_code_uses_mapped_function()`
+- Test Status: ✅ All 1254 tests passing (+8 new tests) - no regressions
+
+**Behavior:**
+- **With functionCode:** Maps C-CDA ParticipationFunction code to FHIR performer function
+- **Without functionCode:**
+  - supply.performer → "finalchecker" (default for dispensing pharmacist/pharmacy)
+  - supply.author → "packager" (default for pharmacist who prepared medication)
+- **Unknown functionCode:** Logs debug message and uses context-based default
+
+**Standards Compliance:**
+- Implements C-CDA performer functionCode → FHIR performer.function mapping per RIM mapping guidance
+- Supports both standard ParticipationFunction codes and local pharmacy extensions
+- Maintains backward compatibility with existing behavior when functionCode absent
+- Provides accurate semantic mapping based on context (performer vs author)
+
+**References:**
+- [C-CDA ParticipationFunction](https://terminology.hl7.org/7.0.1/CodeSystem-v3-ParticipationFunction.html)
+- [FHIR MedicationDispense Performer Function](http://hl7.org/fhir/R4B/valueset-medicationdispense-performer-function.html)
+- [US Core MedicationDispense Mappings](https://build.fhir.org/ig/HL7/US-Core/StructureDefinition-us-core-medicationdispense-mappings.html)
 
 ---
 
@@ -545,12 +568,12 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 
 ### By Severity
 - **Critical:** ~~2~~ 0 remaining (2 fixed)
-- **High:** ~~3~~ ~~2~~ 1 remaining (2 fixed)
+- **High:** ~~3~~ ~~2~~ ~~1~~ 0 remaining (3 fixed)
 - **Medium:** 5 (intentional leniency vs strict compliance)
 - **Low:** 2 (nice-to-have validations)
 
 ### By Component
-- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ 4 issues remaining (3 fixed)
+- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ ~~4~~ 3 issues remaining (4 fixed)
 - **CareTeam:** ~~5~~ 4 issues remaining (1 fixed)
 
 ### Key Takeaways
@@ -560,6 +583,7 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 2. ✅ MedicationDispense: Populate Location.identifier from organization - FIXED 2025-12-22
 3. ✅ MedicationDispense: Handle Organization performers - FIXED 2025-12-22
 4. ✅ CareTeam: Validate template extensions for all three templates - FIXED 2025-12-22
+5. ✅ MedicationDispense: Performer function assignment with functionCode mapping - FIXED 2025-12-22
 
 **Intentional Design Choices:**
 - CareTeam accepts missing required elements (statusCode, effectiveTime, type observation)

@@ -353,16 +353,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                                 }
                                 break
 
-                    # Add function (default to finalchecker for practitioner)
-                    performer_obj["function"] = {
-                        "coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/medicationdispense-performer-function",
-                                "code": "finalchecker",
-                                "display": "Final Checker",
-                            }
-                        ]
-                    }
+                    # Determine function from C-CDA functionCode or use context-based default
+                    performer_obj["function"] = self._determine_performer_function(perf, context="performer")
 
                     if performer_obj.get("actor"):
                         performers.append(performer_obj)
@@ -373,16 +365,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     org_id = self._create_pharmacy_organization(org)
                     if org_id:
                         performer_obj["actor"] = {"reference": f"Organization/{org_id}"}
-                        # Add function (default to finalchecker for organization)
-                        performer_obj["function"] = {
-                            "coding": [
-                                {
-                                    "system": "http://terminology.hl7.org/CodeSystem/medicationdispense-performer-function",
-                                    "code": "finalchecker",
-                                    "display": "Final Checker",
-                                }
-                            ]
-                        }
+                        # Determine function from C-CDA functionCode or use context-based default
+                        performer_obj["function"] = self._determine_performer_function(perf, context="performer")
                         performers.append(performer_obj)
 
                 # Create Location resource from representedOrganization
@@ -408,15 +392,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                                     id_elem.extension,
                                 )
                                 performer_obj = {
-                                    "function": {
-                                        "coding": [
-                                            {
-                                                "system": "http://terminology.hl7.org/CodeSystem/medicationdispense-performer-function",
-                                                "code": "packager",
-                                                "display": "Packager",
-                                            }
-                                        ]
-                                    },
+                                    "function": self._determine_performer_function(author, context="author"),
                                     "actor": {"reference": f"Practitioner/{pract_id}"},
                                 }
                                 performers.append(performer_obj)
@@ -932,6 +908,123 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                 fhir_telecom.append(contact_point)
 
         return fhir_telecom
+
+    def _map_participation_function_to_fhir(self, function_code: "CE") -> str | None:
+        """Map C-CDA ParticipationFunction code to FHIR MedicationDispense performer function code.
+
+        C-CDA uses ParticipationFunction codes (from HL7 v3 code system 2.16.840.1.113883.5.88)
+        while FHIR uses a dedicated medicationdispense-performer-function code system.
+
+        Args:
+            function_code: C-CDA CE with code from ParticipationFunction value set
+
+        Returns:
+            FHIR performer function code: "dataenterer", "packager", "checker", or "finalchecker"
+            Returns None if no mapping found
+
+        Reference:
+            - C-CDA ParticipationFunction: http://terminology.hl7.org/CodeSystem/v3-ParticipationFunction
+            - FHIR codes: http://terminology.hl7.org/CodeSystem/medicationdispense-performer-function
+        """
+        from ccda_to_fhir.ccda.models.datatypes import CE
+
+        if not function_code or not hasattr(function_code, "code") or not function_code.code:
+            return None
+
+        # C-CDA ParticipationFunction doesn't have pharmacy-specific codes
+        # Map generic healthcare codes to pharmacy equivalents where reasonable
+        code_map = {
+            # Physician codes - map to finalchecker (verification role)
+            "PCP": "finalchecker",  # Primary care physician
+            "ADMPHYS": "finalchecker",  # Admitting physician
+            "ATTPHYS": "finalchecker",  # Attending physician
+            # If C-CDA includes pharmacy-related local extensions, map them here
+            # Example mappings for potential local codes:
+            "PHARM": "finalchecker",  # Pharmacist (if defined locally)
+            "DISPPHARM": "finalchecker",  # Dispensing pharmacist
+            "PACKPHARM": "packager",  # Packaging pharmacist
+        }
+
+        mapped_code = code_map.get(function_code.code)
+
+        if not mapped_code:
+            logger.debug(
+                f"No FHIR mapping for C-CDA ParticipationFunction code '{function_code.code}'. "
+                "Returning None to use default function."
+            )
+
+        return mapped_code
+
+    def _determine_performer_function(self, performer, context: str = "performer") -> JSONObject:
+        """Determine FHIR performer function from C-CDA performer element.
+
+        Checks for C-CDA functionCode element and maps to FHIR MedicationDispense
+        performer function codes. Falls back to context-based defaults if not present.
+
+        Args:
+            performer: C-CDA Performer or Author element
+            context: Context of performer - "performer" (from supply.performer) or
+                    "author" (from supply.author)
+
+        Returns:
+            FHIR CodeableConcept for performer.function
+
+        Examples:
+            >>> # Performer with functionCode
+            >>> perf = Performer(function_code=CE(code="PCP", code_system="2.16.840.1.113883.5.88"))
+            >>> func = self._determine_performer_function(perf, "performer")
+            >>> # Returns CodeableConcept with code="finalchecker"
+
+            >>> # Performer without functionCode
+            >>> perf = Performer()
+            >>> func = self._determine_performer_function(perf, "performer")
+            >>> # Returns CodeableConcept with code="finalchecker" (default for dispensing)
+
+            >>> # Author without functionCode
+            >>> author = Author()
+            >>> func = self._determine_performer_function(author, "author")
+            >>> # Returns CodeableConcept with code="packager" (default for author)
+        """
+        # Check for functionCode in C-CDA performer
+        mapped_function = None
+        if hasattr(performer, "function_code") and performer.function_code:
+            mapped_function = self._map_participation_function_to_fhir(performer.function_code)
+            if mapped_function:
+                logger.debug(
+                    f"Mapped C-CDA functionCode '{performer.function_code.code}' to "
+                    f"FHIR performer function '{mapped_function}'"
+                )
+
+        # Use mapped function if available, otherwise use context-based default
+        if mapped_function:
+            function_code = mapped_function
+        else:
+            # Context-based defaults
+            if context == "author":
+                # Author typically represents the person who packaged/prepared the medication
+                function_code = "packager"
+            else:
+                # Performer (from supply.performer) represents the dispensing pharmacy/pharmacist
+                # who verified and finalized the dispense
+                function_code = "finalchecker"
+
+        # Map to display names
+        display_map = {
+            "dataenterer": "Data Enterer",
+            "packager": "Packager",
+            "checker": "Checker",
+            "finalchecker": "Final Checker",
+        }
+
+        return {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/medicationdispense-performer-function",
+                    "code": function_code,
+                    "display": display_map.get(function_code, function_code.title()),
+                }
+            ]
+        }
 
 
 # Global registry for storing created MedicationDispense resources
