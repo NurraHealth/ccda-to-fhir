@@ -40,6 +40,7 @@ class CodeSystemMapper:
         "2.16.840.1.113883.5.83": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
         "2.16.840.1.113883.5.88": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",  # ParticipationFunction → v3-RoleCode
         "2.16.840.1.113883.5.111": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+        "2.16.840.1.113883.5.140": "http://terminology.hl7.org/CodeSystem/v3-TribalEntityUS",  # Tribal Entity US
         "2.16.840.1.113883.5.1063": "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
 
         # CDC Race and Ethnicity
@@ -54,6 +55,16 @@ class CodeSystemMapper:
         # HL7 V2 Tables
         "2.16.840.1.113883.12.112": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
         "2.16.840.1.113883.12.292": "http://hl7.org/fhir/sid/cvx",
+
+        # FHIR CodeSystems (for when C-CDA uses FHIR codes)
+        # Note: Some C-CDA documents incorrectly use ValueSet OIDs as codeSystem
+        # We map both the ValueSet OID and CodeSystem canonical URI for compatibility
+        "2.16.840.1.113883.4.642.3.273": "http://terminology.hl7.org/CodeSystem/goal-priority",  # Goal Priority (R4B ValueSet OID)
+        "2.16.840.1.113883.4.642.3.275": "http://terminology.hl7.org/CodeSystem/goal-priority",  # Goal Priority (legacy/test OID)
+        "2.16.840.1.113883.4.642.3.251": "http://terminology.hl7.org/CodeSystem/goal-achievement",  # Goal Achievement (legacy/test OID)
+        "2.16.840.1.113883.4.642.3.1374": "http://terminology.hl7.org/CodeSystem/goal-achievement",  # Goal Achievement (R4B ValueSet OID)
+        "2.16.840.1.113883.5.1076": "http://terminology.hl7.org/CodeSystem/v3-ReligiousAffiliation",  # Religious Affiliation
+        "2.16.840.1.113883.4.642.4.2038": "http://hl7.org/fhir/sex-parameter-for-clinical-use",  # Sex Parameter for Clinical Use
     }
 
     def __init__(self, custom_mappings: dict[str, str] | None = None):
@@ -86,6 +97,10 @@ class CodeSystemMapper:
         if not oid:
             return None
 
+        # If already a URI (starts with http/https), return as-is
+        if oid.startswith('http://') or oid.startswith('https://'):
+            return oid
+
         # Check for known mapping
         if oid in self.mappings:
             return self.mappings[oid]
@@ -103,6 +118,32 @@ class CodeSystemMapper:
             f"Skipping coding for this code system. Consider adding mapping to code_systems.py."
         )
         return None
+
+    def oid_to_identifier_system(self, oid: str) -> str | None:
+        """Convert an OID to a system URI for use in Identifier.system.
+
+        Unlike oid_to_uri(), this method returns urn:oid: format for unmapped OIDs
+        because Identifier.system allows urn:oid: format (unlike Coding.system).
+
+        Per FHIR R4B:
+        - Coding.system: SHALL use canonical URI when it exists (urn:oid: NOT acceptable)
+        - Identifier.system: urn:oid: format IS acceptable and widely used
+
+        Args:
+            oid: The OID to convert (e.g., "2.16.840.1.113883.19.5")
+
+        Returns:
+            The FHIR canonical URI if known, otherwise urn:oid:{oid}
+        """
+        if not oid:
+            return None
+
+        # Check for known mapping - prefer canonical URI
+        if oid in self.mappings:
+            return self.mappings[oid]
+
+        # Unknown OID - return urn:oid: format (acceptable for Identifier.system)
+        return f"urn:oid:{oid}"
 
     def uri_to_oid(self, uri: str) -> str:
         """Convert a FHIR canonical URI to an OID.

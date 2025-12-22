@@ -64,7 +64,8 @@ class TestSexParameterForClinicalUseExtension:
         assert "valueCodeableConcept" in value_ext
         coding = value_ext["valueCodeableConcept"]["coding"][0]
         assert coding["code"] == "female-typical"
-        assert coding["system"] == "urn:oid:2.16.840.1.113883.4.642.4.2038"
+        # Per FHIR R4B: CodeSystem canonical URI, not OID format
+        assert coding["system"] == "http://hl7.org/fhir/sex-parameter-for-clinical-use"
 
         # Check period sub-extension
         period_ext = next(

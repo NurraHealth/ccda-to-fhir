@@ -780,7 +780,8 @@ class TestPatientConversion:
         coding = tribal_affiliation_sub["valueCodeableConcept"]["coding"][0]
         assert coding["code"] == "170"
         assert coding["display"] == "Navajo Nation, Arizona, New Mexico, & Utah"
-        assert coding["system"] == "urn:oid:2.16.840.1.113883.5.140"  # TribalEntityUS
+        # Per FHIR R4B: CodeSystem canonical URI, not OID format
+        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-TribalEntityUS"
 
         # Should NOT create a separate Observation resource for tribal affiliation
         observations = [

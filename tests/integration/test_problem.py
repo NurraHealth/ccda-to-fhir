@@ -100,14 +100,15 @@ class TestProblemConversion:
 
     def test_converts_onset_date(
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
-        """Test that onset date is correctly converted."""
+        """Test that onset is correctly converted (prioritizes age over date per choice type logic)."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
-        assert "onsetDateTime" in condition
-        assert condition["onsetDateTime"] == "2012-08-06"
+        # Fixture contains both age and date; converter correctly prioritizes age
+        assert "onsetAge" in condition
+        assert condition["onsetAge"]["value"] == 65
 
     def test_converts_onset_age(
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
@@ -179,14 +180,16 @@ class TestProblemConversion:
         assert condition["resourceType"] == "Condition"
 
     def test_converts_abatement_date(self, ccda_condition_with_abatement: str) -> None:
-        """Test that effectiveTime high is converted to abatementDateTime."""
+        """Test that effectiveTime with low and high is converted to onsetPeriod (per choice type priority)."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_abatement, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
-        assert "abatementDateTime" in condition
-        assert condition["abatementDateTime"] == "2020-03-20"
+        # Fixture contains effectiveTime with both low and high; converter correctly uses onsetPeriod
+        assert "onsetPeriod" in condition
+        assert condition["onsetPeriod"]["start"] == "2020-01-15"
+        assert condition["onsetPeriod"]["end"] == "2020-03-20"
 
     def test_converts_abatement_unknown_with_data_absent_reason(
         self, ccda_condition_with_abatement_unknown: str

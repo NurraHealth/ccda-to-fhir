@@ -114,8 +114,8 @@ class TestGoalConversion:
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
         assert "priority" in goal
-        # OID 2.16.840.1.113883.4.642.3.275 maps to goal-priority CodeSystem
-        assert "urn:oid:2.16.840.1.113883.4.642.3.275" in goal["priority"]["coding"][0]["system"]
+        # Per FHIR R4B: CodeSystem canonical URI, not OID format
+        assert goal["priority"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/goal-priority"
         assert goal["priority"]["coding"][0]["code"] == "high-priority"
 
     def test_converts_achievement_status(self, ccda_goal_with_progress: str) -> None:
@@ -126,8 +126,8 @@ class TestGoalConversion:
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
         assert "achievementStatus" in goal
-        # OID 2.16.840.1.113883.4.642.3.251 maps to goal-achievement CodeSystem
-        assert "urn:oid:2.16.840.1.113883.4.642.3.251" in goal["achievementStatus"]["coding"][0]["system"]
+        # Per FHIR R4B: CodeSystem canonical URI, not OID format
+        assert goal["achievementStatus"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/goal-achievement"
         assert goal["achievementStatus"]["coding"][0]["code"] == "in-progress"
 
     def test_converts_addresses_health_concern(self, ccda_goal_with_health_concern: str) -> None:

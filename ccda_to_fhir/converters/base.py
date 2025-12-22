@@ -137,6 +137,22 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return ""
         return self.code_system_mapper.oid_to_uri(oid)
 
+    def map_oid_to_identifier_system(self, oid: str | None) -> str | None:
+        """Map a C-CDA OID to a system URI for use in Identifier.system.
+
+        Unlike map_oid_to_uri(), this returns urn:oid: format for unmapped OIDs
+        because Identifier.system allows urn:oid: format.
+
+        Args:
+            oid: The OID to convert
+
+        Returns:
+            The FHIR canonical URI if known, otherwise urn:oid:{oid}
+        """
+        if not oid:
+            return None
+        return self.code_system_mapper.oid_to_identifier_system(oid)
+
     def convert_identifiers(self, identifiers: list) -> list[JSONObject]:
         """Convert C-CDA identifiers (list of II) to FHIR identifiers.
 
@@ -184,8 +200,8 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         elif self._is_uuid(root):
             identifier["system"] = f"urn:uuid:{root}"
         else:
-            # It's an OID
-            identifier["system"] = self.map_oid_to_uri(root)
+            # It's an OID - use identifier-specific mapping that allows urn:oid:
+            identifier["system"] = self.map_oid_to_identifier_system(root)
 
         # Add value if extension provided
         if extension:

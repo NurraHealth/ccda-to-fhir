@@ -261,11 +261,15 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         # Map device type code
         if participant_role.playing_device and participant_role.playing_device.code:
             code = participant_role.playing_device.code
+            # Extract original text from ED object if present
+            original_text = None
+            if hasattr(code, "original_text") and code.original_text:
+                original_text = self.extract_original_text(code.original_text)
             device["type"] = self.create_codeable_concept(
                 code=code.code if hasattr(code, "code") else None,
                 code_system=code.code_system if hasattr(code, "code_system") else None,
                 display_name=code.display_name if hasattr(code, "display_name") else None,
-                original_text=code.original_text if hasattr(code, "original_text") else None
+                original_text=original_text
             )
 
         # Map device names
@@ -390,9 +394,9 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         # User-friendly name from device code display
         if playing_device.code:
             display_name = None
-            # Try original text first
+            # Try original text first (extract from ED object if present)
             if hasattr(playing_device.code, "original_text") and playing_device.code.original_text:
-                display_name = playing_device.code.original_text
+                display_name = self.extract_original_text(playing_device.code.original_text)
             # Fall back to display name
             elif hasattr(playing_device.code, "display_name") and playing_device.code.display_name:
                 display_name = playing_device.code.display_name
