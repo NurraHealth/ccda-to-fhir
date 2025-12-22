@@ -19,11 +19,19 @@ This violates FHIR Bundle validation and creates invalid resources.
 
 ---
 
-## CATEGORY 1: Broken Patient References (23 instances)
+## CATEGORY 1: Broken Patient References (23 instances) ✅ **FIXED: 2025-12-22**
 
-These create `{"reference": "Patient/patient-unknown"}` when `reference_registry` is missing.
+~~These create `{"reference": "Patient/patient-unknown"}` when `reference_registry` is missing.~~
 
-### Files to Fix:
+**Fix Applied:**
+- Removed all 23 "Patient/patient-unknown" fallbacks
+- Made reference_registry required across all converters
+- Raise clear ValueError when registry is missing
+- Added reference_registry to planned immunization MedicationRequestConverter
+- Made Goal.description fail when unavailable (semantic correctness)
+- All 737 integration tests pass
+
+### Files Fixed:
 
 - [ ] **ccda_to_fhir/converters/allergy_intolerance.py:187**
   - Line: `allergy["patient"] = {"reference": "Patient/patient-unknown"}`
