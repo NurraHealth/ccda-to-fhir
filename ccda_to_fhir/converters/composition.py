@@ -328,8 +328,10 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 # Patient not registered (conversion failed) - return None to trigger fail-fast
                 return None
         else:
-            # Fallback for unit tests without registry
-            return {"reference": "Patient/patient-unknown"}
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Composition without patient reference."
+            )
 
     def _convert_author_references(self, authors: list) -> list[JSONObject]:
         """Convert C-CDA authors to FHIR Practitioner or Device references.

@@ -219,11 +219,12 @@ class ConditionConverter(BaseConverter[Observation]):
                 condition["bodySite"] = body_sites
 
         # Patient reference (from recordTarget in document header)
-        if self.reference_registry:
-            condition["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            condition["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Condition without patient reference."
+            )
+        condition["subject"] = self.reference_registry.get_patient_reference()
 
         # Onset and abatement
         onset, abatement = self._convert_effective_time(observation)

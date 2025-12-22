@@ -120,11 +120,12 @@ class ObservationConverter(BaseConverter[Observation]):
         fhir_obs["code"] = code_cc
 
         # 6. Subject (patient reference)
-        if self.reference_registry:
-            fhir_obs["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            fhir_obs["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Observation without patient reference."
+            )
+        fhir_obs["subject"] = self.reference_registry.get_patient_reference()
 
         # 7. Effective time (effectiveDateTime or effectivePeriod)
         effective_time = self._extract_effective_time(observation)
@@ -315,11 +316,12 @@ class ObservationConverter(BaseConverter[Observation]):
         }
 
         # 6. Subject (patient reference)
-        if self.reference_registry:
-            panel["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            panel["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Observation panel without patient reference."
+            )
+        panel["subject"] = self.reference_registry.get_patient_reference()
 
         # 7. Effective time from organizer
         if organizer.effective_time:
@@ -1282,8 +1284,10 @@ class ObservationConverter(BaseConverter[Observation]):
         elif self.reference_registry:
             bp_obs["subject"] = self.reference_registry.get_patient_reference()
         else:
-            # Fallback for unit tests without registry
-            bp_obs["subject"] = {"reference": "Patient/patient-unknown"}
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create blood pressure Observation without patient reference."
+            )
 
         # Effective time (use from systolic or diastolic)
         effective_time = systolic_obs.get("effectiveDateTime") or diastolic_obs.get("effectiveDateTime")

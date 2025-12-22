@@ -2889,10 +2889,12 @@ class DocumentConverter:
                     }]
 
         # Patient reference (from recordTarget in document header)
-        if self.reference_registry:
-            fhir_encounter["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            fhir_encounter["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create header Encounter without patient reference."
+            )
+        fhir_encounter["subject"] = self.reference_registry.get_patient_reference()
 
         return fhir_encounter
 

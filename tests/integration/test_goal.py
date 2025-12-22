@@ -209,3 +209,21 @@ class TestGoalConversion:
         assert len(goal["identifier"]) >= 1
         assert "system" in goal["identifier"][0]
         assert "value" in goal["identifier"][0]
+
+    def test_description_fallback_when_no_code(self, ccda_goal_narrative_only: str) -> None:
+        """Test that Goal conversion fails when description cannot be determined.
+
+        Verifies strict validation (consistent with Observation.code pattern):
+        1. Try coded description first
+        2. Fall back to narrative text extraction
+        3. If neither available: FAIL conversion (no placeholder text)
+
+        This ensures Goal resources are semantically meaningful - a goal without
+        a description (what the objective is) is clinically useless.
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_goal_narrative_only, GOALS_SECTION_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Goal should not be created when description is unavailable
+        goal = _find_resource_in_bundle(bundle, "Goal")
+        assert goal is None, "Goal should not be created without valid description"

@@ -94,11 +94,12 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
 
         # 6. Subject (patient reference)
         # Patient reference (from recordTarget in document header)
-        if self.reference_registry:
-            report["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            report["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create DiagnosticReport without patient reference."
+            )
+        report["subject"] = self.reference_registry.get_patient_reference()
 
         # 7. Effective time
         effective_time = self._extract_effective_time(organizer)

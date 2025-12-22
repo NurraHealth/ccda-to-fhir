@@ -109,11 +109,12 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 }
 
         # Patient reference (from recordTarget in document header)
-        if self.reference_registry:
-            fhir_procedure["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            fhir_procedure["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Procedure without patient reference."
+            )
+        fhir_procedure["subject"] = self.reference_registry.get_patient_reference()
 
         # Performed date/time
         performed = None

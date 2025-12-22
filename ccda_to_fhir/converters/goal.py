@@ -113,21 +113,22 @@ class GoalConverter(BaseConverter[Observation]):
                     "text": narrative_text
                 }
 
-        # Set description (required field)
-        if description:
-            fhir_goal["description"] = description
-        else:
-            # Last resort fallback for required field
-            fhir_goal["description"] = {
-                "text": "Goal description not available"
-            }
+        # Set description (required field) - fail if unavailable
+        if not description:
+            raise ValueError(
+                "Goal.description cannot be determined. "
+                "Goal Observation must have either a valid code or narrative text. "
+                "Cannot create Goal resource without knowing the objective."
+            )
+        fhir_goal["description"] = description
 
         # 5. Subject (required) - reference to patient
-        if self.reference_registry:
-            fhir_goal["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            fhir_goal["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Goal without patient reference."
+            )
+        fhir_goal["subject"] = self.reference_registry.get_patient_reference()
 
         # 6. Start date and target due date from effectiveTime
         if observation.effective_time:
@@ -347,10 +348,12 @@ class GoalConverter(BaseConverter[Observation]):
                 return {"reference": f"Practitioner/{practitioner_id}"}
             else:
                 # Assume it's the patient
-                if self.reference_registry:
-                    return self.reference_registry.get_patient_reference()
-                else:
-                    return {"reference": "Patient/patient-unknown"}
+                if not self.reference_registry:
+                    raise ValueError(
+                        "reference_registry is required. "
+                        "Cannot extract expressedBy reference without registry."
+                    )
+                return self.reference_registry.get_patient_reference()
 
         return None
 

@@ -180,11 +180,12 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             allergy["code"] = self._extract_allergen_code(observation)
 
         # Patient reference (from recordTarget in document header)
-        if self.reference_registry:
-            allergy["patient"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            allergy["patient"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create AllergyIntolerance without patient reference."
+            )
+        allergy["patient"] = self.reference_registry.get_patient_reference()
 
         # Onset date
         if observation.effective_time and observation.effective_time.low:

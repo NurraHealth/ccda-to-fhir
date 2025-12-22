@@ -92,11 +92,12 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         immunization["vaccineCode"] = self._extract_vaccine_code(substance_admin)
 
         # 5. Patient (subject reference)
-        if self.reference_registry:
-            immunization["patient"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            immunization["patient"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Immunization without patient reference."
+            )
+        immunization["patient"] = self.reference_registry.get_patient_reference()
 
         # 6. OccurrenceDateTime - from effectiveTime (required field)
         occurrence_date = self._extract_occurrence_date(substance_admin)
@@ -625,11 +626,12 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         }
 
         # Add patient reference
-        if self.reference_registry:
-            observation_resource["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            observation_resource["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Observation without patient reference."
+            )
+        observation_resource["subject"] = self.reference_registry.get_patient_reference()
 
         # Extract effectiveDateTime if available
         if observation.effective_time:
@@ -728,11 +730,12 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         }
 
         # Add patient reference
-        if self.reference_registry:
-            observation_resource["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            observation_resource["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Observation without patient reference."
+            )
+        observation_resource["subject"] = self.reference_registry.get_patient_reference()
 
         # Extract effectiveDateTime if available
         if observation.effective_time:
@@ -866,11 +869,12 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         }
 
         # Add patient reference
-        if self.reference_registry:
-            observation_resource["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            observation_resource["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Observation without patient reference."
+            )
+        observation_resource["subject"] = self.reference_registry.get_patient_reference()
 
         # Extract effectiveDateTime if available (usually has low value for when complication started)
         if observation.effective_time:
@@ -1081,7 +1085,10 @@ def convert_immunization_activity(
 
     if mood_code.upper() == "INT":
         # Planned immunization - convert to MedicationRequest
-        converter = MedicationRequestConverter(code_system_mapper=code_system_mapper)
+        converter = MedicationRequestConverter(
+            code_system_mapper=code_system_mapper,
+            reference_registry=reference_registry,
+        )
         medication_request = converter.convert(substance_admin, section=section)
 
         # Store author metadata if callback provided

@@ -300,11 +300,12 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
             FHIR Reference
         """
         # Patient reference (from recordTarget in document header)
-        if self.reference_registry:
-            return self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            return {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create DocumentReference without patient reference."
+            )
+        return self.reference_registry.get_patient_reference()
 
     def _convert_author_references(self, authors: list) -> list[JSONObject]:
         """Convert document authors to FHIR references.

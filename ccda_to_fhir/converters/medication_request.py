@@ -114,11 +114,12 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         # 6. Subject (patient reference)
         # Patient reference (from recordTarget in document header)
-        if self.reference_registry:
-            med_request["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            med_request["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create MedicationRequest without patient reference."
+            )
+        med_request["subject"] = self.reference_registry.get_patient_reference()
 
         # 7. AuthoredOn (from author time)
         authored_on = self._extract_authored_on(substance_admin)

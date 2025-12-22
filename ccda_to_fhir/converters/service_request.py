@@ -132,12 +132,12 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         fhir_service_request["code"] = self._convert_code(procedure.code)
 
         # Subject (required) - patient reference
-        if self.reference_registry:
-            fhir_service_request["subject"] = (
-                self.reference_registry.get_patient_reference()
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create ServiceRequest without patient reference."
             )
-        else:
-            fhir_service_request["subject"] = {"reference": "Patient/patient-unknown"}
+        fhir_service_request["subject"] = self.reference_registry.get_patient_reference()
 
         # Encounter (must support)
         if self.reference_registry:

@@ -70,11 +70,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         # Subject (patient reference)
         # Patient reference (from recordTarget in document header)
-        if self.reference_registry:
-            fhir_encounter["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            fhir_encounter["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Encounter without patient reference."
+            )
+        fhir_encounter["subject"] = self.reference_registry.get_patient_reference()
 
         # Type - Convert encounter code to type (if not used for class)
         encounter_type = self._extract_type(encounter)

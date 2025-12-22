@@ -90,11 +90,12 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
 
         # 5. Subject (patient reference) - required
         # Patient reference (from recordTarget in document header)
-        if self.reference_registry:
-            med_statement["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            med_statement["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create MedicationStatement without patient reference."
+            )
+        med_statement["subject"] = self.reference_registry.get_patient_reference()
 
         # 6. Effective[x] (from effectiveTime)
         effective = self._extract_effective_time(substance_admin)

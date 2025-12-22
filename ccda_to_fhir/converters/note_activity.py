@@ -80,11 +80,12 @@ class NoteActivityConverter(BaseConverter[Act]):
 
         # Subject (patient reference) - placeholder that will be resolved later
         # Patient reference (from recordTarget in document header)
-        if self.reference_registry:
-            doc_ref["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            doc_ref["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create DocumentReference without patient reference."
+            )
+        doc_ref["subject"] = self.reference_registry.get_patient_reference()
 
         # Date - from author/time (first author's time)
         if note_act.author and len(note_act.author) > 0:

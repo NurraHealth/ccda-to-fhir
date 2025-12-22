@@ -146,9 +146,13 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                     )
                     careplan["subject"] = {"reference": f"Patient/{patient_ref_id}"}
                 else:
-                    careplan["subject"] = {"reference": "Patient/patient-unknown"}
+                    raise ValueError(
+                        "Cannot create CarePlan: patient identifier has no root"
+                    )
             else:
-                careplan["subject"] = {"reference": "Patient/patient-unknown"}
+                raise ValueError(
+                    "Cannot create CarePlan: patient identifier missing from recordTarget"
+                )
 
         # Period - from documentationOf/serviceEvent effectiveTime
         if clinical_document.documentation_of:
@@ -415,10 +419,12 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 return {"reference": f"Practitioner/{practitioner_id}"}
             else:
                 # Could be patient as author
-                if self.reference_registry:
-                    return self.reference_registry.get_patient_reference()
-                else:
-                    return {"reference": "Patient/patient-unknown"}
+                if not self.reference_registry:
+                    raise ValueError(
+                        "reference_registry is required. "
+                        "Cannot extract activity performer without registry."
+                    )
+                return self.reference_registry.get_patient_reference()
 
         return None
 

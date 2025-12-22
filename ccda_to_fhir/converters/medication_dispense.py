@@ -134,11 +134,12 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             }
 
         # 6. Subject (patient reference) - required
-        if self.reference_registry:
-            med_dispense["subject"] = self.reference_registry.get_patient_reference()
-        else:
-            # Fallback for unit tests without registry
-            med_dispense["subject"] = {"reference": "Patient/patient-unknown"}
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create MedicationDispense without patient reference."
+            )
+        med_dispense["subject"] = self.reference_registry.get_patient_reference()
 
         # 6b. Context (encounter reference) - US Core Must Support
         if self.reference_registry:
