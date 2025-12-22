@@ -135,91 +135,48 @@ This violates FHIR Bundle validation and creates invalid resources.
 
 ---
 
-## CATEGORY 2: Placeholder Resource IDs (18 instances)
+## CATEGORY 2: Placeholder Resource IDs (20 instances) ✅ **FIXED: 2025-12-22**
 
-These return placeholder IDs like `"device-unknown"` when identifiers are missing.
+~~These return placeholder IDs like `"device-unknown"` when identifiers are missing.~~
 
-### Files to Fix:
+**Fix Applied:**
+- Removed all 20 placeholder ID returns
+- All ID generation methods now raise ValueError when identifiers are missing
+- Optional references (e.g., evidence observations, condition references) skip entries when IDs cannot be generated
+- Procedure converter validates ID generation and raises error if no valid identifiers exist
+- All 737 integration tests pass
 
-- [ ] **ccda_to_fhir/converters/allergy_intolerance.py:282**
-  - Line: `return "allergy-unknown"`
-  - Context: _generate_allergy_id() fallback
+### Files Fixed:
 
-- [ ] **ccda_to_fhir/converters/condition.py:751**
-  - Line: `return "observation-unknown"`
-  - Context: _generate_observation_id() fallback (Condition)
+All ID generation methods now raise ValueError instead of returning placeholders. ID extraction methods for optional references return None and skip the reference.
 
-- [ ] **ccda_to_fhir/converters/condition.py:777**
-  - Line: `obs_id = "observation-unknown"`
-  - Context: Evidence observation ID initialization
+**Key Implementation Patterns:**
 
-- [ ] **ccda_to_fhir/converters/device.py:68**
-  - Line: `device["id"] = "device-unknown"`
-  - Context: Device ID fallback (from author)
+1. **ID Generation Methods** - Raise ValueError when identifiers missing:
+   ```python
+   # BEFORE: return "xxx-unknown"
+   # AFTER:
+   raise ValueError(
+       "Cannot generate ResourceType ID: no identifiers provided. "
+       "C-CDA Element must have id element."
+   )
+   ```
 
-- [ ] **ccda_to_fhir/converters/device.py:238**
-  - Line: `device["id"] = "device-unknown"`
-  - Context: Device ID fallback (from participant)
+2. **Optional Reference Extraction** - Return None and skip:
+   ```python
+   # BEFORE: return "condition-unknown"
+   # AFTER:
+   logger.warning("Cannot generate Condition ID: no identifiers. Skipping reference.")
+   return None
+   # Caller checks: if not condition_id: continue
+   ```
 
-- [ ] **ccda_to_fhir/converters/diagnostic_report.py:157**
-  - Line: `return "report-unknown"`
-  - Context: _generate_report_id() fallback
-
-- [ ] **ccda_to_fhir/converters/document_reference.py:626**
-  - Line: `return "encounter-unknown"`
-  - Context: _extract_encounter_id() fallback
-
-- [ ] **ccda_to_fhir/converters/encounter.py:144**
-  - Line: `return "encounter-unknown"`
-  - Context: _generate_encounter_id() fallback
-
-- [ ] **ccda_to_fhir/converters/informant_extractor.py:114**
-  - Line: `return "relatedperson-unknown"`
-  - Context: _generate_related_person_id() fallback
-
-- [ ] **ccda_to_fhir/converters/medication.py:162**
-  - Line: `return "medication-unknown"`
-  - Context: _generate_medication_id() fallback
-
-- [ ] **ccda_to_fhir/converters/medication_request.py:195**
-  - Line: `return "medicationrequest-unknown"`
-  - Context: _generate_medication_request_id() fallback
-
-- [ ] **ccda_to_fhir/converters/medication_statement.py:179**
-  - Line: `return "medicationstatement-unknown"`
-  - Context: _generate_medication_statement_id() fallback
-
-- [ ] **ccda_to_fhir/converters/note_activity.py:645**
-  - Line: `return "encounter-unknown"`
-  - Context: _extract_encounter_id() fallback
-
-- [ ] **ccda_to_fhir/converters/observation.py:461**
-  - Line: `return "observation-unknown"`
-  - Context: _generate_observation_id() fallback
-
-- [ ] **ccda_to_fhir/converters/observation.py:1238**
-  - Line: `bp_id = systolic_obs.get("id", "bp-unknown")`
-  - Context: Blood pressure panel ID fallback
-
-- [ ] **ccda_to_fhir/converters/patient.py:218**
-  - Line: `return "patient-unknown"`
-  - Context: _generate_patient_id() fallback
-
-- [ ] **ccda_to_fhir/converters/procedure.py:230**
-  - Line: `return "procedure-unknown"`
-  - Context: _generate_procedure_id() fallback
-
-- [ ] **ccda_to_fhir/converters/procedure.py:677**
-  - Line: `return "condition-unknown"`
-  - Context: _extract_condition_id() fallback (Procedure)
-
-- [ ] **ccda_to_fhir/converters/related_person.py:124**
-  - Line: `return "relatedperson-unknown"`
-  - Context: _generate_related_person_id() fallback
-
-- [ ] **ccda_to_fhir/converters/service_request.py:707**
-  - Line: `return "condition-unknown"`
-  - Context: _extract_condition_id() fallback (ServiceRequest)
+3. **Procedure with nullFlavor** - Additional validation after ID generation:
+   ```python
+   # Special case for resources that might have id elements with only nullFlavor
+   if "id" not in fhir_procedure:
+       raise ValueError("Cannot create Procedure: no valid identifiers...")
+   ```
 
 ---
 

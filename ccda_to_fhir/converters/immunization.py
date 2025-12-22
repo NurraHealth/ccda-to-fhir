@@ -175,13 +175,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if notes:
             immunization["note"] = notes
 
-        # C-CDA does not have a direct equivalent for primarySource
-        # Use data-absent-reason extension per C-CDA on FHIR IG guidance
-        immunization["_primarySource"] = {
-            "extension": [
-                self.create_data_absent_reason_extension(None, default_reason="unsupported")
-            ]
-        }
+        # primarySource is optional (0..1) and C-CDA has no equivalent concept
+        # Omit the field rather than using data-absent-reason
+        # (US Core Immunization does not require this field)
 
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=substance_admin, section=section)
@@ -258,17 +254,12 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                     code = manufactured_material.code
                     vaccine_code = self._convert_code_to_codeable_concept(code)
 
-        # Ensure vaccineCode is always present (required 1..1 cardinality)
-        # If no code available, use data-absent-reason per C-CDA on FHIR IG
+        # vaccineCode is required (1..1 cardinality)
         if not vaccine_code or not vaccine_code.get("coding"):
-            return {
-                "coding": [{
-                    "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
-                    "code": "unknown",
-                    "display": "Unknown"
-                }],
-                "text": "Unknown vaccine"
-            }
+            raise ValueError(
+                "Cannot create Immunization: vaccineCode is required. "
+                "C-CDA Immunization Activity must have consumable/manufacturedProduct/manufacturedMaterial/code."
+            )
 
         return vaccine_code
 

@@ -159,7 +159,10 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
             clean_code = code.lower().replace(" ", "-").replace(".", "-")
             return f"medication-{clean_code}"
 
-        return "medication-unknown"
+        raise ValueError(
+            "Cannot generate Medication ID: no identifiers or material code provided. "
+            "C-CDA ManufacturedProduct must have id element or manufacturedMaterial/code."
+        )
 
     def _extract_ingredients(
         self, substance_admin: SubstanceAdministration

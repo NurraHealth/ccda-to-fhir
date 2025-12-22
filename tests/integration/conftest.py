@@ -282,6 +282,49 @@ def ccda_medication_pivl_eivl_combined() -> str:
 
 
 @pytest.fixture
+def ccda_medication_dispense_no_product_code() -> str:
+    """C-CDA Medication Dispense with nullFlavor product code (tests fallback)."""
+    return """
+<substanceAdministration classCode="SBADM" moodCode="EVN">
+    <templateId root="2.16.840.1.113883.10.20.22.4.16" extension="2014-06-09"/>
+    <id root="medication-activity-test"/>
+    <statusCode code="completed"/>
+    <effectiveTime xsi:type="IVL_TS">
+        <low value="20100101"/>
+    </effectiveTime>
+    <doseQuantity value="1"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.23" extension="2014-06-09"/>
+            <manufacturedMaterial>
+                <code code="197454" codeSystem="2.16.840.1.113883.6.88" displayName="Lisinopril 10 MG Oral Tablet">
+                    <originalText>Lisinopril 10mg</originalText>
+                </code>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+    <entryRelationship typeCode="REFR">
+        <supply classCode="SPLY" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.18" extension="2014-06-09"/>
+            <id root="dispense-no-code-test"/>
+            <statusCode code="completed"/>
+            <effectiveTime value="20100115"/>
+            <quantity value="30"/>
+            <product>
+                <manufacturedProduct classCode="MANU">
+                    <templateId root="2.16.840.1.113883.10.20.22.4.23" extension="2014-06-09"/>
+                    <manufacturedMaterial>
+                        <code nullFlavor="UNK"/>
+                    </manufacturedMaterial>
+                </manufacturedProduct>
+            </product>
+        </supply>
+    </entryRelationship>
+</substanceAdministration>
+    """
+
+
+@pytest.fixture
 def ccda_procedure() -> str:
     """Load C-CDA procedure fixture."""
     return (CCDA_FIXTURES_DIR / "procedure.xml").read_text()
@@ -753,6 +796,27 @@ def ccda_immunization_with_supporting_observations() -> str:
 
 
 @pytest.fixture
+def ccda_immunization_no_vaccine_code() -> str:
+    """C-CDA Immunization with nullFlavor vaccine code (tests fallback)."""
+    return """
+<substanceAdministration classCode="SBADM" moodCode="EVN">
+    <templateId root="2.16.840.1.113883.10.20.22.4.52" extension="2015-08-01"/>
+    <id root="immunization-no-code-test"/>
+    <statusCode code="completed"/>
+    <effectiveTime value="20100815"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.54" extension="2014-06-09"/>
+            <manufacturedMaterial>
+                <code nullFlavor="UNK"/>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+</substanceAdministration>
+    """
+
+
+@pytest.fixture
 def ccda_observation_ivl_pq() -> str:
     """Load C-CDA observation with IVL_PQ value."""
     return (CCDA_FIXTURES_DIR / "observation_ivl_pq.xml").read_text()
@@ -985,6 +1049,25 @@ def ccda_goal_qualitative() -> str:
     <templateId root="2.16.840.1.113883.10.20.22.4.121" extension="2022-06-01"/>
     <id root="goal-qualitative-test"/>
     <code code="713458007" codeSystem="2.16.840.1.113883.6.96" displayName="Improving functional status"/>
+    <statusCode code="active"/>
+    <effectiveTime>
+        <low value="20240115"/>
+    </effectiveTime>
+</observation>
+    """
+
+
+@pytest.fixture
+def ccda_goal_narrative_only() -> str:
+    """C-CDA Goal with nullFlavor code and narrative text only (tests fallback)."""
+    return """
+<observation classCode="OBS" moodCode="GOL">
+    <templateId root="2.16.840.1.113883.10.20.22.4.121" extension="2022-06-01"/>
+    <id root="goal-narrative-test"/>
+    <code nullFlavor="UNK"/>
+    <text>
+        <reference value="#goal-narrative-123"/>
+    </text>
     <statusCode code="active"/>
     <effectiveTime>
         <low value="20240115"/>

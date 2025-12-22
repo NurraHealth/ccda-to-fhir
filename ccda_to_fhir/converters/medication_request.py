@@ -193,7 +193,10 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             root_suffix = root.replace(".", "").replace("-", "")[-16:]
             return f"medicationrequest-{root_suffix}"
         else:
-            return "medicationrequest-unknown"
+            raise ValueError(
+                "Cannot generate MedicationRequest ID: no identifiers provided. "
+                "C-CDA Substance Administration must have id element."
+            )
 
     def _determine_status(self, substance_admin: SubstanceAdministration) -> str:
         """Map C-CDA statusCode to FHIR MedicationRequest status.

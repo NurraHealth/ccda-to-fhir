@@ -141,8 +141,10 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             # Use root as the ID (sanitized)
             return root.replace(".", "-").replace(":", "-")
         else:
-            # Fallback to a default ID
-            return "encounter-unknown"
+            raise ValueError(
+                "Cannot generate Encounter ID: no identifiers provided. "
+                "C-CDA Encounter must have id element."
+            )
 
     def _extract_status(self, encounter: CCDAEncounter) -> str:
         """Extract FHIR status from C-CDA encounter.

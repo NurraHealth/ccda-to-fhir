@@ -64,8 +64,18 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         # Generate ID from procedure identifier
         if procedure.id and len(procedure.id) > 0:
-            first_id = procedure.id[0]
-            fhir_procedure["id"] = self._generate_procedure_id(first_id.root, first_id.extension)
+            for id_elem in procedure.id:
+                if id_elem.root:
+                    fhir_procedure["id"] = self._generate_procedure_id(id_elem.root, id_elem.extension)
+                    break
+
+        # FHIR requires every resource to have an ID
+        if "id" not in fhir_procedure:
+            raise ValueError(
+                "Cannot create Procedure: no valid identifiers provided. "
+                "All Procedure id elements have nullFlavor or missing root. "
+                "C-CDA Procedure Activity Procedure requires at least one valid id element."
+            )
 
         # Identifiers
         if procedure.id:
@@ -227,8 +237,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             # Use root as the ID (sanitized)
             return root.replace(".", "-")
         else:
-            # Fallback to a default ID
-            return "procedure-unknown"
+            raise ValueError(
+                "Cannot generate Procedure ID: no identifiers provided. "
+                "C-CDA Procedure Activity must have id element."
+            )
 
     def _map_status(self, status_code) -> str:
         """Map C-CDA status code to FHIR Procedure status.
@@ -622,6 +634,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                         # This is a Problem Observation - check if Condition exists
                         condition_id = self._generate_condition_id_from_observation(obs)
 
+                        # Skip if we couldn't generate a valid ID
+                        if not condition_id:
+                            continue
+
                         # Per C-CDA on FHIR spec: only create reasonReference if the Problem
                         # Observation was converted to a Condition resource elsewhere in the document
                         if self.reference_registry and self.reference_registry.has_resource(
@@ -658,7 +674,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         return {"codes": reason_codes, "references": reason_refs}
 
-    def _generate_condition_id_from_observation(self, observation) -> str:
+    def _generate_condition_id_from_observation(self, observation) -> str | None:
         """Generate a Condition resource ID from a Problem Observation.
 
         Uses the same ID generation logic as ConditionConverter to ensure
@@ -668,14 +684,19 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             observation: Problem Observation with ID
 
         Returns:
-            Condition resource ID string
+            Condition resource ID string, or None if no identifiers available
         """
         if hasattr(observation, "id") and observation.id:
             for id_elem in observation.id:
                 if hasattr(id_elem, "root") and id_elem.root:
                     extension = id_elem.extension if hasattr(id_elem, "extension") else None
                     return self._generate_condition_id(id_elem.root, extension)
-        return "condition-unknown"
+
+        logger.warning(
+            "Cannot generate Condition ID from Problem Observation: no identifiers provided. "
+            "Skipping reasonReference."
+        )
+        return None
 
     def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
         """Generate FHIR Condition ID using cached UUID v4 from C-CDA identifiers.

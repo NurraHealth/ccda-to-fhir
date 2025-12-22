@@ -280,7 +280,10 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             root_suffix = root.replace(".", "").replace("-", "")[-16:]
             return f"allergy-{root_suffix}"
         else:
-            return "allergy-unknown"
+            raise ValueError(
+                "Cannot generate AllergyIntolerance ID: no identifiers provided. "
+                "C-CDA Allergy Concern Act or Allergy Intolerance Observation must have id element."
+            )
 
     def _is_no_known_allergy(self, observation: Observation) -> bool:
         """Check if this is a "no known allergy" observation.

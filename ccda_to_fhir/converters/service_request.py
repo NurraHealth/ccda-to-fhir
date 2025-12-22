@@ -637,6 +637,11 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                     if is_problem_obs:
                         # Check if Condition resource exists
                         condition_id = self._generate_condition_id_from_observation(obs)
+
+                        # Skip if we couldn't generate a valid ID
+                        if not condition_id:
+                            continue
+
                         if self.reference_registry and self.reference_registry.has_resource(
                             FHIRCodes.ResourceTypes.CONDITION, condition_id
                         ):
@@ -688,14 +693,14 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         return {"codes": reason_codes, "references": reason_refs}
 
-    def _generate_condition_id_from_observation(self, observation) -> str:
+    def _generate_condition_id_from_observation(self, observation) -> str | None:
         """Generate Condition ID from Problem Observation.
 
         Args:
             observation: Problem Observation with ID
 
         Returns:
-            Condition resource ID string
+            Condition resource ID string, or None if no identifiers available
         """
         if hasattr(observation, "id") and observation.id:
             for id_elem in observation.id:
@@ -704,7 +709,12 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                         id_elem.extension if hasattr(id_elem, "extension") else None
                     )
                     return self._generate_condition_id(id_elem.root, extension)
-        return "condition-unknown"
+
+        logger.warning(
+            "Cannot generate Condition ID from Problem Observation: no identifiers provided. "
+            "Skipping reasonReference."
+        )
+        return None
 
     def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
         """Generate FHIR Condition ID from C-CDA identifiers.

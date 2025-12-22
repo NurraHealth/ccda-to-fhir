@@ -749,7 +749,10 @@ class ConditionConverter(BaseConverter[Observation]):
             root_suffix = root.replace(".", "").replace("-", "")[-16:]
             return f"observation-{root_suffix}"
         else:
-            return "observation-unknown"
+            raise ValueError(
+                "Cannot generate Observation ID: no identifiers provided. "
+                "C-CDA Observation must have id element."
+            )
 
     def _extract_evidence(self, observation: Observation) -> list[JSONObject] | None:
         """Extract evidence from related observations.
@@ -775,12 +778,20 @@ class ConditionConverter(BaseConverter[Observation]):
                     supporting_obs = entry_rel.observation
 
                     # Generate observation ID from the supporting observation's identifiers
-                    obs_id = "observation-unknown"
+                    obs_id = None
                     if hasattr(supporting_obs, "id") and supporting_obs.id:
                         for id_elem in supporting_obs.id:
                             if id_elem.root:
                                 obs_id = self._generate_observation_id(id_elem.root, id_elem.extension)
                                 break
+
+                    # Skip evidence entry if we cannot generate a valid ID
+                    if not obs_id:
+                        logger.warning(
+                            "Skipping evidence observation without identifiers. "
+                            "C-CDA supporting observation must have id element."
+                        )
+                        continue
 
                     # Add evidence detail reference
                     evidence_list.append({

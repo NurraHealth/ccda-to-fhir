@@ -155,7 +155,10 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
             # Use root as ID
             return root.replace(".", "-").replace(":", "-")
         else:
-            return "report-unknown"
+            raise ValueError(
+                "Cannot generate DiagnosticReport ID: no identifiers provided. "
+                "C-CDA Result Organizer must have id element."
+            )
 
     def _determine_status(self, organizer: Organizer) -> str:
         """Determine FHIR DiagnosticReport status from C-CDA status code.

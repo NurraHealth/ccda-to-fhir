@@ -2122,14 +2122,17 @@ class DocumentConverter:
                         for template in entry.procedure.template_id:
                             if template.root == TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE:
                                 # Generate the same ID the converter would use
+                                procedure_id = None
                                 if entry.procedure.id and len(entry.procedure.id) > 0:
-                                    first_id = entry.procedure.id[0]
-                                    procedure_id = self.procedure_converter._generate_procedure_id(
-                                        first_id.root, first_id.extension
-                                    )
+                                    for id_elem in entry.procedure.id:
+                                        if id_elem.root:
+                                            procedure_id = self.procedure_converter._generate_procedure_id(
+                                                id_elem.root, id_elem.extension
+                                            )
+                                            break
 
                                     # If this procedure is in our list, store metadata
-                                    if procedure_id in procedure_ids_needing_metadata:
+                                    if procedure_id and procedure_id in procedure_ids_needing_metadata:
                                         self._store_author_metadata(
                                             resource_type="Procedure",
                                             resource_id=procedure_id,

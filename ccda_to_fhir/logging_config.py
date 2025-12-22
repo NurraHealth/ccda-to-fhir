@@ -63,10 +63,10 @@ class ConversionLogger:
         msg, extra = self._add_context(msg, kwargs)
         self.logger.info(msg, extra=extra)
 
-    def warning(self, msg: str, **kwargs: Any) -> None:
-        """Log warning message."""
+    def warning(self, msg: str, exc_info: bool = False, **kwargs: Any) -> None:
+        """Log warning message with optional exception info."""
         msg, extra = self._add_context(msg, kwargs)
-        self.logger.warning(msg, extra=extra)
+        self.logger.warning(msg, exc_info=exc_info, extra=extra)
 
     def error(self, msg: str, exc_info: bool = False, **kwargs: Any) -> None:
         """Log error message with optional exception info."""

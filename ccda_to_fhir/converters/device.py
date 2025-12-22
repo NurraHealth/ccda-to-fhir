@@ -62,10 +62,12 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         }
 
         # Generate ID from identifiers
-        if assigned.id:
-            device["id"] = self._generate_device_id(assigned.id)
-        else:
-            device["id"] = "device-unknown"
+        if not assigned.id:
+            raise ValueError(
+                "Cannot generate Device ID: no identifiers provided. "
+                "C-CDA AssignedAuthor must have id element."
+            )
+        device["id"] = self._generate_device_id(assigned.id)
 
         # Map identifiers
         if assigned.id:
@@ -232,10 +234,12 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         }
 
         # Generate ID from identifiers
-        if participant_role.id:
-            device["id"] = self._generate_device_id(participant_role.id)
-        else:
-            device["id"] = "device-unknown"
+        if not participant_role.id:
+            raise ValueError(
+                "Cannot generate Device ID: no identifiers provided. "
+                "C-CDA ParticipantRole (Product Instance) must have id element."
+            )
+        device["id"] = self._generate_device_id(participant_role.id)
 
         # Map identifiers
         if participant_role.id:

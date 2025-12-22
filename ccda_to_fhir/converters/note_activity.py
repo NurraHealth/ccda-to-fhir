@@ -643,7 +643,10 @@ class NoteActivityConverter(BaseConverter[Act]):
             # For OIDs, use last 16 chars
             return identifier.root.replace(".", "")[-16:]
 
-        return "encounter-unknown"
+        raise ValueError(
+            "Cannot generate Encounter ID: no identifiers provided. "
+            "C-CDA Encounter must have id element."
+        )
 
     def _convert_relates_to(self, references: list) -> list[JSONObject]:
         """Convert reference to externalDocument to relatesTo.

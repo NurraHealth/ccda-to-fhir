@@ -460,7 +460,10 @@ class ObservationConverter(BaseConverter[Observation]):
             # Use root as ID
             return root.replace(".", "-").replace(":", "-")
         else:
-            return "observation-unknown"
+            raise ValueError(
+                "Cannot generate Observation ID: no identifiers provided. "
+                "C-CDA Observation must have id element."
+            )
 
     def _determine_status(self, observation: Observation) -> str:
         """Determine FHIR Observation status from C-CDA status code.
@@ -1237,7 +1240,13 @@ class ObservationConverter(BaseConverter[Observation]):
             Combined BP observation with components
         """
         # Generate ID from systolic observation (use first BP component's ID as base)
-        bp_id = systolic_obs.get("id", "bp-unknown")
+        if "id" not in systolic_obs:
+            raise ValueError(
+                "Cannot create blood pressure panel: systolic observation missing ID. "
+                "This should not occur if observations are properly converted."
+            )
+
+        bp_id = systolic_obs["id"]
         if "-" in bp_id:
             # If ID has a suffix, use base part
             bp_id = bp_id.rsplit("-", 1)[0] + "-bp"

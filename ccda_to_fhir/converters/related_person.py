@@ -120,8 +120,10 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
                     )
                     return f"relatedperson-{family.lower().replace(' ', '-')}"
 
-        # Fallback
-        return "relatedperson-unknown"
+        raise ValueError(
+            "Cannot generate RelatedPerson ID: no code or name provided. "
+            "C-CDA RelatedEntity must have code or relatedPerson/name."
+        )
 
     def _convert_relationship(self, code: CE) -> dict[str, list[dict[str, str]]]:
         """Convert C-CDA relationship code to FHIR CodeableConcept.

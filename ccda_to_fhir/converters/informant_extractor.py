@@ -110,8 +110,10 @@ class InformantInfo:
                     )
                     return f"relatedperson-{family.lower().replace(' ', '-')}"
 
-        # Fallback
-        return "relatedperson-unknown"
+        raise ValueError(
+            "Cannot generate RelatedPerson ID: no code or name provided. "
+            "C-CDA RelatedEntity must have code or relatedPerson/name."
+        )
 
 
 class InformantExtractor:

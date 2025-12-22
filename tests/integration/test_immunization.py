@@ -277,29 +277,24 @@ class TestImmunizationConversion:
             assert "reference" in agent["who"]
             assert agent["who"]["reference"].startswith("Practitioner/")
 
-    def test_primary_source_has_data_absent_reason_extension(
+    def test_primary_source_omitted_when_not_available(
         self, ccda_immunization: str
     ) -> None:
-        """Test that primarySource uses data-absent-reason extension."""
+        """Test that primarySource is omitted when not available.
+
+        Per FHIR R4B spec, primarySource is optional (0..1 cardinality).
+        C-CDA has no equivalent concept, so the field should be omitted
+        rather than using data-absent-reason.
+        """
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
 
-        # Should have _primarySource with data-absent-reason extension
-        assert "_primarySource" in immunization
-        assert "extension" in immunization["_primarySource"]
-        extensions = immunization["_primarySource"]["extension"]
-        assert len(extensions) > 0
-
-        # Check extension URL and value
-        data_absent_ext = extensions[0]
-        assert data_absent_ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
-        assert data_absent_ext["valueCode"] == "unsupported"
-
-        # Should NOT have primarySource field directly
+        # Should NOT have primarySource field or _primarySource extension
         assert "primarySource" not in immunization
+        assert "_primarySource" not in immunization
 
     def test_reaction_creates_observation_reference(
         self, ccda_immunization: str
@@ -622,3 +617,22 @@ class TestImmunizationConversion:
         assert "valueCodeableConcept" in infection_obs
         assert infection_obs["valueCodeableConcept"]["coding"][0]["code"] == "40983000"
         assert "infection" in infection_obs["valueCodeableConcept"]["coding"][0]["display"].lower()
+
+    def test_vaccine_code_required_when_null_flavor(self, ccda_immunization_no_vaccine_code: str) -> None:
+        """Test that Immunization without vaccineCode is not created.
+
+        Per FHIR R4B spec and user code review, vaccineCode is required (1..1 cardinality).
+        When C-CDA consumable has nullFlavor code, the Immunization should not be created
+        rather than using data-absent-reason (which violates FHIR spec).
+
+        This ensures strict validation and FHIR compliance.
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_immunization_no_vaccine_code, IMMUNIZATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        # Immunization should NOT be created when vaccine code is missing
+        immunization = _find_resource_in_bundle(bundle, "Immunization")
+        assert immunization is None, (
+            "Immunization should not be created when vaccineCode is missing. "
+            "vaccineCode is required (1..1 cardinality) per FHIR R4B spec."
+        )

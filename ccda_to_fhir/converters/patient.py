@@ -215,7 +215,10 @@ class PatientConverter(BaseConverter[RecordTarget]):
             root_suffix = identifier.root.replace(".", "").replace("-", "")[-16:]
             return f"patient-{root_suffix}"
         else:
-            return "patient-unknown"
+            raise ValueError(
+                "Cannot generate Patient ID: no identifiers provided. "
+                "C-CDA recordTarget/patientRole must have id element."
+            )
 
     def _extract_birth_date_and_time(self, birth_time) -> tuple[str | None, JSONObject | None]:
         """Extract birthDate and optionally patient-birthTime extension.
