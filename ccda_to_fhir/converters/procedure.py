@@ -428,13 +428,16 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                             elif hasattr(entity.name, "value"):
                                 display = entity.name.value
 
-                    location_ref: JSONObject = {
-                        "reference": f"{FHIRCodes.ResourceTypes.LOCATION}/{location_id}"
-                    }
-                    if display:
-                        location_ref["display"] = display
+                    # Only create reference if we have a valid location ID
+                    # Don't create broken references to "location-unknown"
+                    if location_id != "location-unknown":
+                        location_ref: JSONObject = {
+                            "reference": f"{FHIRCodes.ResourceTypes.LOCATION}/{location_id}"
+                        }
+                        if display:
+                            location_ref["display"] = display
 
-                    return location_ref
+                        return location_ref
 
         return None
 

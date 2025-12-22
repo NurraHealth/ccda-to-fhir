@@ -2532,9 +2532,10 @@ class DocumentConverter:
 
             section = comp.section
 
-            # Process encounters section
+            # Process encounters and procedures sections
             if section.entry:
                 for entry in section.entry:
+                    # Extract from encounters
                     if hasattr(entry, "encounter") and entry.encounter:
                         # Extract location participants from encounter
                         if entry.encounter.participant:
@@ -2562,6 +2563,37 @@ class DocumentConverter:
                                         except Exception as e:
                                             logger.error(
                                                 f"Error converting Service Delivery Location: {e}",
+                                                exc_info=True
+                                            )
+
+                    # Extract from procedures
+                    elif hasattr(entry, "procedure") and entry.procedure:
+                        # Extract location participants from procedure
+                        if entry.procedure.participant:
+                            for participant in entry.procedure.participant:
+                                # Look for location participants (typeCode="LOC")
+                                if hasattr(participant, "type_code") and participant.type_code == "LOC":
+                                    if participant.participant_role:
+                                        try:
+                                            # Convert to Location resource
+                                            location = location_converter.convert(participant.participant_role)
+
+                                            # Deduplicate by NPI or name+city
+                                            dedup_key = self._get_location_dedup_key(location)
+
+                                            if dedup_key not in location_registry:
+                                                location_registry[dedup_key] = location
+                                                logger.debug(
+                                                    f"Created Location resource from Procedure: {location.get('name')} (ID: {location.get('id')})"
+                                                )
+                                        except ValueError as e:
+                                            # Invalid location (missing required fields)
+                                            logger.warning(
+                                                f"Skipping invalid Procedure Service Delivery Location: {e}"
+                                            )
+                                        except Exception as e:
+                                            logger.error(
+                                                f"Error converting Procedure Service Delivery Location: {e}",
                                                 exc_info=True
                                             )
 
