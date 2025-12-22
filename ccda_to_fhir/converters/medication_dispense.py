@@ -181,6 +181,17 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             if "whenHandedOver" in timing:
                 med_dispense["whenHandedOver"] = timing["whenHandedOver"]
 
+        # FHIR invariant mdd-1: whenHandedOver cannot be before whenPrepared
+        # FHIRPath: whenHandedOver.empty() or whenPrepared.empty() or whenHandedOver >= whenPrepared
+        if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
+            if med_dispense["whenHandedOver"] < med_dispense["whenPrepared"]:
+                logger.warning(
+                    f"FHIR invariant mdd-1 violation: whenHandedOver ({med_dispense['whenHandedOver']}) "
+                    f"cannot be before whenPrepared ({med_dispense['whenPrepared']}). "
+                    "Removing whenHandedOver to maintain FHIR validity."
+                )
+                del med_dispense["whenHandedOver"]
+
         # US Core constraint: whenHandedOver SHALL be present if status='completed'
         # If status is completed but no whenHandedOver, adjust status to in-progress
         # Rationale: Per FHIR spec, "in-progress" means "dispensed product is ready for pickup"

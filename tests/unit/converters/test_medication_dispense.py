@@ -278,6 +278,106 @@ class TestMedicationDispenseTiming:
         # (semantically more accurate than "unknown" - indicates medication ready for pickup)
         assert result["status"] == "in-progress"
 
+    def test_when_handed_over_after_when_prepared_is_valid(self):
+        """Test FHIR invariant mdd-1: whenHandedOver after whenPrepared is valid."""
+        dispense = create_minimal_dispense()
+        # whenPrepared at 9:00 AM, whenHandedOver at 2:30 PM (valid)
+        dispense.effective_time = IVL_TS(
+            low=TS(value="20200301090000-0500"), high=TS(value="20200301143000-0500")
+        )
+
+        converter = MedicationDispenseConverter()
+        result = converter.convert(dispense)
+
+        # Both timestamps should be present and unchanged
+        assert "whenPrepared" in result
+        assert result["whenPrepared"] == "2020-03-01T09:00:00-05:00"
+        assert "whenHandedOver" in result
+        assert result["whenHandedOver"] == "2020-03-01T14:30:00-05:00"
+
+    def test_when_handed_over_equals_when_prepared_is_valid(self):
+        """Test FHIR invariant mdd-1: whenHandedOver equal to whenPrepared is valid."""
+        dispense = create_minimal_dispense()
+        # Both at same time (edge case, but valid per mdd-1: whenHandedOver >= whenPrepared)
+        dispense.effective_time = IVL_TS(
+            low=TS(value="20200301090000-0500"), high=TS(value="20200301090000-0500")
+        )
+
+        converter = MedicationDispenseConverter()
+        result = converter.convert(dispense)
+
+        # Both timestamps should be present and unchanged
+        assert "whenPrepared" in result
+        assert result["whenPrepared"] == "2020-03-01T09:00:00-05:00"
+        assert "whenHandedOver" in result
+        assert result["whenHandedOver"] == "2020-03-01T09:00:00-05:00"
+
+    def test_when_handed_over_before_when_prepared_triggers_mdd1_violation(self, caplog):
+        """Test FHIR invariant mdd-1: whenHandedOver before whenPrepared is invalid.
+
+        Per FHIR invariant mdd-1: "whenHandedOver cannot be before whenPrepared"
+        FHIRPath: whenHandedOver.empty() or whenPrepared.empty() or whenHandedOver >= whenPrepared
+
+        When this violation occurs, the converter should:
+        1. Log a warning
+        2. Remove whenHandedOver to maintain FHIR validity
+        """
+        dispense = create_minimal_dispense()
+        # whenPrepared at 2:30 PM, whenHandedOver at 9:00 AM (INVALID - handed over before prepared!)
+        dispense.effective_time = IVL_TS(
+            low=TS(value="20200301143000-0500"), high=TS(value="20200301090000-0500")
+        )
+
+        converter = MedicationDispenseConverter()
+        with caplog.at_level("WARNING"):
+            result = converter.convert(dispense)
+
+        # whenPrepared should remain
+        assert "whenPrepared" in result
+        assert result["whenPrepared"] == "2020-03-01T14:30:00-05:00"
+
+        # whenHandedOver should be removed due to mdd-1 violation
+        assert "whenHandedOver" not in result
+
+        # Should have logged a warning about mdd-1 violation
+        assert any("mdd-1 violation" in record.message for record in caplog.records)
+        assert any("2020-03-01T09:00:00-05:00" in record.message for record in caplog.records)
+        assert any("2020-03-01T14:30:00-05:00" in record.message for record in caplog.records)
+
+    def test_only_when_prepared_does_not_trigger_mdd1(self):
+        """Test FHIR invariant mdd-1: only whenPrepared present does not violate invariant.
+
+        Per FHIR invariant mdd-1, if whenHandedOver is empty, the constraint is satisfied.
+        """
+        dispense = create_minimal_dispense()
+        # Only low (whenPrepared), no high (whenHandedOver)
+        dispense.effective_time = IVL_TS(low=TS(value="20200301090000-0500"))
+
+        converter = MedicationDispenseConverter()
+        result = converter.convert(dispense)
+
+        # Only whenPrepared should be present
+        assert "whenPrepared" in result
+        assert result["whenPrepared"] == "2020-03-01T09:00:00-05:00"
+        assert "whenHandedOver" not in result
+
+    def test_only_when_handed_over_does_not_trigger_mdd1(self):
+        """Test FHIR invariant mdd-1: only whenHandedOver present does not violate invariant.
+
+        Per FHIR invariant mdd-1, if whenPrepared is empty, the constraint is satisfied.
+        """
+        dispense = create_minimal_dispense()
+        # Single value (whenHandedOver only)
+        dispense.effective_time = IVL_TS(value="20200301143000-0500")
+
+        converter = MedicationDispenseConverter()
+        result = converter.convert(dispense)
+
+        # Only whenHandedOver should be present
+        assert "whenHandedOver" in result
+        assert result["whenHandedOver"] == "2020-03-01T14:30:00-05:00"
+        assert "whenPrepared" not in result
+
 
 class TestMedicationDispenseType:
     """Test dispense type inference from repeatNumber."""

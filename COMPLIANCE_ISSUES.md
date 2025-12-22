@@ -603,26 +603,66 @@ has_valid_template = any(
 
 ---
 
-### LOW-2: MedicationDispense - FHIR Invariant mdd-1 Not Validated
+### ~~LOW-2: MedicationDispense - FHIR Invariant mdd-1 Not Validated~~ ✅ FIXED
 
+**Status:** ✅ Fixed on 2025-12-22
 **Severity:** Low
 **Component:** MedicationDispense Converter
-**Location:** `ccda_to_fhir/converters/medication_dispense.py:462-496`
+**Location:** `ccda_to_fhir/converters/medication_dispense.py:184-193`
 
 **Issue:**
-No explicit validation that whenHandedOver >= whenPrepared.
+No explicit validation that whenHandedOver >= whenPrepared per FHIR invariant mdd-1.
 
-**Current:**
-Timing extraction naturally satisfies this, but not explicitly checked.
+**FHIR Invariant mdd-1:**
+- **Description:** "whenHandedOver cannot be before whenPrepared"
+- **FHIRPath:** `whenHandedOver.empty() or whenPrepared.empty() or whenHandedOver >= whenPrepared`
+- **Severity:** Rule (must be enforced)
 
-**Enhancement:**
+**Fix Applied:**
+Added explicit validation for FHIR invariant mdd-1:
+
 ```python
+# FHIR invariant mdd-1: whenHandedOver cannot be before whenPrepared
+# FHIRPath: whenHandedOver.empty() or whenPrepared.empty() or whenHandedOver >= whenPrepared
 if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
     if med_dispense["whenHandedOver"] < med_dispense["whenPrepared"]:
-        logger.warning("whenHandedOver before whenPrepared - FHIR invariant mdd-1 violation")
+        logger.warning(
+            f"FHIR invariant mdd-1 violation: whenHandedOver ({med_dispense['whenHandedOver']}) "
+            f"cannot be before whenPrepared ({med_dispense['whenPrepared']}). "
+            "Removing whenHandedOver to maintain FHIR validity."
+        )
+        del med_dispense["whenHandedOver"]
 ```
 
-**Impact:** Low - timing extraction already handles this correctly in practice.
+**Implementation:**
+- Modified: `ccda_to_fhir/converters/medication_dispense.py:184-193`
+  - Added explicit mdd-1 validation after timing extraction
+  - Logs warning when violation detected
+  - Removes whenHandedOver to maintain FHIR validity (prevents invalid resource)
+  - Preserves whenPrepared (more reliable timestamp)
+- Added comprehensive tests: `tests/unit/converters/test_medication_dispense.py`
+  - `test_when_handed_over_after_when_prepared_is_valid()` - Valid case (after)
+  - `test_when_handed_over_equals_when_prepared_is_valid()` - Valid edge case (equal)
+  - `test_when_handed_over_before_when_prepared_triggers_mdd1_violation()` - Violation handling
+  - `test_only_when_prepared_does_not_trigger_mdd1()` - No violation when only whenPrepared
+  - `test_only_when_handed_over_does_not_trigger_mdd1()` - No violation when only whenHandedOver
+- Test Status: ✅ All 1262 tests passing (+5 new tests) - no regressions
+
+**Behavior:**
+- **Valid:** whenHandedOver >= whenPrepared → Both timestamps preserved
+- **Valid:** Only one timestamp present → No validation needed, constraint satisfied
+- **Invalid:** whenHandedOver < whenPrepared → Logs warning, removes whenHandedOver, preserves whenPrepared
+- Ensures all generated FHIR resources satisfy invariant mdd-1
+
+**Standards Compliance:**
+- Implements FHIR invariant mdd-1 enforcement per FHIR R4B specification
+- Prevents creation of invalid MedicationDispense resources
+- Maintains data integrity by removing incorrect temporal data
+- Provides clear warning messages for data quality issues
+
+**References:**
+- [FHIR MedicationDispense Invariants](https://hl7.org/fhir/R4B/medicationdispense.html#inv)
+- [FHIR Invariant mdd-1 Definition](https://hl7.org/fhir/R4B/medicationdispense-definitions.html#MedicationDispense)
 
 ---
 
@@ -634,10 +674,10 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 - **Critical:** ~~2~~ 0 remaining (2 fixed)
 - **High:** ~~3~~ ~~2~~ ~~1~~ 0 remaining (3 fixed)
 - **Medium:** ~~5~~ ~~4~~ 3 remaining (2 fixed, 3 intentional leniency)
-- **Low:** 2 (nice-to-have validations)
+- **Low:** ~~2~~ 1 remaining (1 fixed, 1 nice-to-have)
 
 ### By Component
-- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ ~~4~~ ~~3~~ ~~2~~ 1 issue remaining (6 fixed)
+- **MedicationDispense:** ~~7~~ ~~6~~ ~~5~~ ~~4~~ ~~3~~ ~~2~~ ~~1~~ 0 issues remaining (7 fixed) ✅
 - **CareTeam:** ~~5~~ 4 issues remaining (1 fixed)
 
 ### Key Takeaways
@@ -650,6 +690,7 @@ if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
 5. ✅ MedicationDispense: Performer function assignment with functionCode mapping - FIXED 2025-12-22
 6. ✅ MedicationDispense: Populate Location.managingOrganization reference - FIXED 2025-12-22
 7. ✅ MedicationDispense: Use semantically accurate status fallback (in-progress vs unknown) - FIXED 2025-12-22
+8. ✅ MedicationDispense: FHIR invariant mdd-1 validation (whenHandedOver >= whenPrepared) - FIXED 2025-12-22
 
 **Intentional Design Choices:**
 - CareTeam accepts missing required elements (statusCode, effectiveTime, type observation)
