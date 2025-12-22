@@ -98,11 +98,29 @@ class GoalConverter(BaseConverter[Observation]):
             # Default to active if not specified
             fhir_goal["lifecycleStatus"] = "active"
 
-        # 4. Description (required) - map from code
+        # 4. Description (required) - map from code or narrative text
+        description = None
+
+        # Try coded description first
         if observation.code:
             description = self._convert_code_to_codeable_concept(observation.code)
-            if description:
-                fhir_goal["description"] = description
+
+        # If no valid coded description, extract from narrative text
+        if not description or not description.get("coding"):
+            narrative_text = self.extract_original_text(observation.text, section)
+            if narrative_text:
+                description = {
+                    "text": narrative_text
+                }
+
+        # Set description (required field)
+        if description:
+            fhir_goal["description"] = description
+        else:
+            # Last resort fallback for required field
+            fhir_goal["description"] = {
+                "text": "Goal description not available"
+            }
 
         # 5. Subject (required) - reference to patient
         if self.reference_registry:
