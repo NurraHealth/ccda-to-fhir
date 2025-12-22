@@ -101,6 +101,16 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 med_request["medicationReference"] = medication_data["medicationReference"]
             elif "medicationCodeableConcept" in medication_data:
                 med_request["medicationCodeableConcept"] = medication_data["medicationCodeableConcept"]
+        else:
+            # US Core Must Support: medication[x] is required
+            # If we couldn't extract medication data, create a text-only CodeableConcept
+            # with data-absent-reason extension embedded inside (complex type, not primitive)
+            med_request["medicationCodeableConcept"] = {
+                "extension": [
+                    self.create_data_absent_reason_extension(None, default_reason="unknown")
+                ],
+                "text": "Medication information not provided"
+            }
 
         # 6. Subject (patient reference)
         # Patient reference (from recordTarget in document header)
@@ -324,6 +334,11 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 ),
                 translations=translations,
             )
+
+            # Check if codeable_concept is empty (no codings, no text)
+            # This can happen when all codings are skipped due to unmapped OIDs
+            if not codeable_concept or (not codeable_concept.get("coding") and not codeable_concept.get("text")):
+                return None
 
             return {"medicationCodeableConcept": codeable_concept}
 

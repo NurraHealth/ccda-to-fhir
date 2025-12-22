@@ -756,14 +756,16 @@ def assert_us_core_must_support(bundle: dict) -> None:
         elif resource_type == "Observation":
             if not resource.get("category"):
                 missing_elements.append(f"Observation/{resource_id}: missing category")
-            # value[x] OR dataAbsentReason OR component required (obs-6 invariant)
+            # US Core STU6.1 constraint us-core-2:
+            # value[x] OR dataAbsentReason OR component OR hasMember required
             has_value = any(k.startswith("value") for k in resource.keys())
             has_data_absent = "dataAbsentReason" in resource
             has_component = resource.get("component")
+            has_has_member = resource.get("hasMember")
 
-            if not (has_value or has_data_absent or has_component):
+            if not (has_value or has_data_absent or has_component or has_has_member):
                 missing_elements.append(
-                    f"Observation/{resource_id}: missing value[x], dataAbsentReason, and component"
+                    f"Observation/{resource_id}: missing value[x], dataAbsentReason, component, and hasMember"
                 )
 
         # Procedure Must Support
@@ -771,7 +773,8 @@ def assert_us_core_must_support(bundle: dict) -> None:
             if not resource.get("status"):
                 missing_elements.append(f"Procedure/{resource_id}: missing status")
             # performed[x] is Must Support
-            has_performed = any(k.startswith("performed") for k in resource.keys())
+            # Accept either performedDateTime/performedPeriod OR _performedDateTime extension
+            has_performed = any(k.startswith("performed") for k in resource.keys()) or "_performedDateTime" in resource
             if not has_performed:
                 missing_elements.append(f"Procedure/{resource_id}: missing performed[x]")
 
@@ -801,16 +804,18 @@ def assert_fhir_invariants(bundle: dict) -> None:
         resource_type = resource.get("resourceType")
         resource_id = resource.get("id", "unknown")
 
-        # obs-6: Observation value[x] OR dataAbsentReason OR component
+        # obs-6: Observation value[x] OR dataAbsentReason OR component OR hasMember
+        # Extended by US Core STU6.1 constraint us-core-2 to include hasMember
         if resource_type == "Observation":
             has_value = any(k.startswith("value") for k in resource.keys())
             has_data_absent = "dataAbsentReason" in resource
             has_component = resource.get("component")
+            has_has_member = resource.get("hasMember")
 
-            if not (has_value or has_data_absent or has_component):
+            if not (has_value or has_data_absent or has_component or has_has_member):
                 violations.append(
                     f"Observation/{resource_id}: obs-6 invariant violation - "
-                    "must have value[x] OR dataAbsentReason OR component"
+                    "must have value[x] OR dataAbsentReason OR component OR hasMember"
                 )
 
             # Check components also satisfy this rule

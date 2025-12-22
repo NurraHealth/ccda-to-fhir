@@ -213,6 +213,42 @@ class ObservationConverter(BaseConverter[Observation]):
         if narrative:
             fhir_obs["text"] = narrative
 
+        # US Core STU6.1 Constraint us-core-2:
+        # "If there is no component or hasMember element then either a value[x] or
+        # a data absent reason must be present"
+        # Add dataAbsentReason as final step if no value/component/hasMember
+        has_value = any(k.startswith("value") for k in fhir_obs.keys())
+        has_data_absent = "dataAbsentReason" in fhir_obs
+        has_component = "component" in fhir_obs
+        has_has_member = "hasMember" in fhir_obs
+
+        if not (has_value or has_data_absent or has_component or has_has_member):
+            # Check for nullFlavor on value element
+            has_null_flavor = (
+                observation.value
+                and hasattr(observation.value, 'null_flavor')
+                and observation.value.null_flavor
+            )
+
+            if has_null_flavor:
+                # Map C-CDA nullFlavor to FHIR DataAbsentReason
+                fhir_obs["dataAbsentReason"] = {
+                    "coding": [{
+                        "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+                        "code": self._map_null_flavor_to_data_absent_reason(observation.value.null_flavor),
+                    }]
+                }
+            else:
+                # No value and no nullFlavor - use generic "unknown" reason
+                fhir_obs["dataAbsentReason"] = {
+                    "coding": [{
+                        "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+                        "code": "unknown",
+                        "display": "Unknown"
+                    }],
+                    "text": "Value not provided in source C-CDA document"
+                }
+
         return fhir_obs
 
     def convert_vital_signs_organizer(self, organizer: Organizer, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
@@ -379,6 +415,27 @@ class ObservationConverter(BaseConverter[Observation]):
         narrative = self._generate_narrative(entry=organizer, section=section)
         if narrative:
             panel["text"] = narrative
+
+        # US Core STU6.1 Constraint us-core-2:
+        # "If there is no component or hasMember element then either a value[x] or
+        # a data absent reason must be present"
+        # Panel observations with hasMember don't need value or dataAbsentReason
+        # This check ensures compliance for any panel that somehow lacks hasMember
+        has_value = any(k.startswith("value") for k in panel.keys())
+        has_data_absent = "dataAbsentReason" in panel
+        has_component = "component" in panel
+        has_has_member = "hasMember" in panel
+
+        if not (has_value or has_data_absent or has_component or has_has_member):
+            # Panel should have hasMember but doesn't - add dataAbsentReason as fallback
+            panel["dataAbsentReason"] = {
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+                    "code": "unknown",
+                    "display": "Unknown"
+                }],
+                "text": "Value not provided in source C-CDA document"
+            }
 
         return panel, all_observations
 
@@ -730,6 +787,22 @@ class ObservationConverter(BaseConverter[Observation]):
             return self.convert_date(organizer.effective_time.value)
 
         return None
+
+    def _map_null_flavor_to_data_absent_reason(self, null_flavor: str) -> str:
+        """Map C-CDA nullFlavor to FHIR DataAbsentReason code.
+
+        Args:
+            null_flavor: C-CDA nullFlavor code (e.g., "UNK", "NA", "ASKU")
+
+        Returns:
+            FHIR DataAbsentReason code (e.g., "unknown", "not-applicable", "asked-unknown")
+        """
+        from ccda_to_fhir.constants import NULL_FLAVOR_TO_DATA_ABSENT_REASON
+
+        # Case-insensitive lookup
+        return NULL_FLAVOR_TO_DATA_ABSENT_REASON.get(
+            null_flavor.upper() if null_flavor else None, "unknown"
+        )
 
     def _convert_value(self, observation: Observation) -> JSONObject | None:
         """Convert observation value to appropriate FHIR value[x] element.

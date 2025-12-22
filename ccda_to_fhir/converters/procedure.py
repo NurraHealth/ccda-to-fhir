@@ -99,14 +99,13 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             else:
                 # No text available - use data-absent-reason extension
                 # Per C-CDA on FHIR IG ConceptMap CF-NullFlavorDataAbsentReason
+                # Extension goes INSIDE CodeableConcept (complex type, not primitive)
                 null_flavor = procedure.code.null_flavor if hasattr(procedure.code, "null_flavor") else None
                 fhir_procedure["code"] = {
-                    "text": "Procedure code not specified"
-                }
-                fhir_procedure["_code"] = {
                     "extension": [
                         self.create_data_absent_reason_extension(null_flavor, default_reason="unknown")
-                    ]
+                    ],
+                    "text": "Procedure code not specified"
                 }
 
         # Patient reference (from recordTarget in document header)
@@ -117,6 +116,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             fhir_procedure["subject"] = {"reference": "Patient/patient-unknown"}
 
         # Performed date/time
+        performed = None
         if procedure.effective_time:
             performed = self._convert_performed_time(procedure.effective_time)
             if performed:
@@ -125,9 +125,11 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     fhir_procedure["performedPeriod"] = performed
                 else:
                     fhir_procedure["performedDateTime"] = performed
-        else:
-            # When effectiveTime is missing, add data-absent-reason extension
-            # per C-CDA on FHIR IG guidance (docs/mapping/05-procedure.md lines 160-174)
+
+        # US Core Must Support: Procedure.performed[x] is required
+        # If we couldn't extract a valid performed time, add data-absent-reason extension
+        # per C-CDA on FHIR IG guidance (docs/mapping/05-procedure.md lines 160-174)
+        if not performed:
             fhir_procedure["_performedDateTime"] = {
                 "extension": [
                     self.create_data_absent_reason_extension(None, default_reason="unknown")
