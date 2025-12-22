@@ -313,3 +313,48 @@ class TestConditionRecorder:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
             pytest.fail(f"ID {practitioner_id} is not a valid UUID v4")
+
+
+class TestConditionIDGeneration:
+    """Test Condition ID generation, especially for observations without IDs."""
+
+    def test_condition_without_observation_id_gets_unique_id(self):
+        """Verify Condition ID generation when C-CDA observation lacks ID.
+
+        Bug #9 Fix: Ensures Conditions always get IDs even when observation.id is missing,
+        and that multiple ID-less observations get UNIQUE UUIDs.
+        """
+        import uuid as uuid_module
+
+        # Create observation WITHOUT id field
+        obs1 = Observation()
+        obs1.code = CE(code="55607006", code_system="2.16.840.1.113883.6.96")
+        obs1.value = CE(code="233604007", code_system="2.16.840.1.113883.6.96", display_name="Pneumonia")
+        # Intentionally no id field set
+
+        obs2 = Observation()
+        obs2.code = CE(code="44054006", code_system="2.16.840.1.113883.6.96")
+        obs2.value = CE(code="73211009", code_system="2.16.840.1.113883.6.96", display_name="Diabetes")
+        # Intentionally no id field set
+
+        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None)
+
+        condition1 = converter.convert(obs1)
+        condition2 = converter.convert(obs2)
+
+        # Both conditions should have IDs
+        assert "id" in condition1, "Condition without observation.id should still have ID"
+        assert "id" in condition2, "Condition without observation.id should still have ID"
+
+        # IDs should be valid UUIDs
+        assert condition1["id"], "Condition ID should not be empty"
+        assert condition2["id"], "Condition ID should not be empty"
+
+        try:
+            uuid_module.UUID(condition1["id"], version=4)
+            uuid_module.UUID(condition2["id"], version=4)
+        except ValueError:
+            pytest.fail("Generated IDs should be valid UUID v4")
+
+        # IDs should be UNIQUE
+        assert condition1["id"] != condition2["id"], "Different observations should generate unique IDs"

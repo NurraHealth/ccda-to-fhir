@@ -697,11 +697,15 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                     obs = nested_entry.observation
 
                                     # Generate condition ID from observation ID
-                                    condition_id = "condition-unknown"
+                                    # Must match ID generation in ConditionConverter
                                     if obs.id and len(obs.id) > 0:
                                         first_id = obs.id[0]
-                                        if first_id.root:
-                                            condition_id = self._generate_condition_id(first_id.root, first_id.extension)
+                                        condition_id = self._generate_condition_id(first_id.root, first_id.extension)
+                                    else:
+                                        # Fallback: Generate deterministic ID from observation content
+                                        # Must use same method as ConditionConverter for consistency
+                                        from ccda_to_fhir.converters.condition import generate_id_from_observation_content
+                                        condition_id = generate_id_from_observation_content(obs)
 
                                     diagnosis: JSONObject = {
                                         "condition": {
@@ -964,7 +968,10 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                 if hasattr(id_elem, "root") and id_elem.root:
                     extension = id_elem.extension if hasattr(id_elem, "extension") else None
                     return self._generate_condition_id(id_elem.root, extension)
-        return "condition-unknown"
+        # Fallback: Generate deterministic ID from observation content
+        # Must use same method as ConditionConverter for consistency
+        from ccda_to_fhir.converters.condition import generate_id_from_observation_content
+        return generate_id_from_observation_content(observation)
 
     def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
         """Generate FHIR Condition ID using cached UUID v4 from C-CDA identifiers.

@@ -31,6 +31,60 @@ from .base import BaseConverter
 logger = get_logger(__name__)
 
 
+def generate_id_from_observation_content(observation: Observation) -> str:
+    """Generate deterministic ID from observation content when no ID exists.
+
+    Creates a reproducible UUID v5 based on observation's code, value, and time.
+    This ensures the same observation generates the same ID in both
+    ConditionConverter and EncounterConverter.
+
+    Args:
+        observation: The observation to generate ID from
+
+    Returns:
+        UUID v5 string generated from observation content
+    """
+    import uuid
+
+    # Build a stable string from observation attributes
+    parts = []
+
+    # Add code (observation type)
+    if observation.code:
+        if hasattr(observation.code, 'code') and observation.code.code:
+            parts.append(f"code:{observation.code.code}")
+        if hasattr(observation.code, 'code_system') and observation.code.code_system:
+            parts.append(f"sys:{observation.code.code_system}")
+
+    # Add value (diagnosis code)
+    if observation.value:
+        if hasattr(observation.value, 'code') and observation.value.code:
+            parts.append(f"value:{observation.value.code}")
+        if hasattr(observation.value, 'code_system') and observation.value.code_system:
+            parts.append(f"valuesys:{observation.value.code_system}")
+        # For string values
+        elif isinstance(observation.value, str):
+            parts.append(f"value:{observation.value}")
+
+    # Add effective time if present
+    if observation.effective_time:
+        if hasattr(observation.effective_time, 'value') and observation.effective_time.value:
+            parts.append(f"time:{observation.effective_time.value}")
+        elif hasattr(observation.effective_time, 'low') and observation.effective_time.low:
+            if hasattr(observation.effective_time.low, 'value'):
+                parts.append(f"time:{observation.effective_time.low.value}")
+
+    # Fallback: if no parts were found, use random UUID
+    if not parts:
+        return str(uuid.uuid4())
+
+    # Create deterministic UUID v5 from concatenated parts
+    content_string = "|".join(parts)
+    # Use a namespace UUID specific to this use case
+    namespace = uuid.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8')  # DNS namespace UUID
+    return str(uuid.uuid5(namespace, content_string))
+
+
 class ConditionConverter(BaseConverter[Observation]):
     """Convert C-CDA Problem Observation to FHIR Condition resource.
 
@@ -81,6 +135,11 @@ class ConditionConverter(BaseConverter[Observation]):
         if observation.id and len(observation.id) > 0:
             first_id = observation.id[0]
             condition["id"] = self._generate_condition_id(first_id.root, first_id.extension)
+        else:
+            # Fallback: Generate deterministic ID from observation content
+            # This ensures the same observation gets the same ID in both
+            # ConditionConverter and EncounterConverter (for diagnosis references)
+            condition["id"] = self._generate_id_from_observation_content(observation)
 
         # Identifiers
         if observation.id:
@@ -281,6 +340,19 @@ class ConditionConverter(BaseConverter[Observation]):
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
         return generate_id_from_identifiers("Condition", root, extension)
+
+    def _generate_id_from_observation_content(self, observation: Observation) -> str:
+        """Generate deterministic ID from observation content when no ID exists.
+
+        Delegates to the module-level function for consistency.
+
+        Args:
+            observation: The observation to generate ID from
+
+        Returns:
+            UUID v5 string generated from observation content
+        """
+        return generate_id_from_observation_content(observation)
 
     def _determine_clinical_status(self, observation: Observation) -> str | None:
         """Determine the clinical status from observation and concern act.

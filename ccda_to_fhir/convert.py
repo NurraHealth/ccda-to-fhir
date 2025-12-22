@@ -797,6 +797,30 @@ class DocumentConverter:
                 resources.append(custodian_org)
                 self.reference_registry.register_resource(custodian_org)
 
+        # Convert Practitioners from documentationOf/serviceEvent/performer
+        # These represent clinicians who actually carried out clinical services
+        # and are referenced in Composition.extension (PerformerExtension)
+        if ccda_doc.documentation_of:
+            for doc_of in ccda_doc.documentation_of:
+                if doc_of.service_event and doc_of.service_event.performer:
+                    for performer in doc_of.service_event.performer:
+                        if performer.assigned_entity:
+                            try:
+                                practitioner = self.practitioner_converter.convert(
+                                    performer.assigned_entity
+                                )
+                                # Check if practitioner already exists (deduplication)
+                                practitioner_id = practitioner.get('id')
+                                if practitioner_id and not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                                    if self._validate_resource(practitioner):
+                                        resources.append(practitioner)
+                                        self.reference_registry.register_resource(practitioner)
+                            except Exception as e:
+                                logger.error(
+                                    f"Error converting documentationOf performer practitioner: {e}",
+                                    exc_info=True
+                                )
+
         # Convert DocumentReference (document metadata)
         try:
             doc_reference = self.document_reference_converter.convert(ccda_doc)
