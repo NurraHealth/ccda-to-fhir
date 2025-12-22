@@ -69,25 +69,40 @@ class CodeSystemMapper:
         # Create reverse mapping for URI to OID
         self.uri_to_oid = {uri: oid for oid, uri in self.mappings.items()}
 
-    def oid_to_uri(self, oid: str) -> str:
+    def oid_to_uri(self, oid: str) -> str | None:
         """Convert an OID to a FHIR canonical URI.
+
+        Per FHIR R4B Terminologies specification:
+        "If a URI is defined here, it SHALL be used in preference to any other identifying mechanisms."
+        https://hl7.org/fhir/R4B/terminologies-systems.html
 
         Args:
             oid: The OID to convert (e.g., "2.16.840.1.113883.6.1")
 
         Returns:
             The FHIR canonical URI (e.g., "http://loinc.org")
-            If the OID is not found, returns "urn:oid:{oid}"
+            Returns None if OID is unknown (callers should omit the coding or use text-only)
         """
         if not oid:
-            return ""
+            return None
 
         # Check for known mapping
         if oid in self.mappings:
             return self.mappings[oid]
 
-        # Unknown OID - return with urn:oid: prefix
-        return f"urn:oid:{oid}"
+        # Unknown OID - return None to signal unmapped OID
+        # Per FHIR R4B SHALL requirement, we must use canonical URIs when they exist
+        # For unknown OIDs, callers should either:
+        # 1. Omit the coding entirely, OR
+        # 2. Use text-only CodeableConcept with originalText
+        from ccda_to_fhir.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.warning(
+            f"Unmapped code system OID: {oid}. "
+            f"Per FHIR R4B, urn:oid: format SHALL NOT be used when canonical URI exists. "
+            f"Skipping coding for this code system. Consider adding mapping to code_systems.py."
+        )
+        return None
 
     def uri_to_oid(self, uri: str) -> str:
         """Convert a FHIR canonical URI to an OID.

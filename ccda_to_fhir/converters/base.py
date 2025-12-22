@@ -227,25 +227,32 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         # Primary coding
         if code and code_system:
-            coding: JSONObject = {
-                "system": self.map_oid_to_uri(code_system),
-                "code": code,
-            }
-            if display_name:
-                coding["display"] = display_name
-            codings.append(coding)
+            system_uri = self.map_oid_to_uri(code_system)
+            # Only create coding if we have a valid canonical URI
+            # Per FHIR R4B SHALL requirement, urn:oid: format is not allowed
+            if system_uri:
+                coding: JSONObject = {
+                    "system": system_uri,
+                    "code": code,
+                }
+                if display_name:
+                    coding["display"] = display_name
+                codings.append(coding)
 
         # Translation codings
         if translations:
             for trans in translations:
                 if trans.get("code") and trans.get("code_system"):
-                    trans_coding: JSONObject = {
-                        "system": self.map_oid_to_uri(trans["code_system"]),
-                        "code": trans["code"],
-                    }
-                    if trans.get("display_name"):
-                        trans_coding["display"] = trans["display_name"]
-                    codings.append(trans_coding)
+                    trans_system_uri = self.map_oid_to_uri(trans["code_system"])
+                    # Only create coding if we have a valid canonical URI
+                    if trans_system_uri:
+                        trans_coding: JSONObject = {
+                            "system": trans_system_uri,
+                            "code": trans["code"],
+                        }
+                        if trans.get("display_name"):
+                            trans_coding["display"] = trans["display_name"]
+                        codings.append(trans_coding)
 
         if codings:
             codeable_concept["coding"] = codings

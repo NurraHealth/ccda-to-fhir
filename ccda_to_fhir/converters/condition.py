@@ -10,6 +10,7 @@ from ccda_to_fhir.ccda.models.datatypes import CD, CE, PQ
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.constants import (
     AGE_UNIT_MAP,
+    AgeUnits,
     PROBLEM_TYPE_TO_CONDITION_CATEGORY,
     SECTION_CODE_TO_CONDITION_CATEGORY,
     SNOMED_PROBLEM_STATUS_TO_FHIR,
@@ -476,6 +477,15 @@ class ConditionConverter(BaseConverter[Observation]):
     ) -> tuple[JSONObject | None, JSONObject | None]:
         """Convert effective time to onset and abatement.
 
+        FHIR R4B Compliance: onset[x] is a choice type - only ONE variant can be populated.
+        Per https://hl7.org/fhir/R4B/condition.html, the choice types are:
+        onsetDateTime | onsetAge | onsetPeriod | onsetRange | onsetString
+
+        Priority for choosing onset variant:
+        1. onsetAge (if Age at Onset observation exists) - most specific
+        2. onsetPeriod (if both low and high dates exist) - date range
+        3. onsetDateTime (if only low date exists) - specific date
+
         Args:
             observation: The Problem Observation
 
@@ -490,14 +500,72 @@ class ConditionConverter(BaseConverter[Observation]):
 
         eff_time = observation.effective_time
 
-        # Check for onset (low value)
-        if eff_time.low and eff_time.low.value:
+        # Priority 1: Check for Age at Onset observation (most specific)
+        onset_age_data = None
+        if observation.entry_relationship:
+            for rel in observation.entry_relationship:
+                if (
+                    rel.observation
+                    and rel.observation.code
+                    and rel.observation.code.code == CCDACodes.AGE_AT_ONSET
+                ):
+                    if rel.observation.value and isinstance(rel.observation.value, PQ):
+                        age = rel.observation.value.value
+                        unit = rel.observation.value.unit or AgeUnits.YEARS_CCDA
+                        if age is not None:
+                            onset_age_data = (age, unit)
+                    break
+
+        # If Age at Onset exists, use onsetAge (FHIR choice type - only one variant allowed)
+        if onset_age_data:
+            age, unit = onset_age_data
+            # Convert age to numeric type
+            try:
+                age_numeric = int(age) if float(age).is_integer() else float(age)
+            except (ValueError, TypeError):
+                age_numeric = age  # Keep as string if conversion fails
+
+            # Map age units
+            if unit in AGE_UNIT_MAP:
+                fhir_unit, fhir_code = AGE_UNIT_MAP[unit]
+            else:
+                fhir_unit = unit
+                fhir_code = unit
+
+            onset = {
+                "onsetAge": {
+                    "value": age_numeric,
+                    "unit": fhir_unit,
+                    "system": FHIRSystems.UCUM,
+                    "code": fhir_code,
+                }
+            }
+        # Priority 2: Check for period (both low and high dates)
+        elif eff_time.low and eff_time.low.value and eff_time.high and eff_time.high.value:
+            onset_date = self.convert_date(eff_time.low.value)
+            end_date = self.convert_date(eff_time.high.value)
+            if onset_date and end_date:
+                # Use onsetPeriod for date range
+                onset = {
+                    "onsetPeriod": {
+                        "start": onset_date,
+                        "end": end_date
+                    }
+                }
+                # Don't set abatement if we used high date in onsetPeriod
+                # The high date represents end of onset period, not abatement
+            elif onset_date:
+                # If end_date conversion failed, fall back to onsetDateTime
+                onset = {"onsetDateTime": onset_date}
+        # Priority 3: Check for single onset date (low value only)
+        elif eff_time.low and eff_time.low.value:
             onset_date = self.convert_date(eff_time.low.value)
             if onset_date:
                 onset = {"onsetDateTime": onset_date}
 
-        # Check for abatement (high value)
-        if eff_time.high:
+        # Check for abatement (high value) - only if not used in onsetPeriod
+        # Abatement represents when the condition resolved, not the end of onset period
+        if eff_time.high and "onsetPeriod" not in (onset or {}):
             if eff_time.high.value:
                 abatement_date = self.convert_date(eff_time.high.value)
                 if abatement_date:
@@ -512,42 +580,6 @@ class ConditionConverter(BaseConverter[Observation]):
                         ]
                     }
                 }
-
-        # Check for age at onset (can coexist with onsetDateTime)
-        if observation.entry_relationship:
-            for rel in observation.entry_relationship:
-                if (
-                    rel.observation
-                    and rel.observation.code
-                    and rel.observation.code.code == CCDACodes.AGE_AT_ONSET
-                ):
-                    if rel.observation.value and isinstance(rel.observation.value, PQ):
-                        age = rel.observation.value.value
-                        unit = rel.observation.value.unit or AgeUnits.YEARS_CCDA
-                        if age is not None:
-                            # Convert age to numeric type
-                            try:
-                                age_numeric = int(age) if float(age).is_integer() else float(age)
-                            except (ValueError, TypeError):
-                                age_numeric = age  # Keep as string if conversion fails
-
-                            # Map age units
-                            if unit in AGE_UNIT_MAP:
-                                fhir_unit, fhir_code = AGE_UNIT_MAP[unit]
-                            else:
-                                fhir_unit = unit
-                                fhir_code = unit
-
-                            # Add onsetAge to onset dict (or create new dict)
-                            if onset is None:
-                                onset = {}
-                            onset["onsetAge"] = {
-                                "value": age_numeric,
-                                "unit": fhir_unit,
-                                "system": FHIRSystems.UCUM,
-                                "code": fhir_code,
-                            }
-                    break
 
         return onset, abatement
 
