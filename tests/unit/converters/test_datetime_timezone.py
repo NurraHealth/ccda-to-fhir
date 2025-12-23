@@ -73,6 +73,27 @@ class TestInvalidTimezoneHandling:
         assert result == "2015-07-22"
         assert 'T' not in result
 
+    def test_edge_case_timezone_hour_14_with_nonzero_minutes(self, converter):
+        """Test hour 14 with non-zero minutes is invalid (only +14:00 allowed).
+
+        FHIR R4 spec: Hour 14 only valid with minutes 00 (UTC+14:00 is max offset).
+        Regression test for timezone validation bug allowing +14:01 through +14:59.
+        """
+        # +14:01 is invalid (only +14:00 allowed)
+        result = converter.convert_date("20150722230000+1401")
+        assert result == "2015-07-22"
+        assert 'T' not in result
+
+        # +14:30 is invalid
+        result = converter.convert_date("20150722230000+1430")
+        assert result == "2015-07-22"
+        assert 'T' not in result
+
+        # +14:59 is invalid
+        result = converter.convert_date("20150722230000+1459")
+        assert result == "2015-07-22"
+        assert 'T' not in result
+
 
 class TestFractionalSecondsHandling:
     """Regression tests for BUG-002B: Fractional seconds support.

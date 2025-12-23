@@ -456,7 +456,8 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 try:
                     tz_h = int(tz_hours)
                     tz_m = int(tz_mins)
-                    if 0 <= tz_h <= 14 and 0 <= tz_m <= 59:
+                    # FHIR R4: Hour 14 only valid with minutes 00 (UTC+14:00 max)
+                    if (0 <= tz_h <= 13 and 0 <= tz_m <= 59) or (tz_h == 14 and tz_m == 0):
                         result += f"{tz_sign}{tz_hours}:{tz_mins}"
                         timezone_added = True
                     else:

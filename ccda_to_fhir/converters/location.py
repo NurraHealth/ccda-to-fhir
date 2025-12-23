@@ -263,19 +263,45 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                         addr_parts.append(addr.city.value)
 
             if addr_parts:
+                from ccda_to_fhir.logging_config import get_logger
+                logger = get_logger(__name__)
+                logger.info(
+                    "Location name missing (playingEntity/name not found). "
+                    f"Using address-based fallback: 'Location at {', '.join(addr_parts)}'"
+                )
                 return f"Location at {', '.join(addr_parts)}"
 
         # Strategy 3: Fallback to ID
         if participant_role.id and len(participant_role.id) > 0:
             first_id = participant_role.id[0]
             if first_id.extension:
+                from ccda_to_fhir.logging_config import get_logger
+                logger = get_logger(__name__)
+                logger.info(
+                    "Location name missing (playingEntity/name and address not found). "
+                    f"Using ID-based fallback: 'Location {first_id.extension}'"
+                )
                 return f"Location {first_id.extension}"
             elif first_id.root:
                 # Use last segment of OID for readability
                 root_parts = first_id.root.split(".")
-                return f"Location {root_parts[-1]}"
+                fallback_name = f"Location {root_parts[-1]}"
+                from ccda_to_fhir.logging_config import get_logger
+                logger = get_logger(__name__)
+                logger.info(
+                    "Location name missing (playingEntity/name and address not found). "
+                    f"Using ID-based fallback: '{fallback_name}'"
+                )
+                return fallback_name
 
         # Strategy 4: Final fallback
+        from ccda_to_fhir.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.warning(
+            "Location name missing (no name, address, or ID found). "
+            "Using generic fallback: 'Unknown Location'. "
+            "This may indicate incomplete C-CDA data."
+        )
         return "Unknown Location"
 
     def _convert_type(self, code: "CE") -> JSONObject:

@@ -124,9 +124,11 @@ class CO(CE):
     - Stage classifications (stage I, II, III, IV)
     - Rankings or grades
 
-    Structurally identical to CE but semantically implies ordering.
-    Per C-CDA specification, CO extends CV (Coded Value) and is used
-    when the coded concept has a defined ordering.
+    Implementation Note:
+    Per HL7 V3 spec, CO extends CV (Coded Value). However, in this implementation,
+    CO extends CE to support translation elements commonly found in C-CDA documents.
+    This pragmatic approach aligns with real-world C-CDA usage while maintaining
+    semantic ordering. Structurally identical to CE but semantically implies ordering.
 
     Example:
         <value xsi:type="CO" code="LA6752-5" codeSystem="2.16.840.1.113883.6.1"
