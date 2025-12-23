@@ -370,6 +370,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 numeric_part = ccda_date
                 tz_part = ""
 
+            # Handle fractional seconds (e.g., "20170821112858.251")
+            # Both C-CDA and FHIR R4 support fractional seconds
+            # Extract and preserve them in the output
+            fractional_seconds = ""
+            if '.' in numeric_part:
+                parts = numeric_part.split('.')
+                numeric_part = parts[0]
+                fractional_seconds = '.' + parts[1]
+
             # Validate numeric portion contains only digits
             if not numeric_part.isdigit():
                 from ccda_to_fhir.logging_config import get_logger
@@ -434,7 +443,12 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 second=f"{dt.second:02d}",
             )
 
+            # Add fractional seconds if present (FHIR R4 supports fractional seconds)
+            if fractional_seconds and has_time_component:
+                result += fractional_seconds
+
             # Handle timezone if present
+            timezone_added = False
             if has_timezone:
                 tz_sign = tz_part[0]
                 tz_hours = tz_part[1:3]
@@ -444,14 +458,26 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     tz_m = int(tz_mins)
                     if 0 <= tz_h <= 14 and 0 <= tz_m <= 59:
                         result += f"{tz_sign}{tz_hours}:{tz_mins}"
+                        timezone_added = True
                     else:
                         from ccda_to_fhir.logging_config import get_logger
                         logger = get_logger(__name__)
-                        logger.warning(f"Timezone offset out of valid range: {tz_part}")
+                        logger.warning(
+                            f"Timezone offset out of valid range: {tz_part}. "
+                            f"Reducing to date-only per FHIR R4 requirement."
+                        )
                 except ValueError:
                     from ccda_to_fhir.logging_config import get_logger
                     logger = get_logger(__name__)
-                    logger.warning(f"Invalid timezone format: {tz_part}")
+                    logger.warning(
+                        f"Invalid timezone format: {tz_part}. "
+                        f"Reducing to date-only per FHIR R4 requirement."
+                    )
+
+            # Per FHIR R4: if time component present, timezone is required
+            # If we have time but no valid timezone, reduce to date-only
+            if has_time_component and not timezone_added:
+                return f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d}"
 
             return result
 
