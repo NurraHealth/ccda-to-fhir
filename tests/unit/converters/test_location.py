@@ -286,11 +286,11 @@ class TestLocationConverter:
         assert "name" in location
         assert location["name"] == "Community Health and Hospitals"
 
-    def test_name_is_required(
+    def test_name_is_always_present(
         self, location_converter: LocationConverter
     ) -> None:
-        """Test that name is always present (US Core requirement)."""
-        # Create location without name
+        """Test that name is always present (US Core requirement) using fallback strategies."""
+        # Create location without name but with ID
         location_no_name = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
@@ -299,9 +299,10 @@ class TestLocationConverter:
             playing_entity=PlayingEntity(class_code="PLC")  # No name
         )
 
-        # Should either raise error or provide default name
-        with pytest.raises(ValueError, match="name"):
-            location_converter.convert(location_no_name)
+        # Should provide fallback name (from ID)
+        location = location_converter.convert(location_no_name)
+        assert "name" in location
+        assert location["name"] == "Location 1234567890"
 
     def test_handles_on_object_name(
         self, location_converter: LocationConverter
@@ -320,6 +321,97 @@ class TestLocationConverter:
 
         location = location_converter.convert(location_with_on)
         assert location["name"] == "Test Hospital"
+
+    def test_name_fallback_to_address(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test fallback to address when playingEntity/name is missing."""
+        location_with_address = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+            code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
+            playing_entity=PlayingEntity(class_code="PLC"),  # No name
+            addr=[
+                AD(
+                    street_address_line=["123 Main Street"],
+                    city="Portland",
+                    state="OR"
+                )
+            ]
+        )
+
+        location = location_converter.convert(location_with_address)
+        assert "name" in location
+        assert location["name"] == "Location at 123 Main Street, Portland"
+
+    def test_name_fallback_to_address_city_only(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test fallback to city when street is missing."""
+        location_city_only = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+            code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
+            playing_entity=PlayingEntity(class_code="PLC"),  # No name
+            addr=[AD(city="Springfield", state="IL")]
+        )
+
+        location = location_converter.convert(location_city_only)
+        assert "name" in location
+        assert location["name"] == "Location at Springfield"
+
+    def test_name_fallback_to_id_with_extension(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test fallback to ID extension when name and address are missing."""
+        location_with_id = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.6", extension="FAC-9876")],
+            code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
+            playing_entity=PlayingEntity(class_code="PLC")  # No name
+            # No address
+        )
+
+        location = location_converter.convert(location_with_id)
+        assert "name" in location
+        assert location["name"] == "Location FAC-9876"
+
+    def test_name_fallback_to_id_oid_segment(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test fallback to last OID segment when extension is missing."""
+        location_oid_only = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[II(root="2.16.840.1.113883.4.987654")],  # No extension
+            code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
+            playing_entity=PlayingEntity(class_code="PLC")  # No name
+            # No address
+        )
+
+        location = location_converter.convert(location_oid_only)
+        assert "name" in location
+        assert location["name"] == "Location 987654"
+
+    def test_name_fallback_to_unknown(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test final fallback to 'Unknown Location' when all else fails."""
+        location_minimal = ParticipantRole(
+            class_code="SDLOC",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
+            id=[],  # No IDs
+            code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
+            playing_entity=PlayingEntity(class_code="PLC")  # No name
+            # No address
+        )
+
+        location = location_converter.convert(location_minimal)
+        assert "name" in location
+        assert location["name"] == "Unknown Location"
 
     # ============================================================================
     # D. Type Mapping (5 tests)

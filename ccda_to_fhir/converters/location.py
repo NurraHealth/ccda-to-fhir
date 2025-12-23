@@ -76,10 +76,8 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Map status (default: active)
         location["status"] = "active"
 
-        # Map name (required by US Core)
+        # Map name (required by US Core, with fallback strategies)
         name = self._extract_name(participant_role)
-        if not name:
-            raise ValueError("Location name is required (playingEntity/name)")
         location["name"] = name
 
         # Map mode (instance for specific locations, kind for location types)
@@ -223,43 +221,84 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         return fhir_identifiers
 
-    def _extract_name(self, participant_role: "ParticipantRole") -> str | None:
-        """Extract facility name from playingEntity/name.
+    def _extract_name(self, participant_role: "ParticipantRole") -> str:
+        """Extract facility name with fallback strategies.
+
+        Attempts to extract location name using the following priority:
+        1. playingEntity/name (preferred, from C-CDA)
+        2. "Location at {address}" (if address available)
+        3. "Location {id}" (if identifier available)
+        4. "Unknown Location" (final fallback)
+
+        This ensures compatibility with real-world C-CDA documents that may
+        omit location names while still creating valid FHIR Location resources.
 
         Args:
             participant_role: C-CDA ParticipantRole
 
         Returns:
-            Facility name string or None
+            Facility name string (never None)
         """
-        if not participant_role.playing_entity:
-            return None
+        # Strategy 1: Try playingEntity/name (preferred)
+        if participant_role.playing_entity and participant_role.playing_entity.name:
+            names = participant_role.playing_entity.name
 
-        if not participant_role.playing_entity.name:
-            return None
+            # Handle single name (string)
+            if isinstance(names, str):
+                return names
 
-        names = participant_role.playing_entity.name
+            # Handle list of names
+            if isinstance(names, list) and len(names) > 0:
+                first_name = names[0]
 
-        # Handle single name (string)
-        if isinstance(names, str):
-            return names
+                # Handle string in list
+                if isinstance(first_name, str):
+                    return first_name
 
-        # Handle list of names
-        if isinstance(names, list) and len(names) > 0:
-            first_name = names[0]
+                # Handle ON (OrganizationName) object
+                if hasattr(first_name, "value") and first_name.value:
+                    return first_name.value
 
-            # Handle string in list
-            if isinstance(first_name, str):
-                return first_name
+                # Fallback to string representation
+                name_str = str(first_name) if first_name else None
+                if name_str:
+                    return name_str
 
-            # Handle ON (OrganizationName) object
-            if hasattr(first_name, "value") and first_name.value:
-                return first_name.value
+        # Strategy 2: Fallback to address
+        if participant_role.addr:
+            addr_parts = []
+            for addr in participant_role.addr:
+                # Extract street address (first line only)
+                if addr.street_address_line and len(addr.street_address_line) > 0:
+                    street = addr.street_address_line[0]
+                    # Handle string or object with value attribute
+                    if isinstance(street, str):
+                        addr_parts.append(street)
+                    elif hasattr(street, "value") and street.value:
+                        addr_parts.append(street.value)
 
-            # Fallback to string representation
-            return str(first_name) if first_name else None
+                # Extract city
+                if addr.city:
+                    if isinstance(addr.city, str):
+                        addr_parts.append(addr.city)
+                    elif hasattr(addr.city, "value") and addr.city.value:
+                        addr_parts.append(addr.city.value)
 
-        return None
+            if addr_parts:
+                return f"Location at {', '.join(addr_parts)}"
+
+        # Strategy 3: Fallback to ID
+        if participant_role.id and len(participant_role.id) > 0:
+            first_id = participant_role.id[0]
+            if first_id.extension:
+                return f"Location {first_id.extension}"
+            elif first_id.root:
+                # Use last segment of OID for readability
+                root_parts = first_id.root.split(".")
+                return f"Location {root_parts[-1]}"
+
+        # Strategy 4: Final fallback
+        return "Unknown Location"
 
     def _convert_type(self, code: "CE") -> JSONObject:
         """Convert facility type code to FHIR Location.type CodeableConcept.
