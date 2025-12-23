@@ -65,6 +65,7 @@ from .datatypes import (
     BL,
     CD,
     CE,
+    CO,
     CR,
     CS,
     CV,

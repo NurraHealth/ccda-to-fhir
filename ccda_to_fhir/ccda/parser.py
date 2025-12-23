@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from .models import (
     CD,
     CE,
+    CO,
     CS,
     II,
     ST,
@@ -151,6 +152,7 @@ XSI_TYPE_MAP: dict[str, type[BaseModel]] = {
     # Coded types
     "CD": CD,
     "CE": CE,
+    "CO": CO,
     "CS": CS,
     # Identifiers
     "II": II,

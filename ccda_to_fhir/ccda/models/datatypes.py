@@ -115,6 +115,27 @@ class CE(CD):
     pass
 
 
+class CO(CE):
+    """Coded Ordinal (CO).
+
+    Extends CE with ordering semantics. Used for coded values that have
+    an inherent ordering, such as:
+    - Severity scales (mild, moderate, severe)
+    - Stage classifications (stage I, II, III, IV)
+    - Rankings or grades
+
+    Structurally identical to CE but semantically implies ordering.
+    Per C-CDA specification, CO extends CV (Coded Value) and is used
+    when the coded concept has a defined ordering.
+
+    Example:
+        <value xsi:type="CO" code="LA6752-5" codeSystem="2.16.840.1.113883.6.1"
+               displayName="Mild" codeSystemName="LOINC"/>
+    """
+
+    pass
+
+
 class CV(CD):
     """Coded Value (CV).
 
