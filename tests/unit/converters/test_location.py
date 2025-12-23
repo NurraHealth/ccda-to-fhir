@@ -770,20 +770,39 @@ class TestLocationConverter:
         location = location_converter.convert(sample_service_delivery_location)
         assert location is not None
 
-    def test_rejects_invalid_template_id(
+    def test_accepts_invalid_template_id(
         self, location_converter: LocationConverter
     ) -> None:
-        """Test that invalid template IDs are rejected."""
-        invalid_location = ParticipantRole(
+        """Test that invalid template IDs are accepted (lenient for real-world data)."""
+        location_with_invalid_template = ParticipantRole(
             class_code="SDLOC",
-            template_id=[II(root="9.9.9.9.9.9")],  # Invalid template
+            template_id=[II(root="9.9.9.9.9.9")],  # Non-standard template
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Test"])
+            playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"])
         )
 
-        with pytest.raises(ValueError, match="template"):
-            location_converter.convert(invalid_location)
+        # Should convert successfully despite non-standard template ID
+        location = location_converter.convert(location_with_invalid_template)
+        assert location is not None
+        assert location["name"] == "Test Hospital"
+
+    def test_accepts_missing_template_id(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test that missing template IDs are accepted (lenient for real-world data)."""
+        location_without_template = ParticipantRole(
+            class_code="SDLOC",
+            template_id=None,  # No template ID
+            id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+            code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Community Clinic"])
+        )
+
+        # Should convert successfully despite missing template ID
+        location = location_converter.convert(location_without_template)
+        assert location is not None
+        assert location["name"] == "Community Clinic"
 
     # ============================================================================
     # I. Class Code Validation (2 tests)

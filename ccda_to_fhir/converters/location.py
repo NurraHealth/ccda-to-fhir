@@ -49,11 +49,13 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         Raises:
             ValueError: If required elements are missing or invalid
         """
-        # Validate Service Delivery Location template
-        self._validate_template(participant_role)
-
-        # Validate classCode
+        # Validate classCode (fundamental requirement)
         self._validate_class_code(participant_role)
+
+        # Note: Template ID validation is intentionally lenient to handle real-world
+        # C-CDA documents that may omit or use non-standard template IDs.
+        # The classCode="SDLOC" validation above is sufficient to identify
+        # Service Delivery Location elements.
 
         location: FHIRResourceDict = {
             "resourceType": FHIRCodes.ResourceTypes.LOCATION,
@@ -113,30 +115,6 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             location["managingOrganization"] = managing_org
 
         return location
-
-    def _validate_template(self, participant_role: "ParticipantRole") -> None:
-        """Validate that this is a Service Delivery Location template.
-
-        Args:
-            participant_role: ParticipantRole to validate
-
-        Raises:
-            ValueError: If template ID is missing or invalid
-        """
-        if not participant_role.template_id:
-            raise ValueError(
-                f"Missing templateId - expected {self.SERVICE_DELIVERY_LOCATION_TEMPLATE}"
-            )
-
-        has_valid_template = any(
-            tid.root == self.SERVICE_DELIVERY_LOCATION_TEMPLATE
-            for tid in participant_role.template_id
-        )
-
-        if not has_valid_template:
-            raise ValueError(
-                f"Invalid templateId - expected {self.SERVICE_DELIVERY_LOCATION_TEMPLATE}"
-            )
 
     def _validate_class_code(self, participant_role: "ParticipantRole") -> None:
         """Validate that classCode is SDLOC (Service Delivery Location).
