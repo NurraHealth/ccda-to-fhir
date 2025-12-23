@@ -145,7 +145,7 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
                 if code.code_system == "2.16.840.1.113883.5.111":
                     coding["system"] = FHIRSystems.V3_ROLE_CODE
                 else:
-                    coding["system"] = self._convert_oid_to_uri(code.code_system)
+                    coding["system"] = self.map_oid_to_uri(code.code_system)
             else:
                 # Default to V3 RoleCode if not specified
                 coding["system"] = FHIRSystems.V3_ROLE_CODE

@@ -118,6 +118,36 @@ class TestInformantRelatedPersonMapping:
         name = related_person["name"][0]
         assert "family" in name or "given" in name
 
+    def test_related_person_converts_non_standard_code_system(self, sample_ccda_with_snomed_relationship_code):
+        """Test that RelatedPerson properly converts non-standard code system OIDs.
+
+        Regression test for BUG-004: RelatedPersonConverter called non-existent
+        _convert_oid_to_uri() method. Should use map_oid_to_uri() from BaseConverter.
+        """
+        bundle = convert_document(sample_ccda_with_snomed_relationship_code)
+
+        related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
+        assert len(related_persons) == 1
+
+        related_person = related_persons[0]["resource"]
+
+        # Verify relationship exists with SNOMED code
+        assert "relationship" in related_person
+        assert len(related_person["relationship"]) > 0
+
+        relationship = related_person["relationship"][0]
+        assert "coding" in relationship
+
+        # Should have converted SNOMED CT OID to proper URI
+        snomed_coding = next(
+            (c for c in relationship["coding"] if c.get("code") == "444301002"),
+            None
+        )
+        assert snomed_coding is not None
+        # OID 2.16.840.1.113883.6.96 should map to http://snomed.info/sct
+        assert snomed_coding["system"] == "http://snomed.info/sct"
+        assert snomed_coding["display"] == "Caregiver"
+
 
 class TestInformantDeduplication:
     """Test deduplication logic for informants."""
@@ -386,6 +416,77 @@ def sample_ccda_with_same_practitioner_as_author_and_informant() -> str:
       <id root="2.16.840.1.113883.4.6" extension="SAME-NPI-123"/>
       <assignedPerson><name><given>Dr.</given><family>Smith</family></name></assignedPerson>
     </assignedEntity>
+  </informant>
+
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5" extension="ORG001"/>
+        <name>Test Hospital</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.5.1"/>
+          <code code="11450-4" codeSystem="2.16.840.1.113883.6.1"/>
+          <title>Problem List</title>
+          <text>No problems</text>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>
+"""
+
+
+@pytest.fixture
+def sample_ccda_with_snomed_relationship_code() -> str:
+    """C-CDA document with informant using non-standard code system (SNOMED CT).
+
+    This tests BUG-004 fix: RelatedPersonConverter must properly convert
+    code system OIDs to FHIR URIs using map_oid_to_uri().
+    """
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="2.16.840.1.113883.19.5" extension="DOC005"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1" displayName="Summary of Episode Note"/>
+  <title>Summary of Episode Note</title>
+  <effectiveTime value="20240101120000"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+
+  <recordTarget>
+    <patientRole>
+      <id root="2.16.840.1.113883.19.5" extension="PAT555"/>
+      <patient>
+        <name><given>Elderly</given><family>Patient</family></name>
+        <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+        <birthTime value="19400301"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+
+  <author>
+    <time value="20240101120000"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+      <assignedPerson><name><given>Dr.</given><family>Jones</family></name></assignedPerson>
+    </assignedAuthor>
+  </author>
+
+  <informant>
+    <relatedEntity classCode="PRS">
+      <!-- Using SNOMED CT code system instead of v3-RoleCode -->
+      <code code="444301002" codeSystem="2.16.840.1.113883.6.96" displayName="Caregiver"/>
+      <relatedPerson><name><given>Sarah</given><family>Caregiver</family></name></relatedPerson>
+    </relatedEntity>
   </informant>
 
   <custodian>
