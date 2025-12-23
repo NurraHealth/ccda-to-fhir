@@ -2418,12 +2418,18 @@ class DocumentConverter:
                     if entry.encounter and entry.encounter.template_id:
                         for template in entry.encounter.template_id:
                             if template.root == TemplateIds.ENCOUNTER_ACTIVITY:
-                                # Generate the same ID the converter would use
-                                if entry.encounter.id and len(entry.encounter.id) > 0:
-                                    first_id = entry.encounter.id[0]
-                                    encounter_id = self.encounter_converter._generate_encounter_id(
-                                        first_id.root, first_id.extension
-                                    )
+                                # Generate the same ID the converter would use (skip nullFlavor)
+                                encounter_id = None
+                                if entry.encounter.id:
+                                    # Find first valid identifier (skip nullFlavor)
+                                    for id_elem in entry.encounter.id:
+                                        if not id_elem.null_flavor and (id_elem.root or id_elem.extension):
+                                            encounter_id = self.encounter_converter._generate_encounter_id(
+                                                id_elem.root, id_elem.extension
+                                            )
+                                            break
+
+                                if encounter_id:
 
                                     # If this encounter is in our list, store metadata
                                     if encounter_id in encounter_ids_needing_metadata:

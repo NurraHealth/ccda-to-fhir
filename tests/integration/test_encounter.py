@@ -1970,3 +1970,91 @@ class TestV3ActCodeStandardDisplayNames:
         assert encounter["class"]["code"] == "CUSTOM"
         # Should fall back to C-CDA display name when code not in mapping
         assert encounter["class"]["display"] == "Custom Encounter Type"
+
+
+class TestEncounterNullFlavorIdentifiers:
+    """Tests for encounter identifier handling with nullFlavor values."""
+
+    def test_skips_nullflavor_identifier_for_resource_id(self) -> None:
+        """Test that nullFlavor identifiers are skipped when generating resource ID.
+
+        Real-world C-CDA from vendors like Atos Pulse often have:
+          <id nullFlavor="UNK"/>
+          <id root="1.3.6.1.4.1.21367.2010.1.2.300.2.6" extension="170314B2AMB"/>
+
+        The first id with nullFlavor should be skipped, and the second valid id
+        should be used for resource ID generation.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id nullFlavor="UNK"/>
+                <id root="1.3.6.1.4.1.21367.2010.1.2.300.2.6" extension="170314B2AMB"/>
+                <code code="IMP" codeSystem="2.16.840.1.113883.5.4"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        # Should use the second id (not the nullFlavor one) for resource ID
+        assert "id" in encounter
+        assert encounter["id"] == "170314B2AMB"  # extension is used as ID
+
+    def test_excludes_nullflavor_from_identifier_list(self) -> None:
+        """Test that nullFlavor identifiers are excluded from identifier array.
+
+        The FHIR identifier array should only contain valid identifiers,
+        not those with nullFlavor.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id nullFlavor="UNK"/>
+                <id root="1.3.6.1.4.1.21367.2010.1.2.300.2.6" extension="170314B2AMB"/>
+                <id root="2.16.840.1.113883.4.6" extension="12345"/>
+                <code code="IMP" codeSystem="2.16.840.1.113883.5.4"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        assert "identifier" in encounter
+        # Should have 2 identifiers (not 3 - nullFlavor should be excluded)
+        assert len(encounter["identifier"]) == 2
+        # Verify neither identifier is a nullFlavor
+        for identifier in encounter["identifier"]:
+            assert identifier.get("system") != "http://terminology.hl7.org/CodeSystem/v3-NullFlavor"
+
+    def test_handles_all_nullflavor_identifiers(self) -> None:
+        """Test graceful handling when all identifiers have nullFlavor.
+
+        This is an edge case, but should not crash - just omit the id field.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id nullFlavor="UNK"/>
+                <id nullFlavor="NI"/>
+                <code code="IMP" codeSystem="2.16.840.1.113883.5.4"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        # No valid id found, so resource ID field should not be set
+        # (FHIR will generate one during validation)
+        # But identifier array should be empty (no valid identifiers)
+        if "identifier" in encounter:
+            assert len(encounter["identifier"]) == 0

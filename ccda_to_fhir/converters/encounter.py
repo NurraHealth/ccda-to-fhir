@@ -49,17 +49,20 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             "resourceType": FHIRCodes.ResourceTypes.ENCOUNTER,
         }
 
-        # Generate ID from encounter identifier
-        if encounter.id and len(encounter.id) > 0:
-            first_id = encounter.id[0]
-            fhir_encounter["id"] = self._generate_encounter_id(first_id.root, first_id.extension)
+        # Generate ID from encounter identifier (skip nullFlavor entries)
+        if encounter.id:
+            # Find first valid identifier (skip nullFlavor)
+            for id_elem in encounter.id:
+                if not id_elem.null_flavor and (id_elem.root or id_elem.extension):
+                    fhir_encounter["id"] = self._generate_encounter_id(id_elem.root, id_elem.extension)
+                    break
 
-        # Identifiers
+        # Identifiers (skip nullFlavor entries)
         if encounter.id:
             fhir_encounter["identifier"] = [
                 self.create_identifier(id_elem.root, id_elem.extension)
                 for id_elem in encounter.id
-                if id_elem.root
+                if not id_elem.null_flavor and id_elem.root
             ]
 
         # Status - Map from statusCode, with moodCode as fallback
