@@ -492,10 +492,14 @@ class TestLocationConverter:
         assert location["type"][0]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
         assert location["type"][0]["coding"][0]["code"] == "PTRES"
 
-    def test_type_is_required(
+    def test_type_is_optional(
         self, location_converter: LocationConverter
     ) -> None:
-        """Test that type (code) is required and validated."""
+        """Test that type (code) is optional per FHIR R4B specification.
+
+        Per FHIR R4B, Location.type has cardinality 0..* (optional).
+        Real-world C-CDA documents may omit participantRole/code.
+        """
         location_no_type = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
@@ -504,9 +508,11 @@ class TestLocationConverter:
             playing_entity=PlayingEntity(class_code="PLC", name=["Test"])
         )
 
-        # Should either raise error or handle gracefully
-        with pytest.raises(ValueError, match="code"):
-            location_converter.convert(location_no_type)
+        # Should succeed without error
+        location = location_converter.convert(location_no_type)
+
+        # Type field should be omitted when code is missing
+        assert "type" not in location
 
     # ============================================================================
     # E. Address Mapping (4 tests)

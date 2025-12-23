@@ -85,12 +85,19 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Map mode (instance for specific locations, kind for location types)
         location["mode"] = self._determine_mode(participant_role.code)
 
-        # Map type (facility type - required)
-        if not participant_role.code:
-            raise ValueError("Location type code is required (participantRole/code)")
-        location_type = self._convert_type(participant_role.code)
-        if location_type:
-            location["type"] = [location_type]
+        # Map type (facility type - optional per FHIR R4B)
+        if participant_role.code:
+            location_type = self._convert_type(participant_role.code)
+            if location_type:
+                location["type"] = [location_type]
+        else:
+            # Log C-CDA spec violation (code is required per C-CDA, but we accept it for real-world compatibility)
+            from ccda_to_fhir.logging_config import get_logger
+            logger = get_logger(__name__)
+            logger.warning(
+                "Missing participantRole/code (required by C-CDA spec). "
+                "Omitting Location.type. May indicate C-CDA data quality issue."
+            )
 
         # Map physicalType (physical form of location - inferred from type code)
         physical_type = self._infer_physical_type(participant_role.code)
