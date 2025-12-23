@@ -517,8 +517,15 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     # Get original text if available (with reference resolution)
                     original_text = None
                     if playing_entity.name:
-                        # Use name as text
-                        original_text = playing_entity.name
+                        # Extract string value from name (can be list[ON | str] or single ON | str)
+                        names = playing_entity.name if isinstance(playing_entity.name, list) else [playing_entity.name]
+                        for name in names:
+                            if isinstance(name, str):
+                                original_text = name
+                                break
+                            elif hasattr(name, 'value') and name.value:
+                                original_text = name.value
+                                break
                     elif code.original_text:
                         original_text = self.extract_original_text(code.original_text, section=None)
 
