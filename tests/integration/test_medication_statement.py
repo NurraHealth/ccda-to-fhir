@@ -286,3 +286,80 @@ class TestHistoricalMedicationConversion:
         med_concept = med_statement["medicationCodeableConcept"]
         assert "text" in med_concept
         assert med_concept["text"] == "Aspirin 81mg daily"
+
+
+class TestPPD_PQDataType:
+    """Tests for PPD_PQ (Parametric Probability Distribution of Physical Quantity) support.
+
+    PPD_PQ is used in medication timing to express uncertainty/variability.
+    Real-world example from McKesson Paragon: "every 5±1 hours"
+    """
+
+    def test_medication_timing_with_ppd_pq_period(self) -> None:
+        """Test PIVL_TS with PPD_PQ period parsing.
+
+        Real-world C-CDA from McKesson Paragon uses PPD_PQ to express
+        medication timing with statistical distribution:
+          <period xsi:type="PPD_PQ" value="5.00" unit="h">
+            <standardDeviation value="1.00" unit="h"/>
+          </period>
+
+        This means "every 5±1 hours" (mean=5h, stddev=1h).
+
+        In FHIR conversion, we preserve the base value/unit but lose the
+        standard deviation (FHIR Timing doesn't support distributions).
+        """
+        ccda_medication = """<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+    <id root="ppd-pq-test-1"/>
+    <statusCode code="completed"/>
+    <effectiveTime xsi:type="IVL_TS">
+        <low value="20200101"/>
+        <high nullFlavor="UNK"/>
+    </effectiveTime>
+    <effectiveTime xsi:type="PIVL_TS" operator="A" institutionSpecified="true">
+        <period xsi:type="PPD_PQ" value="5.00" unit="h">
+            <standardDeviation value="1.00" unit="h"/>
+        </period>
+    </effectiveTime>
+    <routeCode code="C38288" codeSystem="2.16.840.1.113883.3.26.1.1"
+               displayName="Oral" codeSystemName="NCI Thesaurus"/>
+    <doseQuantity value="35" unit="mg"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+            <manufacturedMaterial>
+                <code code="197361" codeSystem="2.16.840.1.113883.6.88"
+                      displayName="Lisinopril 10 MG Oral Tablet"/>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+</substanceAdministration>
+"""
+        ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
+        bundle = convert_document(ccda_doc)
+
+        med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
+        assert med_statement is not None
+
+        # Should have dosage with timing
+        assert "dosage" in med_statement
+        assert len(med_statement["dosage"]) > 0
+
+        dosage = med_statement["dosage"][0]
+        assert "timing" in dosage
+
+        # Should have timing with repeat period
+        timing = dosage["timing"]
+        assert "repeat" in timing
+
+        repeat = timing["repeat"]
+        # Should preserve the period value (5) and unit (h)
+        assert "period" in repeat
+        assert repeat["period"] == 5.0
+        assert "periodUnit" in repeat
+        assert repeat["periodUnit"] == "h"
+
+        # Note: standardDeviation is lost in FHIR conversion
+        # FHIR Timing doesn't support probability distributions
