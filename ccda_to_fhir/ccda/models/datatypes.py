@@ -215,6 +215,27 @@ class PQ(CDAModel):
     translation: list[PQ] | None = None
 
 
+class PPD_PQ(PQ):
+    """Parametric Probability Distribution of Physical Quantity (PPD<PQ>).
+
+    Extends PQ with statistical distribution parameters. Used to express
+    uncertainty or variability in measurements, commonly in medication
+    timing specifications.
+
+    Example: "Every 5±1 hours" would be:
+        <period xsi:type="PPD_PQ" value="5.00" unit="h">
+          <standardDeviation value="1.00" unit="h"/>
+        </period>
+
+    Note: When converting to FHIR, the statistical parameters (standardDeviation,
+    distributionType) are typically lost as FHIR Timing does not support
+    probability distributions. The base value and unit are preserved.
+    """
+
+    standard_deviation: PQ | None = Field(default=None, alias="standardDeviation")
+    distribution_type: str | None = Field(default=None, alias="distributionType")
+
+
 class RTO(CDAModel):
     """Ratio (RTO).
 
@@ -270,11 +291,14 @@ class PIVL_TS(CDAModel):
     """Periodic Interval of Time (PIVL<TS>).
 
     A time interval that recurs periodically.
-    Period can be either a single PQ value or an IVL_PQ range.
+    Period can be:
+    - PQ: Simple physical quantity (e.g., "every 6 hours")
+    - IVL_PQ: Interval range (e.g., "every 4-6 hours")
+    - PPD_PQ: With probability distribution (e.g., "every 5±1 hours")
     """
 
     phase: IVL_TS | None = None
-    period: PQ | IVL_PQ | None = None
+    period: PQ | IVL_PQ | PPD_PQ | None = None
     alignment: str | None = None
     institution_specified: bool | None = Field(default=None, alias="institutionSpecified")
     operator: str | None = None
@@ -287,7 +311,7 @@ class EIVL_TS(CDAModel):
     """
 
     event: CE | None = None
-    offset: PQ | IVL_PQ | None = None
+    offset: PQ | IVL_PQ | PPD_PQ | None = None
     operator: str | None = None
 
 

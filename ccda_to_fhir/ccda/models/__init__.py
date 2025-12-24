@@ -83,6 +83,7 @@ from .datatypes import (
     ON,
     PIVL_TS,
     PN,
+    PPD_PQ,
     PQ,
     REAL,
     RTO,
@@ -202,6 +203,7 @@ __all__ = [
     # Coded types
     "CD",
     "CE",
+    "CO",
     "CR",
     "CS",
     "CV",
@@ -211,6 +213,7 @@ __all__ = [
     # Quantities
     "IVL_PQ",
     "MO",
+    "PPD_PQ",
     "PQ",
     "RTO",
     # Time types

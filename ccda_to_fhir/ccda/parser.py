@@ -39,6 +39,7 @@ from .models import (
     ON,
     PIVL_TS,
     PN,
+    PPD_PQ,
     PQ,
     REAL,
     RTO,
@@ -164,6 +165,7 @@ XSI_TYPE_MAP: dict[str, type[BaseModel]] = {
     "SXCM_TS": SXCM_TS,
     # Quantity types
     "PQ": PQ,
+    "PPD_PQ": PPD_PQ,
     "IVL_PQ": IVL_PQ,
     "IVL_INT": IVL_INT,
     "MO": MO,
