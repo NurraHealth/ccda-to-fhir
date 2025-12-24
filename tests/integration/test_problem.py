@@ -682,3 +682,59 @@ class TestProblemConversion:
         assert "<p" in div_content  # Paragraph converted to <p>
         assert 'id="problem-narrative-1"' in div_content  # ID preserved
         assert 'class="Bold"' in div_content or "Bold" in div_content  # Style preserved
+
+
+class TestCodeWhitespaceSanitization:
+    """Tests for code whitespace sanitization in CodeableConcept conversion."""
+
+    def test_sanitizes_code_with_leading_whitespace(self) -> None:
+        r"""Test that codes with leading whitespace are sanitized.
+
+        Real-world C-CDA documents may have codes with leading/trailing whitespace
+        (e.g., ' R50.9' from MDIntellisys IntelleChart). FHIR requires codes match
+        pattern '^[^\s]+(\s[^\s]+)*$' (no leading/trailing whitespace).
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<act classCode="ACT" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.3"/>
+                <id root="1.2.3.4.5" extension="problem-123"/>
+                <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
+                <statusCode code="active"/>
+                <effectiveTime>
+                    <low value="20230101"/>
+                </effectiveTime>
+                <entryRelationship typeCode="SUBJ">
+                    <observation classCode="OBS" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.4"/>
+                        <id root="1.2.3.4.5" extension="obs-123"/>
+                        <code code="55607006" codeSystem="2.16.840.1.113883.6.96" displayName="Problem"/>
+                        <statusCode code="completed"/>
+                        <effectiveTime>
+                            <low value="20230101"/>
+                        </effectiveTime>
+                        <value xsi:type="CD" code=" R50.9" codeSystem="2.16.840.1.113883.6.90"
+                               displayName=" Fever, unspecified " codeSystemName="ICD-10-CM"/>
+                    </observation>
+                </entryRelationship>
+            </act>""",
+            PROBLEMS_TEMPLATE_ID
+        )
+
+        bundle = convert_document(ccda_doc)
+        condition = _find_resource_in_bundle(bundle, "Condition")
+
+        assert condition is not None
+        assert "code" in condition
+
+        # Find ICD-10-CM coding
+        icd10_coding = next(
+            (c for c in condition["code"]["coding"]
+             if c.get("system") == "http://hl7.org/fhir/sid/icd-10-cm"),
+            None
+        )
+
+        assert icd10_coding is not None
+        # Code should be sanitized (leading space removed)
+        assert icd10_coding["code"] == "R50.9", f"Expected 'R50.9' but got '{icd10_coding['code']}'"
+        # Display name should be sanitized (leading/trailing spaces removed)
+        assert icd10_coding["display"] == "Fever, unspecified", f"Expected 'Fever, unspecified' but got '{icd10_coding['display']}'"

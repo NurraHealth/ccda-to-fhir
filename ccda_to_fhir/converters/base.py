@@ -249,10 +249,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if system_uri:
                 coding: JSONObject = {
                     "system": system_uri,
-                    "code": code,
+                    "code": code.strip(),  # Sanitize: remove leading/trailing whitespace
                 }
                 if display_name:
-                    coding["display"] = display_name
+                    coding["display"] = display_name.strip()  # Sanitize display name too
                 codings.append(coding)
 
         # Translation codings
@@ -264,10 +264,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     if trans_system_uri:
                         trans_coding: JSONObject = {
                             "system": trans_system_uri,
-                            "code": trans["code"],
+                            "code": trans["code"].strip(),  # Sanitize: remove leading/trailing whitespace
                         }
                         if trans.get("display_name"):
-                            trans_coding["display"] = trans["display_name"]
+                            trans_coding["display"] = trans["display_name"].strip()  # Sanitize display name too
                         codings.append(trans_coding)
 
         if codings:
