@@ -1277,3 +1277,34 @@ class TestProcedureMissingEffectiveTime:
 
         # Should NOT have _performedDateTime with data-absent-reason
         assert "_performedDateTime" not in procedure
+
+
+class TestProcedureIDSanitization:
+    """Tests for Procedure resource ID sanitization."""
+
+    def test_sanitizes_id_with_pipes(self) -> None:
+        """Test that procedure IDs with pipe characters are sanitized.
+
+        Real-world C-CDA documents may have IDs with pipes (e.g., '15||63725-003')
+        which violates FHIR R4B spec. IDs can only contain: A-Z, a-z, 0-9, -, .
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<procedure classCode="PROC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.14"/>
+                <id root="1.2.3.4.5" extension="15||63725-003"/>
+                <code code="80146002" codeSystem="2.16.840.1.113883.6.96"
+                      displayName="Appendectomy"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101120000"/>
+            </procedure>""",
+            PROCEDURES_TEMPLATE_ID
+        )
+
+        bundle = convert_document(ccda_doc)
+        procedure = _find_resource_in_bundle(bundle, "Procedure")
+
+        assert procedure is not None
+        # Pipe characters should be replaced with hyphens
+        assert procedure["id"] == "15--63725-003"
+        # Verify it's the correct procedure
+        assert procedure["code"]["coding"][0]["code"] == "80146002"

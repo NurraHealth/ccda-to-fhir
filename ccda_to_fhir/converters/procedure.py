@@ -231,11 +231,11 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             A FHIR-compliant ID string
         """
         if extension:
-            # Use extension as the ID (sanitized)
-            return extension.replace(" ", "-").replace(".", "-")
+            # Use extension as the ID (sanitize to remove invalid characters)
+            return self.sanitize_id(extension)
         elif root:
-            # Use root as the ID (sanitized)
-            return root.replace(".", "-")
+            # Use root as the ID (sanitize to remove invalid characters)
+            return self.sanitize_id(root)
         else:
             raise ValueError(
                 "Cannot generate Procedure ID: no identifiers provided. "
