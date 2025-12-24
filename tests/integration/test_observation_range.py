@@ -231,3 +231,81 @@ class TestObservationRange:
         assert observation["code"]["coding"][0]["code"] == "5811-5"
         assert "valueQuantity" in observation
         assert observation["valueQuantity"]["value"] == 1.015
+
+
+class TestObservationIDSanitization:
+    """Tests for Observation resource ID sanitization."""
+
+    def test_sanitizes_id_with_underscores(self) -> None:
+        """Test that observation IDs with underscores are sanitized.
+
+        Real-world C-CDA documents may have IDs with underscores (e.g., '16_Height')
+        which violates FHIR R4B spec. IDs can only contain: A-Z, a-z, 0-9, -, .
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<organizer classCode="CLUSTER" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.26"/>
+                <id root="1.2.3.4.5" extension="vital-signs-panel"/>
+                <code code="46680005" codeSystem="2.16.840.1.113883.6.96" displayName="Vital signs"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101120000"/>
+                <component>
+                    <observation classCode="OBS" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+                        <id root="1.2.3.4.5" extension="16_Height"/>
+                        <code code="8302-2" codeSystem="2.16.840.1.113883.6.1" displayName="Height"/>
+                        <statusCode code="completed"/>
+                        <effectiveTime value="20230101120000"/>
+                        <value xsi:type="PQ" value="177" unit="cm"/>
+                    </observation>
+                </component>
+            </organizer>""",
+            TemplateIds.VITAL_SIGNS_SECTION
+        )
+
+        bundle = convert_document(ccda_doc)
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+
+        # Find the Height observation
+        height_obs = next((obs for obs in observations if obs.get("id") == "16-Height"), None)
+
+        assert height_obs is not None, "Should find observation with sanitized ID"
+        # ID should have underscore replaced with hyphen
+        assert height_obs["id"] == "16-Height"
+        # Verify it's the correct observation
+        assert height_obs["code"]["coding"][0]["code"] == "8302-2"
+
+    def test_sanitizes_id_with_spaces(self) -> None:
+        """Test that observation IDs with spaces are sanitized."""
+        ccda_doc = wrap_in_ccda_document(
+            """<organizer classCode="CLUSTER" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.26"/>
+                <id root="1.2.3.4.5" extension="vital-signs-panel"/>
+                <code code="46680005" codeSystem="2.16.840.1.113883.6.96" displayName="Vital signs"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101120000"/>
+                <component>
+                    <observation classCode="OBS" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+                        <id root="1.2.3.4.5" extension="8_Body temperature"/>
+                        <code code="8310-5" codeSystem="2.16.840.1.113883.6.1" displayName="Body temperature"/>
+                        <statusCode code="completed"/>
+                        <effectiveTime value="20230101120000"/>
+                        <value xsi:type="PQ" value="37" unit="Cel"/>
+                    </observation>
+                </component>
+            </organizer>""",
+            TemplateIds.VITAL_SIGNS_SECTION
+        )
+
+        bundle = convert_document(ccda_doc)
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+
+        # Find the temperature observation
+        temp_obs = next((obs for obs in observations if "Body" in obs.get("id", "")), None)
+
+        assert temp_obs is not None, "Should find observation with sanitized ID"
+        # ID should have underscore and space replaced with hyphens
+        assert temp_obs["id"] == "8-Body-temperature"
+        # Verify it's the correct observation
+        assert temp_obs["code"]["coding"][0]["code"] == "8310-5"

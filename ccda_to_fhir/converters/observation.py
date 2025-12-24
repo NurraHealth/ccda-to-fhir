@@ -454,11 +454,11 @@ class ObservationConverter(BaseConverter[Observation]):
             A valid FHIR ID string
         """
         if extension:
-            # Use extension as ID (removing any invalid characters)
-            return extension.replace(".", "-").replace(":", "-")
+            # Use extension as ID (sanitize to remove invalid characters)
+            return self.sanitize_id(extension)
         elif root:
-            # Use root as ID
-            return root.replace(".", "-").replace(":", "-")
+            # Use root as ID (sanitize to remove invalid characters)
+            return self.sanitize_id(root)
         else:
             raise ValueError(
                 "Cannot generate Observation ID: no identifiers provided. "

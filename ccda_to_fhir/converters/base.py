@@ -58,6 +58,35 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         """
         pass
 
+    @staticmethod
+    def sanitize_id(value: str) -> str:
+        """Sanitize a string to be FHIR-compliant resource ID.
+
+        Per FHIR R4B spec, IDs can only contain:
+        - A-Z, a-z (letters)
+        - 0-9 (numerals)
+        - - (hyphen)
+        - . (period)
+
+        Max length: 64 characters
+
+        Args:
+            value: String to sanitize
+
+        Returns:
+            FHIR-compliant ID with invalid characters replaced by hyphens
+
+        Examples:
+            >>> BaseConverter.sanitize_id("16_Height")
+            '16-Height'
+            >>> BaseConverter.sanitize_id("8_Body temperature")
+            '8-Body-temperature'
+        """
+        # Replace any character that's not alphanumeric, dash, or period with hyphen
+        sanitized = re.sub(r'[^A-Za-z0-9\-\.]', '-', value)
+        # Truncate to 64 characters max
+        return sanitized[:64]
+
     def generate_resource_id(
         self,
         root: str | None,
