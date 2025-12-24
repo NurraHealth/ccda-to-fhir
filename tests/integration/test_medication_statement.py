@@ -363,3 +363,50 @@ class TestPPD_PQDataType:
 
         # Note: standardDeviation is lost in FHIR conversion
         # FHIR Timing doesn't support probability distributions
+
+
+class TestMedicationStatementMissingMedication:
+    """Tests for MedicationStatement with missing or incomplete medication information."""
+
+    def test_medication_with_no_code_uses_fallback_text(self) -> None:
+        """Test that MedicationStatement with no code/text uses fallback.
+
+        Real-world C-CDA documents may have medication activities with no code
+        or original text in the manufactured material. FHIR R4B requires
+        medicationCodeableConcept or medicationReference. This test verifies
+        we provide a fallback CodeableConcept with text to satisfy validation.
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<substanceAdministration classCode="SBADM" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+                <id root="1.2.3.4.5" extension="med-123"/>
+                <statusCode code="completed"/>
+                <effectiveTime xsi:type="IVL_TS">
+                    <low value="20230101"/>
+                </effectiveTime>
+                <doseQuantity value="1"/>
+                <consumable>
+                    <manufacturedProduct>
+                        <manufacturedMaterial>
+                            <!-- Code with nullFlavor (no actual code value) and no name -->
+                            <code nullFlavor="UNK"/>
+                        </manufacturedMaterial>
+                    </manufacturedProduct>
+                </consumable>
+            </substanceAdministration>""",
+            TemplateIds.MEDICATIONS_SECTION
+        )
+
+        bundle = convert_document(ccda_doc)
+        med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
+
+        assert med_statement is not None
+        assert "medicationCodeableConcept" in med_statement, "Should have medicationCodeableConcept"
+
+        # Should have fallback text
+        assert "text" in med_statement["medicationCodeableConcept"]
+        assert med_statement["medicationCodeableConcept"]["text"] == "Medication information not available"
+
+        # Should not have any coding (no code available)
+        assert "coding" not in med_statement["medicationCodeableConcept"] or \
+               len(med_statement["medicationCodeableConcept"].get("coding", [])) == 0

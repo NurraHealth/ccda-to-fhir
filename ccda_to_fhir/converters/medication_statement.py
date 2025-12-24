@@ -281,9 +281,14 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             if manufactured_material.name:
                 original_text = manufactured_material.name
 
-        # If we have neither code nor text, return None
-        if not med_code and not original_text:
-            return None
+        # If we have neither code nor text, use fallback text to satisfy FHIR requirement
+        # MedicationStatement requires medicationCodeableConcept or medicationReference
+        if (not med_code or not med_code.code) and not original_text:
+            original_text = "Medication information not available"
+            logger.warning(
+                "Medication Activity has no code or text. Using fallback text.",
+                extra={"fallback_text": original_text}
+            )
 
         # Extract translations - convert CD objects to dictionaries
         translations = None
