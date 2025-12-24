@@ -2058,3 +2058,58 @@ class TestEncounterNullFlavorIdentifiers:
         # But identifier array should be empty (no valid identifiers)
         if "identifier" in encounter:
             assert len(encounter["identifier"]) == 0
+
+
+class TestEncounterIDSanitization:
+    """Tests for Encounter resource ID sanitization."""
+
+    def test_sanitizes_id_with_slashes(self) -> None:
+        """Test that encounter IDs with slash characters are sanitized.
+
+        Real-world C-CDA documents may have IDs with slashes (e.g., 'Encounter/1813648870084190')
+        which violates FHIR R4B spec. IDs can only contain: A-Z, a-z, 0-9, -, .
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="1.2.3.4.5" extension="Encounter/1813648870084190"/>
+                <code code="AMB" codeSystem="2.16.840.1.113883.5.4" displayName="Ambulatory"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101120000"/>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        # Slash character should be replaced with hyphen
+        assert encounter["id"] == "Encounter-1813648870084190"
+        # Verify it's the correct encounter
+        assert encounter["class"]["code"] == "AMB"
+
+    def test_sanitizes_id_with_pipes_and_slashes(self) -> None:
+        """Test that encounter IDs with multiple invalid characters are sanitized."""
+        ccda_doc = wrap_in_ccda_document(
+            """<encounter classCode="ENC" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.49"/>
+                <id root="1.2.3.4.5" extension="medicationstatement-medication/1813433361850990"/>
+                <code code="IMP" codeSystem="2.16.840.1.113883.5.4" displayName="Inpatient"/>
+                <statusCode code="completed"/>
+                <effectiveTime>
+                    <low value="20230101120000"/>
+                    <high value="20230102120000"/>
+                </effectiveTime>
+            </encounter>""",
+            ENCOUNTERS_TEMPLATE_ID
+        )
+
+        bundle = convert_document(ccda_doc)
+        encounter = _find_resource_in_bundle(bundle, "Encounter")
+
+        assert encounter is not None
+        # Slash character should be replaced with hyphen
+        assert encounter["id"] == "medicationstatement-medication-1813433361850990"
+        # Verify it's the correct encounter
+        assert encounter["class"]["code"] == "IMP"

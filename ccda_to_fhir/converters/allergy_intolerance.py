@@ -274,7 +274,8 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             A resource ID string
         """
         if extension:
-            clean_ext = extension.lower().replace(" ", "-").replace(".", "-")
+            # Use sanitize_id to handle all invalid characters (spaces, pipes, slashes, etc.)
+            clean_ext = self.sanitize_id(extension.lower())
             return f"allergy-{clean_ext}"
         elif root:
             root_suffix = root.replace(".", "").replace("-", "")[-16:]

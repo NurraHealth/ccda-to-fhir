@@ -171,7 +171,8 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
     def _generate_medication_statement_id(self, root: str | None, extension: str | None) -> str:
         """Generate a medication statement resource ID from C-CDA identifier."""
         if extension:
-            clean_ext = extension.lower().replace(" ", "-").replace(".", "-")
+            # Use sanitize_id to handle all invalid characters (spaces, pipes, slashes, etc.)
+            clean_ext = self.sanitize_id(extension.lower())
             return f"medicationstatement-{clean_ext}"
         elif root:
             root_suffix = root.replace(".", "").replace("-", "")[-16:]

@@ -410,3 +410,76 @@ class TestMedicationStatementMissingMedication:
         # Should not have any coding (no code available)
         assert "coding" not in med_statement["medicationCodeableConcept"] or \
                len(med_statement["medicationCodeableConcept"].get("coding", [])) == 0
+
+
+class TestMedicationStatementIDSanitization:
+    """Tests for MedicationStatement resource ID sanitization."""
+
+    def test_sanitizes_id_with_slashes(self) -> None:
+        """Test that medication statement IDs with slash characters are sanitized.
+
+        Real-world C-CDA documents may have IDs with slashes 
+        (e.g., 'medicationstatement-medication/1813433361850990')
+        which violates FHIR R4B spec. IDs can only contain: A-Z, a-z, 0-9, -, .
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<substanceAdministration classCode="SBADM" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+                <id root="1.2.3.4.5" extension="medication/1813433361850990"/>
+                <statusCode code="completed"/>
+                <effectiveTime xsi:type="IVL_TS">
+                    <low value="20230101"/>
+                </effectiveTime>
+                <doseQuantity value="1"/>
+                <consumable>
+                    <manufacturedProduct>
+                        <manufacturedMaterial>
+                            <code code="197361" codeSystem="2.16.840.1.113883.6.88"
+                                  displayName="Lisinopril 10 MG Oral Tablet"/>
+                        </manufacturedMaterial>
+                    </manufacturedProduct>
+                </consumable>
+            </substanceAdministration>""",
+            TemplateIds.MEDICATIONS_SECTION
+        )
+
+        bundle = convert_document(ccda_doc)
+        med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
+
+        assert med_statement is not None
+        # Slash character should be replaced with hyphen
+        assert med_statement["id"] == "medicationstatement-medication-1813433361850990"
+        # Verify it's the correct medication
+        assert med_statement["medicationCodeableConcept"]["coding"][0]["code"] == "197361"
+
+    def test_sanitizes_id_with_pipes(self) -> None:
+        """Test that medication statement IDs with pipe characters are sanitized."""
+        ccda_doc = wrap_in_ccda_document(
+            """<substanceAdministration classCode="SBADM" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+                <id root="1.2.3.4.5" extension="med-15||rx-003"/>
+                <statusCode code="active"/>
+                <effectiveTime xsi:type="IVL_TS">
+                    <low value="20230101"/>
+                </effectiveTime>
+                <doseQuantity value="2"/>
+                <consumable>
+                    <manufacturedProduct>
+                        <manufacturedMaterial>
+                            <code code="308136" codeSystem="2.16.840.1.113883.6.88"
+                                  displayName="Metformin 500 MG Oral Tablet"/>
+                        </manufacturedMaterial>
+                    </manufacturedProduct>
+                </consumable>
+            </substanceAdministration>""",
+            TemplateIds.MEDICATIONS_SECTION
+        )
+
+        bundle = convert_document(ccda_doc)
+        med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
+
+        assert med_statement is not None
+        # Pipe characters should be replaced with hyphens
+        assert med_statement["id"] == "medicationstatement-med-15--rx-003"
+        # Verify it's the correct medication
+        assert med_statement["medicationCodeableConcept"]["coding"][0]["code"] == "308136"

@@ -868,3 +868,103 @@ class TestAllergyReactionDetails:
         assert "note" not in reaction
         # But should still have manifestation
         assert "manifestation" in reaction
+
+
+class TestAllergyIntoleranceIDSanitization:
+    """Tests for AllergyIntolerance resource ID sanitization."""
+
+    def test_sanitizes_id_with_pipes(self) -> None:
+        """Test that allergy IDs with pipe characters are sanitized.
+
+        Real-world C-CDA documents may have IDs with pipes (e.g., 'allergy-130||alg-001')
+        which violates FHIR R4B spec. IDs can only contain: A-Z, a-z, 0-9, -, .
+        """
+        ccda_doc = wrap_in_ccda_document(
+            """<act classCode="ACT" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
+                <id root="1.2.3.4.5" extension="act-123"/>
+                <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
+                <statusCode code="active"/>
+                <effectiveTime>
+                    <low value="20080501"/>
+                </effectiveTime>
+                <entryRelationship typeCode="SUBJ">
+                    <observation classCode="OBS" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.7"/>
+                        <id root="1.2.3.4.5" extension="130||alg-001"/>
+                        <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+                        <statusCode code="completed"/>
+                        <effectiveTime>
+                            <low value="20080501"/>
+                        </effectiveTime>
+                        <value xsi:type="CD" code="419511003"
+                               codeSystem="2.16.840.1.113883.6.96"
+                               displayName="Propensity to adverse reactions to drug"/>
+                        <participant typeCode="CSM">
+                            <participantRole classCode="MANU">
+                                <playingEntity classCode="MMAT">
+                                    <code code="1191" codeSystem="2.16.840.1.113883.6.88"
+                                          displayName="Aspirin"/>
+                                </playingEntity>
+                            </participantRole>
+                        </participant>
+                    </observation>
+                </entryRelationship>
+            </act>""",
+            ALLERGIES_TEMPLATE_ID
+        )
+
+        bundle = convert_document(ccda_doc)
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+
+        assert allergy is not None
+        # Pipe characters should be replaced with hyphens
+        assert allergy["id"] == "allergy-130--alg-001"
+        # Verify it's the correct allergy
+        assert allergy["code"]["coding"][0]["code"] == "1191"
+
+    def test_sanitizes_id_with_slashes(self) -> None:
+        """Test that allergy IDs with slash characters are sanitized."""
+        ccda_doc = wrap_in_ccda_document(
+            """<act classCode="ACT" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
+                <id root="1.2.3.4.5" extension="act-456"/>
+                <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
+                <statusCode code="active"/>
+                <effectiveTime>
+                    <low value="20080501"/>
+                </effectiveTime>
+                <entryRelationship typeCode="SUBJ">
+                    <observation classCode="OBS" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.7"/>
+                        <id root="1.2.3.4.5" extension="allergy/patient/123"/>
+                        <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+                        <statusCode code="completed"/>
+                        <effectiveTime>
+                            <low value="20080501"/>
+                        </effectiveTime>
+                        <value xsi:type="CD" code="419511003"
+                               codeSystem="2.16.840.1.113883.6.96"
+                               displayName="Propensity to adverse reactions to drug"/>
+                        <participant typeCode="CSM">
+                            <participantRole classCode="MANU">
+                                <playingEntity classCode="MMAT">
+                                    <code code="1191" codeSystem="2.16.840.1.113883.6.88"
+                                          displayName="Aspirin"/>
+                                </playingEntity>
+                            </participantRole>
+                        </participant>
+                    </observation>
+                </entryRelationship>
+            </act>""",
+            ALLERGIES_TEMPLATE_ID
+        )
+
+        bundle = convert_document(ccda_doc)
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+
+        assert allergy is not None
+        # Slash characters should be replaced with hyphens
+        assert allergy["id"] == "allergy-allergy-patient-123"
+        # Verify it's the correct allergy
+        assert allergy["code"]["coding"][0]["code"] == "1191"
