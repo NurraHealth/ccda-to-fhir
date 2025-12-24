@@ -613,8 +613,9 @@ class ObservationConverter(BaseConverter[Observation]):
 
         # Primary coding
         if code.code and code.code_system:
+            system_uri = self.map_oid_to_uri(code.code_system)
             coding: JSONObject = {
-                "system": self.map_oid_to_uri(code.code_system),
+                "system": system_uri,
                 "code": code.code,
             }
             if code.display_name:
@@ -625,8 +626,9 @@ class ObservationConverter(BaseConverter[Observation]):
         if hasattr(code, "translation") and code.translation:
             for trans in code.translation:
                 if trans.code and trans.code_system:
+                    trans_system_uri = self.map_oid_to_uri(trans.code_system)
                     trans_coding: JSONObject = {
-                        "system": self.map_oid_to_uri(trans.code_system),
+                        "system": trans_system_uri,
                         "code": trans.code,
                     }
                     if trans.display_name:

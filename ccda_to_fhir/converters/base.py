@@ -251,7 +251,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         display_name: str | None = None,
         original_text: str | None = None,
         translations: list[JSONObject] | None = None,
-    ) -> JSONObject:
+    ) -> JSONObject | None:
         """Create a FHIR CodeableConcept from C-CDA code elements.
 
         Args:
@@ -262,10 +262,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             translations: List of translation codes
 
         Returns:
-            FHIR CodeableConcept as a dict
+            FHIR CodeableConcept as a dict, or None if no content available
         """
         if not code and not original_text:
-            return {}
+            return None  # Return None instead of empty dict for proper truthiness checks
 
         codeable_concept: JSONObject = {}
         codings: list[JSONObject] = []
@@ -273,31 +273,26 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         # Primary coding
         if code and code_system:
             system_uri = self.map_oid_to_uri(code_system)
-            # Only create coding if we have a valid canonical URI
-            # Per FHIR R4B SHALL requirement, urn:oid: format is not allowed
-            if system_uri:
-                coding: JSONObject = {
-                    "system": system_uri,
-                    "code": code.strip(),  # Sanitize: remove leading/trailing whitespace
-                }
-                if display_name:
-                    coding["display"] = display_name.strip()  # Sanitize display name too
-                codings.append(coding)
+            coding: JSONObject = {
+                "system": system_uri,
+                "code": code.strip(),  # Sanitize: remove leading/trailing whitespace
+            }
+            if display_name:
+                coding["display"] = display_name.strip()  # Sanitize display name too
+            codings.append(coding)
 
         # Translation codings
         if translations:
             for trans in translations:
                 if trans.get("code") and trans.get("code_system"):
                     trans_system_uri = self.map_oid_to_uri(trans["code_system"])
-                    # Only create coding if we have a valid canonical URI
-                    if trans_system_uri:
-                        trans_coding: JSONObject = {
-                            "system": trans_system_uri,
-                            "code": trans["code"].strip(),  # Sanitize: remove leading/trailing whitespace
-                        }
-                        if trans.get("display_name"):
-                            trans_coding["display"] = trans["display_name"].strip()  # Sanitize display name too
-                        codings.append(trans_coding)
+                    trans_coding: JSONObject = {
+                        "system": trans_system_uri,
+                        "code": trans["code"].strip(),  # Sanitize: remove leading/trailing whitespace
+                    }
+                    if trans.get("display_name"):
+                        trans_coding["display"] = trans["display_name"].strip()  # Sanitize display name too
+                    codings.append(trans_coding)
 
         if codings:
             codeable_concept["coding"] = codings
@@ -305,6 +300,11 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         # Original text
         if original_text:
             codeable_concept["text"] = original_text
+
+        # If codeable_concept is empty (no coding and no text), return None
+        # This can happen when code system is unmapped and there's no original text
+        if not codeable_concept:
+            return None
 
         return codeable_concept
 

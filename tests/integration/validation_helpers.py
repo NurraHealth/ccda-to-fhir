@@ -499,41 +499,25 @@ def _get_nested_value(obj: dict, path: str) -> any:
 
 
 def assert_valid_code_systems(bundle: dict) -> None:
-    """Verify all code.system URIs are valid, not unmapped OIDs.
+    """Verify all code.system URIs are valid.
+
+    Per C-CDA on FHIR IG, code systems should use canonical URIs when available,
+    and urn:oid: format for unmapped OIDs.
 
     Args:
         bundle: FHIR Bundle to validate
 
     Raises:
-        AssertionError: If any code systems are invalid or unmapped OIDs
+        AssertionError: If any code systems have invalid URI format
     """
     import re
 
-    valid_systems = {
-        "http://loinc.org",
-        "http://snomed.info/sct",
-        "http://www.nlm.nih.gov/research/umls/rxnorm",
-        "http://www.ama-assn.org/go/cpt",
-        "http://hl7.org/fhir/sid/icd-10-cm",
-        "http://hl7.org/fhir/sid/icd-9-cm",
-        "http://hl7.org/fhir/sid/cvx",
-        "http://hl7.org/fhir/sid/ndc",
-        "http://unitsofmeasure.org",
-        "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-        "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
-        "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-        "http://terminology.hl7.org/CodeSystem/v3-ParticipationFunction",
-        "http://terminology.hl7.org/CodeSystem/condition-category",
-        "http://terminology.hl7.org/CodeSystem/observation-category",
-        "http://terminology.hl7.org/CodeSystem/medicationdispense-performer-function",
-        "http://terminology.hl7.org/CodeSystem/data-absent-reason",
-        "http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category",
-        "http://hl7.org/fhir/administrative-gender",
-        "urn:oid:2.16.840.1.113883.6.238",  # Race & Ethnicity (CDC)
-        "http://hl7.org/fhir/us/core/CodeSystem/condition-category",
-    }
-
-    oid_pattern = re.compile(r'^(urn:oid:|2\.16\.840\.)')
+    # Valid URI patterns per FHIR and C-CDA on FHIR IG:
+    # - http://... or https://... (canonical URIs)
+    # - urn:oid:... (for unmapped OIDs per C-CDA on FHIR IG)
+    # - urn:uuid:... (for temporary/local systems)
+    # - urn:ietf:... (for IETF standards like BCP 47 language codes)
+    valid_uri_pattern = re.compile(r'^(https?://|urn:(oid|uuid|ietf):)')
     invalid_systems = []
 
     for entry in bundle.get("entry", []):
@@ -551,16 +535,15 @@ def assert_valid_code_systems(bundle: dict) -> None:
                 if not system:
                     continue
 
-                # Check if unmapped OID
-                if oid_pattern.match(system):
-                    if system not in valid_systems:
-                        invalid_systems.append(
-                            f"{resource_type}/{resource_id} -> {code_path}: "
-                            f"Unmapped OID '{system}' (should be canonical URI)"
-                        )
+                # Check if system URI matches valid pattern
+                if not valid_uri_pattern.match(system):
+                    invalid_systems.append(
+                        f"{resource_type}/{resource_id} -> {code_path}: "
+                        f"Invalid code system URI '{system}' (must be http://, https://, urn:oid:, urn:uuid:, or urn:ietf:)"
+                    )
 
     assert not invalid_systems, (
-        f"Found {len(invalid_systems)} invalid/unmapped code system(s):\n" +
+        f"Found {len(invalid_systems)} invalid code system URI(s):\n" +
         "\n".join(f"  - {s}" for s in invalid_systems)
     )
 
