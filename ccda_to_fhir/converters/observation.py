@@ -91,10 +91,30 @@ class ObservationConverter(BaseConverter[Observation]):
 
         # 1. Generate ID from observation identifier
         if observation.id and len(observation.id) > 0:
-            first_id = observation.id[0]
-            fhir_obs["id"] = self._generate_observation_id(
-                first_id.root, first_id.extension
-            )
+            for id_elem in observation.id:
+                if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
+                    fhir_obs["id"] = self._generate_observation_id(
+                        id_elem.root, id_elem.extension
+                    )
+                    break
+
+        # If no valid ID from identifiers, try fallback strategies
+        if "id" not in fhir_obs:
+            # Fallback 1: Use code-based ID (e.g., "obs-8302-2" for body height)
+            if observation.code and hasattr(observation.code, "code") and observation.code.code:
+                code_value = observation.code.code.lower().replace(" ", "-")
+                fhir_obs["id"] = f"obs-{self.sanitize_id(code_value)}"
+            # Fallback 2: Use template ID if available
+            elif hasattr(observation, "template_id") and observation.template_id:
+                for template in observation.template_id:
+                    if hasattr(template, "root") and template.root:
+                        fhir_obs["id"] = f"obs-{self.sanitize_id(template.root)}"
+                        break
+            # Fallback 3: Generate synthetic UUID
+            # This handles real-world C-CDA with all id elements having nullFlavor
+            if "id" not in fhir_obs:
+                from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                fhir_obs["id"] = generate_id_from_identifiers("Observation", None, None)
 
         # 2. Identifiers
         if observation.id:
@@ -272,9 +292,32 @@ class ObservationConverter(BaseConverter[Observation]):
         # 1. Generate ID from organizer identifier
         panel_id = None
         if organizer.id and len(organizer.id) > 0:
-            first_id = organizer.id[0]
-            panel_id = self._generate_observation_id(first_id.root, first_id.extension)
-            panel["id"] = panel_id
+            for id_elem in organizer.id:
+                if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
+                    panel_id = self._generate_observation_id(id_elem.root, id_elem.extension)
+                    panel["id"] = panel_id
+                    break
+
+        # If no valid ID from identifiers, try fallback strategies
+        if panel_id is None:
+            # Fallback 1: Use code-based ID (e.g., "obs-46680005" for vital signs)
+            if organizer.code and hasattr(organizer.code, "code") and organizer.code.code:
+                code_value = organizer.code.code.lower().replace(" ", "-")
+                panel_id = f"obs-{self.sanitize_id(code_value)}"
+                panel["id"] = panel_id
+            # Fallback 2: Use template ID if available
+            elif hasattr(organizer, "template_id") and organizer.template_id:
+                for template in organizer.template_id:
+                    if hasattr(template, "root") and template.root:
+                        panel_id = f"obs-{self.sanitize_id(template.root)}"
+                        panel["id"] = panel_id
+                        break
+            # Fallback 3: Generate synthetic UUID
+            # This handles real-world C-CDA with all id elements having nullFlavor
+            if panel_id is None:
+                from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                panel_id = generate_id_from_identifiers("Observation", None, None)
+                panel["id"] = panel_id
 
         # 2. Identifiers
         if organizer.id:
