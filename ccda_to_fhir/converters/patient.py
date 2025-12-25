@@ -679,7 +679,10 @@ class PatientConverter(BaseConverter[RecordTarget]):
             if extensions:
                 fhir_comm["extension"] = extensions
 
-            if fhir_comm:
+            # FHIR R4B requires Patient.communication.language (1..1)
+            # Only add communication entry if language is present
+            # Skip entries with only preferred/extensions (nullFlavor language in C-CDA)
+            if "language" in fhir_comm:
                 fhir_communications.append(fhir_comm)
 
         return fhir_communications
