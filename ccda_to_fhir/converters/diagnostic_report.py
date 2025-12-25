@@ -87,10 +87,25 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         ]
 
         # 5. Code (required) - panel code from organizer
+        # FHIR R4B requires DiagnosticReport.code (1..1)
+        code_cc = None
         if organizer.code:
             code_cc = self._convert_code_to_codeable_concept(organizer.code)
-            if code_cc:
-                report["code"] = code_cc
+
+        if not code_cc:
+            # Fallback for C-CDA Result Organizers with nullFlavor codes
+            # Real-world C-CDA documents may have valid organizers without usable codes
+            # Per FHIR requirement, use a generic fallback code
+            code_cc = {
+                "coding": [{
+                    "system": "http://loinc.org",
+                    "code": "11502-2",
+                    "display": "Laboratory report"
+                }],
+                "text": "Laboratory report"
+            }
+
+        report["code"] = code_cc
 
         # 6. Subject (patient reference)
         # Patient reference (from recordTarget in document header)
@@ -149,11 +164,11 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
             A valid FHIR ID string
         """
         if extension:
-            # Use extension as ID (removing any invalid characters)
-            return extension.replace(".", "-").replace(":", "-")
+            # Use extension as ID (sanitize to meet FHIR constraints)
+            return self.sanitize_id(extension)
         elif root:
-            # Use root as ID
-            return root.replace(".", "-").replace(":", "-")
+            # Use root as ID (sanitize to meet FHIR constraints)
+            return self.sanitize_id(root)
         else:
             raise ValueError(
                 "Cannot generate DiagnosticReport ID: no identifiers provided. "
