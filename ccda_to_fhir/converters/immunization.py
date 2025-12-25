@@ -175,9 +175,10 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if notes:
             immunization["note"] = notes
 
-        # primarySource is optional (0..1) and C-CDA has no equivalent concept
-        # Omit the field rather than using data-absent-reason
-        # (US Core Immunization does not require this field)
+        # primarySource is optional in US Core STU6+ (0..1, Must Support)
+        # C-CDA has no equivalent concept for indicating if data came from primary source
+        # Per Must Support: include if known, omit if unknown
+        # Omit the field rather than making false claims about provenance
 
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=substance_admin, section=section)
@@ -886,6 +887,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
     def _extract_performers(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
         """Extract performer information.
 
+        Per FHIR R4B, Immunization.performer.actor is a required Reference to
+        Practitioner, PractitionerRole, or Organization.
+
         Args:
             substance_admin: The C-CDA SubstanceAdministration
 
@@ -901,19 +905,41 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             if not performer.assigned_entity:
                 continue
 
+            assigned_entity = performer.assigned_entity
             performer_obj: JSONObject = {}
 
-            # Extract performer name
-            assigned_entity = performer.assigned_entity
-            if assigned_entity.assigned_person and assigned_entity.assigned_person.name:
-                names = assigned_entity.assigned_person.name
-                if names and len(names) > 0:
-                    name = names[0]
-                    # Create a display-only reference for now
-                    # Full Practitioner resource conversion would be in Phase 6
-                    display_name = self._format_name_for_display(name)
-                    if display_name:
-                        performer_obj["actor"] = {"display": display_name}
+            # Extract practitioner reference from assigned entity ID
+            # Per C-CDA on FHIR IG, use assignedEntity.id to create Practitioner reference
+            if assigned_entity.id:
+                for id_elem in assigned_entity.id:
+                    # Skip nullFlavor IDs if there are other valid IDs
+                    if id_elem.root and not id_elem.null_flavor:
+                        pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                        performer_obj["actor"] = {
+                            "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
+                        }
+                        break
+
+                # If all IDs have nullFlavor, use the first one anyway to create a reference
+                if "actor" not in performer_obj and assigned_entity.id:
+                    id_elem = assigned_entity.id[0]
+                    if id_elem.root:
+                        pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                        performer_obj["actor"] = {
+                            "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
+                        }
+
+            # If no ID found, try to use represented organization
+            if "actor" not in performer_obj:
+                if assigned_entity.represented_organization and assigned_entity.represented_organization.id:
+                    org = assigned_entity.represented_organization
+                    for id_elem in org.id:
+                        if id_elem.root:
+                            org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
+                            performer_obj["actor"] = {
+                                "reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{org_id}"
+                            }
+                            break
 
             # Set function (who administered the vaccine)
             performer_obj["function"] = {
@@ -924,10 +950,40 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 }]
             }
 
-            if performer_obj:
+            # Only add performer if we successfully created an actor reference
+            # FHIR requires performer.actor to be present
+            if "actor" in performer_obj:
                 performers.append(performer_obj)
 
         return performers
+
+    def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
+        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Practitioner", root, extension)
+
+    def _generate_organization_id(self, root: str | None, extension: str | None) -> str:
+        """Generate FHIR Organization ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Organization", root, extension)
 
     def _extract_notes(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
         """Extract FHIR notes from C-CDA substance administration.

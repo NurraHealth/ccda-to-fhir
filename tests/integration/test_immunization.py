@@ -292,7 +292,8 @@ class TestImmunizationConversion:
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
 
-        # Should NOT have primarySource field or _primarySource extension
+        # US Core STU6+ makes primarySource optional (0..1, Must Support)
+        # Should omit when C-CDA has no equivalent data
         assert "primarySource" not in immunization
         assert "_primarySource" not in immunization
 
