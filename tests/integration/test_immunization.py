@@ -637,3 +637,60 @@ class TestImmunizationConversion:
             "Immunization should not be created when vaccineCode is missing. "
             "vaccineCode is required (1..1 cardinality) per FHIR R4B spec."
         )
+
+    def test_performer_creates_proper_reference(self) -> None:
+        """Test that performer.actor creates proper Reference, not display-only object.
+
+        Per FHIR R4B spec, Immunization.performer.actor is required (1..1) and must be
+        a Reference to Practitioner, PractitionerRole, or Organization.
+        This test ensures we create proper references from assignedEntity.id.
+        """
+        ccda_immunization_with_performer = """
+            <substanceAdministration classCode="SBADM" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.52" extension="2015-08-01"/>
+                <id root="e6f1ba43-c0ed-4b9b-9f12-f435d8ad8f92"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20101214"/>
+                <consumable>
+                    <manufacturedProduct classCode="MANU">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.54" extension="2014-06-09"/>
+                        <manufacturedMaterial>
+                            <code code="88" codeSystem="2.16.840.1.113883.12.292"
+                                  displayName="Influenza virus vaccine"/>
+                        </manufacturedMaterial>
+                    </manufacturedProduct>
+                </consumable>
+                <performer typeCode="PRF">
+                    <assignedEntity>
+                        <id root="2.16.840.1.113883.4.6" extension="1234567890"/>
+                        <code code="163W00000X" codeSystem="2.16.840.1.113883.6.101"
+                              displayName="Registered Nurse"/>
+                        <assignedPerson>
+                            <name>
+                                <given>Jane</given>
+                                <family>Nurse</family>
+                            </name>
+                        </assignedPerson>
+                    </assignedEntity>
+                </performer>
+            </substanceAdministration>
+        """
+        ccda_doc = wrap_in_ccda_document(ccda_immunization_with_performer, IMMUNIZATIONS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)
+
+        immunization = _find_resource_in_bundle(bundle, "Immunization")
+        assert immunization is not None
+        assert "performer" in immunization
+        assert len(immunization["performer"]) == 1
+
+        performer = immunization["performer"][0]
+
+        # Verify actor is a proper Reference, not just display
+        assert "actor" in performer
+        assert "reference" in performer["actor"]
+        assert performer["actor"]["reference"].startswith("Practitioner/")
+
+        # Verify function is set to Administering Provider
+        assert "function" in performer
+        assert performer["function"]["coding"][0]["code"] == "AP"
+        assert performer["function"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/v2-0443"

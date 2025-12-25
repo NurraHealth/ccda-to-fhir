@@ -302,7 +302,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             codeable_concept["text"] = original_text
 
         # If codeable_concept is empty (no coding and no text), return None
-        # This can happen when code system is unmapped and there's no original text
+        # This can happen when code exists but code_system is missing/None
         if not codeable_concept:
             return None
 
