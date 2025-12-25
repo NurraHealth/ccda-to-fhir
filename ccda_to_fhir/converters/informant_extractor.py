@@ -110,10 +110,14 @@ class InformantInfo:
                     )
                     return f"relatedperson-{family.lower().replace(' ', '-')}"
 
-        raise ValueError(
-            "Cannot generate RelatedPerson ID: no code or name provided. "
-            "C-CDA RelatedEntity must have code or relatedPerson/name."
-        )
+        # Fallback: use classCode if available (e.g., PAT, NOK, PRS)
+        if hasattr(related_entity, "class_code") and related_entity.class_code:
+            return f"relatedperson-{related_entity.class_code.lower()}"
+
+        # Last resort: generate synthetic UUID
+        # This handles real-world C-CDA with all fields having nullFlavor
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        return generate_id_from_identifiers("RelatedPerson", None, None)
 
 
 class InformantExtractor:

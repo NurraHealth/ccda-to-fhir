@@ -2129,7 +2129,7 @@ class DocumentConverter:
                                 procedure_id = None
                                 if entry.procedure.id and len(entry.procedure.id) > 0:
                                     for id_elem in entry.procedure.id:
-                                        if id_elem.root:
+                                        if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
                                             procedure_id = self.procedure_converter._generate_procedure_id(
                                                 id_elem.root, id_elem.extension
                                             )
@@ -2152,14 +2152,17 @@ class DocumentConverter:
                         for template in entry.observation.template_id:
                             if template.root == TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION:
                                 # Generate the same ID the converter would use
+                                procedure_id = None
                                 if entry.observation.id and len(entry.observation.id) > 0:
-                                    first_id = entry.observation.id[0]
-                                    procedure_id = self.procedure_converter._generate_procedure_id(
-                                        first_id.root, first_id.extension
-                                    )
+                                    for id_elem in entry.observation.id:
+                                        if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
+                                            procedure_id = self.procedure_converter._generate_procedure_id(
+                                                id_elem.root, id_elem.extension
+                                            )
+                                            break
 
                                     # If this procedure is in our list, store metadata
-                                    if procedure_id in procedure_ids_needing_metadata:
+                                    if procedure_id and procedure_id in procedure_ids_needing_metadata:
                                         self._store_author_metadata(
                                             resource_type="Procedure",
                                             resource_id=procedure_id,
@@ -2175,14 +2178,17 @@ class DocumentConverter:
                         for template in entry.act.template_id:
                             if template.root == TemplateIds.PROCEDURE_ACTIVITY_ACT:
                                 # Generate the same ID the converter would use
+                                procedure_id = None
                                 if entry.act.id and len(entry.act.id) > 0:
-                                    first_id = entry.act.id[0]
-                                    procedure_id = self.procedure_converter._generate_procedure_id(
-                                        first_id.root, first_id.extension
-                                    )
+                                    for id_elem in entry.act.id:
+                                        if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
+                                            procedure_id = self.procedure_converter._generate_procedure_id(
+                                                id_elem.root, id_elem.extension
+                                            )
+                                            break
 
                                     # If this procedure is in our list, store metadata
-                                    if procedure_id in procedure_ids_needing_metadata:
+                                    if procedure_id and procedure_id in procedure_ids_needing_metadata:
                                         self._store_author_metadata(
                                             resource_type="Procedure",
                                             resource_id=procedure_id,
@@ -2556,17 +2562,21 @@ class DocumentConverter:
                                 # Look for location participants (typeCode="LOC")
                                 if hasattr(participant, "type_code") and participant.type_code == "LOC":
                                     if participant.participant_role:
-                                        # Convert to Location resource
-                                        location = location_converter.convert(participant.participant_role)
+                                        # Only convert if classCode is SDLOC (Service Delivery Location)
+                                        # Skip other classCodes like MANU (Manufactured Product)
+                                        if hasattr(participant.participant_role, "class_code") and \
+                                           participant.participant_role.class_code == "SDLOC":
+                                            # Convert to Location resource
+                                            location = location_converter.convert(participant.participant_role)
 
-                                        # Deduplicate by NPI or name+city
-                                        dedup_key = self._get_location_dedup_key(location)
+                                            # Deduplicate by NPI or name+city
+                                            dedup_key = self._get_location_dedup_key(location)
 
-                                        if dedup_key not in location_registry:
-                                            location_registry[dedup_key] = location
-                                            logger.debug(
-                                                f"Created Location resource: {location.get('name')} (ID: {location.get('id')})"
-                                            )
+                                            if dedup_key not in location_registry:
+                                                location_registry[dedup_key] = location
+                                                logger.debug(
+                                                    f"Created Location resource: {location.get('name')} (ID: {location.get('id')})"
+                                                )
 
                     # Extract from procedures
                     elif hasattr(entry, "procedure") and entry.procedure:
@@ -2576,17 +2586,21 @@ class DocumentConverter:
                                 # Look for location participants (typeCode="LOC")
                                 if hasattr(participant, "type_code") and participant.type_code == "LOC":
                                     if participant.participant_role:
-                                        # Convert to Location resource
-                                        location = location_converter.convert(participant.participant_role)
+                                        # Only convert if classCode is SDLOC (Service Delivery Location)
+                                        # Skip other classCodes like MANU (Manufactured Product)
+                                        if hasattr(participant.participant_role, "class_code") and \
+                                           participant.participant_role.class_code == "SDLOC":
+                                            # Convert to Location resource
+                                            location = location_converter.convert(participant.participant_role)
 
-                                        # Deduplicate by NPI or name+city
-                                        dedup_key = self._get_location_dedup_key(location)
+                                            # Deduplicate by NPI or name+city
+                                            dedup_key = self._get_location_dedup_key(location)
 
-                                        if dedup_key not in location_registry:
-                                            location_registry[dedup_key] = location
-                                            logger.debug(
-                                                f"Created Location resource from Procedure: {location.get('name')} (ID: {location.get('id')})"
-                                            )
+                                            if dedup_key not in location_registry:
+                                                location_registry[dedup_key] = location
+                                                logger.debug(
+                                                    f"Created Location resource from Procedure: {location.get('name')} (ID: {location.get('id')})"
+                                                )
 
             # Process nested sections
             if section.component:

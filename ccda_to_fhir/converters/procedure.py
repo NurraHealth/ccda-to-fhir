@@ -65,17 +65,28 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         # Generate ID from procedure identifier
         if procedure.id and len(procedure.id) > 0:
             for id_elem in procedure.id:
-                if id_elem.root:
+                if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
                     fhir_procedure["id"] = self._generate_procedure_id(id_elem.root, id_elem.extension)
                     break
 
         # FHIR requires every resource to have an ID
+        # If no valid ID from identifiers, try fallback strategies
         if "id" not in fhir_procedure:
-            raise ValueError(
-                "Cannot create Procedure: no valid identifiers provided. "
-                "All Procedure id elements have nullFlavor or missing root. "
-                "C-CDA Procedure Activity Procedure requires at least one valid id element."
-            )
+            # Fallback 1: Use code-based ID (e.g., "proc-80146002" for appendectomy)
+            if procedure.code and hasattr(procedure.code, "code") and procedure.code.code:
+                code_value = procedure.code.code.lower().replace(" ", "-")
+                fhir_procedure["id"] = f"proc-{self.sanitize_id(code_value)}"
+            # Fallback 2: Use template ID if available
+            elif hasattr(procedure, "template_id") and procedure.template_id:
+                for template in procedure.template_id:
+                    if hasattr(template, "root") and template.root:
+                        fhir_procedure["id"] = f"proc-{self.sanitize_id(template.root)}"
+                        break
+            # Fallback 3: Generate synthetic UUID
+            # This handles real-world C-CDA with all id elements having nullFlavor
+            if "id" not in fhir_procedure:
+                from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                fhir_procedure["id"] = generate_id_from_identifiers("Procedure", None, None)
 
         # Identifiers
         if procedure.id:

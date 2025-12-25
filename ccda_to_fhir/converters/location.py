@@ -134,7 +134,9 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         """
         if participant_role.class_code != "SDLOC":
             raise ValueError(
-                f"Invalid classCode '{participant_role.class_code}' - expected 'SDLOC'"
+                f"Cannot convert ParticipantRole to Location: classCode '{participant_role.class_code}' "
+                f"is not 'SDLOC' (Service Delivery Location). ParticipantRole with this classCode represents "
+                f"a different type of entity (e.g., MANU=Manufactured Product) and should not be converted to Location."
             )
 
     def _generate_location_id(self, identifiers: list["II"]) -> str:
