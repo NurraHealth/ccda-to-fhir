@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .datatypes import AD, CE, II, ON, PN, TEL, TS, CDAModel
+from .datatypes import AD, CE, CS, II, ON, PN, TEL, TS, CDAModel
 
 
 class LanguageCommunication(CDAModel):
@@ -18,7 +18,8 @@ class LanguageCommunication(CDAModel):
     along with proficiency and preference information.
     """
 
-    language_code: CE | None = Field(default=None, alias="languageCode")
+    # Per CDA spec, languageCode uses CS (Coded Simple) datatype
+    language_code: CS | None = Field(default=None, alias="languageCode")
     mode_code: CE | None = Field(default=None, alias="modeCode")
     proficiency_level_code: CE | None = Field(default=None, alias="proficiencyLevelCode")
     preference_ind: bool | None = Field(default=None, alias="preferenceInd")

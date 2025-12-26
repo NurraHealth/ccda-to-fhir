@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from ccda_to_fhir.ccda.models.datatypes import AD, CE, EN, ENXP, II, PN, TEL, TS
+from ccda_to_fhir.ccda.models.datatypes import AD, CE, CS, EN, ENXP, II, PN, TEL, TS
 from ccda_to_fhir.ccda.models.record_target import (
     Birthplace,
     Guardian,
@@ -89,19 +89,18 @@ def complete_patient() -> Patient:
             display_name="Married",
         ),
         # Language - Spanish (preferred)
+        # Note: languageCode uses CS (Coded Simple) per CDA spec
         language_communication=[
             LanguageCommunication(
-                language_code=CE(
+                language_code=CS(
                     code="es",
-                    code_system="2.16.840.1.113883.6.121",  # ISO 639-1
                     display_name="Spanish",
                 ),
                 preference_ind=True,
             ),
             LanguageCommunication(
-                language_code=CE(
+                language_code=CS(
                     code="en",
-                    code_system="2.16.840.1.113883.6.121",
                     display_name="English",
                 ),
                 preference_ind=False,
