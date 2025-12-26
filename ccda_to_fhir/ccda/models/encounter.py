@@ -132,12 +132,9 @@ class Encounter(CDAModel):
                 "SHALL contain at least one [1..*] id"
             )
 
-        # 2. SHALL contain exactly one code
-        if not self.code:
-            raise ValueError(
-                "Encounter Activity (2.16.840.1.113883.10.20.22.4.49): "
-                "SHALL contain exactly one [1..1] code"
-            )
+        # Note: C-CDA spec says code is SHALL (1..1), but real-world documents from
+        # OpenVista CareVue and other EHR systems often omit the encounter code element.
+        # Making this optional to handle real-world C-CDA documents.
 
         # 3. SHALL contain exactly one effectiveTime
         if not self.effective_time:

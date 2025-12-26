@@ -51,8 +51,13 @@ class TestEncounterActivityValidation:
         with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*id"):
             parse_ccda_fragment(xml, Encounter)
 
-    def test_encounter_activity_missing_code(self) -> None:
-        """Encounter Activity without code should fail validation."""
+    def test_encounter_activity_without_code(self) -> None:
+        """Encounter Activity without code should pass validation.
+
+        C-CDA spec says code is SHALL (1..1), but real-world documents from
+        OpenVista CareVue and other EHR systems often omit the encounter code.
+        Parser relaxes validation to handle real-world documents.
+        """
         xml = """
         <encounter xmlns="urn:hl7-org:v3"
                    classCode="ENC" moodCode="EVN">
@@ -63,8 +68,10 @@ class TestEncounterActivityValidation:
             </effectiveTime>
         </encounter>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
-            parse_ccda_fragment(xml, Encounter)
+        encounter = parse_ccda_fragment(xml, Encounter)
+        assert encounter is not None
+        # code is optional in real-world documents
+        assert encounter.code is None
 
     def test_encounter_activity_missing_effective_time(self) -> None:
         """Encounter Activity without effectiveTime should fail validation."""
