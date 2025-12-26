@@ -219,8 +219,13 @@ class TestProblemConcernActValidation:
         with pytest.raises((ValueError, MalformedXMLError), match="effectiveTime SHALL contain low"):
             parse_ccda_fragment(xml, Act)
 
-    def test_problem_concern_act_completed_missing_high(self) -> None:
-        """Completed Problem Concern Act without effectiveTime/high should fail."""
+    def test_problem_concern_act_completed_without_high(self) -> None:
+        """Completed Problem Concern Act without effectiveTime/high should pass.
+
+        Per C-CDA IG, effectiveTime.high is optional (0..1 cardinality) even when
+        statusCode is completed. Official C-CDA Examples show completed concerns
+        without high element.
+        """
         xml = """
         <act xmlns="urn:hl7-org:v3"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -239,8 +244,11 @@ class TestProblemConcernActValidation:
             </entryRelationship>
         </act>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain high when statusCode is 'completed' or 'aborted'"):
-            parse_ccda_fragment(xml, Act)
+        act = parse_ccda_fragment(xml, Act)
+        assert act is not None
+        assert act.status_code.code == "completed"
+        # effectiveTime.high is optional, even when completed
+        assert act.effective_time.high is None
 
     def test_problem_concern_act_missing_entry_relationship(self) -> None:
         """Problem Concern Act without entryRelationship should fail validation."""

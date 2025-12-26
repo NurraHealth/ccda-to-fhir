@@ -173,13 +173,9 @@ class Act(CDAModel):
                 "effectiveTime SHALL contain low element"
             )
 
-        # 4b. effectiveTime SHALL contain high if statusCode is completed/aborted
-        if self.status_code.code in ["completed", "aborted"]:
-            if not self.effective_time.high:
-                raise ValueError(
-                    "Problem Concern Act (2.16.840.1.113883.10.20.22.4.3): "
-                    "effectiveTime SHALL contain high when statusCode is 'completed' or 'aborted'"
-                )
+        # Note: effectiveTime.high is optional (0..1 cardinality) even when statusCode is completed
+        # Per C-CDA IG, high is used to indicate when the concern was closed, but is not required
+        # Reference: Official C-CDA Examples show completed concerns without high element
 
         # 5. SHALL contain at least one entryRelationship
         if not self.entry_relationship or len(self.entry_relationship) == 0:
@@ -284,12 +280,9 @@ class Act(CDAModel):
                 "effectiveTime SHALL contain low"
             )
 
-        if self.status_code.code in ["completed", "aborted"]:
-            if not self.effective_time.high:
-                raise ValueError(
-                    "Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30): "
-                    "effectiveTime SHALL contain high when statusCode is 'completed' or 'aborted'"
-                )
+        # Note: effectiveTime.high is optional (0..1 cardinality) even when statusCode is completed
+        # Per C-CDA IG, high is used to indicate when the concern was closed, but is not required
+        # Reference: Official C-CDA Examples show completed concerns without high element
 
         if not self.entry_relationship or len(self.entry_relationship) == 0:
             raise ValueError(
