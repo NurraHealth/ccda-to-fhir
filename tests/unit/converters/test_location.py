@@ -836,6 +836,26 @@ class TestLocationConverter:
         with pytest.raises(ValueError, match="classCode"):
             location_converter.convert(invalid_location)
 
+    def test_rejects_manufactured_product_participant(
+        self, location_converter: LocationConverter
+    ) -> None:
+        """Test that MANU (Manufactured Product) participants are rejected.
+
+        Real-world C-CDA documents may have participants with classCode="MANU"
+        (manufactured products like medications) that should not be converted to Locations.
+        Only SDLOC (Service Delivery Location) participants should be accepted.
+        """
+        manufactured_product = ParticipantRole(
+            class_code="MANU",  # Manufactured Product, not a Service Delivery Location
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.23")],  # Medication Info template
+            id=[II(root="2.a6f9b1a0-8000-11db-96d0-00221122aabb", extension="12345")],
+            code=CE(code="2823-3", code_system="2.16.840.1.113883.6.88"),
+            playing_entity=PlayingEntity(class_code="MMAT", name=["Aspirin 81mg"])
+        )
+
+        with pytest.raises(ValueError, match="classCode"):
+            location_converter.convert(manufactured_product)
+
     # ============================================================================
     # J. Managing Organization (4 tests)
     # ============================================================================

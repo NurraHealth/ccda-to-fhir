@@ -186,6 +186,40 @@ class TestPatientConversion:
         assert comm["language"]["coding"][0]["code"] == "en"
         assert comm["preferred"] is True
 
+    def test_skips_communication_without_language(self) -> None:
+        """Test that communication entries without languageCode are skipped.
+
+        FHIR R4B requires Patient.communication.language (1..1 cardinality).
+        When C-CDA languageCommunication has nullFlavor or missing languageCode,
+        the entry should be skipped rather than creating invalid FHIR.
+        """
+        ccda_patient = """
+        <recordTarget>
+            <patientRole>
+                <id root="test-patient-id"/>
+                <patient>
+                    <name><given>Test</given><family>Patient</family></name>
+                    <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1"/>
+                    <birthTime value="19800101"/>
+                    <languageCommunication>
+                        <languageCode nullFlavor="UNK"/>
+                        <preferenceInd value="true"/>
+                    </languageCommunication>
+                    <languageCommunication>
+                        <preferenceInd value="false"/>
+                    </languageCommunication>
+                </patient>
+            </patientRole>
+        </recordTarget>
+        """
+        ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
+        bundle = convert_document(ccda_doc)
+
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+        # Should have no communication entries since both lack valid language codes
+        assert "communication" not in patient or len(patient.get("communication", [])) == 0
+
     def test_converts_deceased_indicator(
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that sdtc:deceasedInd is converted to deceasedBoolean."""

@@ -125,15 +125,20 @@ class TestProblemConcernActValidation:
         with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
             parse_ccda_fragment(xml, Act)
 
-    def test_problem_concern_act_wrong_code(self) -> None:
-        """Problem Concern Act with wrong code should fail validation."""
+    def test_problem_concern_act_with_loinc_code(self) -> None:
+        """Problem Concern Act with LOINC code 48765-2 should pass validation.
+
+        SDWG supports both CONC and 48765-2 for concern acts.
+        Ref: C-CDA Examples comment: "SDWG supports 48765-2 or CONC in the code element"
+        """
         xml = """
         <act xmlns="urn:hl7-org:v3"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              classCode="ACT" moodCode="EVN">
             <templateId root="2.16.840.1.113883.10.20.22.4.3"/>
             <id root="36e3e930-7b14-11db-9fe1-0800200c9a66"/>
-            <code code="WRONG" codeSystem="2.16.840.1.113883.5.6"/>
+            <code code="48765-2" displayName="Allergies, Adverse Reactions, Alerts"
+                  codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"/>
             <statusCode code="active"/>
             <effectiveTime>
                 <low value="20100301"/>
@@ -145,8 +150,9 @@ class TestProblemConcernActValidation:
             </entryRelationship>
         </act>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="code SHALL be 'CONC'"):
-            parse_ccda_fragment(xml, Act)
+        act = parse_ccda_fragment(xml, Act)
+        assert act is not None
+        assert act.code.code == "48765-2"
 
     def test_problem_concern_act_missing_status_code(self) -> None:
         """Problem Concern Act without statusCode should fail validation."""
@@ -318,25 +324,46 @@ class TestAllergyConcernActValidation:
         with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*id"):
             parse_ccda_fragment(xml, Act)
 
-    def test_allergy_concern_act_wrong_code(self) -> None:
-        """Allergy Concern Act with wrong code should fail validation."""
+    def test_allergy_concern_act_with_loinc_code(self) -> None:
+        """Allergy Concern Act with LOINC code 48765-2 should pass validation.
+
+        SDWG supports both CONC and 48765-2 for concern acts.
+        Ref: C-CDA Examples comment: "SDWG supports 48765-2 or CONC in the code element"
+        """
         xml = """
         <act xmlns="urn:hl7-org:v3"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              classCode="ACT" moodCode="EVN">
             <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
             <id root="36e3e930-7b14-11db-9fe1-0800200c9a66"/>
-            <code code="WRONG" codeSystem="2.16.840.1.113883.5.6"/>
+            <code code="48765-2" displayName="Allergies, Adverse Reactions, Alerts"
+                  codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"/>
             <statusCode code="active"/>
             <effectiveTime>
                 <low value="20100301"/>
             </effectiveTime>
             <entryRelationship typeCode="SUBJ">
                 <observation classCode="OBS" moodCode="EVN">
+                    <templateId root="2.16.840.1.113883.10.20.22.4.7"/>
+                    <id root="4adc1020-7b14-11db-9fe1-0800200c9a66"/>
                     <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+                    <statusCode code="completed"/>
+                    <effectiveTime>
+                        <low value="20100301"/>
+                    </effectiveTime>
+                    <value xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                           xsi:type="CD" code="419511003" codeSystem="2.16.840.1.113883.6.96"/>
+                    <participant typeCode="CSM">
+                        <participantRole classCode="MANU">
+                            <playingEntity classCode="MMAT">
+                                <code code="70618" codeSystem="2.16.840.1.113883.6.88"/>
+                            </playingEntity>
+                        </participantRole>
+                    </participant>
                 </observation>
             </entryRelationship>
         </act>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="code SHALL be 'CONC'"):
-            parse_ccda_fragment(xml, Act)
+        act = parse_ccda_fragment(xml, Act)
+        assert act is not None
+        assert act.code.code == "48765-2"

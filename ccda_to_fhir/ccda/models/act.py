@@ -142,16 +142,14 @@ class Act(CDAModel):
                 "SHALL contain at least one [1..*] id"
             )
 
-        # 2. SHALL contain exactly one code with code="CONC"
+        # 2. SHALL contain exactly one code
+        # Note: SDWG supports both "CONC" (ActClass 2.16.840.1.113883.5.6)
+        # and "48765-2" (LOINC) for concern acts
+        # Ref: C-CDA Examples comment: "SDWG supports 48765-2 or CONC in the code element"
         if not self.code:
             raise ValueError(
                 "Problem Concern Act (2.16.840.1.113883.10.20.22.4.3): "
                 "SHALL contain exactly one [1..1] code"
-            )
-        if self.code.code != "CONC":
-            raise ValueError(
-                "Problem Concern Act (2.16.840.1.113883.10.20.22.4.3): "
-                f"code SHALL be 'CONC', found '{self.code.code}'"
             )
 
         # 3. SHALL contain exactly one statusCode
@@ -258,15 +256,14 @@ class Act(CDAModel):
                 "SHALL contain at least one [1..*] id"
             )
 
+        # SHALL contain exactly one code
+        # Note: SDWG supports both "CONC" (ActClass 2.16.840.1.113883.5.6)
+        # and "48765-2" (LOINC) for concern acts
+        # Ref: C-CDA Examples comment: "SDWG supports 48765-2 or CONC in the code element"
         if not self.code:
             raise ValueError(
                 "Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30): "
                 "SHALL contain exactly one [1..1] code"
-            )
-        if self.code.code != "CONC":
-            raise ValueError(
-                "Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30): "
-                f"code SHALL be 'CONC', found '{self.code.code}'"
             )
 
         if not self.status_code:

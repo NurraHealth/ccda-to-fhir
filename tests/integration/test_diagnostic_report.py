@@ -192,6 +192,37 @@ class TestDiagnosticReportConversion:
         assert coding["code"] == "58410-2"
         assert coding["display"] == "Complete blood count panel"
 
+    def test_diagnostic_report_code_fallback_when_null(self) -> None:
+        """Test that code falls back to LOINC 11502-2 when organizer code is nullFlavor.
+
+        FHIR R4B requires DiagnosticReport.code (1..1 cardinality).
+        When C-CDA Result Organizer has nullFlavor code, should use fallback
+        LOINC 11502-2 'Laboratory report' to maintain FHIR validity.
+        """
+        result_organizer = f"""
+        <organizer classCode="CLUSTER" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+            <id root="test" extension="code-null-test"/>
+            <code nullFlavor="UNK"/>
+            <statusCode code="completed"/>
+            {_MINIMAL_OBSERVATION_COMPONENT}
+        </organizer>
+        """
+        ccda_doc = wrap_in_ccda_document(
+            result_organizer,
+            section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
+            section_code="30954-2"
+        )
+        bundle = convert_document(ccda_doc)
+
+        dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
+        assert dr is not None
+        assert "code" in dr
+        coding = dr["code"]["coding"][0]
+        assert coding["system"] == "http://loinc.org"
+        assert coding["code"] == "11502-2"
+        assert "Laboratory report" in coding["display"]
+
     def test_diagnostic_report_effective_datetime(self) -> None:
         """Test that effectiveTime maps to effectiveDateTime."""
         result_organizer = f"""
