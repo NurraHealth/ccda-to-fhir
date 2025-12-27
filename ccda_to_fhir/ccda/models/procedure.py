@@ -98,7 +98,8 @@ class Procedure(CDAModel):
     approach_site_code: list[CE] | None = Field(default=None, alias="approachSiteCode")
 
     # Target site (body site where procedure was performed)
-    target_site_code: list[CE] | None = Field(default=None, alias="targetSiteCode")
+    # Per CDA spec, targetSiteCode uses CD (Concept Descriptor) datatype
+    target_site_code: list[CD] | None = Field(default=None, alias="targetSiteCode")
 
     # Specimens collected
     specimen: list[Specimen] | None = None

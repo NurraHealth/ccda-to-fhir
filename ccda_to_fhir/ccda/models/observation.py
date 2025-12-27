@@ -232,7 +232,8 @@ class Observation(CDAModel):
     method_code: list[CE] | None = Field(default=None, alias="methodCode")
 
     # Target site code (anatomical location)
-    target_site_code: list[CE] | None = Field(default=None, alias="targetSiteCode")
+    # Per CDA spec, targetSiteCode uses CD (Concept Descriptor) datatype
+    target_site_code: list[CD] | None = Field(default=None, alias="targetSiteCode")
 
     # Participants (e.g., consumable substance for allergies)
     participant: list[Participant] | None = None
