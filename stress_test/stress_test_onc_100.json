@@ -1,0 +1,550 @@
+{
+  "summary": {
+    "total_files": 100,
+    "successful": 0,
+    "failed": 100,
+    "success_rate": "0.0%",
+    "total_resources_created": 0,
+    "avg_conversion_time_ms": "10.9"
+  },
+  "resource_distribution": {},
+  "error_distribution": {
+    "UnknownTypeError": 7,
+    "ValidationError": 5,
+    "MalformedXMLError": 5,
+    "AttributeError": 31,
+    "ValueError": 52
+  },
+  "us_core_compliance": {
+    "patient_completeness": {
+      "has_patient": 0,
+      "has_name": 0,
+      "has_identifier": 0,
+      "has_gender": 0,
+      "has_birthdate": 0
+    },
+    "condition_compliance": {
+      "with_code": 0,
+      "with_category": 0,
+      "with_subject": 0
+    },
+    "allergy_compliance": {
+      "with_code": 0,
+      "with_patient": 0,
+      "with_clinical_status": 0
+    },
+    "observation_compliance": {
+      "with_code": 0,
+      "with_status": 0,
+      "with_category": 0
+    }
+  },
+  "ccda_fhir_mapping": {
+    "has_composition": 0,
+    "avg_sections_per_doc": 0,
+    "total_provenance": 0,
+    "has_narrative": 0
+  },
+  "failed_files": [
+    {
+      "file": "ccda-samples/360 Oncology/Alice_Newman_health_summary Delegate.xml",
+      "error_type": "UnknownTypeError",
+      "error_message": "Unknown xsi:type 'CO' for element 'value'. This may indicate a new data type that needs to be added to the parser."
+    },
+    {
+      "file": "ccda-samples/360 Oncology/Jeremy_Bates_health_summary.xml",
+      "error_type": "ValidationError",
+      "error_message": "2 validation errors for Bundle\nentry.9.resource.context.period.end\n  Value error, Datetime must be timezone aware if it has a time component. [type=value_error, input_value='2015-07-22T23:00:00', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nentry.24.resource.period.end\n  Value error, Datetime must be timezone aware if it has a time component. [type=value_error, input_value='2015-07-22T23:00:00', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/Advanced Technologies Group/SLI_CCD_b2Cecilia_ATG_ATGEHR_10162017.xml",
+      "error_type": "ValidationError",
+      "error_message": "1 validation error for Bundle\nentry.0.resource.date\n  Value for the field 'date' is required. [type=model_field_validation.missing, input_value=None, input_type=NoneType]"
+    },
+    {
+      "file": "ccda-samples/Advanced Technologies Group/SLI_CCD_b2MyraJones_ATG_ATGEHR_10162017.xml",
+      "error_type": "ValidationError",
+      "error_message": "1 validation error for Bundle\nentry.0.resource.date\n  Value for the field 'date' is required. [type=model_field_validation.missing, input_value=None, input_type=NoneType]"
+    },
+    {
+      "file": "ccda-samples/Advanced Technologies Group/SLI_CCD_b2Susan_ATG_ATGEHR_10162017.xml",
+      "error_type": "ValidationError",
+      "error_message": "1 validation error for Bundle\nentry.0.resource.date\n  Value for the field 'date' is required. [type=model_field_validation.missing, input_value=None, input_type=NoneType]"
+    },
+    {
+      "file": "ccda-samples/Advanced Technologies Group/SLI_CCD_b6AliceNewman_ATG_ATGEHR_10162017.xml",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78): SHALL contain at least one [1..*] id [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/Advanced Technologies Group/SLI_CCD_b6JeremyBates_ATG_ATGEHR_10162017.xml",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78): SHALL contain at least one [1..*] id [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/Afoundria/Bates__Jeremy_V.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Afoundria/CCD for Cummings, Cecilia Cecil.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Afoundria/CCD for Jones, Myra.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Afoundria/CCD for Turner, Susan Susy.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Afoundria/Newman__Alicia_Jones.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Afoundria/Referral for Bates, Jeremy V.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Afoundria/Referral for Newman, Alicia Jones.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Agastha/195352.xml",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Act from element act: 1 validation error for Act\n  Value error, Problem Concern Act (2.16.840.1.113883.10.20.22.4.3): effectiveTime SHALL contain high when statusCode is 'completed' or 'aborted' [type=value_error, input_value={'class_code': 'ACT', 'mo...=None, organizer=None)]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/Agastha/195372.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Agastha/195412.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Agastha/195413.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Agastha/195414.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Agastha/195415.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Agastha/195416.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Agastha/TransitionOfCare_CCD_R11_Sample1_v8_Myra_Jones.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Agastha/TransitionOfCare_CCD_R21_Sample1_Susan_Turner.xml",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Act from element act: 1 validation error for Act\n  Value error, Problem Concern Act (2.16.840.1.113883.10.20.22.4.3): effectiveTime SHALL contain high when statusCode is 'completed' or 'aborted' [type=value_error, input_value={'class_code': 'ACT', 'mo...=None, organizer=None)]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/Agastha/TransitionOfCare_Ref_note_R21_Sample2_Cecilia_Cummings.xml",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Act from element act: 1 validation error for Act\n  Value error, Problem Concern Act (2.16.840.1.113883.10.20.22.4.3): effectiveTime SHALL contain high when statusCode is 'completed' or 'aborted' [type=value_error, input_value={'class_code': 'ACT', 'mo...=None, organizer=None)]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/Ambulatory Summary-jeremybates.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/AmbulatorySummar-alicenewman.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/Discharge Summary-rebeccaangles.xml",
+      "error_type": "UnknownTypeError",
+      "error_message": "Unknown xsi:type 'CO' for element 'value'. This may indicate a new data type that needs to be added to the parser."
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/Inpatient Referral Summary-johnwright.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/Inpatient Referral Summary-lindsaypitt.xml",
+      "error_type": "UnknownTypeError",
+      "error_message": "Unknown xsi:type 'CO' for element 'value'. This may indicate a new data type that needs to be added to the parser."
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/Inpatient Summary-rebeccalarson.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/Referral Note-glenmarshal.xml",
+      "error_type": "UnknownTypeError",
+      "error_message": "Unknown xsi:type 'CO' for element 'value'. This may indicate a new data type that needs to be added to the parser."
+    },
+    {
+      "file": "ccda-samples/Allscripts Professional/Referral Summary (2015 Edition Referral Note)-Community Health Hospitals....xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts Professional/xdr-test1-sample2-jb.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts Sunrise/C-CDA_400700201_20160902122113_Bates_Jeremy.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts Sunrise/C-CDA_400800201_20160902121846_Larson_Rebecca.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts Sunrise/C-CDA_400900201_20160902122036_Wright_John.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts Sunrise/C-CDA_401700201_20160902122201_Newman_Alice.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts TouchWorks/Allscripts TW Alice rn.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts TouchWorks/Allscripts TW Jeremy rn.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts TouchWorks/CeciliaCummings_170.315_b2_ciri__r21_sample1_rn_export.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts TouchWorks/LaurenGordon_170.315_b2_ciri__r21_sample2_rn_export.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts TouchWorks/MyraJones_170.315_b2_ciri__r11_sample1_export.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts TouchWorks/SusanTurner_170.315_b2_ciri__r21_sample1_ccd_export.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts TouchWorks/TracyPorter_170.315_b2_ciri__r21_sample2_ccd_export.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Allscripts TouchWorks/xdr1-sample1-ccd.xml",
+      "error_type": "ValidationError",
+      "error_message": "1 validation error for Bundle\nentry.40.resource.code\n  Field required [type=missing, input_value={'id': '14959400055', 'id...ervation/14959400079'}]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+    },
+    {
+      "file": "ccda-samples/Allscripts TouchWorks/xdr2.xml",
+      "error_type": "AttributeError",
+      "error_message": "'Composition' object has no attribute 'resource_type'"
+    },
+    {
+      "file": "ccda-samples/Amrita/Adirondack_Susanne_808080_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Admission_Inpatient_3156206_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Agustin_Albertina_315192_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Albert_Bernard_315116_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Amelia_Walden_315182_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Armstead_Valter_315199_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Baldwin_Roger_315181_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Banks_Tyler_Owen_31561051_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Barrett_Helen_3156107_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Bee_Donna_Victoria_177993_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Benton_Katherine_Mackenzie_3156103_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Biscayne_Sophia_4109492_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Broadway_Ashley_Jennifer_3156108_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Care_Urgent_3156201_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Ceasar_Belinda_315197_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Christ_Stephany_315114_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Cummings_Cecilia_Cecil_315221_CCD_201709211124.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Custer_Grant_109499_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/David_Sanem_315262_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Duro_Paula_109500_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Fairchild_Cameron_A_171122_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Faust_Harrod_315194_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Felix_Daffodil_315265_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Fernandus_Jacqueline_315198_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/George_Fautina_315263_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Gifford_Louise_315115_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Glazer_Sandra_Jones_315291_CARE_PLAN_201709211201.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Halden_Winifred_315117_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Hester_Georgia_315195_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Hocking_Spencer_808085_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Itasca_Elizabeth_707070_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Johnson_Matilda_315191_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Jone_Candida_315264_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Jones_Myra_315223_CCD_201709211131.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Larson_Rebecca_315211_DISCHARGE_SUMMARY_201709181249.xml",
+      "error_type": "UnknownTypeError",
+      "error_message": "Unknown xsi:type 'CO' for element 'value'. This may indicate a new data type that needs to be added to the parser."
+    },
+    {
+      "file": "ccda-samples/Amrita/Larson_Rebecca_315211_REFERRAL_NOTE_201709181250.xml",
+      "error_type": "UnknownTypeError",
+      "error_message": "Unknown xsi:type 'CO' for element 'value'. This may indicate a new data type that needs to be added to the parser."
+    },
+    {
+      "file": "ccda-samples/Amrita/Larson_Rebecca_Jones_315211_PRIVACY_SEGMENTED_201709211211.xml",
+      "error_type": "UnknownTypeError",
+      "error_message": "Unknown xsi:type 'CO' for element 'value'. This may indicate a new data type that needs to be added to the parser."
+    },
+    {
+      "file": "ccda-samples/Amrita/Loe_Laura_L_315671_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/MYLONGLASTNAMEISCRAZYATTHISMANYCHAR_BOBZIMBABWAYALPHAPAINUBERDOOBERNAME_ZACHARYTYPOGALORE_109498_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Mackey_Erika_315661_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Notch_Frank_2109497_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Olympic_Kimberly_808084_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Radford_Nelwina_315193_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Renfred_Sarah_315184_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Richardson_Russell_Clint_3156101_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Ruth_Ulvar_315531_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Saguaro_Hector_808081_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Smith_Alvina_315261_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Smith_James_412299_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Smith_Sandra_Jones_315291_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Spencer_Richard_315113_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Stanley_Clement_S_648286_CCD_201709180916.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/Turner_Susan_Susy_315224_CCD_201709211136.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    },
+    {
+      "file": "ccda-samples/Amrita/UNK_UNK_3156203_CCD_201709180920.xml",
+      "error_type": "ValueError",
+      "error_message": "Location name is required (playingEntity/name)"
+    }
+  ]
+}

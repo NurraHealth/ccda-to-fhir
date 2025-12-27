@@ -215,7 +215,8 @@ class SubstanceAdministration(CDAModel):
     repeat_number: IVL_PQ | None = Field(default=None, alias="repeatNumber")
 
     # Route of administration (oral, IV, etc.)
-    route_code: CE | None = Field(default=None, alias="routeCode")
+    # CDA spec says CE, but real-world documents (EchoMan EHR) use CS with nullFlavor
+    route_code: CE | CS | None = Field(default=None, alias="routeCode")
 
     # Approach site (body site)
     approach_site_code: list[CE] | None = Field(default=None, alias="approachSiteCode")
