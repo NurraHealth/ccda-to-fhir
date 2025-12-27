@@ -202,15 +202,19 @@
 
 ---
 
-## ClinicalDocument - missing recordTarget (2 tasks)
+## ClinicalDocument - missing recordTarget (2 tasks) - ❌ EXCLUDED
 
-- [ ] **Task ClinicalDocument-01**: US Realm Header (V3) Example.xml
+These are incomplete example fragments, not complete documents. Should be excluded from testing.
+
+- [x] **Task ClinicalDocument-01**: US Realm Header (V3) Example.xml
   - File: `C-CDA-Examples/Guide Examples/US Realm Header (V3)_2.16.840.1.113883.10.20.22.1.1/US Realm Header (V3) Example.xml`
   - Error: `Failed to parse ClinicalDocument from element ClinicalDocument: 1 validation error for ClinicalDocum...`
+  - Status: ❌ EXCLUDED - Header-only example, missing recordTarget and author
 
-- [ ] **Task ClinicalDocument-02**: Patient and Provider Organization Direct Address(C-CDAR2.1).xml
+- [x] **Task ClinicalDocument-02**: Patient and Provider Organization Direct Address(C-CDAR2.1).xml
   - File: `C-CDA-Examples/Header/Direct Address/Patient and Provider Organization Direct Address(C-CDAR2.1).xml`
   - Error: `Failed to parse ClinicalDocument from element ClinicalDocument: 1 validation error for ClinicalDocum...`
+  - Status: ❌ EXCLUDED - Incomplete example fragment, missing required author element
 
 ---
 
@@ -377,35 +381,44 @@
 
 ---
 
-## XML Syntax Error (exclude or fix manually) (7 tasks)
+## XML Syntax Error (7 tasks) - ❌ EXCLUDED
 
-- [ ] **Task XML-01**: Entry Reference Example.xml
+These files have malformed XML (missing namespace declarations or invalid syntax). Should be excluded from testing.
+
+- [x] **Task XML-01**: Entry Reference Example.xml
   - File: `C-CDA-Examples/Guide Examples/Entry Reference_2.16.840.1.113883.10.20.22.4.122/Entry Reference Example.xml`
   - Error: `Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 39, column 45 (<stri...`
+  - Status: ❌ EXCLUDED - Malformed XML, missing xmlns:xsi namespace declaration
 
-- [ ] **Task XML-02**: Transfer Summary participant (Support) Example.xml
+- [x] **Task XML-02**: Transfer Summary participant (Support) Example.xml
   - File: `C-CDA-Examples/Guide Examples/Transfer Summary (V2)_2.16.840.1.113883.10.20.22.1.13/Transfer Summary participant (Support) Example.xml`
   - Error: `Invalid XML syntax: Namespace prefix xsi for type on time is not defined, line 4, column 28 (<string...`
+  - Status: ❌ EXCLUDED - Malformed XML, missing xmlns:xsi namespace declaration
 
-- [ ] **Task XML-03**: Health Concerns Link to Problems Section with linkHTML(C-CDA2.1).xml
+- [x] **Task XML-03**: Health Concerns Link to Problems Section with linkHTML(C-CDA2.1).xml
   - File: `C-CDA-Examples/Health Concerns/Health Concerns Link to Problems Section with linkHTML/Health Concerns Link to Problems Section with linkHTML(C-CDA2.1).xml`
   - Error: `Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 61, column 74 (<stri...`
+  - Status: ❌ EXCLUDED - Malformed XML, missing xmlns:xsi namespace declaration
 
-- [ ] **Task XML-04**: Health Concerns Link to Problems Section(C-CDA2.1).xml
+- [x] **Task XML-04**: Health Concerns Link to Problems Section(C-CDA2.1).xml
   - File: `C-CDA-Examples/Health Concerns/Health Concerns Link to Problems Section/Health Concerns Link to Problems Section(C-CDA2.1).xml`
   - Error: `Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 61, column 74 (<stri...`
+  - Status: ❌ EXCLUDED - Malformed XML, missing xmlns:xsi namespace declaration
 
-- [ ] **Task XML-05**: Planned Encounter - Reason for Referral(C-CDAR2.1).xml
+- [x] **Task XML-05**: Planned Encounter - Reason for Referral(C-CDAR2.1).xml
   - File: `C-CDA-Examples/Plan of Treatment/Planned Encounter - Referral/Planned Encounter - Reason for Referral(C-CDAR2.1).xml`
   - Error: `Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 136, column 168 (<st...`
+  - Status: ❌ EXCLUDED - Malformed XML, missing xmlns:xsi namespace declaration
 
-- [ ] **Task XML-06**: ContinuityOfCareDocument_MUBatJer_20170601-145724.xml
+- [x] **Task XML-06**: ContinuityOfCareDocument_MUBatJer_20170601-145724.xml
   - File: `ccda-samples/MDLogic/ContinuityOfCareDocument_MUBatJer_20170601-145724.xml`
   - Error: `Invalid XML syntax: xmlns:schemaLocation: 'urn:hl7-org:v3 CDA.xsd' is not a valid URI, line 13, colu...`
+  - Status: ❌ EXCLUDED - Malformed XML, invalid schemaLocation syntax
 
-- [ ] **Task XML-07**: ContinuityOfCareDocument_MUNewAli_20170601-145612.xml
+- [x] **Task XML-07**: ContinuityOfCareDocument_MUNewAli_20170601-145612.xml
   - File: `ccda-samples/MDLogic/ContinuityOfCareDocument_MUNewAli_20170601-145612.xml`
   - Error: `Invalid XML syntax: xmlns:schemaLocation: 'urn:hl7-org:v3 CDA.xsd' is not a valid URI, line 13, colu...`
+  - Status: ❌ EXCLUDED - Malformed XML, invalid schemaLocation syntax
 
 ---
 
