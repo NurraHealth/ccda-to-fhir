@@ -807,10 +807,18 @@ def _generate_encounter_id(self, encounter_element) -> str:
 
 ---
 
-### DESIGN-003: Missing Composition.date (7 files)
+### DESIGN-003: Missing Composition.date (7 files) ✅ FIXED
 
+**Status:** ✅ FIXED (2025-12-27)
 **Severity:** ⚠️ Design Choice
 **Impact:** 1.7% of real issues
+
+**Resolution:**
+- Fixed Composition converter to always set date field with UTC fallback
+- Updated lines 202-213 in `ccda_to_fhir/converters/composition.py`
+- Added 4 comprehensive tests in `tests/integration/test_composition_date_fallback.py`
+- All tests pass ✅
+- Ensures FHIR validation always succeeds for Composition.date
 
 **Error Message:**
 ```
@@ -823,32 +831,28 @@ entry.0.resource.date
 - `ccda-samples/Advanced Technologies Group/SLI_CCD_b2Cecilia_ATG_ATGEHR_10162017.xml`
 
 **Root Cause:**
-Composition.date is required per FHIR, but converter doesn't set it when C-CDA effectiveTime is missing or invalid.
+Composition.date is required per FHIR, but converter didn't set it when C-CDA effectiveTime was missing or conversion failed (returned None).
 
-**Test to Add:**
+**Fix Applied:**
 ```python
-def test_composition_date_fallback():
-    """Test Composition.date uses fallback when effectiveTime missing."""
-    xml = """<?xml version="1.0" encoding="UTF-8"?>
-    <ClinicalDocument xmlns="urn:hl7-org:v3">
-        <code code="34133-9"/>
-        <!-- effectiveTime missing or nullFlavor -->
-        <component>
-            <structuredBody></structuredBody>
-        </component>
-    </ClinicalDocument>
-    """
+# Date - REQUIRED (composition editing time)
+date = None
+if clinical_document.effective_time:
+    date = self.convert_date(clinical_document.effective_time.value)
 
-    bundle_dict = convert_document(xml)
-    bundle = Bundle(**bundle_dict)
-
-    composition = bundle.entry[0].resource
-    assert composition.date is not None
-    # Should use current datetime or Bundle.timestamp
+# Use fallback if effectiveTime missing or conversion failed
+if not date:
+    import datetime
+    # Use current time with timezone as fallback
+    composition["date"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+else:
+    composition["date"] = date
 ```
 
-**Suggested Fix:**
-Use Bundle.timestamp or current datetime as fallback for Composition.date
+Now handles three scenarios:
+1. Valid effectiveTime → use converted date
+2. Missing effectiveTime → use UTC fallback
+3. Invalid effectiveTime (conversion returns None) → use UTC fallback
 
 ---
 
@@ -1065,15 +1069,17 @@ def test_alternate_template_ids():
 2. ✅ **BUG-004** (many files): Fix RelatedPersonConverter - **COMPLETED**
 3. ✅ **BUG-002** (33 files): Fix timezone handling - **COMPLETED**
 4. ✅ **BUG-003** (varies): Audit and fix missing required FHIR fields - **COMPLETED**
-5. ✅ **FEATURE-001** (37 files): Add CO data type support - FIXED
-6. ✅ **DESIGN-001** (71 files): Add Location name fallback strategies - FIXED
-7. ✅ **INVESTIGATE-001** (62 files): Research and fix template ID issues - FIXED
+5. ✅ **FEATURE-001** (37 files): Add CO data type support - **COMPLETED**
+6. ✅ **DESIGN-001** (71 files): Add Location name fallback strategies - **COMPLETED**
+7. ✅ **INVESTIGATE-001** (62 files): Research and fix template ID issues - **COMPLETED**
+8. ✅ **DESIGN-002** (7 files): Missing resource identifiers - **COMPLETED**
+9. ✅ **DESIGN-003** (7 files): Missing Composition.date - **COMPLETED**
 
-**Progress:** 7/7 items completed (all high-priority items fixed! 🎉)
+**Progress:** 9/9 items completed (all documented issues fixed! 🎉)
 
-This order prioritizes:
+This order prioritized:
 - High-impact bugs first ✅ COMPLETED
 - FHIR compliance issues ✅ COMPLETED
 - Common patterns ✅ COMPLETED
 - Features over design decisions ✅ COMPLETED
-- Design decisions and improvements ⬅️ CURRENT FOCUS
+- Design decisions and improvements ✅ COMPLETED

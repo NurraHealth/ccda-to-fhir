@@ -200,14 +200,25 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         # else: subject remains absent (allowed per 0..1 cardinality)
 
         # Date - REQUIRED (composition editing time)
+        # Maps ClinicalDocument.effectiveTime per C-CDA on FHIR IG
+        # Fallback: UTC current time when effectiveTime missing/invalid
+        # Ensures FHIR validation succeeds while avoiding manufactured timezones
+        date = None
         if clinical_document.effective_time:
             date = self.convert_date(clinical_document.effective_time.value)
-            if date:
-                composition["date"] = date
-        else:
-            # Fallback to current time if no effectiveTime (shouldn't happen)
+
+        # Use fallback if effectiveTime missing or conversion failed
+        if not date:
             import datetime
-            composition["date"] = datetime.datetime.now().isoformat()
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                "effectiveTime missing or invalid - using current UTC time as fallback for Composition.date"
+            )
+            # Use current time with timezone as fallback
+            composition["date"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        else:
+            composition["date"] = date
 
         # Author - REQUIRED (1..*)
         # Map document authors to Practitioner/Organization references
