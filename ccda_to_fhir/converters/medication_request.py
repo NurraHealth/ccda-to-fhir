@@ -467,10 +467,12 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             dosage["asNeededBoolean"] = True
 
         # 6. Route (from routeCode)
+        # routeCode can be CE (with code_system) or CS (without code_system)
         if substance_admin.route_code:
+            code_system = getattr(substance_admin.route_code, 'code_system', None)
             dosage["route"] = self.create_codeable_concept(
                 code=substance_admin.route_code.code,
-                code_system=substance_admin.route_code.code_system,
+                code_system=code_system,
                 display_name=substance_admin.route_code.display_name,
             )
 

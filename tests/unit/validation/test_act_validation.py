@@ -375,3 +375,50 @@ class TestAllergyConcernActValidation:
         act = parse_ccda_fragment(xml, Act)
         assert act is not None
         assert act.code.code == "48765-2"
+
+    def test_allergy_concern_act_completed_requires_high(self) -> None:
+        """Completed Allergy Concern Act without high should fail (CONF:1198-10085)."""
+        xml = """
+        <act xmlns="urn:hl7-org:v3" classCode="ACT" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
+            <id root="36e3e930-7b14-11db-9fe1-0800200c9a66"/>
+            <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
+            <statusCode code="completed"/>
+            <effectiveTime>
+                <low value="20100301"/>
+                <!-- Missing high - should fail per CONF:1198-10085 -->
+            </effectiveTime>
+            <entryRelationship typeCode="SUBJ">
+                <observation classCode="OBS" moodCode="EVN">
+                    <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+                </observation>
+            </entryRelationship>
+        </act>
+        """
+        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain high.*CONF:1198-10085"):
+            parse_ccda_fragment(xml, Act)
+
+    def test_allergy_concern_act_completed_with_high(self) -> None:
+        """Completed Allergy Concern Act with high should pass (CONF:1198-10085)."""
+        xml = """
+        <act xmlns="urn:hl7-org:v3" classCode="ACT" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
+            <id root="36e3e930-7b14-11db-9fe1-0800200c9a66"/>
+            <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
+            <statusCode code="completed"/>
+            <effectiveTime>
+                <low value="20100301"/>
+                <high value="20150615"/>
+            </effectiveTime>
+            <entryRelationship typeCode="SUBJ">
+                <observation classCode="OBS" moodCode="EVN">
+                    <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+                </observation>
+            </entryRelationship>
+        </act>
+        """
+        act = parse_ccda_fragment(xml, Act)
+        assert act is not None
+        assert act.status_code.code == "completed"
+        assert act.effective_time.high is not None
+        assert act.effective_time.high.value == "20150615"
