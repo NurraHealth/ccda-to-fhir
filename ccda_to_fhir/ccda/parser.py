@@ -569,6 +569,87 @@ def _parse_union_element(element: etree._Element, union_type: Any) -> Any:
 
 # Need to import types for UnionType (Python 3.10+)
 import types
+import re
+
+
+def preprocess_ccda_namespaces(xml_string: str) -> str:
+    """Add missing namespace declarations to C-CDA XML.
+
+    Automatically adds xmlns:xsi and xmlns:sdtc namespace declarations
+    to the ClinicalDocument root element when these prefixes are used
+    but not declared in the document.
+
+    This preprocessing step fixes malformed XML from some C-CDA example
+    documents while maintaining 100% W3C XML Namespaces compliance.
+
+    Args:
+        xml_string: C-CDA XML document as string
+
+    Returns:
+        XML string with namespace declarations added if needed
+
+    Raises:
+        None - safe to call on any XML string
+
+    Standards Compliance:
+        - W3C XML Namespaces 1.0: https://www.w3.org/TR/xml-names/
+        - HL7 CDA Core v2.0.1-sd: https://hl7.org/cda/stds/core/2.0.1-sd/
+        - SDTC Extensions: https://confluence.hl7.org/display/SD/CDA+Extensions
+
+    Examples:
+        >>> xml = '<ClinicalDocument><value xsi:type="CD"/></ClinicalDocument>'
+        >>> preprocessed = preprocess_ccda_namespaces(xml)
+        >>> 'xmlns:xsi=' in preprocessed
+        True
+    """
+    # Early exit if not a ClinicalDocument
+    if '<ClinicalDocument' not in xml_string:
+        return xml_string
+
+    # Check if xsi: prefix is used but not declared
+    needs_xsi = (
+        'xsi:' in xml_string and
+        'xmlns:xsi=' not in xml_string
+    )
+
+    # Check if sdtc: prefix is used but not declared
+    needs_sdtc = (
+        'sdtc:' in xml_string and
+        'xmlns:sdtc=' not in xml_string
+    )
+
+    # If no missing namespaces, return unchanged
+    if not needs_xsi and not needs_sdtc:
+        return xml_string
+
+    # Find the ClinicalDocument opening tag
+    # Pattern: <ClinicalDocument ... > or <ClinicalDocument>
+    pattern = r'(<ClinicalDocument)(\s|>)'
+
+    def add_namespaces(match):
+        """Add namespace declarations to opening tag."""
+        prefix = match.group(1)  # '<ClinicalDocument'
+        suffix = match.group(2)  # ' ' or '>'
+
+        # Build namespace declarations
+        namespaces = []
+        if needs_xsi:
+            namespaces.append('xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"')
+        if needs_sdtc:
+            namespaces.append('xmlns:sdtc="urn:hl7-org:sdtc"')
+
+        # Insert namespaces
+        # If suffix is '>', add space before it
+        # If suffix is ' ', namespaces will naturally space-separate
+        if suffix == '>':
+            return f"{prefix} {' '.join(namespaces)}>"
+        else:
+            return f"{prefix} {' '.join(namespaces)}{suffix}"
+
+    # Replace first occurrence only
+    xml_string = re.sub(pattern, add_namespaces, xml_string, count=1)
+
+    return xml_string
 
 
 def parse_ccda(xml_string: str | bytes) -> ClinicalDocument:
@@ -592,11 +673,15 @@ def parse_ccda(xml_string: str | bytes) -> ClinicalDocument:
         'Jones'
     """
     try:
-        # Parse XML
+        # Preprocess: Add missing namespace declarations
         if isinstance(xml_string, str):
+            xml_string = preprocess_ccda_namespaces(xml_string)
             xml_bytes = xml_string.encode("utf-8")
         else:
-            xml_bytes = xml_string
+            # For bytes input, decode, preprocess, then encode
+            xml_str = xml_string.decode("utf-8")
+            xml_str = preprocess_ccda_namespaces(xml_str)
+            xml_bytes = xml_str.encode("utf-8")
 
         root = etree.fromstring(xml_bytes)
     except etree.XMLSyntaxError as e:
@@ -635,10 +720,15 @@ def parse_ccda_fragment(xml_string: str | bytes, model_class: type[T]) -> T:
         >>> record_target = parse_ccda_fragment(xml, RecordTarget)
     """
     try:
+        # Preprocess: Add missing namespace declarations
         if isinstance(xml_string, str):
+            xml_string = preprocess_ccda_namespaces(xml_string)
             xml_bytes = xml_string.encode("utf-8")
         else:
-            xml_bytes = xml_string
+            # For bytes input, decode, preprocess, then encode
+            xml_str = xml_string.decode("utf-8")
+            xml_str = preprocess_ccda_namespaces(xml_str)
+            xml_bytes = xml_str.encode("utf-8")
 
         root = etree.fromstring(xml_bytes)
     except etree.XMLSyntaxError as e:
