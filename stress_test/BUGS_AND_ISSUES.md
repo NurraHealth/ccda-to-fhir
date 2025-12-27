@@ -689,10 +689,18 @@ def _extract_name(self, participant_role) -> str:
 
 ---
 
-### DESIGN-002: Missing resource identifiers (7 files)
+### DESIGN-002: Missing resource identifiers (7 files) ✅ FIXED
 
+**Status:** ✅ FIXED (2025-12-27)
 **Severity:** ⚠️ Design Choice
 **Impact:** 1.7% of real issues
+
+**Resolution:**
+- Updated ID generation in all converters to use base class `generate_resource_id` method
+- Implemented synthetic ID generation with fallback context when identifiers are missing or have nullFlavor
+- IDs are now generated deterministically from resource properties (code, effectiveTime, statusCode)
+- Updated EncounterConverter, ProcedureConverter, and MedicationRequestConverter
+- All encounter ID generation now uses consistent format across body encounters, header encounters, and references
 
 **Error Message:**
 ```
@@ -706,7 +714,7 @@ Cannot generate Procedure ID: no valid identifiers provided.
 - `ccda-samples/Amrita/newman_patienthealthrecord_08032017.xml`
 
 **Root Cause:**
-Some C-CDA documents have clinical statements without id elements or with only nullFlavor IDs. Converter requires valid identifiers.
+Some C-CDA documents have clinical statements without id elements or with only nullFlavor IDs. Converter was requiring valid identifiers and raising errors.
 
 **Design Decision Required:**
 

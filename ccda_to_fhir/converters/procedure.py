@@ -63,30 +63,40 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         }
 
         # Generate ID from procedure identifier
+        # Find first valid identifier (skip nullFlavor)
+        root = None
+        extension = None
         if procedure.id and len(procedure.id) > 0:
             for id_elem in procedure.id:
-                if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
-                    fhir_procedure["id"] = self._generate_procedure_id(id_elem.root, id_elem.extension)
-                    break
-
-        # FHIR requires every resource to have an ID
-        # If no valid ID from identifiers, try fallback strategies
-        if "id" not in fhir_procedure:
-            # Fallback 1: Use code-based ID (e.g., "proc-80146002" for appendectomy)
-            if procedure.code and hasattr(procedure.code, "code") and procedure.code.code:
-                code_value = procedure.code.code.lower().replace(" ", "-")
-                fhir_procedure["id"] = f"proc-{self.sanitize_id(code_value)}"
-            # Fallback 2: Use template ID if available
-            elif hasattr(procedure, "template_id") and procedure.template_id:
-                for template in procedure.template_id:
-                    if hasattr(template, "root") and template.root:
-                        fhir_procedure["id"] = f"proc-{self.sanitize_id(template.root)}"
+                if not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
+                    if id_elem.root or id_elem.extension:
+                        root = id_elem.root
+                        extension = id_elem.extension
                         break
-            # Fallback 3: Generate synthetic UUID
-            # This handles real-world C-CDA with all id elements having nullFlavor
-            if "id" not in fhir_procedure:
-                from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                fhir_procedure["id"] = generate_id_from_identifiers("Procedure", None, None)
+
+        # Generate fallback context if no valid identifiers
+        fallback_context = ""
+        if root is None and extension is None:
+            # Create deterministic context from procedure properties
+            context_parts = []
+            if procedure.code and hasattr(procedure.code, "code") and procedure.code.code:
+                context_parts.append(procedure.code.code)
+            if procedure.effective_time:
+                # Use low value if available for determinism
+                if hasattr(procedure.effective_time, 'low') and procedure.effective_time.low:
+                    context_parts.append(str(procedure.effective_time.low.value or ""))
+                elif hasattr(procedure.effective_time, 'value') and procedure.effective_time.value:
+                    context_parts.append(str(procedure.effective_time.value))
+            if procedure.status_code and procedure.status_code.code:
+                context_parts.append(procedure.status_code.code)
+            fallback_context = "-".join(filter(None, context_parts))
+
+        # Always generate an ID (with fallback if needed)
+        fhir_procedure["id"] = self._generate_procedure_id(
+            root=root,
+            extension=extension,
+            fallback_context=fallback_context,
+        )
 
         # Identifiers
         if procedure.id:
@@ -231,27 +241,30 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         return fhir_procedure
 
-    def _generate_procedure_id(self, root: str | None, extension: str | None) -> str:
+    def _generate_procedure_id(
+        self,
+        root: str | None,
+        extension: str | None,
+        fallback_context: str = "",
+    ) -> str:
         """Generate a FHIR Procedure ID from C-CDA identifiers.
+
+        Uses base class generate_resource_id with fallback to synthetic ID.
 
         Args:
             root: The OID or UUID root
             extension: The extension value
+            fallback_context: Additional context for synthetic ID generation
 
         Returns:
             A FHIR-compliant ID string
         """
-        if extension:
-            # Use extension as the ID (sanitize to remove invalid characters)
-            return self.sanitize_id(extension)
-        elif root:
-            # Use root as the ID (sanitize to remove invalid characters)
-            return self.sanitize_id(root)
-        else:
-            raise ValueError(
-                "Cannot generate Procedure ID: no identifiers provided. "
-                "C-CDA Procedure Activity must have id element."
-            )
+        return self.generate_resource_id(
+            root=root,
+            extension=extension,
+            resource_type="procedure",
+            fallback_context=fallback_context,
+        )
 
     def _map_status(self, status_code) -> str:
         """Map C-CDA status code to FHIR Procedure status.

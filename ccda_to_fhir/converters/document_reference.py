@@ -76,11 +76,23 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         if doc_status:
             document_ref["docStatus"] = doc_status
 
-        # Type (document kind - LOINC code)
+        # Type (document kind - LOINC code) - REQUIRED by US Core
         if clinical_document.code:
             doc_type = self._convert_type(clinical_document.code)
             if doc_type:
                 document_ref["type"] = doc_type
+
+        # US Core requires DocumentReference.type (1..1)
+        # Use default if not set from clinical_document.code
+        if "type" not in document_ref:
+            document_ref["type"] = {
+                "coding": [{
+                    "system": "http://loinc.org",
+                    "code": "34133-9",
+                    "display": "Summarization of Episode Note"
+                }],
+                "text": "Clinical Document"
+            }
 
         # Category (high-level categorization)
         # We can derive this from the document type code
@@ -607,26 +619,19 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
     def _generate_encounter_id(self, identifier: II) -> str:
         """Generate encounter ID from identifier.
 
+        Uses base class generate_resource_id for consistency with EncounterConverter.
+
         Args:
             identifier: Encounter identifier
 
         Returns:
             Generated ID string
         """
-        if identifier.extension:
-            return identifier.extension.replace(" ", "-").replace(".", "-").lower()
-
-        if identifier.root:
-            # For UUIDs, use the UUID as-is
-            if self._is_uuid(identifier.root):
-                return identifier.root
-
-            # For OIDs, use last 16 chars
-            return identifier.root.replace(".", "")[-16:]
-
-        raise ValueError(
-            "Cannot generate Encounter ID: no identifiers provided. "
-            "C-CDA Encounter must have id element."
+        return self.generate_resource_id(
+            root=identifier.root,
+            extension=identifier.extension,
+            resource_type="encounter",
+            fallback_context="",
         )
 
     def _convert_period(self, ivl_ts) -> JSONObject | None:

@@ -50,12 +50,40 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         }
 
         # Generate ID from encounter identifier (skip nullFlavor entries)
+        # Find first valid identifier
+        root = None
+        extension = None
         if encounter.id:
-            # Find first valid identifier (skip nullFlavor)
             for id_elem in encounter.id:
                 if not id_elem.null_flavor and (id_elem.root or id_elem.extension):
-                    fhir_encounter["id"] = self._generate_encounter_id(id_elem.root, id_elem.extension)
+                    root = id_elem.root
+                    extension = id_elem.extension
                     break
+
+        # Generate fallback context if no valid identifiers
+        fallback_context = ""
+        if root is None and extension is None:
+            # Create deterministic context from encounter properties
+            context_parts = []
+            if encounter.code and encounter.code.code:
+                context_parts.append(encounter.code.code)
+            if encounter.effective_time:
+                # Use low value if available for determinism
+                if hasattr(encounter.effective_time, 'low') and encounter.effective_time.low:
+                    context_parts.append(str(encounter.effective_time.low.value or ""))
+                elif hasattr(encounter.effective_time, 'value') and encounter.effective_time.value:
+                    context_parts.append(str(encounter.effective_time.value))
+            if encounter.status_code and encounter.status_code.code:
+                context_parts.append(encounter.status_code.code)
+            fallback_context = "-".join(filter(None, context_parts))
+
+        # Always generate an ID (with fallback if needed)
+        fhir_encounter["id"] = self.generate_resource_id(
+            root=root,
+            extension=extension,
+            resource_type="encounter",
+            fallback_context=fallback_context,
+        )
 
         # Identifiers (skip nullFlavor entries)
         if encounter.id:
@@ -130,6 +158,8 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
     def _generate_encounter_id(self, root: str | None, extension: str | None) -> str:
         """Generate a FHIR Encounter ID from C-CDA identifiers.
 
+        Uses base class generate_resource_id with fallback to synthetic ID.
+
         Args:
             root: The OID or UUID root
             extension: The extension value
@@ -137,17 +167,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         Returns:
             A FHIR-compliant ID string
         """
-        if extension:
-            # Use extension as the ID (sanitize to remove invalid characters)
-            return self.sanitize_id(extension)
-        elif root:
-            # Use root as the ID (sanitize to remove invalid characters)
-            return self.sanitize_id(root)
-        else:
-            raise ValueError(
-                "Cannot generate Encounter ID: no identifiers provided. "
-                "C-CDA Encounter must have id element."
-            )
+        return self.generate_resource_id(
+            root=root,
+            extension=extension,
+            resource_type="encounter",
+            fallback_context="",
+        )
 
     def _extract_status(self, encounter: CCDAEncounter) -> str:
         """Extract FHIR status from C-CDA encounter.

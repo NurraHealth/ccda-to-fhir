@@ -65,11 +65,42 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         }
 
         # 1. Generate ID from substance administration identifier
-        if substance_admin.id and len(substance_admin.id) > 0:
-            first_id = substance_admin.id[0]
-            med_request["id"] = self._generate_medication_request_id(
-                first_id.root, first_id.extension
-            )
+        # Find first valid identifier (skip nullFlavor)
+        root = None
+        extension = None
+        if substance_admin.id:
+            for id_elem in substance_admin.id:
+                if not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
+                    if id_elem.root or id_elem.extension:
+                        root = id_elem.root
+                        extension = id_elem.extension
+                        break
+
+        # Generate fallback context if no valid identifiers
+        fallback_context = ""
+        if root is None and extension is None:
+            # Create deterministic context from medication properties
+            context_parts = []
+            if substance_admin.consumable and substance_admin.consumable.manufactured_product:
+                material = substance_admin.consumable.manufactured_product.manufactured_material
+                if material and material.code and material.code.code:
+                    context_parts.append(material.code.code)
+            if substance_admin.effective_time:
+                # Use low value if available for determinism
+                if hasattr(substance_admin.effective_time, 'low') and substance_admin.effective_time.low:
+                    context_parts.append(str(substance_admin.effective_time.low.value or ""))
+                elif hasattr(substance_admin.effective_time, 'value') and substance_admin.effective_time.value:
+                    context_parts.append(str(substance_admin.effective_time.value))
+            if substance_admin.status_code and substance_admin.status_code.code:
+                context_parts.append(substance_admin.status_code.code)
+            fallback_context = "-".join(filter(None, context_parts))
+
+        # Always generate an ID (with fallback if needed)
+        med_request["id"] = self._generate_medication_request_id(
+            root=root,
+            extension=extension,
+            fallback_context=fallback_context,
+        )
 
         # 2. Identifiers
         if substance_admin.id:
@@ -184,19 +215,30 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         return med_request
 
-    def _generate_medication_request_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a medication request resource ID from C-CDA identifier."""
-        if extension:
-            clean_ext = extension.lower().replace(" ", "-").replace(".", "-")
-            return f"medicationrequest-{clean_ext}"
-        elif root:
-            root_suffix = root.replace(".", "").replace("-", "")[-16:]
-            return f"medicationrequest-{root_suffix}"
-        else:
-            raise ValueError(
-                "Cannot generate MedicationRequest ID: no identifiers provided. "
-                "C-CDA Substance Administration must have id element."
-            )
+    def _generate_medication_request_id(
+        self,
+        root: str | None,
+        extension: str | None,
+        fallback_context: str = "",
+    ) -> str:
+        """Generate a medication request resource ID from C-CDA identifier.
+
+        Uses base class generate_resource_id with fallback to synthetic ID.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+            fallback_context: Additional context for synthetic ID generation
+
+        Returns:
+            A FHIR-compliant ID string
+        """
+        return self.generate_resource_id(
+            root=root,
+            extension=extension,
+            resource_type="medicationrequest",
+            fallback_context=fallback_context,
+        )
 
     def _determine_status(self, substance_admin: SubstanceAdministration) -> str:
         """Map C-CDA statusCode to FHIR MedicationRequest status.

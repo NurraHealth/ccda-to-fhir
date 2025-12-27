@@ -1305,6 +1305,6 @@ class TestProcedureIDSanitization:
 
         assert procedure is not None
         # Pipe characters should be replaced with hyphens
-        assert procedure["id"] == "15--63725-003"
+        assert procedure["id"] == "procedure-15--63725-003"
         # Verify it's the correct procedure
         assert procedure["code"]["coding"][0]["code"] == "80146002"

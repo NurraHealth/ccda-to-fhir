@@ -59,11 +59,23 @@ class NoteActivityConverter(BaseConverter[Act]):
         if doc_status:
             doc_ref["docStatus"] = doc_status
 
-        # Type (required) - note type from code
+        # Type (required) - note type from code - REQUIRED by US Core
         if note_act.code:
             doc_type = self._convert_type(note_act.code)
             if doc_type:
                 doc_ref["type"] = doc_type
+
+        # US Core requires DocumentReference.type (1..1)
+        # Use default if not set from note_act.code
+        if "type" not in doc_ref:
+            doc_ref["type"] = {
+                "coding": [{
+                    "system": "http://loinc.org",
+                    "code": "34133-9",
+                    "display": "Summarization of Episode Note"
+                }],
+                "text": "Clinical Note"
+            }
 
         # Category - fixed to "clinical-note" for Note Activities
         doc_ref["category"] = [
@@ -626,26 +638,19 @@ class NoteActivityConverter(BaseConverter[Act]):
     def _generate_encounter_id(self, identifier) -> str:
         """Generate encounter ID from identifier.
 
+        Uses base class generate_resource_id for consistency with EncounterConverter.
+
         Args:
             identifier: Encounter identifier
 
         Returns:
             Generated ID string
         """
-        if identifier.extension:
-            return identifier.extension.replace(" ", "-").replace(".", "-").lower()
-
-        if identifier.root:
-            # For UUIDs, use the UUID as-is
-            if self._is_uuid(identifier.root):
-                return identifier.root
-
-            # For OIDs, use last 16 chars
-            return identifier.root.replace(".", "")[-16:]
-
-        raise ValueError(
-            "Cannot generate Encounter ID: no identifiers provided. "
-            "C-CDA Encounter must have id element."
+        return self.generate_resource_id(
+            root=identifier.root,
+            extension=identifier.extension,
+            resource_type="encounter",
+            fallback_context="",
         )
 
     def _convert_relates_to(self, references: list) -> list[JSONObject]:

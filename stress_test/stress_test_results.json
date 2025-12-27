@@ -1,44 +1,65 @@
 {
   "summary": {
-    "total_files": 10,
-    "successful": 0,
-    "failed": 10,
-    "success_rate": "0.0%",
-    "total_resources_created": 0,
-    "avg_conversion_time_ms": "0.3"
+    "total_files": 20,
+    "successful": 7,
+    "failed": 13,
+    "success_rate": "35.0%",
+    "total_resources_created": 169,
+    "avg_conversion_time_ms": "4.0"
   },
-  "resource_distribution": {},
+  "resource_distribution": {
+    "Composition": 7,
+    "Patient": 7,
+    "Practitioner": 33,
+    "Device": 4,
+    "Organization": 10,
+    "RelatedPerson": 4,
+    "DocumentReference": 7,
+    "AllergyIntolerance": 9,
+    "Observation": 45,
+    "DiagnosticReport": 4,
+    "Procedure": 6,
+    "Provenance": 2,
+    "PractitionerRole": 1,
+    "Goal": 2,
+    "Encounter": 5,
+    "CarePlan": 1,
+    "Condition": 8,
+    "MedicationStatement": 4,
+    "Immunization": 6,
+    "ServiceRequest": 4
+  },
   "error_distribution": {
-    "MalformedXMLError": 10
+    "MalformedXMLError": 13
   },
   "us_core_compliance": {
     "patient_completeness": {
-      "has_patient": 0,
-      "has_name": 0,
-      "has_identifier": 0,
-      "has_gender": 0,
-      "has_birthdate": 0
+      "has_patient": 7,
+      "has_name": 7,
+      "has_identifier": 7,
+      "has_gender": 7,
+      "has_birthdate": 7
     },
     "condition_compliance": {
-      "with_code": 0,
-      "with_category": 0,
-      "with_subject": 0
+      "with_code": 8,
+      "with_category": 8,
+      "with_subject": 8
     },
     "allergy_compliance": {
-      "with_code": 0,
-      "with_patient": 0,
-      "with_clinical_status": 0
+      "with_code": 8,
+      "with_patient": 9,
+      "with_clinical_status": 9
     },
     "observation_compliance": {
-      "with_code": 0,
-      "with_status": 0,
-      "with_category": 0
+      "with_code": 45,
+      "with_status": 45,
+      "with_category": 44
     }
   },
   "ccda_fhir_mapping": {
-    "has_composition": 0,
-    "avg_sections_per_doc": 0,
-    "total_provenance": 0,
+    "has_composition": 7,
+    "avg_sections_per_doc": 11.857142857142858,
+    "total_provenance": 2,
     "has_narrative": 0
   },
   "failed_files": [
@@ -91,6 +112,21 @@
       "file": "C-CDA-Examples/Allergies/Not Allergic to Peanuts/Not Allergic to Peanuts(C-CDAR2.1).xml",
       "error_type": "MalformedXMLError",
       "error_message": "Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 59, column 155 (<string>, line 59)"
+    },
+    {
+      "file": "C-CDA-Examples/Allergies/Withdrawn Allergy to specific drug Epinephrine/Withdrawn_Allergy to specific drug Epinephrine(C-CDA2.1).xml",
+      "error_type": "MalformedXMLError",
+      "error_message": "Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 86, column 69 (<string>, line 86)"
+    },
+    {
+      "file": "C-CDA-Examples/Care Team/Care Team Narrative Only/Care Team Narrative Only (C-CDAR2.1).xml",
+      "error_type": "MalformedXMLError",
+      "error_message": "Root element must be 'ClinicalDocument', got 'section'. Use test fixtures' wrap_in_ccda_document() for fragments."
+    },
+    {
+      "file": "C-CDA-Examples/Care Team/Care Team Structured Entry/Care Team Organizer Example.xml",
+      "error_type": "MalformedXMLError",
+      "error_message": "Invalid XML syntax: Namespace prefix xsi for type on effectiveTime is not defined, line 97, column 43 (<string>, line 97)"
     }
   ]
 }

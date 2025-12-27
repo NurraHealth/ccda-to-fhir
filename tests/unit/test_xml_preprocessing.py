@@ -419,3 +419,143 @@ class TestBytesInput:
         result = preprocess_ccda_namespaces(xml)
 
         assert result == xml
+
+
+class TestBeforeAfterParsing:
+    """Test that preprocessing actually fixes parsing failures."""
+
+    def test_parsing_fails_before_preprocessing_but_succeeds_after(self):
+        """Critical test: verify preprocessing fixes actual parsing errors."""
+        xml = """<ClinicalDocument xmlns="urn:hl7-org:v3">
+            <value xsi:type="CD" code="123"/>
+        </ClinicalDocument>"""
+
+        # Step 1: Verify XML fails to parse without preprocessing
+        with pytest.raises(etree.XMLSyntaxError) as exc_info:
+            etree.fromstring(xml.encode('utf-8'))
+
+        # Verify it's the expected namespace error
+        assert "Namespace prefix xsi" in str(exc_info.value)
+        assert "not defined" in str(exc_info.value)
+
+        # Step 2: Preprocess the XML
+        preprocessed = preprocess_ccda_namespaces(xml)
+
+        # Step 3: Verify preprocessed XML parses successfully
+        root = etree.fromstring(preprocessed.encode('utf-8'))
+        assert root is not None
+        assert root.tag == "{urn:hl7-org:v3}ClinicalDocument"
+
+    def test_sdtc_parsing_fails_before_succeeds_after(self):
+        """Verify SDTC namespace preprocessing fixes parsing."""
+        xml = """<ClinicalDocument xmlns="urn:hl7-org:v3">
+            <patient>
+                <sdtc:deceasedInd value="false"/>
+            </patient>
+        </ClinicalDocument>"""
+
+        # Should fail without preprocessing
+        with pytest.raises(etree.XMLSyntaxError) as exc_info:
+            etree.fromstring(xml.encode('utf-8'))
+
+        assert "Namespace prefix sdtc" in str(exc_info.value)
+
+        # Should succeed after preprocessing
+        preprocessed = preprocess_ccda_namespaces(xml)
+        root = etree.fromstring(preprocessed.encode('utf-8'))
+        assert root is not None
+
+    def test_multiple_xsi_attributes_in_same_document(self):
+        """Test document with multiple xsi:type usages."""
+        xml = """<ClinicalDocument xmlns="urn:hl7-org:v3">
+            <observation>
+                <value xsi:type="CD" code="123"/>
+                <interpretationCode xsi:type="CE" code="N"/>
+                <effectiveTime xsi:type="IVL_TS">
+                    <low value="20200101"/>
+                </effectiveTime>
+            </observation>
+        </ClinicalDocument>"""
+
+        # Should fail without preprocessing
+        with pytest.raises(etree.XMLSyntaxError):
+            etree.fromstring(xml.encode('utf-8'))
+
+        # Should succeed after preprocessing with single namespace declaration
+        preprocessed = preprocess_ccda_namespaces(xml)
+        root = etree.fromstring(preprocessed.encode('utf-8'))
+        assert root is not None
+
+        # Verify only one xmlns:xsi declaration was added
+        assert preprocessed.count('xmlns:xsi=') == 1
+
+    def test_xsi_type_and_xsi_schemaLocation_together(self):
+        """Test document with both xsi:type and xsi:schemaLocation."""
+        xml = """<ClinicalDocument xmlns="urn:hl7-org:v3"
+            xsi:schemaLocation="urn:hl7-org:v3 hl7-cda.xsd">
+            <value xsi:type="CD" code="123"/>
+        </ClinicalDocument>"""
+
+        # Should fail without preprocessing
+        with pytest.raises(etree.XMLSyntaxError):
+            etree.fromstring(xml.encode('utf-8'))
+
+        # Should succeed after preprocessing
+        preprocessed = preprocess_ccda_namespaces(xml)
+        root = etree.fromstring(preprocessed.encode('utf-8'))
+        assert root is not None
+
+        # Should have xmlns:xsi added
+        assert 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"' in preprocessed
+
+
+class TestParseFragmentIntegration:
+    """Test integration with parse_ccda_fragment()."""
+
+    def test_parse_fragment_requires_namespace_declarations(self):
+        """Test that parse_ccda_fragment requires proper namespace declarations.
+
+        Fragments (non-ClinicalDocument roots) are not preprocessed by design.
+        They must have complete namespace declarations to parse successfully.
+        """
+        from ccda_to_fhir.ccda.parser import parse_ccda_fragment, MalformedXMLError
+        from ccda_to_fhir.ccda.models import Observation
+
+        # Fragment WITHOUT xmlns:xsi - should fail (fragments not preprocessed)
+        xml_missing_ns = """<observation classCode="OBS" moodCode="EVN"
+                    xmlns="urn:hl7-org:v3">
+            <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+            <id root="test"/>
+            <code code="8867-4" codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <effectiveTime value="20200101"/>
+            <value xsi:type="PQ" value="120" unit="mm[Hg]"/>
+        </observation>"""
+
+        # Should fail - fragments are not preprocessed
+        with pytest.raises(MalformedXMLError) as exc_info:
+            parse_ccda_fragment(xml_missing_ns, Observation)
+
+        assert "Namespace prefix xsi" in str(exc_info.value)
+
+    def test_parse_fragment_succeeds_with_proper_namespaces(self):
+        """Test that fragments parse successfully when namespaces are declared."""
+        from ccda_to_fhir.ccda.parser import parse_ccda_fragment
+        from ccda_to_fhir.ccda.models import Observation
+
+        # Fragment WITH xmlns:xsi - should succeed
+        xml_with_ns = """<observation classCode="OBS" moodCode="EVN"
+                    xmlns="urn:hl7-org:v3"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+            <id root="test"/>
+            <code code="8867-4" codeSystem="2.16.840.1.113883.6.1"/>
+            <statusCode code="completed"/>
+            <effectiveTime value="20200101"/>
+            <value xsi:type="PQ" value="120" unit="mm[Hg]"/>
+        </observation>"""
+
+        # Should parse successfully
+        result = parse_ccda_fragment(xml_with_ns, Observation)
+        assert result is not None
+        assert result.code.code == "8867-4"

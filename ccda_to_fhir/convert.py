@@ -2672,21 +2672,14 @@ class DocumentConverter:
             "resourceType": "Encounter",
         }
 
-        # Generate ID from encounter identifier
+        # Generate ID from encounter identifier (using same logic as body encounters)
         if encompassing_encounter.id and len(encompassing_encounter.id) > 0:
             first_id = encompassing_encounter.id[0]
-            # Generate encounter ID from extension or root (matching DocumentReferenceConverter logic)
-            if first_id.extension:
-                encounter_id = first_id.extension.replace(" ", "-").replace(".", "-").lower()
-            elif first_id.root:
-                encounter_id = first_id.root.replace(".", "-").replace(":", "-").lower()
-            else:
-                raise ValueError(
-                    "Cannot create header Encounter: no valid identifiers. "
-                    "Encounter id element has no root or extension (may have nullFlavor). "
-                    "C-CDA encompassingEncounter requires at least one valid id element."
-                )
-
+            # Use encounter converter's ID generation for consistency
+            encounter_id = self.encounter_converter._generate_encounter_id(
+                root=first_id.root,
+                extension=first_id.extension,
+            )
             fhir_encounter["id"] = encounter_id
 
             # Also add as identifier
