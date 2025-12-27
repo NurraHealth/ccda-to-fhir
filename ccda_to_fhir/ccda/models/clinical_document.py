@@ -11,7 +11,7 @@ from __future__ import annotations
 from pydantic import Field, model_validator
 
 from .author import Author
-from .datatypes import AD, CE, CS, ED, II, IVL_TS, ON, PN, TEL, TS, CDAModel
+from .datatypes import AD, CE, CS, ED, II, IVL_TS, ON, PN, SXCM_TS, TEL, TS, CDAModel
 from .participant import AssociatedEntity
 from .performer import AssignedEntity
 from .record_target import Organization, RecordTarget
@@ -356,7 +356,8 @@ class ClinicalDocument(CDAModel):
     title: str | None = None
 
     # Document creation time
-    effective_time: TS | None = Field(default=None, alias="effectiveTime")
+    # CDA spec says TS, but real-world documents (EchoMan EHR) use SXCM_TS
+    effective_time: TS | SXCM_TS | None = Field(default=None, alias="effectiveTime")
 
     # Confidentiality code
     confidentiality_code: CE | None = Field(default=None, alias="confidentialityCode")

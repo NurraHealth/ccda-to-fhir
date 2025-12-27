@@ -216,9 +216,10 @@
 
 ## ClinicalDocument - other (1 tasks)
 
-- [ ] **Task ClinicalDocument-01**: JONEM00.xml
+- [x] **Task ClinicalDocument-01**: JONEM00.xml
   - File: `ccda-samples/EchoMan/JONEM00.xml`
   - Error: `Failed to parse ClinicalDocument from element ClinicalDocument: 1 validation error for ClinicalDocum...`
+  - Fix: Changed effective_time to accept TS | SXCM_TS datatypes (EchoMan uses SXCM_TS)
 
 ---
 
