@@ -498,6 +498,61 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 return entry.id.root
         return None
 
+    def _generate_resource_id_from_entry(self, entry, resource_type: str) -> str | None:
+        """Generate FHIR resource ID from C-CDA entry identifiers.
+
+        Uses the same ID generation logic as resource converters to ensure
+        CarePlan can find resources in the registry.
+
+        NOTE: Observation converter uses a different ID generation strategy
+        (sanitize root/extension directly without hashing), so we handle that
+        as a special case.
+
+        Args:
+            entry: C-CDA entry element (observation, act, procedure, etc.)
+            resource_type: FHIR resource type (lowercase, e.g., "procedure")
+
+        Returns:
+            Generated FHIR resource ID or None
+        """
+        if not hasattr(entry, 'id') or not entry.id:
+            return None
+
+        # Extract root and extension from first identifier
+        root = None
+        extension = None
+
+        if isinstance(entry.id, list) and len(entry.id) > 0:
+            if hasattr(entry.id[0], 'root'):
+                root = entry.id[0].root
+            if hasattr(entry.id[0], 'extension'):
+                extension = entry.id[0].extension
+        elif hasattr(entry.id, 'root'):
+            root = entry.id.root
+            if hasattr(entry.id, 'extension'):
+                extension = entry.id.extension
+
+        # Convert to strings if needed (handles Mock objects in tests)
+        if root is not None and not isinstance(root, str):
+            root = str(root) if root else None
+        if extension is not None and not isinstance(extension, str):
+            extension = str(extension) if extension else None
+
+        # Observation converter uses special logic (sanitize only, no hash)
+        if resource_type.lower() == "observation":
+            if extension:
+                return self.sanitize_id(extension)
+            elif root:
+                return self.sanitize_id(root)
+            return None
+
+        # Other converters use standard generate_resource_id with hashing
+        return self.generate_resource_id(
+            root=root,
+            extension=extension,
+            resource_type=resource_type
+        )
+
     def _create_intervention_reference(self, intervention_entry) -> str | None:
         """Create reference to intervention resource (ServiceRequest/Procedure).
 
@@ -515,44 +570,40 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         if not intervention_entry or not self.reference_registry:
             return None
 
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
         # First, check if this intervention has nested procedures/acts (COMP entryRelationships)
         if hasattr(intervention_entry, 'entry_relationship') and intervention_entry.entry_relationship:
             for rel in intervention_entry.entry_relationship:
                 if hasattr(rel, 'type_code') and rel.type_code == 'COMP':
                     # Look for nested procedure
                     if hasattr(rel, 'procedure') and rel.procedure:
-                        nested_id = self._get_entry_id(rel.procedure)
-                        if nested_id:
-                            # Resources are stored with their simple root ID
+                        resource_id = self._generate_resource_id_from_entry(rel.procedure, "procedure")
+                        if resource_id:
                             # Try as Procedure
-                            if self.reference_registry.has_resource("Procedure", nested_id):
-                                return f"Procedure/{nested_id}"
+                            if self.reference_registry.has_resource("Procedure", resource_id):
+                                return f"Procedure/{resource_id}"
 
                             # Try as ServiceRequest
-                            if self.reference_registry.has_resource("ServiceRequest", nested_id):
-                                return f"ServiceRequest/{nested_id}"
+                            if self.reference_registry.has_resource("ServiceRequest", resource_id):
+                                return f"ServiceRequest/{resource_id}"
 
                     # Look for nested act
                     elif hasattr(rel, 'act') and rel.act:
-                        nested_id = self._get_entry_id(rel.act)
-                        if nested_id:
+                        resource_id = self._generate_resource_id_from_entry(rel.act, "procedure")
+                        if resource_id:
                             # Try as Procedure
-                            if self.reference_registry.has_resource("Procedure", nested_id):
-                                return f"Procedure/{nested_id}"
+                            if self.reference_registry.has_resource("Procedure", resource_id):
+                                return f"Procedure/{resource_id}"
 
         # Fallback: Try the intervention entry itself
-        entry_id = self._get_entry_id(intervention_entry)
-        if entry_id:
-            # Resources are stored with their simple root ID
+        resource_id = self._generate_resource_id_from_entry(intervention_entry, "servicerequest")
+        if resource_id:
             # Try ServiceRequest first (for planned interventions)
-            if self.reference_registry.has_resource("ServiceRequest", entry_id):
-                return f"ServiceRequest/{entry_id}"
+            if self.reference_registry.has_resource("ServiceRequest", resource_id):
+                return f"ServiceRequest/{resource_id}"
 
             # Try Procedure (for completed interventions)
-            if self.reference_registry.has_resource("Procedure", entry_id):
-                return f"Procedure/{entry_id}"
+            if self.reference_registry.has_resource("Procedure", resource_id):
+                return f"Procedure/{resource_id}"
 
         return None
 
@@ -568,14 +619,14 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         if not outcome_entry or not self.reference_registry:
             return None
 
-        # Get ID for the outcome observation
-        entry_id = self._get_entry_id(outcome_entry)
-        if not entry_id:
+        # Generate resource ID using same logic as Observation converter
+        resource_id = self._generate_resource_id_from_entry(outcome_entry, "observation")
+        if not resource_id:
             return None
 
-        # Resources are stored with their simple root ID
-        if self.reference_registry.has_resource("Observation", entry_id):
-            return {"reference": f"Observation/{entry_id}"}
+        # Check if observation resource exists with generated ID
+        if self.reference_registry.has_resource("Observation", resource_id):
+            return {"reference": f"Observation/{resource_id}"}
 
         return None
 
