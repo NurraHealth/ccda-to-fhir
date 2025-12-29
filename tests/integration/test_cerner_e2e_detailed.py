@@ -1373,3 +1373,302 @@ class TestCernerDetailedValidation:
                 if hasattr(diagnosis, 'use') and diagnosis.use:
                     assert diagnosis.use.coding is not None, \
                         "Encounter.diagnosis.use should have coding"
+
+    # ====================================================================================
+    # Medium Priority Tests - MedicationRequest.intent and dispenseRequest
+    # ====================================================================================
+
+    def test_medication_requests_have_intent(self, cerner_bundle):
+        """Validate all MedicationRequest resources have intent (US Core required)."""
+        med_requests = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "MedicationRequest"
+        ]
+
+        assert len(med_requests) > 0, "Must have MedicationRequest resources"
+
+        for mr in med_requests:
+            assert mr.intent is not None, \
+                "MedicationRequest.intent is required (US Core)"
+            assert mr.intent in ["proposal", "plan", "order", "original-order", "reflex-order", "filler-order", "instance-order", "option"], \
+                f"MedicationRequest.intent must be valid code, got '{mr.intent}'"
+
+    def test_medication_requests_have_dispense_request_when_supply_present(self, cerner_bundle):
+        """Validate MedicationRequest.dispenseRequest is populated when C-CDA has supply."""
+        med_requests = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "MedicationRequest"
+        ]
+
+        # Find Insulin Glargine (should have dispenseRequest with 10 mL)
+        insulin = None
+        for mr in med_requests:
+            if mr.medicationCodeableConcept and mr.medicationCodeableConcept.coding:
+                for coding in mr.medicationCodeableConcept.coding:
+                    if coding.code == "311041":  # RxNorm code for Insulin Glargine
+                        insulin = mr
+                        break
+
+        assert insulin is not None, "Must have Insulin Glargine MedicationRequest"
+
+        # Verify dispenseRequest is populated
+        assert insulin.dispenseRequest is not None, \
+            "MedicationRequest.dispenseRequest should be populated when C-CDA has supply"
+        assert insulin.dispenseRequest.quantity is not None, \
+            "dispenseRequest.quantity should be populated"
+        assert insulin.dispenseRequest.quantity.value == 10, \
+            "Supply quantity should be 10"
+        assert insulin.dispenseRequest.quantity.unit == "mL", \
+            "Supply unit should be mL"
+        assert insulin.dispenseRequest.quantity.system == "http://unitsofmeasure.org", \
+            "Supply quantity should use UCUM"
+
+    # ====================================================================================
+    # Medium Priority Tests - Observation.hasMember (panel relationships)
+    # ====================================================================================
+
+    def test_vital_signs_panel_has_members(self, cerner_bundle):
+        """Validate Vital Signs panel Observation has hasMember linking to component observations."""
+        observations = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # Find vital signs panel (observation with hasMember)
+        panels = [obs for obs in observations if hasattr(obs, 'hasMember') and obs.hasMember]
+
+        assert len(panels) > 0, "Must have at least one panel observation with hasMember"
+
+        # Verify panel structure
+        panel = panels[0]
+        assert panel.hasMember is not None and len(panel.hasMember) > 0, \
+            "Panel observation must have hasMember references"
+
+        # Verify each member reference is valid
+        for member in panel.hasMember:
+            assert member.reference is not None, \
+                "hasMember entry must have reference"
+            assert member.reference.startswith("Observation/"), \
+                f"hasMember must reference Observation, got '{member.reference}'"
+
+            # Verify the referenced Observation exists in bundle
+            obs_id = member.reference.split("/")[1]
+            obs_exists = any(
+                e.resource.get_resource_type() == "Observation" and e.resource.id == obs_id
+                for e in cerner_bundle.entry
+            )
+            assert obs_exists, \
+                f"Referenced Observation/{obs_id} must exist in bundle"
+
+    # ====================================================================================
+    # Medium Priority Tests - Composition.author
+    # ====================================================================================
+
+    def test_composition_has_author(self, cerner_bundle):
+        """Validate Composition has author (US Core required)."""
+        composition = cerner_bundle.entry[0].resource
+        assert composition.get_resource_type() == "Composition"
+
+        # US Core requires at least one author
+        assert composition.author is not None and len(composition.author) > 0, \
+            "Composition.author is required (US Core)"
+
+        # Verify author has either reference or display
+        for author in composition.author:
+            has_reference = hasattr(author, 'reference') and author.reference is not None
+            has_display = hasattr(author, 'display') and author.display is not None
+
+            assert has_reference or has_display, \
+                "Composition.author must have reference or display"
+
+    # ====================================================================================
+    # Medium Priority Tests - Condition.category (consistent across all conditions)
+    # ====================================================================================
+
+    def test_all_conditions_have_category(self, cerner_bundle):
+        """Validate all Condition resources have category (US Core required)."""
+        conditions = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        for condition in conditions:
+            assert condition.category is not None and len(condition.category) > 0, \
+                "Condition.category is required (US Core)"
+
+            # Verify category structure
+            category = condition.category[0]
+            assert category.coding is not None and len(category.coding) > 0, \
+                "Condition.category must have coding"
+
+            coding = category.coding[0]
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/condition-category", \
+                "Condition.category must use condition-category CodeSystem"
+            assert coding.code in ["problem-list-item", "encounter-diagnosis"], \
+                f"Condition.category code must be valid, got '{coding.code}'"
+
+    # ====================================================================================
+    # Medium Priority Tests - Per-resource subject/patient references
+    # ====================================================================================
+
+    def test_conditions_reference_patient(self, cerner_bundle):
+        """Validate all Condition resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        conditions = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        for condition in conditions:
+            assert condition.subject is not None, "Condition.subject is required"
+            assert condition.subject.reference is not None, "Condition.subject must have reference"
+            assert condition.subject.reference == f"Patient/{patient.id}", \
+                f"Condition.subject must reference Patient/{patient.id}"
+
+    def test_diagnostic_reports_reference_patient(self, cerner_bundle):
+        """Validate all DiagnosticReport resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        reports = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "DiagnosticReport"
+        ]
+
+        for report in reports:
+            assert report.subject is not None, "DiagnosticReport.subject is required"
+            assert report.subject.reference is not None, "DiagnosticReport.subject must have reference"
+            assert report.subject.reference == f"Patient/{patient.id}", \
+                f"DiagnosticReport.subject must reference Patient/{patient.id}"
+
+    def test_encounters_reference_patient(self, cerner_bundle):
+        """Validate all Encounter resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        encounters = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        for encounter in encounters:
+            assert encounter.subject is not None, "Encounter.subject is required"
+            assert encounter.subject.reference is not None, "Encounter.subject must have reference"
+            assert encounter.subject.reference == f"Patient/{patient.id}", \
+                f"Encounter.subject must reference Patient/{patient.id}"
+
+    def test_procedures_reference_patient(self, cerner_bundle):
+        """Validate all Procedure resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        procedures = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Procedure"
+        ]
+
+        for procedure in procedures:
+            assert procedure.subject is not None, "Procedure.subject is required"
+            assert procedure.subject.reference is not None, "Procedure.subject must have reference"
+            assert procedure.subject.reference == f"Patient/{patient.id}", \
+                f"Procedure.subject must reference Patient/{patient.id}"
+
+    def test_observations_reference_patient(self, cerner_bundle):
+        """Validate all Observation resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        observations = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        for observation in observations:
+            assert observation.subject is not None, "Observation.subject is required"
+            assert observation.subject.reference is not None, "Observation.subject must have reference"
+            assert observation.subject.reference == f"Patient/{patient.id}", \
+                f"Observation.subject must reference Patient/{patient.id}"
+
+    def test_medication_requests_reference_patient(self, cerner_bundle):
+        """Validate all MedicationRequest resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        med_requests = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "MedicationRequest"
+        ]
+
+        for mr in med_requests:
+            assert mr.subject is not None, "MedicationRequest.subject is required"
+            assert mr.subject.reference is not None, "MedicationRequest.subject must have reference"
+            assert mr.subject.reference == f"Patient/{patient.id}", \
+                f"MedicationRequest.subject must reference Patient/{patient.id}"
+
+    def test_allergy_intolerances_reference_patient(self, cerner_bundle):
+        """Validate all AllergyIntolerance resources have patient reference to Patient."""
+        patient = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        allergies = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        for allergy in allergies:
+            assert allergy.patient is not None, "AllergyIntolerance.patient is required"
+            assert allergy.patient.reference is not None, "AllergyIntolerance.patient must have reference"
+            assert allergy.patient.reference == f"Patient/{patient.id}", \
+                f"AllergyIntolerance.patient must reference Patient/{patient.id}"
+
+    def test_immunizations_reference_patient(self, cerner_bundle):
+        """Validate all Immunization resources have patient reference to Patient."""
+        patient = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        immunizations = [
+            e.resource for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
+
+        for immunization in immunizations:
+            assert immunization.patient is not None, "Immunization.patient is required"
+            assert immunization.patient.reference is not None, "Immunization.patient must have reference"
+            assert immunization.patient.reference == f"Patient/{patient.id}", \
+                f"Immunization.patient must reference Patient/{patient.id}"

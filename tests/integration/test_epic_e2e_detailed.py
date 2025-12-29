@@ -451,6 +451,554 @@ class TestEpicDetailedValidation:
         assert wbc_obs.valueQuantity.value == 7.6, "WBC value must be 7.6"
         assert wbc_obs.valueQuantity.unit == "K/uL", "WBC unit must be K/uL"
 
+    # ====================================================================================
+    # HIGH PRIORITY: Composition Sections and Entry References
+    # ====================================================================================
+
+    def test_composition_has_all_expected_sections(self, epic_bundle):
+        """Validate Composition has all major clinical sections with correct structure."""
+        composition = epic_bundle.entry[0].resource
+        assert composition.get_resource_type() == "Composition"
+        assert composition.section is not None, "Composition must have sections"
+
+        # Expected sections in Epic CCD (LOINC codes)
+        expected_sections = {
+            "10160-0": "Medications",
+            "11450-4": "Problems",
+            "48765-2": "Allergies",
+            "30954-2": "Results",
+            "8716-3": "Vital Signs",
+        }
+
+        section_codes = {}
+        for section in composition.section:
+            if section.code and section.code.coding:
+                for coding in section.code.coding:
+                    if coding.system == "http://loinc.org":
+                        section_codes[coding.code] = section.title
+
+        # Verify all expected sections present
+        for code, title in expected_sections.items():
+            assert code in section_codes, f"Composition must have {title} section (LOINC {code})"
+
+    def test_composition_section_entries_reference_valid_resources(self, epic_bundle):
+        """Validate Composition section entries reference resources that exist in bundle."""
+        composition = epic_bundle.entry[0].resource
+
+        # Get all resource IDs in bundle
+        bundle_resource_ids = set()
+        for entry in epic_bundle.entry:
+            if entry.resource and hasattr(entry.resource, 'id'):
+                resource_type = entry.resource.get_resource_type()
+                bundle_resource_ids.add(f"{resource_type}/{entry.resource.id}")
+
+        # Check all section entries
+        for section in composition.section or []:
+            for entry_ref in section.entry or []:
+                assert entry_ref.reference in bundle_resource_ids, \
+                    f"Section entry reference '{entry_ref.reference}' must exist in bundle"
+
+    # ====================================================================================
+    # HIGH PRIORITY: Resource Identifier Tests - Critical for Interoperability
+    # ====================================================================================
+
+    def test_all_conditions_have_identifiers(self, epic_bundle):
+        """Validate all Condition resources have identifiers from C-CDA."""
+        conditions = [e.resource for e in epic_bundle.entry
+                     if e.resource.get_resource_type() == "Condition"]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        for condition in conditions:
+            assert condition.identifier is not None, \
+                f"Condition must have identifier"
+            assert len(condition.identifier) > 0, \
+                f"Condition must have at least one identifier"
+
+            # Verify identifier structure
+            identifier = condition.identifier[0]
+            assert identifier.system is not None, \
+                f"Condition identifier must have system"
+            assert identifier.value is not None, \
+                f"Condition identifier must have value"
+
+    def test_all_allergy_intolerances_have_identifiers(self, epic_bundle):
+        """Validate all AllergyIntolerance resources have identifiers from C-CDA."""
+        allergies = [e.resource for e in epic_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        for allergy in allergies:
+            assert allergy.identifier is not None, \
+                f"AllergyIntolerance must have identifier"
+            assert len(allergy.identifier) > 0, \
+                f"AllergyIntolerance must have at least one identifier"
+
+            identifier = allergy.identifier[0]
+            assert identifier.system is not None, \
+                f"AllergyIntolerance identifier must have system"
+            assert identifier.value is not None, \
+                f"AllergyIntolerance identifier must have value"
+
+    def test_all_medication_requests_have_identifiers(self, epic_bundle):
+        """Validate all MedicationRequest/MedicationStatement resources have identifiers from C-CDA."""
+        # Epic uses MedicationStatements, not MedicationRequests
+        med_statements = [e.resource for e in epic_bundle.entry
+                         if e.resource.get_resource_type() == "MedicationStatement"]
+
+        assert len(med_statements) > 0, "Must have MedicationStatement resources"
+
+        for med_statement in med_statements:
+            assert med_statement.identifier is not None, \
+                f"MedicationStatement must have identifier"
+            assert len(med_statement.identifier) > 0, \
+                f"MedicationStatement must have at least one identifier"
+
+            identifier = med_statement.identifier[0]
+            assert identifier.system is not None, \
+                f"MedicationStatement identifier must have system"
+            assert identifier.value is not None, \
+                f"MedicationStatement identifier must have value"
+
+    def test_observations_have_identifiers(self, epic_bundle):
+        """Validate Observation resources have identifiers from C-CDA."""
+        observations = [e.resource for e in epic_bundle.entry
+                       if e.resource.get_resource_type() == "Observation"]
+
+        assert len(observations) > 0, "Must have Observation resources"
+
+        for observation in observations:
+            assert observation.identifier is not None, \
+                f"Observation must have identifier"
+            assert len(observation.identifier) > 0, \
+                f"Observation must have at least one identifier"
+
+    def test_encounters_have_identifiers(self, epic_bundle):
+        """Validate Encounter resources have identifiers from C-CDA."""
+        encounters = [e.resource for e in epic_bundle.entry
+                     if e.resource.get_resource_type() == "Encounter"]
+
+        assert len(encounters) > 0, "Must have Encounter resources"
+
+        for encounter in encounters:
+            assert encounter.identifier is not None, \
+                f"Encounter must have identifier"
+            assert len(encounter.identifier) > 0, \
+                f"Encounter must have at least one identifier"
+
+    # ====================================================================================
+    # HIGH PRIORITY: AllergyIntolerance Status Tests - US Core Required
+    # ====================================================================================
+
+    def test_allergies_have_clinical_status(self, epic_bundle):
+        """Validate all AllergyIntolerance resources have clinicalStatus (US Core required)."""
+        allergies = [e.resource for e in epic_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        for allergy in allergies:
+            assert allergy.clinicalStatus is not None, \
+                "AllergyIntolerance must have clinicalStatus (US Core required)"
+            assert allergy.clinicalStatus.coding is not None and len(allergy.clinicalStatus.coding) > 0, \
+                "AllergyIntolerance.clinicalStatus must have coding"
+
+            # Verify coding uses correct system
+            coding = allergy.clinicalStatus.coding[0]
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", \
+                "AllergyIntolerance.clinicalStatus must use standard CodeSystem"
+
+            # Verify code is valid (active, inactive, or resolved)
+            assert coding.code in ["active", "inactive", "resolved"], \
+                f"AllergyIntolerance.clinicalStatus code must be active/inactive/resolved, got '{coding.code}'"
+
+    def test_allergies_have_verification_status(self, epic_bundle):
+        """Validate all AllergyIntolerance resources have verificationStatus."""
+        allergies = [e.resource for e in epic_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        for allergy in allergies:
+            assert allergy.verificationStatus is not None, \
+                "AllergyIntolerance must have verificationStatus"
+            assert allergy.verificationStatus.coding is not None and len(allergy.verificationStatus.coding) > 0, \
+                "AllergyIntolerance.verificationStatus must have coding"
+
+            coding = allergy.verificationStatus.coding[0]
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", \
+                "AllergyIntolerance.verificationStatus must use standard CodeSystem"
+
+    def test_allergies_have_category(self, epic_bundle):
+        """Validate AllergyIntolerance resources have category (US Core must-support)."""
+        allergies = [e.resource for e in epic_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        # Find penicillins allergy - should be "medication" category if category present
+        # NOTE: Epic CCD may not have category in structured data, which is a data quality issue
+        # Category is optional per FHIR spec
+        penicillins = None
+        for allergy in allergies:
+            if allergy.code and allergy.code.coding:
+                for coding in allergy.code.coding:
+                    if coding.code == "000476" or "penicillin" in (coding.display or "").lower():
+                        penicillins = allergy
+                        break
+
+        if penicillins and penicillins.category:
+            assert len(penicillins.category) > 0, \
+                "Penicillins allergy must have non-empty category if present"
+            assert "medication" in penicillins.category, \
+                "Penicillins allergy category must include 'medication' if present"
+
+    # ====================================================================================
+    # HIGH PRIORITY: Organization Resource Tests
+    # ====================================================================================
+
+    def test_organization_exists_in_bundle(self, epic_bundle):
+        """Validate Organization resource is created from C-CDA."""
+        organizations = [e.resource for e in epic_bundle.entry
+                        if e.resource.get_resource_type() == "Organization"]
+
+        assert len(organizations) > 0, "Bundle must contain Organization resource"
+
+    def test_organization_has_identifier(self, epic_bundle):
+        """Validate Organization has identifier from C-CDA."""
+        org = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        assert org is not None, "Must have Organization"
+        assert org.identifier is not None and len(org.identifier) > 0, \
+            "Organization must have identifier"
+
+        identifier = org.identifier[0]
+        assert identifier.system is not None, "Organization identifier must have system"
+        assert identifier.value is not None, "Organization identifier must have value"
+
+    def test_organization_has_name(self, epic_bundle):
+        """Validate Organization has name from C-CDA."""
+        org = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        assert org is not None, "Must have Organization"
+        assert org.name is not None, "Organization must have name"
+
+    def test_organization_has_contact_info(self, epic_bundle):
+        """Validate Organization has address and telecom from C-CDA."""
+        org = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        assert org is not None, "Must have Organization"
+
+        # Check address or telecom exists (at least one should be present)
+        has_contact_info = False
+        if org.address and len(org.address) > 0:
+            has_contact_info = True
+        if org.telecom and len(org.telecom) > 0:
+            has_contact_info = True
+
+        assert has_contact_info, "Organization should have address or telecom"
+
+    def test_patient_references_organization(self, epic_bundle):
+        """Validate Patient.managingOrganization references the Organization."""
+        patient = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+
+        org = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        if patient and org and hasattr(patient, 'managingOrganization'):
+            if patient.managingOrganization:
+                # Check if reference or display is set (both are valid)
+                has_reference = patient.managingOrganization.reference is not None
+                has_display = patient.managingOrganization.display is not None
+
+                assert has_reference or has_display, \
+                    "Patient.managingOrganization must have reference or display"
+
+                # If reference is set, verify it points to the right organization
+                if has_reference:
+                    expected_ref = f"Organization/{org.id}"
+                    assert patient.managingOrganization.reference == expected_ref, \
+                        f"Patient.managingOrganization must reference {expected_ref}"
+
+    def test_encounter_has_diagnosis(self, epic_bundle):
+        """Validate Encounter.diagnosis links to Condition resources."""
+        encounter = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Encounter"),
+            None
+        )
+
+        assert encounter is not None, "Must have Encounter"
+
+        # Verify diagnosis field exists and has entries
+        if hasattr(encounter, 'diagnosis') and encounter.diagnosis:
+            assert len(encounter.diagnosis) > 0, "Encounter should have diagnosis entries"
+
+            # Verify each diagnosis references a Condition
+            for diagnosis in encounter.diagnosis:
+                assert diagnosis.condition is not None, \
+                    "Encounter.diagnosis must have condition reference"
+                assert diagnosis.condition.reference is not None, \
+                    "Encounter.diagnosis.condition must have reference"
+                assert diagnosis.condition.reference.startswith("Condition/"), \
+                    f"Encounter.diagnosis must reference Condition, got '{diagnosis.condition.reference}'"
+
+                # Verify the referenced Condition exists in bundle
+                condition_id = diagnosis.condition.reference.split("/")[1]
+                condition_exists = any(
+                    e.resource.get_resource_type() == "Condition" and e.resource.id == condition_id
+                    for e in epic_bundle.entry
+                )
+                assert condition_exists, \
+                    f"Referenced Condition/{condition_id} must exist in bundle"
+
+    def test_encounter_diagnosis_has_use_code(self, epic_bundle):
+        """Validate Encounter.diagnosis has use code (billing, admission, discharge, etc)."""
+        encounter = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Encounter"),
+            None
+        )
+
+        if encounter and hasattr(encounter, 'diagnosis') and encounter.diagnosis:
+            for diagnosis in encounter.diagnosis:
+                # US Core recommends use codes from diagnosis-role
+                if hasattr(diagnosis, 'use') and diagnosis.use:
+                    assert diagnosis.use.coding is not None, \
+                        "Encounter.diagnosis.use should have coding"
+
+    # ====================================================================================
+    # MEDIUM PRIORITY: Composition.author
+    # ====================================================================================
+
+    def test_composition_has_author(self, epic_bundle):
+        """Validate Composition has author (US Core required)."""
+        composition = epic_bundle.entry[0].resource
+        assert composition.get_resource_type() == "Composition"
+
+        # US Core requires at least one author
+        assert composition.author is not None and len(composition.author) > 0, \
+            "Composition.author is required (US Core)"
+
+        # Verify author has either reference or display
+        for author in composition.author:
+            has_reference = hasattr(author, 'reference') and author.reference is not None
+            has_display = hasattr(author, 'display') and author.display is not None
+
+            assert has_reference or has_display, \
+                "Composition.author must have reference or display"
+
+    # ====================================================================================
+    # MEDIUM PRIORITY: Condition.category (consistent across all conditions)
+    # ====================================================================================
+
+    def test_all_conditions_have_category(self, epic_bundle):
+        """Validate all Condition resources have category (US Core required)."""
+        conditions = [
+            e.resource for e in epic_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        for condition in conditions:
+            assert condition.category is not None and len(condition.category) > 0, \
+                "Condition.category is required (US Core)"
+
+            # Verify category structure
+            category = condition.category[0]
+            assert category.coding is not None and len(category.coding) > 0, \
+                "Condition.category must have coding"
+
+            coding = category.coding[0]
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/condition-category", \
+                "Condition.category must use condition-category CodeSystem"
+            assert coding.code in ["problem-list-item", "encounter-diagnosis"], \
+                f"Condition.category code must be valid, got '{coding.code}'"
+
+    # ====================================================================================
+    # MEDIUM PRIORITY: Per-resource subject/patient references
+    # ====================================================================================
+
+    def test_conditions_reference_patient(self, epic_bundle):
+        """Validate all Condition resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        conditions = [
+            e.resource for e in epic_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        for condition in conditions:
+            assert condition.subject is not None, "Condition.subject is required"
+            assert condition.subject.reference is not None, "Condition.subject must have reference"
+            assert condition.subject.reference == f"Patient/{patient.id}", \
+                f"Condition.subject must reference Patient/{patient.id}"
+
+    def test_diagnostic_reports_reference_patient(self, epic_bundle):
+        """Validate all DiagnosticReport resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        reports = [
+            e.resource for e in epic_bundle.entry
+            if e.resource.get_resource_type() == "DiagnosticReport"
+        ]
+
+        assert len(reports) > 0, "Must have DiagnosticReport resources"
+
+        for report in reports:
+            assert report.subject is not None, "DiagnosticReport.subject is required"
+            assert report.subject.reference is not None, "DiagnosticReport.subject must have reference"
+            assert report.subject.reference == f"Patient/{patient.id}", \
+                f"DiagnosticReport.subject must reference Patient/{patient.id}"
+
+    def test_encounters_reference_patient(self, epic_bundle):
+        """Validate all Encounter resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        encounters = [
+            e.resource for e in epic_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        for encounter in encounters:
+            assert encounter.subject is not None, "Encounter.subject is required"
+            assert encounter.subject.reference is not None, "Encounter.subject must have reference"
+            assert encounter.subject.reference == f"Patient/{patient.id}", \
+                f"Encounter.subject must reference Patient/{patient.id}"
+
+    def test_observations_reference_patient(self, epic_bundle):
+        """Validate all Observation resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        observations = [
+            e.resource for e in epic_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        for observation in observations:
+            assert observation.subject is not None, "Observation.subject is required"
+            assert observation.subject.reference is not None, "Observation.subject must have reference"
+            assert observation.subject.reference == f"Patient/{patient.id}", \
+                f"Observation.subject must reference Patient/{patient.id}"
+
+    def test_medication_statements_reference_patient(self, epic_bundle):
+        """Validate all MedicationStatement resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        med_statements = [
+            e.resource for e in epic_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        for ms in med_statements:
+            assert ms.subject is not None, "MedicationStatement.subject is required"
+            assert ms.subject.reference is not None, "MedicationStatement.subject must have reference"
+            assert ms.subject.reference == f"Patient/{patient.id}", \
+                f"MedicationStatement.subject must reference Patient/{patient.id}"
+
+    def test_allergy_intolerances_reference_patient(self, epic_bundle):
+        """Validate all AllergyIntolerance resources have patient reference to Patient."""
+        patient = next(
+            (e.resource for e in epic_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        allergies = [
+            e.resource for e in epic_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        for allergy in allergies:
+            assert allergy.patient is not None, "AllergyIntolerance.patient is required"
+            assert allergy.patient.reference is not None, "AllergyIntolerance.patient must have reference"
+            assert allergy.patient.reference == f"Patient/{patient.id}", \
+                f"AllergyIntolerance.patient must reference Patient/{patient.id}"
+
+    # ====================================================================================
+    # MEDIUM PRIORITY: Observation.hasMember (panel relationships)
+    # ====================================================================================
+
+    def test_vital_signs_panel_has_members(self, epic_bundle):
+        """Validate Vital Signs panel Observation has hasMember linking to component observations."""
+        observations = [
+            e.resource for e in epic_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # Find vital signs panel (observation with hasMember)
+        panels = [obs for obs in observations if hasattr(obs, 'hasMember') and obs.hasMember]
+
+        # Epic has observation panels with hasMember
+        if len(panels) > 0:
+            # Verify panel structure
+            panel = panels[0]
+            assert panel.hasMember is not None and len(panel.hasMember) > 0, \
+                "Panel observation must have hasMember references"
+
+            # Verify each member reference is valid
+            for member in panel.hasMember:
+                assert member.reference is not None, \
+                    "hasMember entry must have reference"
+                assert member.reference.startswith("Observation/"), \
+                    f"hasMember must reference Observation, got '{member.reference}'"
+
+                # Verify the referenced Observation exists in bundle
+                obs_id = member.reference.split("/")[1]
+                obs_exists = any(
+                    e.resource.get_resource_type() == "Observation" and e.resource.id == obs_id
+                    for e in epic_bundle.entry
+                )
+                assert obs_exists, \
+                    f"Referenced Observation/{obs_id} must exist in bundle"
+
     def test_practitioner_has_address(self, epic_bundle):
         """Validate Practitioner has address with state, city, postalCode, streetAddressLine."""
         # Find all Practitioners

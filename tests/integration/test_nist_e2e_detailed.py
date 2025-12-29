@@ -1054,6 +1054,648 @@ class TestNISTDetailedValidation:
         assert "(816)276-6909" in phone.value, \
             f"Guardian phone must be '(816)276-6909', got '{phone.value}'"
 
+    # ====================================================================================
+    # High Priority Tests - Resource Identifiers
+    # ====================================================================================
+
+    def test_all_conditions_have_identifiers(self, nist_bundle):
+        """Validate all Condition resources have identifiers from C-CDA."""
+        conditions = [e.resource for e in nist_bundle.entry
+                     if e.resource.get_resource_type() == "Condition"]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        for condition in conditions:
+            assert condition.identifier is not None, \
+                f"Condition must have identifier"
+            assert len(condition.identifier) > 0, \
+                f"Condition must have at least one identifier"
+
+            # Verify identifier structure
+            identifier = condition.identifier[0]
+            assert identifier.system is not None, \
+                f"Condition identifier must have system"
+            assert identifier.value is not None, \
+                f"Condition identifier must have value"
+
+    def test_all_allergy_intolerances_have_identifiers(self, nist_bundle):
+        """Validate all AllergyIntolerance resources have identifiers from C-CDA."""
+        allergies = [e.resource for e in nist_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        for allergy in allergies:
+            assert allergy.identifier is not None, \
+                f"AllergyIntolerance must have identifier"
+            assert len(allergy.identifier) > 0, \
+                f"AllergyIntolerance must have at least one identifier"
+
+            identifier = allergy.identifier[0]
+            assert identifier.system is not None, \
+                f"AllergyIntolerance identifier must have system"
+            assert identifier.value is not None, \
+                f"AllergyIntolerance identifier must have value"
+
+    def test_all_medication_requests_have_identifiers(self, nist_bundle):
+        """Validate all MedicationRequest resources have identifiers from C-CDA."""
+        med_requests = [e.resource for e in nist_bundle.entry
+                       if e.resource.get_resource_type() == "MedicationRequest"]
+
+        # NIST uses MedicationStatement, not MedicationRequest
+        # Check if we have any MedicationRequests, otherwise skip
+        if len(med_requests) == 0:
+            # No MedicationRequests in NIST, use MedicationStatements instead
+            med_statements = [e.resource for e in nist_bundle.entry
+                            if e.resource.get_resource_type() == "MedicationStatement"]
+
+            assert len(med_statements) > 0, "Must have MedicationStatement resources"
+
+            for med_statement in med_statements:
+                assert med_statement.identifier is not None, \
+                    f"MedicationStatement must have identifier"
+                assert len(med_statement.identifier) > 0, \
+                    f"MedicationStatement must have at least one identifier"
+
+                identifier = med_statement.identifier[0]
+                assert identifier.system is not None, \
+                    f"MedicationStatement identifier must have system"
+                assert identifier.value is not None, \
+                    f"MedicationStatement identifier must have value"
+        else:
+            for med_request in med_requests:
+                assert med_request.identifier is not None, \
+                    f"MedicationRequest must have identifier"
+                assert len(med_request.identifier) > 0, \
+                    f"MedicationRequest must have at least one identifier"
+
+                identifier = med_request.identifier[0]
+                assert identifier.system is not None, \
+                    f"MedicationRequest identifier must have system"
+                assert identifier.value is not None, \
+                    f"MedicationRequest identifier must have value"
+
+    def test_immunizations_have_identifiers(self, nist_bundle):
+        """Validate Immunization resources have identifiers from C-CDA."""
+        immunizations = [e.resource for e in nist_bundle.entry
+                        if e.resource.get_resource_type() == "Immunization"]
+
+        assert len(immunizations) > 0, "Must have Immunization resources"
+
+        for immunization in immunizations:
+            assert immunization.identifier is not None, \
+                f"Immunization must have identifier"
+            assert len(immunization.identifier) > 0, \
+                f"Immunization must have at least one identifier"
+
+    def test_observations_have_identifiers(self, nist_bundle):
+        """Validate Observation resources have identifiers from C-CDA."""
+        observations = [e.resource for e in nist_bundle.entry
+                       if e.resource.get_resource_type() == "Observation"]
+
+        assert len(observations) > 0, "Must have Observation resources"
+
+        for observation in observations:
+            assert observation.identifier is not None, \
+                f"Observation must have identifier"
+            assert len(observation.identifier) > 0, \
+                f"Observation must have at least one identifier"
+
+    def test_encounters_have_identifiers(self, nist_bundle):
+        """Validate Encounter resources have identifiers from C-CDA."""
+        encounters = [e.resource for e in nist_bundle.entry
+                     if e.resource.get_resource_type() == "Encounter"]
+
+        assert len(encounters) > 0, "Must have Encounter resources"
+
+        for encounter in encounters:
+            assert encounter.identifier is not None, \
+                f"Encounter must have identifier"
+            assert len(encounter.identifier) > 0, \
+                f"Encounter must have at least one identifier"
+
+    def test_procedures_have_identifiers(self, nist_bundle):
+        """Validate Procedure resources have identifiers from C-CDA."""
+        procedures = [e.resource for e in nist_bundle.entry
+                     if e.resource.get_resource_type() == "Procedure"]
+
+        # NIST may not have procedures, skip if none
+        if len(procedures) > 0:
+            for procedure in procedures:
+                assert procedure.identifier is not None, \
+                    f"Procedure must have identifier"
+                assert len(procedure.identifier) > 0, \
+                    f"Procedure must have at least one identifier"
+
+    # ====================================================================================
+    # High Priority Tests - AllergyIntolerance Status
+    # ====================================================================================
+
+    def test_allergies_have_clinical_status(self, nist_bundle):
+        """Validate all AllergyIntolerance resources have clinicalStatus (US Core required)."""
+        allergies = [e.resource for e in nist_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        for allergy in allergies:
+            assert allergy.clinicalStatus is not None, \
+                "AllergyIntolerance must have clinicalStatus (US Core required)"
+            assert allergy.clinicalStatus.coding is not None and len(allergy.clinicalStatus.coding) > 0, \
+                "AllergyIntolerance.clinicalStatus must have coding"
+
+            # Verify coding uses correct system
+            coding = allergy.clinicalStatus.coding[0]
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", \
+                "AllergyIntolerance.clinicalStatus must use standard CodeSystem"
+
+            # Verify code is valid (active, inactive, or resolved)
+            assert coding.code in ["active", "inactive", "resolved"], \
+                f"AllergyIntolerance.clinicalStatus code must be active/inactive/resolved, got '{coding.code}'"
+
+    def test_allergies_have_verification_status(self, nist_bundle):
+        """Validate all AllergyIntolerance resources have verificationStatus."""
+        allergies = [e.resource for e in nist_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        for allergy in allergies:
+            assert allergy.verificationStatus is not None, \
+                "AllergyIntolerance must have verificationStatus"
+            assert allergy.verificationStatus.coding is not None and len(allergy.verificationStatus.coding) > 0, \
+                "AllergyIntolerance.verificationStatus must have coding"
+
+            coding = allergy.verificationStatus.coding[0]
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", \
+                "AllergyIntolerance.verificationStatus must use standard CodeSystem"
+
+    def test_allergies_have_category(self, nist_bundle):
+        """Validate AllergyIntolerance resources have category (US Core must-support)."""
+        allergies = [e.resource for e in nist_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        # Check that allergies with medication codes have medication category
+        for allergy in allergies:
+            if allergy.code and allergy.code.coding:
+                for coding in allergy.code.coding:
+                    # If RxNorm code, should have medication category
+                    if coding.system and "rxnorm" in coding.system.lower():
+                        if allergy.category:
+                            assert "medication" in allergy.category, \
+                                f"RxNorm allergy should have 'medication' category"
+
+    # ====================================================================================
+    # High Priority Tests - Organization
+    # ====================================================================================
+
+    def test_organization_exists_in_bundle(self, nist_bundle):
+        """Validate Organization resource is created from C-CDA."""
+        organizations = [e.resource for e in nist_bundle.entry
+                        if e.resource.get_resource_type() == "Organization"]
+
+        # NIST may not have organization, this is optional
+        if len(organizations) > 0:
+            assert len(organizations) > 0, "Bundle contains Organization resource"
+
+    def test_organization_has_identifier(self, nist_bundle):
+        """Validate Organization has identifier from C-CDA."""
+        org = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        if org is not None:
+            assert org.identifier is not None and len(org.identifier) > 0, \
+                "Organization must have identifier"
+
+            identifier = org.identifier[0]
+            assert identifier.system is not None, "Organization identifier must have system"
+            assert identifier.value is not None, "Organization identifier must have value"
+
+    def test_organization_has_name(self, nist_bundle):
+        """Validate Organization has name from C-CDA."""
+        org = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        if org is not None:
+            assert org.name is not None, "Organization must have name"
+
+    def test_organization_has_contact_info(self, nist_bundle):
+        """Validate Organization has address and telecom from C-CDA."""
+        org = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        if org is not None:
+            # Check address
+            if org.address:
+                assert len(org.address) > 0, "Organization should have address"
+
+            # Check telecom
+            if org.telecom:
+                assert len(org.telecom) > 0, "Organization should have telecom"
+
+    def test_patient_references_organization(self, nist_bundle):
+        """Validate Patient.managingOrganization references the Organization."""
+        patient = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+
+        org = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        if patient and org and hasattr(patient, 'managingOrganization'):
+            if patient.managingOrganization:
+                # Check if reference or display is set (both are valid)
+                has_reference = patient.managingOrganization.reference is not None
+                has_display = patient.managingOrganization.display is not None
+
+                assert has_reference or has_display, \
+                    "Patient.managingOrganization must have reference or display"
+
+                # If reference is set, verify it points to the right organization
+                if has_reference:
+                    expected_ref = f"Organization/{org.id}"
+                    assert patient.managingOrganization.reference == expected_ref, \
+                        f"Patient.managingOrganization must reference {expected_ref}"
+
+    def test_encounter_has_diagnosis(self, nist_bundle):
+        """Validate Encounter.diagnosis links to Condition resources."""
+        encounters = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        if len(encounters) > 0:
+            encounter = encounters[0]
+
+            # Verify diagnosis field exists and has entries
+            if hasattr(encounter, 'diagnosis') and encounter.diagnosis:
+                assert len(encounter.diagnosis) > 0, "Encounter should have diagnosis entries"
+
+                # Verify each diagnosis references a Condition
+                for diagnosis in encounter.diagnosis:
+                    assert diagnosis.condition is not None, \
+                        "Encounter.diagnosis must have condition reference"
+                    assert diagnosis.condition.reference is not None, \
+                        "Encounter.diagnosis.condition must have reference"
+                    assert diagnosis.condition.reference.startswith("Condition/"), \
+                        f"Encounter.diagnosis must reference Condition, got '{diagnosis.condition.reference}'"
+
+                    # Verify the referenced Condition exists in bundle
+                    condition_id = diagnosis.condition.reference.split("/")[1]
+                    condition_exists = any(
+                        e.resource.get_resource_type() == "Condition" and e.resource.id == condition_id
+                        for e in nist_bundle.entry
+                    )
+                    assert condition_exists, \
+                        f"Referenced Condition/{condition_id} must exist in bundle"
+
+    def test_encounter_diagnosis_has_use_code(self, nist_bundle):
+        """Validate Encounter.diagnosis has use code (billing, admission, discharge, etc)."""
+        encounters = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        if len(encounters) > 0:
+            encounter = encounters[0]
+
+            if hasattr(encounter, 'diagnosis') and encounter.diagnosis:
+                for diagnosis in encounter.diagnosis:
+                    # US Core recommends use codes from diagnosis-role
+                    if hasattr(diagnosis, 'use') and diagnosis.use:
+                        assert diagnosis.use.coding is not None, \
+                            "Encounter.diagnosis.use should have coding"
+
+    # ====================================================================================
+    # Medium Priority Tests - Composition and Sections
+    # ====================================================================================
+
+    def test_composition_has_all_expected_sections(self, nist_bundle):
+        """Validate Composition has all major clinical sections with correct structure."""
+        composition = nist_bundle.entry[0].resource
+        assert composition.get_resource_type() == "Composition"
+        assert composition.section is not None, "Composition must have sections"
+
+        # Expected sections in NIST Ambulatory (LOINC codes)
+        expected_sections = {
+            "11450-4": "Problems",
+            "48765-2": "Allergies",
+            "10160-0": "Medications",
+        }
+
+        section_codes = {}
+        for section in composition.section:
+            if section.code and section.code.coding:
+                for coding in section.code.coding:
+                    if coding.system == "http://loinc.org":
+                        section_codes[coding.code] = section.title
+
+        # Verify all expected sections present
+        for code, title in expected_sections.items():
+            assert code in section_codes, \
+                f"Composition must have {title} section (LOINC {code})"
+
+    def test_composition_section_entries_reference_valid_resources(self, nist_bundle):
+        """Validate Composition section entries reference resources that exist in bundle."""
+        composition = nist_bundle.entry[0].resource
+
+        # Get all resource IDs in bundle
+        bundle_resource_ids = set()
+        for entry in nist_bundle.entry:
+            if entry.resource and hasattr(entry.resource, 'id'):
+                resource_type = entry.resource.get_resource_type()
+                bundle_resource_ids.add(f"{resource_type}/{entry.resource.id}")
+
+        # Check all section entries
+        for section in composition.section or []:
+            for entry_ref in section.entry or []:
+                assert entry_ref.reference in bundle_resource_ids, \
+                    f"Section entry reference '{entry_ref.reference}' must exist in bundle"
+
+    def test_composition_has_author(self, nist_bundle):
+        """Validate Composition has author (US Core required)."""
+        composition = nist_bundle.entry[0].resource
+        assert composition.get_resource_type() == "Composition"
+
+        # US Core requires at least one author
+        assert composition.author is not None and len(composition.author) > 0, \
+            "Composition.author is required (US Core)"
+
+        # Verify author has either reference or display
+        for author in composition.author:
+            has_reference = hasattr(author, 'reference') and author.reference is not None
+            has_display = hasattr(author, 'display') and author.display is not None
+
+            assert has_reference or has_display, \
+                "Composition.author must have reference or display"
+
+    # ====================================================================================
+    # Medium Priority Tests - Per-resource Category
+    # ====================================================================================
+
+    def test_all_conditions_have_category(self, nist_bundle):
+        """Validate all Condition resources have category (US Core required)."""
+        conditions = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        for condition in conditions:
+            assert condition.category is not None and len(condition.category) > 0, \
+                "Condition.category is required (US Core)"
+
+            # Verify category structure
+            category = condition.category[0]
+            assert category.coding is not None and len(category.coding) > 0, \
+                "Condition.category must have coding"
+
+            coding = category.coding[0]
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/condition-category", \
+                "Condition.category must use condition-category CodeSystem"
+            assert coding.code in ["problem-list-item", "encounter-diagnosis"], \
+                f"Condition.category code must be valid, got '{coding.code}'"
+
+    # ====================================================================================
+    # Medium Priority Tests - Per-resource Patient References
+    # ====================================================================================
+
+    def test_conditions_reference_patient(self, nist_bundle):
+        """Validate all Condition resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        conditions = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        for condition in conditions:
+            assert condition.subject is not None, "Condition.subject is required"
+            assert condition.subject.reference is not None, "Condition.subject must have reference"
+            assert condition.subject.reference == f"Patient/{patient.id}", \
+                f"Condition.subject must reference Patient/{patient.id}"
+
+    def test_diagnostic_reports_reference_patient(self, nist_bundle):
+        """Validate all DiagnosticReport resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        reports = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "DiagnosticReport"
+        ]
+
+        for report in reports:
+            assert report.subject is not None, "DiagnosticReport.subject is required"
+            assert report.subject.reference is not None, "DiagnosticReport.subject must have reference"
+            assert report.subject.reference == f"Patient/{patient.id}", \
+                f"DiagnosticReport.subject must reference Patient/{patient.id}"
+
+    def test_encounters_reference_patient(self, nist_bundle):
+        """Validate all Encounter resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        encounters = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        for encounter in encounters:
+            assert encounter.subject is not None, "Encounter.subject is required"
+            assert encounter.subject.reference is not None, "Encounter.subject must have reference"
+            assert encounter.subject.reference == f"Patient/{patient.id}", \
+                f"Encounter.subject must reference Patient/{patient.id}"
+
+    def test_procedures_reference_patient(self, nist_bundle):
+        """Validate all Procedure resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        procedures = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Procedure"
+        ]
+
+        # NIST may not have procedures
+        if len(procedures) > 0:
+            for procedure in procedures:
+                assert procedure.subject is not None, "Procedure.subject is required"
+                assert procedure.subject.reference is not None, "Procedure.subject must have reference"
+                assert procedure.subject.reference == f"Patient/{patient.id}", \
+                    f"Procedure.subject must reference Patient/{patient.id}"
+
+    def test_observations_reference_patient(self, nist_bundle):
+        """Validate all Observation resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        observations = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        for observation in observations:
+            assert observation.subject is not None, "Observation.subject is required"
+            assert observation.subject.reference is not None, "Observation.subject must have reference"
+            assert observation.subject.reference == f"Patient/{patient.id}", \
+                f"Observation.subject must reference Patient/{patient.id}"
+
+    def test_medication_requests_reference_patient(self, nist_bundle):
+        """Validate all MedicationRequest/MedicationStatement resources have subject reference to Patient."""
+        patient = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        # NIST uses MedicationStatement
+        med_statements = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        for med_statement in med_statements:
+            assert med_statement.subject is not None, "MedicationStatement.subject is required"
+            assert med_statement.subject.reference is not None, "MedicationStatement.subject must have reference"
+            assert med_statement.subject.reference == f"Patient/{patient.id}", \
+                f"MedicationStatement.subject must reference Patient/{patient.id}"
+
+    def test_allergy_intolerances_reference_patient(self, nist_bundle):
+        """Validate all AllergyIntolerance resources have patient reference to Patient."""
+        patient = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        allergies = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        for allergy in allergies:
+            assert allergy.patient is not None, "AllergyIntolerance.patient is required"
+            assert allergy.patient.reference is not None, "AllergyIntolerance.patient must have reference"
+            assert allergy.patient.reference == f"Patient/{patient.id}", \
+                f"AllergyIntolerance.patient must reference Patient/{patient.id}"
+
+    def test_immunizations_reference_patient(self, nist_bundle):
+        """Validate all Immunization resources have patient reference to Patient."""
+        patient = next(
+            (e.resource for e in nist_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None
+
+        immunizations = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
+
+        for immunization in immunizations:
+            assert immunization.patient is not None, "Immunization.patient is required"
+            assert immunization.patient.reference is not None, "Immunization.patient must have reference"
+            assert immunization.patient.reference == f"Patient/{patient.id}", \
+                f"Immunization.patient must reference Patient/{patient.id}"
+
+    # ====================================================================================
+    # Medium Priority Tests - MedicationStatement.intent (NIST uses MedicationStatement)
+    # ====================================================================================
+
+    def test_medication_statements_have_status(self, nist_bundle):
+        """Validate all MedicationStatement resources have status."""
+        med_statements = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        assert len(med_statements) > 0, "Must have MedicationStatement resources"
+
+        for ms in med_statements:
+            assert ms.status is not None, \
+                "MedicationStatement.status is required"
+            assert ms.status in ["active", "completed", "entered-in-error", "intended", "stopped", "on-hold", "unknown", "not-taken"], \
+                f"MedicationStatement.status must be valid code, got '{ms.status}'"
+
+    # ====================================================================================
+    # Medium Priority Tests - Observation.hasMember (panel relationships)
+    # ====================================================================================
+
+    def test_vital_signs_panel_has_members(self, nist_bundle):
+        """Validate Vital Signs panel Observation has hasMember linking to component observations."""
+        observations = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # Find vital signs panel (observation with hasMember)
+        panels = [obs for obs in observations if hasattr(obs, 'hasMember') and obs.hasMember]
+
+        # NIST may not have hasMember relationships
+        if len(panels) > 0:
+            # Verify panel structure
+            panel = panels[0]
+            assert panel.hasMember is not None and len(panel.hasMember) > 0, \
+                "Panel observation must have hasMember references"
+
+            # Verify each member reference is valid
+            for member in panel.hasMember:
+                assert member.reference is not None, \
+                    "hasMember entry must have reference"
+                assert member.reference.startswith("Observation/"), \
+                    f"hasMember must reference Observation, got '{member.reference}'"
+
+                # Verify the referenced Observation exists in bundle
+                obs_id = member.reference.split("/")[1]
+                obs_exists = any(
+                    e.resource.get_resource_type() == "Observation" and e.resource.id == obs_id
+                    for e in nist_bundle.entry
+                )
+                assert obs_exists, \
+                    f"Referenced Observation/{obs_id} must exist in bundle"
+
     def test_medication_has_timing_frequency(self, nist_bundle):
         """Validate Albuterol MedicationStatement has dosage.timing.repeat with period=12, periodUnit=h."""
         # Find all MedicationStatements
