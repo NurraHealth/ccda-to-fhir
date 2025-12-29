@@ -9,9 +9,12 @@ Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-Immunizati
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from pydantic import Field, model_validator
+
+logger = logging.getLogger(__name__)
 
 from .author import Author
 from .datatypes import (
@@ -322,11 +325,13 @@ class SubstanceAdministration(CDAModel):
                 "SHALL contain at least one [1..*] effectiveTime"
             )
 
-        # 4. SHALL contain exactly one doseQuantity
-        if not self.dose_quantity:
-            raise ValueError(
+        # 4. SHOULD contain doseQuantity OR rateQuantity per CONF:1098-30800
+        # NOTE: Spec requires doseQuantity, but Epic/Cerner samples may omit it and use rateQuantity instead.
+        # Accepting either for real-world compatibility.
+        if not self.dose_quantity and not self.rate_quantity:
+            logger.warning(
                 "Medication Activity (2.16.840.1.113883.10.20.22.4.16): "
-                "SHALL contain exactly one [1..1] doseQuantity"
+                "SHOULD contain doseQuantity OR rateQuantity (both missing in this document)"
             )
 
         # 5. SHALL contain exactly one consumable

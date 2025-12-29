@@ -112,8 +112,8 @@ class TestMedicationActivityValidation:
         with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*effectiveTime"):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
-    def test_medication_activity_missing_dose_quantity(self) -> None:
-        """Medication Activity without doseQuantity should fail validation."""
+    def test_medication_activity_missing_dose_quantity(self, caplog) -> None:
+        """Medication Activity without doseQuantity should log warning (lenient for Cerner/Epic)."""
         xml = """
         <substanceAdministration xmlns="urn:hl7-org:v3"
                                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -133,8 +133,10 @@ class TestMedicationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*doseQuantity"):
-            parse_ccda_fragment(xml, SubstanceAdministration)
+        # Should parse successfully but log warning
+        result = parse_ccda_fragment(xml, SubstanceAdministration)
+        assert result is not None
+        assert "doseQuantity" in caplog.text
 
     def test_medication_activity_missing_consumable(self) -> None:
         """Medication Activity without consumable should fail validation."""
