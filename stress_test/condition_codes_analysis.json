@@ -1,0 +1,290 @@
+{
+  "summary": {
+    "total_conditions": 1250,
+    "with_code": 1126,
+    "without_code": 124,
+    "files_with_missing_codes": 69
+  },
+  "root_causes": {
+    "value_nullFlavor": 7,
+    "code_nullFlavor": 5
+  },
+  "files": [
+    {
+      "file": "ccda-samples/Allscripts Professional/xdr-test1-sample2-jb.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Allscripts Professional/Referral Summary (2015 Edition Referral Note)-Community Health Hospitals....xml",
+      "missing_count": 4
+    },
+    {
+      "file": "ccda-samples/Henry Schein/CDA_Bates_g9.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Amrita/Admission_Inpatient_3156206_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Custer_Grant_109499_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Vasquez_Manuel_Diego_3156110_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Biscayne_Sophia_4109492_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Cummings_Cecilia_Cecil_315221_CCD_201709211124.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Amrita/Richardson_Russell_Clint_3156101_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Felix_Daffodil_315265_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Broadway_Ashley_Jennifer_3156108_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Albert_Bernard_315116_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Halden_Winifred_315117_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Duro_Paula_109500_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Hester_Georgia_315195_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Olympic_Kimberly_808084_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Waldemar_Jonalyn_315196_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Visit_Inpatient_3156210_CCD_201709180916.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Amrita/George_Fautina_315263_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Armstead_Valter_315199_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Bee_Donna_Victoria_177993_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Baldwin_Roger_315181_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Hocking_Spencer_808085_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Jone_Candida_315264_CCD_201709180920.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Amrita/Wells_Lacy_3156109_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Fernandus_Jacqueline_315198_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Benton_Katherine_Mackenzie_3156103_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Yeats_William_Butler_3155201_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Mackey_Erika_315661_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Notch_Frank_2109497_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Loe_Laura_L_315671_CCD_201709180916.xml",
+      "missing_count": 4
+    },
+    {
+      "file": "ccda-samples/Amrita/Johnson_Matilda_315191_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/David_Sanem_315262_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Barrett_Helen_3156107_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Jones_Myra_315223_CCD_201709211131.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Amrita/Care_Urgent_3156201_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Smith_Alvina_315261_CCD_201709180920.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Amrita/Christ_Stephany_315114_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Itasca_Elizabeth_707070_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Gifford_Louise_315115_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Radford_Nelwina_315193_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/UNK_UNK_3156203_CCD_201709180920.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Amrita/Yellowstone_Tim_808082_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Amelia_Walden_315182_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Saguaro_Hector_808081_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Ceasar_Belinda_315197_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Renfred_Sarah_315184_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Stanley_Clement_S_648286_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Smith_James_412299_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Ruth_Ulvar_315531_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Agustin_Albertina_315192_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Banks_Tyler_Owen_31561051_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/MYLONGLASTNAMEISCRAZYATTHISMANYCHAR_BOBZIMBABWAYALPHAPAINUBERDOOBERNAME_ZACHARYTYPOGALORE_109498_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Victoria_Patrick_315183_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Turner_Susan_Susy_315224_CCD_201709211136.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Amrita/Faust_Harrod_315194_CCD_201709180920.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Spencer_Richard_315113_CCD_201709180916.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Amrita/Walker_Lauren_Laura_315222_CCD_201709211141.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Amrita/Fairchild_Cameron_A_171122_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Adirondack_Susanne_808080_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Yosemite_John_808083_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Amrita/Wong_Elise_3156102_CCD_201709180916.xml",
+      "missing_count": 2
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/Inpatient Summary-rebeccalarson.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/AmbulatorySummar-alicenewman.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/Inpatient Referral Summary-johnwright.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Allscripts FollowMyHealth/Ambulatory Summary-jeremybates.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Allscripts Sunrise/C-CDA_400700201_20160902122113_Bates_Jeremy.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "ccda-samples/Allscripts Sunrise/C-CDA_400900201_20160902122036_Wright_John.xml",
+      "missing_count": 1
+    },
+    {
+      "file": "C-CDA-Examples/General/External Document Reference/PROBLEMS_in_Empty_C-CDA_2.1 (C-CDAR2.1).xml",
+      "missing_count": 1
+    }
+  ]
+}
