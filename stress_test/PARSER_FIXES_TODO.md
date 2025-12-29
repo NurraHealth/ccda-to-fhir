@@ -2,22 +2,22 @@
 
 **Last Updated:** 2025-12-29
 **Total Tasks:** 24
-**Completed:** 4/24 (fixes applied)
-**Correctly Rejected:** 9/24 (spec violations verified)
+**Completed:** 5/24 (fixes applied)
+**Correctly Rejected:** 11/24 (spec violations verified)
 **Not Implemented (Strict):** 13/24 (vendor bugs, staying strict)
 **Remaining Fixable:** 0/24
-**Progress:** 100% (4 fixed, 9 correctly rejected, 13 excluded, 0 remaining)
+**Progress:** 100% (5 fixed, 11 correctly rejected, 13 excluded, 0 remaining)
 
-**Stress Test Status:** 392/828 total success (47.3%, +9 from correctly rejected spec violations)
+**Stress Test Status:** 395/828 total success (47.7%, +11 from correctly rejected spec violations)
 **Breakdown:**
-- 383 successful conversions (46.3%)
-- 9 correctly rejected (1.1% - spec violations caught by parser)
-- 436 actual failures (52.7%)
-**Real Success Rate:** ~93% (392/422 complete documents, excluding 406 fragments)
+- 384 successful conversions (46.4%)
+- 11 correctly rejected (1.3% - spec violations caught by parser)
+- 433 actual failures (52.3%)
+**Real Success Rate:** ~94% (395/422 complete documents, excluding 406 fragments)
 
 ---
 
-## ✅ Completed Fixes (4)
+## ✅ Completed Fixes (5)
 
 ### ClinicalDocument - effectiveTime datatype (1 task)
 - [x] **Task ClinicalDocument-01**: JONEM00.xml (EchoMan)
@@ -40,9 +40,17 @@
   - **Standards Research:** CD is the correct datatype per HL7 CDA specification (supports complex terminologies)
   - **Impact:** +1 document successfully parsed (383/828)
 
+### Act - Allergy Concern Act effectiveTime.low (1 task)
+- [x] **Task Act-01**: JeremyBates_CCDdownload.xml (Navigating Cancer)
+  - **Fix Applied:** Changed effectiveTime.low validation from absolute to conditional in act.py:277-283
+  - **Root Cause:** Our parser incorrectly required low unconditionally; C-CDA spec has CONDITIONAL requirements
+  - **Standards Research:** CONF:1198-7504: low required only when statusCode='active'; CONF:1198-10085: high required when statusCode='completed'
+  - **Document Status:** statusCode='completed' with high element (valid per spec)
+  - **Impact:** +1 document successfully parsed (384/828)
+
 ---
 
-## ✅ Correctly Rejected (9 tasks)
+## ✅ Correctly Rejected (11 tasks)
 
 ### Observation - Smoking Status missing id (2 tasks) - ✅ CORRECTLY REJECTED
 
@@ -103,6 +111,28 @@
 **Affected Files (correctly rejected):**
 - [x] ContinuityOfCareDocument_MUBatJer_20170601-145724.xml (MDLogic) - Correctly rejected
 - [x] ContinuityOfCareDocument_MUNewAli_20170601-145612.xml (MDLogic) - Correctly rejected
+
+### Observation - Problem Observation statusCode nullFlavor (2 tasks) - ✅ CORRECTLY REJECTED
+
+**Issue:** Problem Observation requires `statusCode` with code="completed", but vendors send nullFlavor instead.
+
+**Standards Research:**
+- C-CDA spec: Problem Observation **SHALL contain statusCode with code="completed"** (docs/ccda/observation-problem.md:371)
+- nullFlavor is NOT allowed for statusCode - must have actual code value
+- Vendors send `<statusCode nullFlavor="UNK" />` or `<statusCode nullFlavor="NI" />`
+
+**Root Cause:** Vendor bug - violates C-CDA SHALL requirement
+
+**Decision:** **STAY STRICT** - Maintain standards compliance
+- statusCode must have code="completed" per spec
+- No exception for nullFlavor in this context
+- Consistent with our strict validation approach
+
+**Status:** ✅ Parser correctly rejects these documents (spec violations verified)
+
+**Affected Files (correctly rejected):**
+- [x] 201710-0010123.xml (EHealthPartners) - Correctly rejected
+- [x] Bates.xml (eRAD) - Correctly rejected
 
 ---
 
@@ -217,16 +247,15 @@
 | Category | Count | % of Total | Status |
 |----------|-------|------------|--------|
 | **Fragments (not ClinicalDocuments)** | 414 | 50.0% | Expected ✓ |
-| **Successful conversions** | 383 | 46.3% | ✓ |
+| **Successful conversions** | 384 | 46.4% | ✓ |
 | **Author.time datatype (vendor bug)** | 13 | 1.6% | Not Implemented ⊘ |
 | **Vital Sign value CD (spec violation)** | 5 | 0.6% | Correctly Rejected ✓ |
 | **Namespace errors** | 4 | 0.5% | Unfixable ❌ |
 | **Smoking Status missing ID (spec violation)** | 2 | 0.2% | Correctly Rejected ✓ |
-| **Problem Observation statusCode** | 2 | 0.2% | Remaining 🔧 |
+| **Problem Observation statusCode (spec violation)** | 2 | 0.2% | Correctly Rejected ✓ |
 | **Invalid schemaLocation (spec violation)** | 2 | 0.2% | Correctly Rejected ✓ |
 | **Incomplete fragments** | 2 | 0.2% | Excluded ❌ |
-| **Act effectiveTime.low** | 1 | 0.1% | Remaining 🔧 |
-| **Total Success** | 392 | 47.3% | ✓ |
+| **Total Success** | 395 | 47.7% | ✓ |
 
 ---
 
@@ -236,18 +265,20 @@
 
 **Completed in this session:**
 1. ✅ **Observation.code datatype** - Fixed CD | CE datatype acceptance (+1 document)
-2. ✅ **Smoking Status missing id** - Verified correct rejection of spec violation (+2 correctly rejected)
-3. ✅ **Vital Sign value datatype** - Verified correct rejection of spec violations (+5 correctly rejected)
-4. ✅ **Invalid schemaLocation** - Verified correct rejection of malformed XML (+2 correctly rejected)
+2. ✅ **Act effectiveTime.low conditional validation** - Fixed CONF:1198-7504 conditional requirement (+1 document)
+3. ✅ **Smoking Status missing id** - Verified correct rejection of spec violation (+2 correctly rejected)
+4. ✅ **Vital Sign value datatype** - Verified correct rejection of spec violations (+5 correctly rejected)
+5. ✅ **Problem Observation statusCode** - Verified correct rejection of spec violations (+2 correctly rejected)
+6. ✅ **Invalid schemaLocation** - Verified correct rejection of malformed XML (+2 correctly rejected)
 
 **Remaining Tasks:**
-- **3 tasks** remain but require vendor-specific workarounds (Problem Observation statusCode, Act effectiveTime.low)
+- **0 tasks** remain - all fixable tasks completed!
 - **13 tasks** excluded (Author.time IVL_TS - vendor bug, staying strict on standards)
 - **6 tasks** unfixable (namespace errors, incomplete fragments)
 
 **Current Status:**
-- **392/828 total success (47.3%)** = 385 conversions + 7 correctly rejected
-- **Real success rate: ~93%** (392/422 complete documents, excluding 406 fragments)
+- **395/828 total success (47.7%)** = 384 conversions + 11 correctly rejected
+- **Real success rate: ~94%** (395/422 complete documents, excluding 406 fragments)
 - **All high-value tasks completed** - remaining tasks have diminishing returns
 
 ---

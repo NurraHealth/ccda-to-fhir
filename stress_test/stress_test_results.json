@@ -1,70 +1,70 @@
 {
   "summary": {
     "total_files": 828,
-    "successful": 383,
-    "correctly_rejected": 9,
-    "total_success": 392,
-    "failed": 436,
-    "success_rate": "47.3%",
-    "conversion_rate": "46.3%",
-    "total_resources_created": 10816,
-    "avg_conversion_time_ms": "4.6"
+    "successful": 384,
+    "correctly_rejected": 11,
+    "total_success": 395,
+    "failed": 433,
+    "success_rate": "47.7%",
+    "conversion_rate": "46.4%",
+    "total_resources_created": 10834,
+    "avg_conversion_time_ms": "4.4"
   },
   "resource_distribution": {
-    "Composition": 361,
-    "Patient": 374,
-    "Practitioner": 899,
+    "Composition": 362,
+    "Patient": 375,
+    "Practitioner": 902,
     "Device": 299,
-    "Organization": 571,
+    "Organization": 572,
     "RelatedPerson": 84,
-    "DocumentReference": 383,
-    "AllergyIntolerance": 463,
-    "Observation": 2573,
+    "DocumentReference": 384,
+    "AllergyIntolerance": 464,
+    "Observation": 2578,
     "DiagnosticReport": 279,
-    "Procedure": 480,
+    "Procedure": 481,
     "Provenance": 259,
     "PractitionerRole": 116,
     "Goal": 129,
-    "Encounter": 489,
+    "Encounter": 490,
     "CarePlan": 4,
-    "Condition": 1248,
+    "Condition": 1250,
     "MedicationStatement": 792,
     "Immunization": 342,
     "ServiceRequest": 81,
     "Location": 258,
-    "MedicationRequest": 276,
+    "MedicationRequest": 277,
     "Medication": 56
   },
   "error_distribution": {
-    "MalformedXMLError": 445
+    "MalformedXMLError": 444
   },
   "us_core_compliance": {
     "patient_completeness": {
-      "has_patient": 374,
-      "has_name": 374,
-      "has_identifier": 374,
-      "has_gender": 374,
-      "has_birthdate": 374
+      "has_patient": 375,
+      "has_name": 375,
+      "has_identifier": 375,
+      "has_gender": 375,
+      "has_birthdate": 375
     },
     "condition_compliance": {
-      "with_code": 1124,
-      "with_category": 1248,
-      "with_subject": 1248
+      "with_code": 1126,
+      "with_category": 1250,
+      "with_subject": 1250
     },
     "allergy_compliance": {
-      "with_code": 413,
-      "with_patient": 463,
-      "with_clinical_status": 463
+      "with_code": 414,
+      "with_patient": 464,
+      "with_clinical_status": 464
     },
     "observation_compliance": {
-      "with_code": 2573,
-      "with_status": 2573,
-      "with_category": 2570
+      "with_code": 2578,
+      "with_status": 2578,
+      "with_category": 2575
     }
   },
   "ccda_fhir_mapping": {
-    "has_composition": 361,
-    "avg_sections_per_doc": 16.942558746736292,
+    "has_composition": 362,
+    "avg_sections_per_doc": 16.9375,
     "total_provenance": 259,
     "has_narrative": 0
   },
@@ -80,6 +80,12 @@
       "reason": "Smoking Status Observation missing required id element",
       "error_type": "MalformedXMLError",
       "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78): SHALL contain at least one [1..*] id [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/EHealthPartners/201710-0010123.xml",
+      "reason": "Problem Observation statusCode uses nullFlavor='UNK' instead of required code='completed'",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Problem Observation (2.16.840.1.113883.10.20.22.4.4): statusCode SHALL be 'completed', found 'None' [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
     },
     {
       "file": "ccda-samples/MDLogic/ContinuityOfCareDocument_MUBatJer_20170601-145724.xml",
@@ -122,6 +128,12 @@
       "reason": "Vital Sign Observation uses CD instead of required PQ for value element; also misuses template for non-vital-sign data",
       "error_type": "MalformedXMLError",
       "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/eRAD/Bates.xml",
+      "reason": "Problem Observation statusCode uses nullFlavor='NI' instead of required code='completed'",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Problem Observation (2.16.840.1.113883.10.20.22.4.4): statusCode SHALL be 'completed', found 'None' [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
     }
   ],
   "failed_files": [
@@ -2221,16 +2233,6 @@
       "error_message": "Root element must be 'ClinicalDocument', got 'section'. Use test fixtures' wrap_in_ccda_document() for fragments."
     },
     {
-      "file": "ccda-samples/EHealthPartners/201710-0010123.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Problem Observation (2.16.840.1.113883.10.20.22.4.4): statusCode SHALL be 'completed', found 'None' [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
-    },
-    {
-      "file": "ccda-samples/Navigating Cancer/JeremyBates_CCDdownload.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Act from element act: 1 validation error for Act\n  Value error, Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30): effectiveTime SHALL contain low [type=value_error, input_value={'class_code': 'ACT', 'mo...=None, organizer=None)]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
-    },
-    {
       "file": "ccda-samples/NextGen/AliceNewmanCCD.xml",
       "error_type": "MalformedXMLError",
       "error_message": "Invalid XML syntax: Attribute xmlns:sdtc redefined, line 14, column 34 (<string>, line 14)"
@@ -2299,11 +2301,6 @@
       "file": "ccda-samples/NextTech/Susan_Turner_74_000001.xml",
       "error_type": "MalformedXMLError",
       "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808114...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/eRAD/Bates.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Problem Observation (2.16.840.1.113883.10.20.22.4.4): statusCode SHALL be 'completed', found 'None' [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
     }
   ]
 }

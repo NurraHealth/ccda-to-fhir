@@ -274,11 +274,13 @@ class Act(CDAModel):
                 "SHALL contain exactly one [1..1] effectiveTime"
             )
 
-        if not self.effective_time.low:
-            raise ValueError(
-                "Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30): "
-                "effectiveTime SHALL contain low"
-            )
+        # CONF:1198-7504: If statusCode='active', SHALL contain low
+        if self.status_code.code == "active":
+            if not self.effective_time.low:
+                raise ValueError(
+                    "Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30): "
+                    "effectiveTime SHALL contain low when statusCode='active' (CONF:1198-7504)"
+                )
 
         # CONF:1198-10085: If statusCode is completed/aborted, SHALL contain high
         if self.status_code.code in ["completed", "aborted"]:

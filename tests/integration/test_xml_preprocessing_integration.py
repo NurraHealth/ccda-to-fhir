@@ -89,19 +89,21 @@ class TestPreprocessingImprovesSuccessRate:
 
         summary = results["summary"]
 
-        # Baseline: 47.3% total success (392/828) on full C-CDA-Examples dataset
+        # Baseline: 47.7% total success (395/828) on full C-CDA-Examples dataset
         # Includes complete documents and fragments
         # After namespace preprocessing improvements, most failures are fragments
         # As of 2025-12-29: +1 from Observation.code datatype fix (CD | CE)
-        #                   +9 from correctly rejected spec violations:
+        #                   +11 from correctly rejected spec violations:
         #                     - 5 Vital Sign value CD (should be PQ)
         #                     - 2 MDLogic invalid schemaLocation
         #                     - 2 ATG Smoking Status missing ID
+        #                     - 2 Problem Observation statusCode nullFlavor (should be code='completed')
+        #                   +1 from fixing Allergy Concern Act effectiveTime.low validation (conditional, not absolute)
         assert summary["total_files"] == 828
-        assert summary["successful"] == 383  # Successful conversions
-        assert summary["correctly_rejected"] == 9  # Spec violations correctly caught
-        assert summary["total_success"] == 392  # Total success (conversions + correct rejections)
-        assert summary["failed"] == 436  # Actual failures
+        assert summary["successful"] == 384  # Successful conversions
+        assert summary["correctly_rejected"] == 11  # Spec violations correctly caught
+        assert summary["total_success"] == 395  # Total success (conversions + correct rejections)
+        assert summary["failed"] == 433  # Actual failures
 
         # Most failures are MalformedXMLError (fragments + 4 malformed namespace examples)
         assert results["error_distribution"]["MalformedXMLError"] >= 400

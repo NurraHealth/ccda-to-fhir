@@ -59,6 +59,22 @@
           "spec_requirement": "C-CDA SHALL: Smoking Status SHALL contain at least one [1..*] id (CONF:1098-32401)",
           "expected_error_pattern": "Smoking Status.*SHALL contain at least one.*id",
           "spec_reference": "2.16.840.1.113883.10.20.22.4.78"
+        },
+        {
+          "path": "ccda-samples/EHealthPartners/201710-0010123.xml",
+          "vendor": "EHealthPartners",
+          "reason": "Problem Observation statusCode uses nullFlavor='UNK' instead of required code='completed'",
+          "spec_requirement": "C-CDA SHALL: Problem Observation SHALL contain statusCode with code='completed'",
+          "expected_error_pattern": "Problem Observation.*statusCode SHALL be 'completed'",
+          "spec_reference": "2.16.840.1.113883.10.20.22.4.4"
+        },
+        {
+          "path": "ccda-samples/eRAD/Bates.xml",
+          "vendor": "eRAD",
+          "reason": "Problem Observation statusCode uses nullFlavor='NI' instead of required code='completed'",
+          "spec_requirement": "C-CDA SHALL: Problem Observation SHALL contain statusCode with code='completed'",
+          "expected_error_pattern": "Problem Observation.*statusCode SHALL be 'completed'",
+          "spec_reference": "2.16.840.1.113883.10.20.22.4.4"
         }
       ]
     },
