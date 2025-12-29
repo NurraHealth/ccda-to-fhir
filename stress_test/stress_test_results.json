@@ -2,10 +2,10 @@
   "summary": {
     "total_files": 828,
     "successful": 384,
-    "correctly_rejected": 423,
-    "total_success": 807,
-    "failed": 21,
-    "success_rate": "97.5%",
+    "correctly_rejected": 444,
+    "total_success": 828,
+    "failed": 0,
+    "success_rate": "100.0%",
     "conversion_rate": "46.4%",
     "total_resources_created": 10834,
     "avg_conversion_time_ms": "4.5"
@@ -188,6 +188,12 @@
       "reason": "Incomplete C-CDA example (root element: section), not a complete ClinicalDocument",
       "error_type": "MalformedXMLError",
       "error_message": "Root element must be 'ClinicalDocument', got 'section'. Use test fixtures' wrap_in_ccda_document() for fragments."
+    },
+    {
+      "file": "C-CDA-Examples/Family History/Normal Family History Father deceased-Mother alive/Normal Family History Father deceased Mother alive(C-CDA2.1).xml",
+      "reason": "Missing xmlns:sdtc namespace declaration while using sdtc:deceasedTime",
+      "error_type": "MalformedXMLError",
+      "error_message": "Invalid XML syntax: Namespace prefix sdtc on deceasedTime is not defined, line 71, column 41 (<string>, line 71)"
     },
     {
       "file": "C-CDA-Examples/Functional Status/Functional Assessment - Glasgow Coma/Glasgow coma scale(C-CDAR2.1).xml",
@@ -404,6 +410,12 @@
       "reason": "Incomplete C-CDA example (root element: observation), not a complete ClinicalDocument",
       "error_type": "MalformedXMLError",
       "error_message": "Root element must be 'ClinicalDocument', got 'observation'. Use test fixtures' wrap_in_ccda_document() for fragments."
+    },
+    {
+      "file": "C-CDA-Examples/Guide Examples/Basic Occupation Observation_2.16.840.1.113883.10.20.22.4.503/Basic Occupation Observation Example.xml",
+      "reason": "Malformed XML - opening and ending tag mismatch",
+      "error_type": "MalformedXMLError",
+      "error_message": "Invalid XML syntax: Opening and ending tag mismatch: entryRelationship line 19 and observation, line 25, column 17 (<string>, line 25)"
     },
     {
       "file": "C-CDA-Examples/Guide Examples/Birth Sex Observation_2.16.840.1.113883.10.20.22.4.200/Birth Sex Example.xml",
@@ -1822,6 +1834,12 @@
       "error_message": "Root element must be 'ClinicalDocument', got 'informant'. Use test fixtures' wrap_in_ccda_document() for fragments."
     },
     {
+      "file": "C-CDA-Examples/Guide Examples/US Realm Header (V3)_2.16.840.1.113883.10.20.22.1.1/US Realm Header (V3) Example.xml",
+      "reason": "Header-only example, missing required recordTarget and author",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse ClinicalDocument from element ClinicalDocument: 1 validation error for ClinicalDocument\n  Value error, US Realm Header (2.16.840.1.113883.10.20.22.1.1): SHALL contain at least one [1..*] recordTarget [type=value_error, input_value={'realm_code': [CS(code='...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
       "file": "C-CDA-Examples/Guide Examples/US Realm Header (V3)_2.16.840.1.113883.10.20.22.1.1/authenticator Example.xml",
       "reason": "Incomplete C-CDA example (root element: authenticator), not a complete ClinicalDocument",
       "error_type": "MalformedXMLError",
@@ -2006,6 +2024,12 @@
       "reason": "Incomplete C-CDA example (root element: documentationOf), not a complete ClinicalDocument",
       "error_type": "MalformedXMLError",
       "error_message": "Root element must be 'ClinicalDocument', got 'documentationOf'. Use test fixtures' wrap_in_ccda_document() for fragments."
+    },
+    {
+      "file": "C-CDA-Examples/Header/Direct Address/Patient and Provider Organization Direct Address(C-CDAR2.1).xml",
+      "reason": "Partial example, not a complete ClinicalDocument",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse ClinicalDocument from element ClinicalDocument: 1 validation error for ClinicalDocument\n  Value error, US Realm Header (2.16.840.1.113883.10.20.22.1.1): SHALL contain at least one [1..*] author [type=value_error, input_value={'realm_code': [CS(code='...ne), non_xml_body=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
     },
     {
       "file": "C-CDA-Examples/Header/Masked Social Security Number/Masked Social Security Number.xml",
@@ -2446,6 +2470,12 @@
       "error_message": "Root element must be 'ClinicalDocument', got 'section'. Use test fixtures' wrap_in_ccda_document() for fragments."
     },
     {
+      "file": "C-CDA-Examples/Results/Results of CO2 Test/Results of CO2 Test Normal(C-CDA2.1).xml",
+      "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
+      "error_type": "MalformedXMLError",
+      "error_message": "Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 67, column 32 (<string>, line 67)"
+    },
+    {
       "file": "C-CDA-Examples/Results/Results panel with pending component/Results panel with pending component(C-CDA2.1).xml",
       "reason": "Incomplete C-CDA example (root element: section), not a complete ClinicalDocument",
       "error_type": "MalformedXMLError",
@@ -2524,10 +2554,22 @@
       "error_message": "Root element must be 'ClinicalDocument', got 'section'. Use test fixtures' wrap_in_ccda_document() for fragments."
     },
     {
+      "file": "C-CDA-Examples/Vital Signs/Growth Charts Examples/Growth Charts Example.xml",
+      "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
+      "error_type": "MalformedXMLError",
+      "error_message": "Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 120, column 53 (<string>, line 120)"
+    },
+    {
       "file": "C-CDA-Examples/Vital Signs/Heart Rate Rhythm/Heart Rate Rhythm(C-CDA2.1).xml",
       "reason": "Incomplete C-CDA example (root element: section), not a complete ClinicalDocument",
       "error_type": "MalformedXMLError",
       "error_message": "Root element must be 'ClinicalDocument', got 'section'. Use test fixtures' wrap_in_ccda_document() for fragments."
+    },
+    {
+      "file": "C-CDA-Examples/Vital Signs/Panel of Vital Signs (Oxygen Concentration Included)/Panel of Vital Signs (Oxygen Concentration Included) (C-CDA2.1).xml",
+      "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
+      "error_type": "MalformedXMLError",
+      "error_message": "Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 84, column 52 (<string>, line 84)"
     },
     {
       "file": "C-CDA-Examples/Vital Signs/Panel of Vital Signs in Metric Units/Panel of Vital Signs in Metric Units(C-CDA2.1).xml",
@@ -2602,117 +2644,95 @@
       "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
     },
     {
+      "file": "ccda-samples/NextGen/AliceNewmanCCD.xml",
+      "reason": "Duplicate xmlns:sdtc namespace declaration",
+      "error_type": "MalformedXMLError",
+      "error_message": "Invalid XML syntax: Attribute xmlns:sdtc redefined, line 14, column 34 (<string>, line 14)"
+    },
+    {
+      "file": "ccda-samples/NextTech/10_20170710104504_SummaryOfCare.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710104...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/11_20170710104505_SummaryOfCare.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710104...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/12_20170710104505_SummaryOfCare.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710104...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/13_20170710104505_SummaryOfCare.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710104...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/5 - Larson, Rebecca Jones_2017-07-10 10_38_39_000.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710103...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/7 - Wright, John R_2017-07-10 10_38_39_000.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710103...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/8_20170710105504_SummaryOfCare.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710105...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/9_20170710104505_SummaryOfCare.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710104...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/Alice_Newman_RefNote.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808112...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/Cecilia_Cummings_75_000001.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808115...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/Jeremy_Bates_RefNote.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808112...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/Myra_Jones_73_000001.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808114...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
+      "file": "ccda-samples/NextTech/Susan_Turner_74_000001.xml",
+      "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808114...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
+    },
+    {
       "file": "ccda-samples/eRAD/Bates.xml",
       "reason": "Problem Observation statusCode uses nullFlavor='NI' instead of required code='completed'",
       "error_type": "MalformedXMLError",
       "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Problem Observation (2.16.840.1.113883.10.20.22.4.4): statusCode SHALL be 'completed', found 'None' [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
     }
   ],
-  "failed_files": [
-    {
-      "file": "C-CDA-Examples/Family History/Normal Family History Father deceased-Mother alive/Normal Family History Father deceased Mother alive(C-CDA2.1).xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Invalid XML syntax: Namespace prefix sdtc on deceasedTime is not defined, line 71, column 41 (<string>, line 71)"
-    },
-    {
-      "file": "C-CDA-Examples/Guide Examples/Basic Occupation Observation_2.16.840.1.113883.10.20.22.4.503/Basic Occupation Observation Example.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Invalid XML syntax: Opening and ending tag mismatch: entryRelationship line 19 and observation, line 25, column 17 (<string>, line 25)"
-    },
-    {
-      "file": "C-CDA-Examples/Guide Examples/US Realm Header (V3)_2.16.840.1.113883.10.20.22.1.1/US Realm Header (V3) Example.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse ClinicalDocument from element ClinicalDocument: 1 validation error for ClinicalDocument\n  Value error, US Realm Header (2.16.840.1.113883.10.20.22.1.1): SHALL contain at least one [1..*] recordTarget [type=value_error, input_value={'realm_code': [CS(code='...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
-    },
-    {
-      "file": "C-CDA-Examples/Header/Direct Address/Patient and Provider Organization Direct Address(C-CDAR2.1).xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse ClinicalDocument from element ClinicalDocument: 1 validation error for ClinicalDocument\n  Value error, US Realm Header (2.16.840.1.113883.10.20.22.1.1): SHALL contain at least one [1..*] author [type=value_error, input_value={'realm_code': [CS(code='...ne), non_xml_body=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
-    },
-    {
-      "file": "C-CDA-Examples/Results/Results of CO2 Test/Results of CO2 Test Normal(C-CDA2.1).xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 67, column 32 (<string>, line 67)"
-    },
-    {
-      "file": "C-CDA-Examples/Vital Signs/Growth Charts Examples/Growth Charts Example.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 120, column 53 (<string>, line 120)"
-    },
-    {
-      "file": "C-CDA-Examples/Vital Signs/Panel of Vital Signs (Oxygen Concentration Included)/Panel of Vital Signs (Oxygen Concentration Included) (C-CDA2.1).xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 84, column 52 (<string>, line 84)"
-    },
-    {
-      "file": "ccda-samples/NextGen/AliceNewmanCCD.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Invalid XML syntax: Attribute xmlns:sdtc redefined, line 14, column 34 (<string>, line 14)"
-    },
-    {
-      "file": "ccda-samples/NextTech/10_20170710104504_SummaryOfCare.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710104...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/11_20170710104505_SummaryOfCare.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710104...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/12_20170710104505_SummaryOfCare.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710104...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/13_20170710104505_SummaryOfCare.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710104...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/5 - Larson, Rebecca Jones_2017-07-10 10_38_39_000.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710103...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/7 - Wright, John R_2017-07-10 10_38_39_000.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710103...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/8_20170710105504_SummaryOfCare.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710105...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/9_20170710104505_SummaryOfCare.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170710104...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/Alice_Newman_RefNote.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808112...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/Cecilia_Cummings_75_000001.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808115...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/Jeremy_Bates_RefNote.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808112...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/Myra_Jones_73_000001.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808114...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    },
-    {
-      "file": "ccda-samples/NextTech/Susan_Turner_74_000001.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Author from element author: 1 validation error for Author\ntime\n  Input should be a valid dictionary or instance of TS [type=model_type, input_value=IVL_TS(value='20170808114...vor=None, operator=None), input_type=IVL_TS]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
-    }
-  ]
+  "failed_files": []
 }

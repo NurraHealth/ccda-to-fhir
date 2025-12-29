@@ -82,24 +82,24 @@
       "description": "Documents with XML syntax errors - not fixable by parser",
       "files": [
         {
-          "path": "C-CDA-Examples/Normal Family History Father deceased Mother alive(C-CDA2.1).xml",
-          "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
-          "expected_error_pattern": "namespace|xsi"
+          "path": "C-CDA-Examples/Family History/Normal Family History Father deceased-Mother alive/Normal Family History Father deceased Mother alive(C-CDA2.1).xml",
+          "reason": "Missing xmlns:sdtc namespace declaration while using sdtc:deceasedTime",
+          "expected_error_pattern": "Namespace prefix"
         },
         {
-          "path": "C-CDA-Examples/Results of CO2 Test Normal(C-CDA2.1).xml",
+          "path": "C-CDA-Examples/Results/Results of CO2 Test/Results of CO2 Test Normal(C-CDA2.1).xml",
           "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
-          "expected_error_pattern": "namespace|xsi"
+          "expected_error_pattern": "Namespace prefix"
         },
         {
-          "path": "C-CDA-Examples/Growth Charts Example.xml",
+          "path": "C-CDA-Examples/Vital Signs/Growth Charts Examples/Growth Charts Example.xml",
           "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
-          "expected_error_pattern": "namespace|xsi"
+          "expected_error_pattern": "Namespace prefix"
         },
         {
-          "path": "C-CDA-Examples/Panel of Vital Signs (Oxygen Concentration Included) (C-CDA2.1).xml",
+          "path": "C-CDA-Examples/Vital Signs/Panel of Vital Signs (Oxygen Concentration Included)/Panel of Vital Signs (Oxygen Concentration Included) (C-CDA2.1).xml",
           "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
-          "expected_error_pattern": "namespace|xsi"
+          "expected_error_pattern": "Namespace prefix"
         },
         {
           "path": "ccda-samples/MDLogic/ContinuityOfCareDocument_MUBatJer_20170601-145724.xml",
@@ -110,6 +110,16 @@
           "path": "ccda-samples/MDLogic/ContinuityOfCareDocument_MUNewAli_20170601-145612.xml",
           "reason": "Invalid xmlns:schemaLocation syntax (should be xsi:schemaLocation)",
           "expected_error_pattern": "schemaLocation|namespace"
+        },
+        {
+          "path": "ccda-samples/NextGen/AliceNewmanCCD.xml",
+          "reason": "Duplicate xmlns:sdtc namespace declaration",
+          "expected_error_pattern": "Attribute xmlns:sdtc redefined"
+        },
+        {
+          "path": "C-CDA-Examples/Guide Examples/Basic Occupation Observation_2.16.840.1.113883.10.20.22.4.503/Basic Occupation Observation Example.xml",
+          "reason": "Malformed XML - opening and ending tag mismatch",
+          "expected_error_pattern": "Opening and ending tag mismatch"
         }
       ]
     },
@@ -117,12 +127,14 @@
       "description": "Incomplete C-CDA examples (not full documents) - excluded from testing",
       "files": [
         {
-          "path": "C-CDA-Examples/US Realm Header (V3) Example.xml",
-          "reason": "Header-only example, missing required recordTarget and author"
+          "path": "C-CDA-Examples/Guide Examples/US Realm Header (V3)_2.16.840.1.113883.10.20.22.1.1/US Realm Header (V3) Example.xml",
+          "reason": "Header-only example, missing required recordTarget and author",
+          "expected_error_pattern": "validation error for ClinicalDocument"
         },
         {
-          "path": "C-CDA-Examples/Patient and Provider Organization Direct Address(C-CDAR2.1).xml",
-          "reason": "Partial example, not a complete ClinicalDocument"
+          "path": "C-CDA-Examples/Header/Direct Address/Patient and Provider Organization Direct Address(C-CDAR2.1).xml",
+          "reason": "Partial example, not a complete ClinicalDocument",
+          "expected_error_pattern": "validation error for ClinicalDocument"
         }
       ]
     },
@@ -2188,6 +2200,102 @@
           "path": "C-CDA-Examples/Vital Signs/Panel of Vital Signs in Mixed Metric-Imperial Units/Panel of Vital Signs in Mixed Metric-Imperial Units(C-CDA2.1).xml",
           "reason": "Incomplete C-CDA example (root element: section), not a complete ClinicalDocument",
           "expected_error_pattern": "Root element must be 'ClinicalDocument'"
+        }
+      ]
+    },
+    "vendor_bugs": {
+      "description": "Vendor-specific bugs violating C-CDA spec - correctly rejected by strict parser",
+      "files": [
+        {
+          "path": "ccda-samples/NextTech/10_20170710104504_SummaryOfCare.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/11_20170710104505_SummaryOfCare.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/12_20170710104505_SummaryOfCare.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/13_20170710104505_SummaryOfCare.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/5 - Larson, Rebecca Jones_2017-07-10 10_38_39_000.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/7 - Wright, John R_2017-07-10 10_38_39_000.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/8_20170710105504_SummaryOfCare.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/9_20170710104505_SummaryOfCare.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/Alice_Newman_RefNote.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/Cecilia_Cummings_75_000001.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/Jeremy_Bates_RefNote.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/Myra_Jones_73_000001.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
+        },
+        {
+          "path": "ccda-samples/NextTech/Susan_Turner_74_000001.xml",
+          "vendor": "NextTech",
+          "reason": "Author.time incorrectly declares xsi:type='IVL_TS' but provides TS format (single value)",
+          "spec_requirement": "C-CDA SHALL: author/time must be TS (point in time), not IVL_TS (interval)",
+          "expected_error_pattern": "Input should be a valid dictionary or instance of TS"
         }
       ]
     }
