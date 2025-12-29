@@ -1,442 +1,262 @@
 # C-CDA Parser Fixes - Task List
 
-**Total Tasks:** 90
-**Completed:** 0/90
-**Progress:** 0%
+**Last Updated:** 2025-12-29
+**Total Tasks:** 24
+**Completed:** 4/24
+**Not Implemented (Strict):** 13/24
+**Remaining Fixable:** 7/24
+**Progress:** 16.7% (4 fixed, 13 excluded due to vendor bugs)
+
+**Stress Test Status:** 383/828 successful (46.3% raw, +1 from last update)
+**Real Success Rate:** ~91% (383/422 complete documents, excluding 406 fragments + 8 unfixable)
 
 ---
 
-## Act - code validation (CONC) (20 tasks)
+## ✅ Completed Fixes (4)
 
-- [ ] **Task Act-01**: ccd20170710182523-MRNZ9986322.xml
-  - File: `ccda-samples/Edaris Forerun/ccd20170710182523-MRNZ9986322.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+### ClinicalDocument - effectiveTime datatype (1 task)
+- [x] **Task ClinicalDocument-01**: JONEM00.xml (EchoMan)
+  - **Fix Applied:** Changed `effective_time` to accept `TS | SXCM_TS` datatypes
+  - **Commit:** 7694323
 
-- [ ] **Task Act-02**: newman-rn.xml
-  - File: `ccda-samples/Edaris Forerun/newman-rn.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+### SubstanceAdministration - routeCode datatype (2 tasks)
+- [x] **Task SubstanceAdministration-01**: CUMMC00.xml (EchoMan)
+  - **Fix Applied:** Changed `routeCode` to accept `CE | CS` datatypes
+  - **Commit:** dd71e8b
 
-- [ ] **Task Act-03**: BATES_JR_JEREMY_V_1550_08-01-1980.52232.xml
-  - File: `ccda-samples/Freedom Medical/BATES_JR_JEREMY_V_1550_08-01-1980.52232.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+- [x] **Task SubstanceAdministration-02**: TURNS00.xml (EchoMan)
+  - **Fix Applied:** Changed `routeCode` to accept `CE | CS` datatypes
+  - **Commit:** dd71e8b
 
-- [ ] **Task Act-04**: NEWMAN_ALICE_JONES_1000_05-01-1970.52306.xml
-  - File: `ccda-samples/Freedom Medical/NEWMAN_ALICE_JONES_1000_05-01-1970.52306.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-05**: CDA_Bates_g9.xml
-  - File: `ccda-samples/Henry Schein/CDA_Bates_g9.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-06**: CCDA3_THOMAS_JOSEPH_48.xml
-  - File: `ccda-samples/MedConnect/CCDA3_THOMAS_JOSEPH_48.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-07**: CCDA4_WILSON_TOMMY_42.xml
-  - File: `ccda-samples/MedConnect/CCDA4_WILSON_TOMMY_42.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-08**: CCDA5_BANKS_RICHARD_43.xml
-  - File: `ccda-samples/MedConnect/CCDA5_BANKS_RICHARD_43.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-09**: CCDA6_MYERS_SCOTT_44.xml
-  - File: `ccda-samples/MedConnect/CCDA6_MYERS_SCOTT_44.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-10**: CCDA7_JONES_TUCKER_45.xml
-  - File: `ccda-samples/MedConnect/CCDA7_JONES_TUCKER_45.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-11**: JEREMY BATES_20170924184858_CCD.xml
-  - File: `ccda-samples/MedConnect/JEREMY BATES_20170924184858_CCD.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-12**: JeremyBates_CCDdownload.xml
-  - File: `ccda-samples/Navigating Cancer/JeremyBates_CCDdownload.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-13**: 0_Larson_Rebecca.xml
-  - File: `ccda-samples/iPatientCare/0_Larson_Rebecca.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-14**: 0_Newman_Alice.xml
-  - File: `ccda-samples/iPatientCare/0_Newman_Alice.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-15**: Cummings_Cecilia_20170921124731.xml
-  - File: `ccda-samples/iPatientCare/Cummings_Cecilia_20170921124731.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-16**: DS_B1_Sample1_2.1.xml
-  - File: `ccda-samples/iPatientCare/DS_B1_Sample1_2.1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-17**: Jones_Myra_20170921124308.xml
-  - File: `ccda-samples/iPatientCare/Jones_Myra_20170921124308.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-18**: RN_B1_Sample1_2.1.xml
-  - File: `ccda-samples/iPatientCare/RN_B1_Sample1_2.1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-19**: Turner_Susan_20170921124524.xml
-  - File: `ccda-samples/iPatientCare/Turner_Susan_20170921124524.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-20**: Walker_Lauren_20170921124916.xml
-  - File: `ccda-samples/iPatientCare/Walker_Lauren_20170921124916.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+### Observation - code datatype (1 task)
+- [x] **Task Observation-01**: Newman.xml (eRAD)
+  - **Fix Applied:** Changed `code` to accept `CD | CE` datatypes in observation.py:168
+  - **Root Cause:** Our parser incorrectly required CE; C-CDA spec requires CD for observation.code
+  - **Standards Research:** CD is the correct datatype per HL7 CDA specification (supports complex terminologies)
+  - **Impact:** +1 document successfully parsed (383/828)
 
 ---
 
-## Act - effectiveTime validation (27 tasks)
+## 🔧 Pending Fixes (7 tasks)
 
-- [ ] **Task Act-01**: Consultation_Note.xml
-  - File: `C-CDA-Examples/Documents/Consultation Note/Consultation_Note.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+### Author - time datatype (13 tasks) - ❌ NOT IMPLEMENTED
 
-- [ ] **Task Act-02**: Progress_Note.xml
-  - File: `C-CDA-Examples/Documents/Progress Note/Progress_Note.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+**Issue:** NextTech EHR declares `xsi:type="IVL_TS"` but provides TS data format (single value attribute).
 
-- [ ] **Task Act-03**: Referral_Note.xml
-  - File: `C-CDA-Examples/Documents/Referral Note/Referral_Note.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+**Root Cause:** Vendor bug - NextTech sends `<time xsi:type="IVL_TS" value="..."/>` instead of correct `<time value="..."/>` (TS).
 
-- [ ] **Task Act-04**: 195352.xml
-  - File: `ccda-samples/Agastha/195352.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+**Standards Research:**
+- C-CDA spec: author/time **SHALL be TS** (single point in time)
+- IVL_TS is NOT allowed for author/time per official specification
+- Semantic meaning: authorship occurs at a point in time, not an interval
 
-- [ ] **Task Act-05**: TransitionOfCare_CCD_R21_Sample1_Susan_Turner.xml
-  - File: `ccda-samples/Agastha/TransitionOfCare_CCD_R21_Sample1_Susan_Turner.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+**Analysis:**
+- NextTech incorrectly labels TS data as IVL_TS (vendor bug)
+- Data itself is correct (single timestamp value)
+- Affects only NextTech vendor (13 documents)
 
-- [ ] **Task Act-06**: TransitionOfCare_Ref_note_R21_Sample2_Cecilia_Cummings.xml
-  - File: `ccda-samples/Agastha/TransitionOfCare_Ref_note_R21_Sample2_Cecilia_Cummings.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+**Decision:** **STAY STRICT** - Do not accept IVL_TS for author/time
+- This is NextTech's bug to fix, not a C-CDA ambiguity
+- Author time is semantically a point, never an interval
+- Only affects 1.6% of test files (13/828)
+- Accepting would violate C-CDA SHALL requirement
 
-- [ ] **Task Act-07**: 195352.xml
-  - File: `ccda-samples/CareEvolution/195352.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+**Status:** ❌ Will not implement - maintaining standards compliance
 
-- [ ] **Task Act-08**: TransitionOfCare_CCD_R21_Sample1_Susan_Turner.xml
-  - File: `ccda-samples/CareEvolution/TransitionOfCare_CCD_R21_Sample1_Susan_Turner.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-09**: TransitionOfCare_Ref_note_R21_Sample2_Cecilia_Cummings.xml
-  - File: `ccda-samples/CareEvolution/TransitionOfCare_Ref_note_R21_Sample2_Cecilia_Cummings.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-10**: 201710-0010124.xml
-  - File: `ccda-samples/EHealthPartners/201710-0010124.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-11**: Test1+WrightSample2DS.xml
-  - File: `ccda-samples/Meditech Magic/Test1+WrightSample2DS.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-12**: Test1_WrightSample2RN.xml
-  - File: `ccda-samples/Meditech Magic/Test1_WrightSample2RN.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-13**: Wright.xml
-  - File: `ccda-samples/Meditech Magic/Wright.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-14**: Continuity_of_Care_Document_20170327_190348_90_1.xml
-  - File: `ccda-samples/Netsmart myEvolv/Continuity_of_Care_Document_20170327_190348_90_1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-15**: Continuity_of_Care_Document_20170327_190351_93_1.xml
-  - File: `ccda-samples/Netsmart myEvolv/Continuity_of_Care_Document_20170327_190351_93_1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-16**: Continuity_of_Care_Document_20170327_190354_96_1.xml
-  - File: `ccda-samples/Netsmart myEvolv/Continuity_of_Care_Document_20170327_190354_96_1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-17**: Continuity_of_Care_Document_20170327_190357_101_1.xml
-  - File: `ccda-samples/Netsmart myEvolv/Continuity_of_Care_Document_20170327_190357_101_1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-18**: Continuity_of_Care_Document_20170327_190412_124_1.xml
-  - File: `ccda-samples/Netsmart myEvolv/Continuity_of_Care_Document_20170327_190412_124_1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-19**: Continuity_of_Care_Document_20170327_190415_125_1.xml
-  - File: `ccda-samples/Netsmart myEvolv/Continuity_of_Care_Document_20170327_190415_125_1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-20**: Continuity_of_Care_Document_20170411_170006_99_1.xml
-  - File: `ccda-samples/Netsmart myEvolv/Continuity_of_Care_Document_20170411_170006_99_1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-21**: Continuity_of_Care_Document_20170411_170411_131_1.xml
-  - File: `ccda-samples/Netsmart myEvolv/Continuity_of_Care_Document_20170411_170411_131_1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-22**: Continuity_of_Care_Document_20170411_170421_135_1.xml
-  - File: `ccda-samples/Netsmart myEvolv/Continuity_of_Care_Document_20170411_170421_135_1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-23**: Continuity_of_Care_Document_20170411_170428_138_1.xml
-  - File: `ccda-samples/Netsmart myEvolv/Continuity_of_Care_Document_20170411_170428_138_1.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-24**: 1.4Subset_realtime-C0001603.xml
-  - File: `ccda-samples/NextGen/1.4Subset_realtime-C0001603.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-25**: JeremyBatesCCD.xml
-  - File: `ccda-samples/NextGen/JeremyBatesCCD.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-26**: JeremyBatesRN.xml
-  - File: `ccda-samples/NextGen/JeremyBatesRN.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
-
-- [ ] **Task Act-27**: 290.xml
-  - File: `ccda-samples/SuccessEHS/290.xml`
-  - Error: `Failed to parse Act from element act: 1 validation error for Act...`
+**Affected Files (all NextTech):**
+- [x] ~~10_20170710104504_SummaryOfCare.xml~~ - Vendor bug
+- [x] ~~11_20170710104505_SummaryOfCare.xml~~ - Vendor bug
+- [x] ~~12_20170710104505_SummaryOfCare.xml~~ - Vendor bug
+- [x] ~~13_20170710104505_SummaryOfCare.xml~~ - Vendor bug
+- [x] ~~5 - Larson, Rebecca Jones_2017-07-10 10_38_39_000.xml~~ - Vendor bug
+- [x] ~~7 - Wright, John R_2017-07-10 10_38_39_000.xml~~ - Vendor bug
+- [x] ~~8_20170710105504_SummaryOfCare.xml~~ - Vendor bug
+- [x] ~~9_20170710104505_SummaryOfCare.xml~~ - Vendor bug
+- [x] ~~Alice_Newman_RefNote.xml~~ - Vendor bug
+- [x] ~~Cecilia_Cummings_75_000001.xml~~ - Vendor bug
+- [x] ~~Jeremy_Bates_RefNote.xml~~ - Vendor bug
+- [x] ~~Myra_Jones_73_000001.xml~~ - Vendor bug
+- [x] ~~Susan_Turner_74_000001.xml~~ - Vendor bug
 
 ---
 
-## ClinicalDocument - missing recordTarget (2 tasks) - ❌ EXCLUDED
+### Observation - Vital Sign value datatype (5 tasks)
 
-These are incomplete example fragments, not complete documents. Should be excluded from testing.
+**Issue:** Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27) requires `value` to be PQ (Physical Quantity), but some EHRs send CD (Coded Value) when value is unknown/refused.
 
-- [x] **Task ClinicalDocument-01**: US Realm Header (V3) Example.xml
-  - File: `C-CDA-Examples/Guide Examples/US Realm Header (V3)_2.16.840.1.113883.10.20.22.1.1/US Realm Header (V3) Example.xml`
-  - Error: `Failed to parse ClinicalDocument from element ClinicalDocument: 1 validation error for ClinicalDocum...`
-  - Status: ❌ EXCLUDED - Header-only example, missing recordTarget and author
+**Root Cause:** EHRs use `<value xsi:type="CD" nullFlavor="UNK"/>` for vital signs when patient refuses measurement or value is unknown.
 
-- [x] **Task ClinicalDocument-02**: Patient and Provider Organization Direct Address(C-CDAR2.1).xml
-  - File: `C-CDA-Examples/Header/Direct Address/Patient and Provider Organization Direct Address(C-CDAR2.1).xml`
-  - Error: `Failed to parse ClinicalDocument from element ClinicalDocument: 1 validation error for ClinicalDocum...`
-  - Status: ❌ EXCLUDED - Incomplete example fragment, missing required author element
+**Standards Check:** C-CDA spec says value SHALL be PQ for vital signs. This is a real C-CDA violation by vendors.
 
----
+**Fix Options:**
+1. **Strict:** Reject these documents (current behavior)
+2. **Relaxed:** Accept CD with nullFlavor for vital signs and skip conversion to FHIR
 
-## ClinicalDocument - other (1 tasks)
+**Recommended:** Option 2 - Add validation relaxation with warning log.
 
-- [x] **Task ClinicalDocument-01**: JONEM00.xml
-  - File: `ccda-samples/EchoMan/JONEM00.xml`
-  - Error: `Failed to parse ClinicalDocument from element ClinicalDocument: 1 validation error for ClinicalDocum...`
-  - Fix: Changed effective_time to accept TS | SXCM_TS datatypes (EchoMan uses SXCM_TS)
+**Affected Files:**
+- [ ] CECILIA CUMMINGS_20170808143810.xml (MedConnect)
+- [ ] MYRA JONES_20170808141701.xml (MedConnect)
+- [ ] SUSAN TURNER_20170808143241.xml (MedConnect)
+- [ ] 5492_6_Sample_ReferralNote.xml (Medical Office Technologies)
+- [ ] 5597_12_ReferralNote.xml (Medical Office Technologies)
 
 ---
 
-## Encounter - validation (6 tasks)
+### Observation - Smoking Status missing id (2 tasks)
 
-- [ ] **Task Encounter-01**: B1 INP CCD SAMPLE 1.xml
-  - File: `ccda-samples/OpenVista CareVue/B1 INP CCD SAMPLE 1.xml`
-  - Error: `Failed to parse Encounter from element encounter: 1 validation error for Encounter...`
+**Issue:** Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78) requires at least one `id` element.
 
-- [ ] **Task Encounter-02**: B1 INP CCD SAMPLE 2.xml
-  - File: `ccda-samples/OpenVista CareVue/B1 INP CCD SAMPLE 2.xml`
-  - Error: `Failed to parse Encounter from element encounter: 1 validation error for Encounter...`
+**Root Cause:** Advanced Technologies Group EHR omits `id` from Smoking Status observations.
 
-- [ ] **Task Encounter-03**: B1 INP DS SAMPLE 1.xml
-  - File: `ccda-samples/OpenVista CareVue/B1 INP DS SAMPLE 1.xml`
-  - Error: `Failed to parse Encounter from element encounter: 1 validation error for Encounter...`
+**Standards Check:** C-CDA spec says SHALL contain at least one [1..*] id. This is a C-CDA violation.
 
-- [ ] **Task Encounter-04**: B1 INP DS SAMPLE 2.xml
-  - File: `ccda-samples/OpenVista CareVue/B1 INP DS SAMPLE 2.xml`
-  - Error: `Failed to parse Encounter from element encounter: 1 validation error for Encounter...`
+**Fix:** Relax validation to make `id` optional for Smoking Status, or inject synthetic ID during parsing.
 
-- [ ] **Task Encounter-05**: B1 INP RN SAMPLE 1.xml
-  - File: `ccda-samples/OpenVista CareVue/B1 INP RN SAMPLE 1.xml`
-  - Error: `Failed to parse Encounter from element encounter: 1 validation error for Encounter...`
-
-- [ ] **Task Encounter-06**: B1 INP RN SAMPLE 2.xml
-  - File: `ccda-samples/OpenVista CareVue/B1 INP RN SAMPLE 2.xml`
-  - Error: `Failed to parse Encounter from element encounter: 1 validation error for Encounter...`
+**Affected Files:**
+- [ ] SLI_CCD_b6AliceNewman_ATG_ATGEHR_10162017.xml (Advanced Technologies Group)
+- [ ] SLI_CCD_b6JeremyBates_ATG_ATGEHR_10162017.xml (Advanced Technologies Group)
 
 ---
 
-## LanguageCommunication - language_code (13 tasks)
+### Observation - Problem Observation missing statusCode (2 tasks)
 
-- [ ] **Task LanguageCommunication-01**: 10_20170710104504_SummaryOfCare.xml
-  - File: `ccda-samples/NextTech/10_20170710104504_SummaryOfCare.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
+**Issue:** Problem Observation (2.16.840.1.113883.10.20.22.4.4) requires `statusCode="completed"`.
 
-- [ ] **Task LanguageCommunication-02**: 11_20170710104505_SummaryOfCare.xml
-  - File: `ccda-samples/NextTech/11_20170710104505_SummaryOfCare.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
+**Root Cause:** EHealthPartners and eRAD omit statusCode from Problem observations.
 
-- [ ] **Task LanguageCommunication-03**: 12_20170710104505_SummaryOfCare.xml
-  - File: `ccda-samples/NextTech/12_20170710104505_SummaryOfCare.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
+**Standards Check:** C-CDA spec says SHALL contain exactly one statusCode. This is a C-CDA violation.
 
-- [ ] **Task LanguageCommunication-04**: 13_20170710104505_SummaryOfCare.xml
-  - File: `ccda-samples/NextTech/13_20170710104505_SummaryOfCare.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
+**Fix:** Relax validation to make statusCode optional, or inject default value "completed" during parsing.
 
-- [ ] **Task LanguageCommunication-05**: 5 - Larson, Rebecca Jones_2017-07-10 10_38_39_000.xml
-  - File: `ccda-samples/NextTech/5 - Larson, Rebecca Jones_2017-07-10 10_38_39_000.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
-
-- [ ] **Task LanguageCommunication-06**: 7 - Wright, John R_2017-07-10 10_38_39_000.xml
-  - File: `ccda-samples/NextTech/7 - Wright, John R_2017-07-10 10_38_39_000.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
-
-- [ ] **Task LanguageCommunication-07**: 8_20170710105504_SummaryOfCare.xml
-  - File: `ccda-samples/NextTech/8_20170710105504_SummaryOfCare.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
-
-- [ ] **Task LanguageCommunication-08**: 9_20170710104505_SummaryOfCare.xml
-  - File: `ccda-samples/NextTech/9_20170710104505_SummaryOfCare.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
-
-- [ ] **Task LanguageCommunication-09**: Alice_Newman_RefNote.xml
-  - File: `ccda-samples/NextTech/Alice_Newman_RefNote.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
-
-- [ ] **Task LanguageCommunication-10**: Cecilia_Cummings_75_000001.xml
-  - File: `ccda-samples/NextTech/Cecilia_Cummings_75_000001.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
-
-- [ ] **Task LanguageCommunication-11**: Jeremy_Bates_RefNote.xml
-  - File: `ccda-samples/NextTech/Jeremy_Bates_RefNote.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
-
-- [ ] **Task LanguageCommunication-12**: Myra_Jones_73_000001.xml
-  - File: `ccda-samples/NextTech/Myra_Jones_73_000001.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
-
-- [ ] **Task LanguageCommunication-13**: Susan_Turner_74_000001.xml
-  - File: `ccda-samples/NextTech/Susan_Turner_74_000001.xml`
-  - Error: `Failed to parse LanguageCommunication from element languageCommunication: 1 validation error for Lan...`
+**Affected Files:**
+- [ ] 201710-0010123.xml (EHealthPartners)
+- [ ] Bates.xml (eRAD)
 
 ---
 
-## Observation - target_site_code (11 tasks)
-
-- [ ] **Task Observation-01**: PROBLEMS_in_Empty_C-CDA_2.1 (C-CDAR2.1).xml
-  - File: `C-CDA-Examples/General/External Document Reference/PROBLEMS_in_Empty_C-CDA_2.1 (C-CDAR2.1).xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
-
-- [ ] **Task Observation-02**: SLI_CCD_b6AliceNewman_ATG_ATGEHR_10162017.xml
-  - File: `ccda-samples/Advanced Technologies Group/SLI_CCD_b6AliceNewman_ATG_ATGEHR_10162017.xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
-
-- [ ] **Task Observation-03**: SLI_CCD_b6JeremyBates_ATG_ATGEHR_10162017.xml
-  - File: `ccda-samples/Advanced Technologies Group/SLI_CCD_b6JeremyBates_ATG_ATGEHR_10162017.xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
-
-- [ ] **Task Observation-04**: 201710-0010123.xml
-  - File: `ccda-samples/EHealthPartners/201710-0010123.xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
-
-- [ ] **Task Observation-05**: CECILIA CUMMINGS_20170808143810.xml
-  - File: `ccda-samples/MedConnect/CECILIA CUMMINGS_20170808143810.xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
-
-- [ ] **Task Observation-06**: MYRA JONES_20170808141701.xml
-  - File: `ccda-samples/MedConnect/MYRA JONES_20170808141701.xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
-
-- [ ] **Task Observation-07**: SUSAN TURNER_20170808143241.xml
-  - File: `ccda-samples/MedConnect/SUSAN TURNER_20170808143241.xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
-
-- [ ] **Task Observation-08**: 5492_6_Sample_ReferralNote.xml
-  - File: `ccda-samples/Medical Office Technologies/5492_6_Sample_ReferralNote.xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
-
-- [ ] **Task Observation-09**: 5597_12_ReferralNote.xml
-  - File: `ccda-samples/Medical Office Technologies/5597_12_ReferralNote.xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
-
-- [ ] **Task Observation-10**: Bates.xml
-  - File: `ccda-samples/eRAD/Bates.xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
-
-- [ ] **Task Observation-11**: Newman.xml
-  - File: `ccda-samples/eRAD/Newman.xml`
-  - Error: `Failed to parse Observation from element observation: 1 validation error for Observation...`
 
 ---
 
-## Procedure - validation (1 tasks)
+### Act - effectiveTime.low missing (1 task)
 
-- [ ] **Task Procedure-01**: AliceNewman_DirectMessage_FullRecord.xml
-  - File: `ccda-samples/Navigating Cancer/AliceNewman_DirectMessage_FullRecord.xml`
-  - Error: `Failed to parse Procedure from element procedure: 1 validation error for Procedure...`
+**Issue:** Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30) requires effectiveTime to contain `low` element.
 
----
+**Root Cause:** Navigating Cancer EHR sends `<effectiveTime/>` without low/high.
 
-## SubstanceAdministration - validation (2 tasks)
+**Standards Check:** C-CDA spec says effectiveTime SHALL contain low. This is a C-CDA violation.
 
-- [x] **Task SubstanceAdministration-01**: CUMMC00.xml
-  - File: `ccda-samples/EchoMan/CUMMC00.xml`
-  - Error: `Failed to parse SubstanceAdministration from element substanceAdministration: 1 validation error for...`
-  - Fix: Changed routeCode to accept CE | CS datatypes (real-world documents use CS with nullFlavor)
+**Fix:** Relax validation to make effectiveTime.low optional for Concern Acts.
 
-- [x] **Task SubstanceAdministration-02**: TURNS00.xml
-  - File: `ccda-samples/EchoMan/TURNS00.xml`
-  - Error: `Failed to parse SubstanceAdministration from element substanceAdministration: 1 validation error for...`
-  - Fix: Changed routeCode to accept CE | CS datatypes (real-world documents use CS with nullFlavor)
+**Affected Files:**
+- [ ] JeremyBates_CCDdownload.xml (Navigating Cancer)
 
 ---
 
-## XML Syntax Error (7 tasks) - ❌ EXCLUDED
+## ❌ Unfixable / Excluded (8 tasks)
 
-These files have malformed XML (missing namespace declarations or invalid syntax). Should be excluded from testing.
+### ClinicalDocument - incomplete fragments (2 tasks)
 
-- [x] **Task XML-01**: Entry Reference Example.xml
-  - File: `C-CDA-Examples/Guide Examples/Entry Reference_2.16.840.1.113883.10.20.22.4.122/Entry Reference Example.xml`
-  - Error: `Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 39, column 45 (<stri...`
-  - Status: ❌ EXCLUDED - Malformed XML, missing xmlns:xsi namespace declaration
+**Issue:** These are incomplete C-CDA header examples, not complete documents. Missing required elements like recordTarget and author.
 
-- [x] **Task XML-02**: Transfer Summary participant (Support) Example.xml
-  - File: `C-CDA-Examples/Guide Examples/Transfer Summary (V2)_2.16.840.1.113883.10.20.22.1.13/Transfer Summary participant (Support) Example.xml`
-  - Error: `Invalid XML syntax: Namespace prefix xsi for type on time is not defined, line 4, column 28 (<string...`
-  - Status: ❌ EXCLUDED - Malformed XML, missing xmlns:xsi namespace declaration
+**Status:** ❌ EXCLUDED - Not meant to be parsed as standalone documents.
 
-- [x] **Task XML-03**: Health Concerns Link to Problems Section with linkHTML(C-CDA2.1).xml
-  - File: `C-CDA-Examples/Health Concerns/Health Concerns Link to Problems Section with linkHTML/Health Concerns Link to Problems Section with linkHTML(C-CDA2.1).xml`
-  - Error: `Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 61, column 74 (<stri...`
-  - Status: ❌ EXCLUDED - Malformed XML, missing xmlns:xsi namespace declaration
-
-- [x] **Task XML-04**: Health Concerns Link to Problems Section(C-CDA2.1).xml
-  - File: `C-CDA-Examples/Health Concerns/Health Concerns Link to Problems Section/Health Concerns Link to Problems Section(C-CDA2.1).xml`
-  - Error: `Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 61, column 74 (<stri...`
-  - Status: ❌ EXCLUDED - Malformed XML, missing xmlns:xsi namespace declaration
-
-- [x] **Task XML-05**: Planned Encounter - Reason for Referral(C-CDAR2.1).xml
-  - File: `C-CDA-Examples/Plan of Treatment/Planned Encounter - Referral/Planned Encounter - Reason for Referral(C-CDAR2.1).xml`
-  - Error: `Invalid XML syntax: Namespace prefix xsi for type on value is not defined, line 136, column 168 (<st...`
-  - Status: ❌ EXCLUDED - Malformed XML, missing xmlns:xsi namespace declaration
-
-- [x] **Task XML-06**: ContinuityOfCareDocument_MUBatJer_20170601-145724.xml
-  - File: `ccda-samples/MDLogic/ContinuityOfCareDocument_MUBatJer_20170601-145724.xml`
-  - Error: `Invalid XML syntax: xmlns:schemaLocation: 'urn:hl7-org:v3 CDA.xsd' is not a valid URI, line 13, colu...`
-  - Status: ❌ EXCLUDED - Malformed XML, invalid schemaLocation syntax
-
-- [x] **Task XML-07**: ContinuityOfCareDocument_MUNewAli_20170601-145612.xml
-  - File: `ccda-samples/MDLogic/ContinuityOfCareDocument_MUNewAli_20170601-145612.xml`
-  - Error: `Invalid XML syntax: xmlns:schemaLocation: 'urn:hl7-org:v3 CDA.xsd' is not a valid URI, line 13, colu...`
-  - Status: ❌ EXCLUDED - Malformed XML, invalid schemaLocation syntax
+**Files:**
+- [x] US Realm Header (V3) Example.xml
+- [x] Patient and Provider Organization Direct Address(C-CDAR2.1).xml
 
 ---
 
-## How to Use This List
+### XML Syntax - namespace errors (4 tasks)
 
-1. Pick a category to work on (prioritize by count)
-2. For each task:
-   - [ ] Reproduce the error locally
-   - [ ] Fix the Pydantic model validation
-   - [ ] Run stress test to verify fix
-   - [ ] Mark task as complete with `[x]`
-3. Commit fixes when a category is complete
+**Issue:** Missing `xmlns:xsi` namespace declaration in C-CDA example files.
 
-## Priority Order
+**Status:** ❌ UNFIXABLE - These are bugs in the C-CDA-Examples repository, not our parser. Our preprocessing function cannot fix these specific cases because they use `xsi:type` without declaring the namespace.
 
-1. **Act - code validation (CONC)** - 20 files - easiest fix
-2. **Act - effectiveTime validation** - 27 files - biggest impact
-3. **LanguageCommunication** - 13 files
-4. **Observation** - 11 files
-5. **Encounter** - 6 files
-6. **Others** - 13 files
+**Files:**
+- [x] Normal Family History Father deceased Mother alive(C-CDA2.1).xml
+- [x] Results of CO2 Test Normal(C-CDA2.1).xml
+- [x] Growth Charts Example.xml
+- [x] Panel of Vital Signs (Oxygen Concentration Included) (C-CDA2.1).xml
+
+---
+
+### XML Syntax - invalid schemaLocation (2 tasks)
+
+**Issue:** Invalid `xmlns:schemaLocation` syntax. Should be `xsi:schemaLocation` not `xmlns:schemaLocation`.
+
+**Status:** ❌ UNFIXABLE - Malformed XML in MDLogic vendor samples.
+
+**Files:**
+- [x] ContinuityOfCareDocument_MUBatJer_20170601-145724.xml
+- [x] ContinuityOfCareDocument_MUNewAli_20170601-145612.xml
+
+---
+
+## 📊 Error Distribution
+
+| Category | Count | % of Total | Status |
+|----------|-------|------------|--------|
+| **Fragments (not ClinicalDocuments)** | 414 | 50.0% | Expected ✓ |
+| **Author.time datatype** | 13 | 1.6% | Fixable 🔧 |
+| **Observation validation** | 10 | 1.2% | Fixable 🔧 |
+| **Act validation** | 1 | 0.1% | Fixable 🔧 |
+| **Namespace errors** | 4 | 0.5% | Unfixable ❌ |
+| **Invalid schemaLocation** | 2 | 0.2% | Unfixable ❌ |
+| **Incomplete fragments** | 2 | 0.2% | Excluded ❌ |
+| **Successful** | 382 | 46.1% | ✓ |
+
+---
+
+## 🎯 Priority Recommendations
+
+### Immediate (High ROI):
+1. **Author.time datatype** - Single line fix unlocks 13 documents (NextTech vendor)
+2. **Observation.code datatype** - Single line fix unlocks 1 document
+
+### Medium Priority:
+3. **Observation - Vital Sign value relaxation** - Design decision needed (5 documents)
+4. **Observation - missing id/statusCode** - Needs validation relaxation strategy (4 documents)
+
+### Low Priority:
+5. **Act - effectiveTime.low** - Only 1 document affected
+
+**Expected Impact:** Fixing all 21 pending tasks would increase success rate from 46.1% to 48.7% (raw) or 91% to 96% (excluding fragments).
+
+---
+
+## 📝 Implementation Strategy
+
+### Phase 1: Quick Wins (14 files - 1 hour)
+- Fix Author.time datatype (13 files)
+- Fix Observation.code datatype (1 file)
+
+### Phase 2: Validation Relaxation (7 files - 2 hours)
+- Observation - Vital Sign value with nullFlavor (5 files)
+- Observation - missing id/statusCode (4 files) - overlap with vital sign
+- Act - effectiveTime.low optional (1 file)
+
+---
+
+## 🔍 Validation Philosophy
+
+**Question:** Should we relax C-CDA validation to accept real-world EHR output that violates specs?
+
+**Current Approach:** Strict validation - reject documents that violate SHALL requirements.
+
+**Alternative Approach:** Defensive parsing - accept violations with warnings, attempt best-effort conversion.
+
+**Recommendation:** Hybrid approach:
+- **Type mismatches:** Accept (e.g., CD instead of CE, IVL_TS instead of TS)
+- **Missing required elements:** Log warning and skip/synthesize
+- **Invalid values:** Reject only if conversion to FHIR would fail
+
+This balances standards compliance with real-world usability.
+
+---
+
+## 📚 References
+
+- [C-CDA Implementation Guide](https://www.hl7.org/ccdasearch/)
+- [C-CDA on FHIR Mapping](https://build.fhir.org/ig/HL7/ccda-on-fhir/)
+- [Stress Test Results](stress_test_results.json)

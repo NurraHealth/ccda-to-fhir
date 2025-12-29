@@ -163,7 +163,9 @@ class Observation(CDAModel):
     id: list[II] | None = None
 
     # Observation type code (e.g., ASSERTION, LOINC code, SNOMED code)
-    code: CE | None = None
+    # Per C-CDA spec, observation.code uses CD datatype (supports complex terminologies)
+    # Accept CE for backward compatibility (CE is a restriction of CD)
+    code: CD | CE | None = None
 
     # Derivation expression (for calculated values)
     derivation_expr: ED | None = Field(default=None, alias="derivationExpr")

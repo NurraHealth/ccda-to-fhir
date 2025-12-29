@@ -1,67 +1,67 @@
 {
   "summary": {
     "total_files": 828,
-    "successful": 382,
-    "failed": 446,
-    "success_rate": "46.1%",
-    "total_resources_created": 10763,
+    "successful": 383,
+    "failed": 445,
+    "success_rate": "46.3%",
+    "total_resources_created": 10816,
     "avg_conversion_time_ms": "4.5"
   },
   "resource_distribution": {
-    "Composition": 360,
-    "Patient": 373,
-    "Practitioner": 896,
-    "Device": 298,
-    "Organization": 570,
+    "Composition": 361,
+    "Patient": 374,
+    "Practitioner": 899,
+    "Device": 299,
+    "Organization": 571,
     "RelatedPerson": 84,
-    "DocumentReference": 382,
-    "AllergyIntolerance": 461,
-    "Observation": 2555,
-    "DiagnosticReport": 277,
-    "Procedure": 475,
+    "DocumentReference": 383,
+    "AllergyIntolerance": 463,
+    "Observation": 2573,
+    "DiagnosticReport": 279,
+    "Procedure": 480,
     "Provenance": 259,
     "PractitionerRole": 116,
-    "Goal": 125,
-    "Encounter": 488,
+    "Goal": 129,
+    "Encounter": 489,
     "CarePlan": 4,
-    "Condition": 1242,
-    "MedicationStatement": 788,
-    "Immunization": 339,
+    "Condition": 1248,
+    "MedicationStatement": 792,
+    "Immunization": 342,
     "ServiceRequest": 81,
     "Location": 258,
     "MedicationRequest": 276,
     "Medication": 56
   },
   "error_distribution": {
-    "MalformedXMLError": 446
+    "MalformedXMLError": 445
   },
   "us_core_compliance": {
     "patient_completeness": {
-      "has_patient": 373,
-      "has_name": 373,
-      "has_identifier": 373,
-      "has_gender": 373,
-      "has_birthdate": 373
+      "has_patient": 374,
+      "has_name": 374,
+      "has_identifier": 374,
+      "has_gender": 374,
+      "has_birthdate": 374
     },
     "condition_compliance": {
-      "with_code": 1118,
-      "with_category": 1242,
-      "with_subject": 1242
+      "with_code": 1124,
+      "with_category": 1248,
+      "with_subject": 1248
     },
     "allergy_compliance": {
-      "with_code": 411,
-      "with_patient": 461,
-      "with_clinical_status": 461
+      "with_code": 413,
+      "with_patient": 463,
+      "with_clinical_status": 463
     },
     "observation_compliance": {
-      "with_code": 2555,
-      "with_status": 2555,
-      "with_category": 2552
+      "with_code": 2573,
+      "with_status": 2573,
+      "with_category": 2570
     }
   },
   "ccda_fhir_mapping": {
-    "has_composition": 360,
-    "avg_sections_per_doc": 16.945026178010473,
+    "has_composition": 361,
+    "avg_sections_per_doc": 16.942558746736292,
     "total_provenance": 259,
     "has_narrative": 0
   },
@@ -2290,11 +2290,6 @@
       "file": "ccda-samples/eRAD/Bates.xml",
       "error_type": "MalformedXMLError",
       "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Problem Observation (2.16.840.1.113883.10.20.22.4.4): statusCode SHALL be 'completed', found 'None' [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
-    },
-    {
-      "file": "ccda-samples/eRAD/Newman.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\ncode\n  Input should be a valid dictionary or instance of CE [type=model_type, input_value=CD(code='NI', code_system...=None, null_flavor=None), input_type=CD]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type"
     }
   ]
 }
