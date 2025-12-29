@@ -66,9 +66,22 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             "profile": [self.US_CORE_LOCATION_PROFILE]
         }
 
-        # Generate ID from identifiers
+        # Map name first (needed for synthetic ID generation)
+        name = self._extract_name(participant_role)
+        location["name"] = name
+
+        # Map address early (needed for synthetic ID generation)
+        address = None
+        if participant_role.addr:
+            address = self._convert_address(participant_role.addr)
+
+        # Generate ID from identifiers, or create synthetic ID if missing
         if participant_role.id:
             location["id"] = self._generate_location_id(participant_role.id)
+        else:
+            # Generate synthetic ID from name and address for locations without explicit IDs
+            # This handles real-world C-CDA documents that omit location IDs
+            location["id"] = self._generate_synthetic_location_id(name, address)
 
         # Map identifiers (NPI, CLIA, NAIC, etc.)
         identifiers = self._convert_identifiers(participant_role.id)
@@ -77,10 +90,6 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         # Map status (default: active)
         location["status"] = "active"
-
-        # Map name (required by US Core, with fallback strategies)
-        name = self._extract_name(participant_role)
-        location["name"] = name
 
         # Map mode (instance for specific locations, kind for location types)
         location["mode"] = self._determine_mode(participant_role.code)
@@ -110,11 +119,9 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             if telecom_list:
                 location["telecom"] = telecom_list
 
-        # Map address
-        if participant_role.addr:
-            address = self._convert_address(participant_role.addr)
-            if address:
-                location["address"] = address
+        # Add address to location if it exists (already extracted above for ID generation)
+        if address:
+            location["address"] = address
 
         # Map managingOrganization (US Core Must Support)
         managing_org = self._get_managing_organization_reference(participant_role)
@@ -159,6 +166,39 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             extension=extension,
             resource_type="location"
         )
+
+    def _generate_synthetic_location_id(self, name: str, address: JSONObject | None) -> str:
+        """Generate synthetic FHIR Location ID from name and address.
+
+        Used when C-CDA location participant has no explicit ID element.
+        Creates a deterministic ID based on location characteristics.
+
+        Args:
+            name: Location name
+            address: FHIR address object (if available)
+
+        Returns:
+            Generated synthetic Location ID
+        """
+        import hashlib
+
+        # Build a unique string from available identifying information
+        id_parts = [name]
+
+        if address:
+            if "city" in address:
+                id_parts.append(address["city"])
+            if "state" in address:
+                id_parts.append(address["state"])
+            if "line" in address and address["line"]:
+                # Use first line
+                id_parts.append(address["line"][0])
+
+        # Create deterministic hash
+        combined = "|".join(id_parts)
+        hash_value = hashlib.sha256(combined.encode()).hexdigest()[:16]
+
+        return f"location-{hash_value}"
 
     def _convert_identifiers(self, identifiers: list["II"] | None) -> list[JSONObject]:
         """Convert C-CDA identifiers to FHIR identifiers with special handling.

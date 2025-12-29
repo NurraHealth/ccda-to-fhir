@@ -393,7 +393,17 @@ class ObservationConverter(BaseConverter[Observation]):
             for component in organizer.component:
                 if component.observation:
                     # Convert the component observation to a standalone resource
-                    individual = self.convert(component.observation, section=section)
+                    try:
+                        individual = self.convert(component.observation, section=section)
+                    except ValueError as e:
+                        # Skip observations that can't be converted (e.g., nullFlavor codes without text)
+                        # This handles real-world C-CDA documents with incomplete vital sign data
+                        from ccda_to_fhir.logging_config import get_logger
+                        logger = get_logger(__name__)
+                        logger.warning(
+                            f"Skipping vital sign component observation: {str(e)}"
+                        )
+                        continue
 
                     # Ensure it has an ID for referencing
                     if "id" not in individual:
@@ -1437,7 +1447,7 @@ class ObservationConverter(BaseConverter[Observation]):
 
         # Systolic component
         if "valueQuantity" in systolic_obs:
-            components.append({
+            systolic_component: JSONObject = {
                 "code": {
                     "coding": [
                         {
@@ -1448,11 +1458,15 @@ class ObservationConverter(BaseConverter[Observation]):
                     ]
                 },
                 "valueQuantity": systolic_obs["valueQuantity"]
-            })
+            }
+            # Preserve interpretation from original observation
+            if "interpretation" in systolic_obs:
+                systolic_component["interpretation"] = systolic_obs["interpretation"]
+            components.append(systolic_component)
 
         # Diastolic component
         if "valueQuantity" in diastolic_obs:
-            components.append({
+            diastolic_component: JSONObject = {
                 "code": {
                     "coding": [
                         {
@@ -1463,7 +1477,11 @@ class ObservationConverter(BaseConverter[Observation]):
                     ]
                 },
                 "valueQuantity": diastolic_obs["valueQuantity"]
-            })
+            }
+            # Preserve interpretation from original observation
+            if "interpretation" in diastolic_obs:
+                diastolic_component["interpretation"] = diastolic_obs["interpretation"]
+            components.append(diastolic_component)
 
         if components:
             bp_obs["component"] = components

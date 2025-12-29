@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
@@ -21,6 +23,8 @@ from ccda_to_fhir.constants import (
 )
 
 from .base import BaseConverter
+
+logger = logging.getLogger(__name__)
 
 
 class EncounterConverter(BaseConverter[CCDAEncounter]):
@@ -478,7 +482,36 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                 if hasattr(participant, "participant_role") and participant.participant_role:
                     role = participant.participant_role
 
-                    # Generate location ID from role ID
+                    # Extract location name from playingEntity (needed for synthetic ID)
+                    display = None
+                    if hasattr(role, "playing_entity") and role.playing_entity:
+                        entity = role.playing_entity
+                        if hasattr(entity, "name") and entity.name:
+                            if isinstance(entity.name, str):
+                                display = entity.name
+                            elif isinstance(entity.name, list) and len(entity.name) > 0:
+                                # Handle list of ON objects
+                                first_name = entity.name[0]
+                                if hasattr(first_name, "value") and first_name.value:
+                                    display = first_name.value
+                            elif hasattr(entity.name, "value"):
+                                display = entity.name.value
+
+                    # Extract address data (needed for synthetic ID)
+                    address_for_id = None
+                    if hasattr(role, "addr") and role.addr:
+                        addr_raw = role.addr[0] if isinstance(role.addr, list) else role.addr
+                        # Build simple address dict for ID generation
+                        address_for_id = {}
+                        if hasattr(addr_raw, "city") and addr_raw.city:
+                            address_for_id["city"] = addr_raw.city
+                        if hasattr(addr_raw, "state") and addr_raw.state:
+                            address_for_id["state"] = addr_raw.state
+                        if hasattr(addr_raw, "street_address_line") and addr_raw.street_address_line:
+                            # street_address_line is a list, use first element
+                            address_for_id["line"] = [addr_raw.street_address_line[0]] if addr_raw.street_address_line else []
+
+                    # Generate location ID from role ID, or create synthetic ID if missing
                     location_id = None
                     if hasattr(role, "id") and role.id:
                         for id_elem in role.id:
@@ -486,18 +519,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                 location_id = self._generate_location_id(id_elem.root, id_elem.extension)
                                 break
 
-                    # Only create location reference if we have a valid ID
-                    if location_id:
-                        # Extract location name from playingEntity
-                        display = None
-                        if hasattr(role, "playing_entity") and role.playing_entity:
-                            entity = role.playing_entity
-                            if hasattr(entity, "name"):
-                                if isinstance(entity.name, str):
-                                    display = entity.name
-                                elif hasattr(entity.name, "value"):
-                                    display = entity.name.value
+                    # Generate synthetic ID if no explicit ID
+                    if not location_id and display:
+                        location_id = self._generate_synthetic_location_id(display, address_for_id)
 
+                    # Create location reference if we have a valid ID
+                    if location_id:
                         location["location"] = {
                             "reference": f"Location/{location_id}"
                         }
@@ -981,6 +1008,39 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
         return generate_id_from_identifiers("Location", root, extension)
+
+    def _generate_synthetic_location_id(self, name: str, address: JSONObject | None) -> str:
+        """Generate synthetic FHIR Location ID from name and address.
+
+        Used when C-CDA location participant has no explicit ID element.
+        Creates a deterministic ID based on location characteristics.
+
+        Args:
+            name: Location name
+            address: FHIR address object (if available)
+
+        Returns:
+            Generated synthetic Location ID
+        """
+        import hashlib
+
+        # Build a unique string from available identifying information
+        id_parts = [name]
+
+        if address:
+            if "city" in address:
+                id_parts.append(address["city"])
+            if "state" in address:
+                id_parts.append(address["state"])
+            if "line" in address and address["line"]:
+                # Use first line
+                id_parts.append(address["line"][0])
+
+        # Create deterministic hash
+        combined = "|".join(id_parts)
+        hash_value = hashlib.sha256(combined.encode()).hexdigest()[:16]
+
+        return f"location-{hash_value}"
 
     def _generate_condition_id_from_observation(self, observation) -> str:
         """Generate a Condition resource ID from a Problem Observation.

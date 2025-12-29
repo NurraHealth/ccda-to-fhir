@@ -297,9 +297,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if codings:
             codeable_concept["coding"] = codings
 
-        # Original text
+        # Original text (preferred)
         if original_text:
             codeable_concept["text"] = original_text
+        # Fallback: Use display_name from primary coding if available
+        elif display_name:
+            codeable_concept["text"] = display_name.strip()
+        # Fallback: Use first coding's display if available
+        elif codings and codings[0].get("display"):
+            codeable_concept["text"] = codings[0]["display"]
 
         # If codeable_concept is empty (no coding and no text), return None
         # This can happen when code exists but code_system is missing/None
