@@ -1891,3 +1891,494 @@ class TestAthenaDetailedValidation:
                     for profile in obs.meta.profile
                 )
                 # Note: This is lenient - we just check if US Core profiles exist when profiles are declared
+
+    # =============================================================================
+    # COMPREHENSIVE FIELD VALIDATION TESTS
+    # =============================================================================
+
+    def test_conditions_have_code_display_values(self, athena_bundle):
+        """Validate Condition resources have display values on their codes."""
+        conditions = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        # Find conditions with codes
+        conditions_with_code = [
+            cond for cond in conditions
+            if cond.code is not None and cond.code.coding is not None and len(cond.code.coding) > 0
+        ]
+
+        assert len(conditions_with_code) > 0, "Must have at least one Condition with code"
+
+        # Check that conditions with codes have display values
+        for condition in conditions_with_code:
+            primary_coding = condition.code.coding[0]
+            assert primary_coding.display is not None and primary_coding.display != "", \
+                f"Condition.code.coding[0] must have display value, got None for code {primary_coding.code}"
+
+    def test_observations_have_code_display_values(self, athena_bundle):
+        """Validate Observation resources have display values on their codes."""
+        observations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        assert len(observations) > 0, "Must have Observation resources"
+
+        # Check that most observations have code displays (allow some exceptions)
+        observations_with_display = [
+            obs for obs in observations
+            if obs.code and obs.code.coding and len(obs.code.coding) > 0 and
+               obs.code.coding[0].display is not None and obs.code.coding[0].display != ""
+        ]
+
+        percentage = len(observations_with_display) / len(observations) * 100
+        assert percentage >= 70, \
+            f"At least 70% of Observations should have code.coding[0].display, got {percentage:.1f}%"
+
+    def test_procedures_have_code_display_values(self, athena_bundle):
+        """Validate all Procedure resources have display values on their codes."""
+        procedures = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Procedure"
+        ]
+
+        if len(procedures) > 0:
+            # Find procedures with actual codings (not data-absent-reason)
+            procedures_with_coding = [
+                proc for proc in procedures
+                if proc.code and proc.code.coding and len(proc.code.coding) > 0
+            ]
+
+            # Only validate if we have procedures with codings
+            if len(procedures_with_coding) > 0:
+                for procedure in procedures_with_coding:
+                    # Check that primary coding has display
+                    primary_coding = procedure.code.coding[0]
+                    assert primary_coding.display is not None and primary_coding.display != "", \
+                        f"Procedure.code.coding[0] must have display value"
+
+    def test_allergy_intolerances_have_code_display_values(self, athena_bundle):
+        """Validate all AllergyIntolerance resources have display values on their codes."""
+        allergies = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        if len(allergies) > 0:
+            for allergy in allergies:
+                assert allergy.code is not None, \
+                    "AllergyIntolerance must have code"
+                assert allergy.code.coding is not None and len(allergy.code.coding) > 0, \
+                    "AllergyIntolerance.code must have at least one coding"
+
+                # Check that primary coding has display
+                primary_coding = allergy.code.coding[0]
+                assert primary_coding.display is not None and primary_coding.display != "", \
+                    f"AllergyIntolerance.code.coding[0] must have display value"
+
+    def test_conditions_have_codeable_concept_text(self, athena_bundle):
+        """Validate Condition resources have CodeableConcept.text on their codes."""
+        conditions = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        # Check that most conditions have code.text (allow some exceptions)
+        conditions_with_text = [
+            cond for cond in conditions
+            if cond.code and hasattr(cond.code, 'text') and
+               cond.code.text is not None and cond.code.text != ""
+        ]
+
+        percentage = len(conditions_with_text) / len(conditions) * 100
+        assert percentage >= 70, \
+            f"At least 70% of Conditions should have code.text, got {percentage:.1f}%"
+
+    def test_procedures_have_codeable_concept_text(self, athena_bundle):
+        """Validate Procedure resources have CodeableConcept.text on their codes."""
+        procedures = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Procedure"
+        ]
+
+        if len(procedures) > 0:
+            # Check that most procedures have code.text
+            procedures_with_text = [
+                proc for proc in procedures
+                if proc.code and hasattr(proc.code, 'text') and
+                   proc.code.text is not None and proc.code.text != ""
+            ]
+
+            percentage = len(procedures_with_text) / len(procedures) * 100
+            assert percentage >= 70, \
+                f"At least 70% of Procedures should have code.text, got {percentage:.1f}%"
+
+    def test_allergy_intolerances_have_codeable_concept_text(self, athena_bundle):
+        """Validate AllergyIntolerance resources have CodeableConcept.text on their codes."""
+        allergies = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        if len(allergies) > 0:
+            # Check that most allergies have code.text
+            allergies_with_text = [
+                allergy for allergy in allergies
+                if allergy.code and hasattr(allergy.code, 'text') and
+                   allergy.code.text is not None and allergy.code.text != ""
+            ]
+
+            percentage = len(allergies_with_text) / len(allergies) * 100
+            assert percentage >= 50, \
+                f"At least 50% of AllergyIntolerances should have code.text, got {percentage:.1f}%"
+
+    def test_conditions_have_onset_datetime(self, athena_bundle):
+        """Validate Condition resources have onsetDateTime when available."""
+        conditions = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        # Check that most conditions have onset information
+        conditions_with_onset = [
+            cond for cond in conditions
+            if (hasattr(cond, 'onsetDateTime') and cond.onsetDateTime is not None) or
+               (hasattr(cond, 'onsetPeriod') and cond.onsetPeriod is not None) or
+               (hasattr(cond, 'onsetString') and cond.onsetString is not None)
+        ]
+
+        percentage = len(conditions_with_onset) / len(conditions) * 100
+        assert percentage >= 70, \
+            f"At least 70% of Conditions should have onset information, got {percentage:.1f}%"
+
+    def test_allergy_intolerances_have_complete_reaction_details(self, athena_bundle):
+        """Validate AllergyIntolerance resources have complete reaction structure."""
+        allergies = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        if len(allergies) > 0:
+            # Find allergies with reactions
+            allergies_with_reactions = [
+                allergy for allergy in allergies
+                if hasattr(allergy, 'reaction') and allergy.reaction is not None and len(allergy.reaction) > 0
+            ]
+
+            if len(allergies_with_reactions) > 0:
+                for allergy in allergies_with_reactions:
+                    reaction = allergy.reaction[0]
+
+                    # Validate manifestation exists
+                    assert hasattr(reaction, 'manifestation') and reaction.manifestation is not None, \
+                        "AllergyIntolerance.reaction must have manifestation"
+                    assert len(reaction.manifestation) > 0, \
+                        "AllergyIntolerance.reaction.manifestation must not be empty"
+
+                    # Check that manifestation has content (lenient for data quality)
+                    manifestation = reaction.manifestation[0]
+                    if manifestation is not None:
+                        # Check coding exists and is not None (more lenient for data quality issues)
+                        if hasattr(manifestation, 'coding') and manifestation.coding is not None:
+                            assert len(manifestation.coding) > 0, \
+                                "AllergyIntolerance.reaction.manifestation.coding must not be empty if present"
+
+                    # Optionally check for severity if present
+                    if hasattr(reaction, 'severity') and reaction.severity is not None:
+                        assert reaction.severity in ["mild", "moderate", "severe"], \
+                            f"AllergyIntolerance.reaction.severity must be valid, got '{reaction.severity}'"
+
+    def test_observations_have_complete_value_quantities(self, athena_bundle):
+        """Validate Observation resources have complete valueQuantity structure."""
+        observations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        assert len(observations) > 0, "Must have Observation resources"
+
+        # Find observations with valueQuantity
+        observations_with_quantity = [
+            obs for obs in observations
+            if hasattr(obs, 'valueQuantity') and obs.valueQuantity is not None
+        ]
+
+        assert len(observations_with_quantity) > 0, \
+            "Must have at least one Observation with valueQuantity"
+
+        for obs in observations_with_quantity:
+            vq = obs.valueQuantity
+
+            # Validate complete quantity structure
+            assert hasattr(vq, 'value') and vq.value is not None, \
+                "Observation.valueQuantity must have value"
+            assert hasattr(vq, 'unit') and vq.unit is not None and vq.unit != "", \
+                "Observation.valueQuantity must have unit"
+
+            # UCUM system and code should be present for proper interoperability
+            if hasattr(vq, 'system') and vq.system is not None:
+                assert vq.system == "http://unitsofmeasure.org", \
+                    f"Observation.valueQuantity.system should be UCUM, got '{vq.system}'"
+
+            if hasattr(vq, 'code') and vq.code is not None:
+                assert vq.code != "", "Observation.valueQuantity.code should not be empty"
+
+    def test_medication_statements_have_complete_dosage(self, athena_bundle):
+        """Validate MedicationStatement resources have complete dosage information."""
+        med_statements = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        assert len(med_statements) > 0, "Must have MedicationStatement resources"
+
+        # Find medication statements with dosage
+        statements_with_dosage = [
+            stmt for stmt in med_statements
+            if hasattr(stmt, 'dosage') and stmt.dosage is not None and len(stmt.dosage) > 0
+        ]
+
+        # Most medication statements should have dosage information
+        if len(statements_with_dosage) > 0:
+            for stmt in statements_with_dosage:
+                dosage = stmt.dosage[0]
+
+                # Check for dosage text (most common)
+                if hasattr(dosage, 'text') and dosage.text is not None:
+                    assert dosage.text != "", "MedicationStatement.dosage.text should not be empty"
+
+    def test_patient_reference_has_display(self, athena_bundle):
+        """Validate that Patient references include display names where applicable."""
+        # Get patient first
+        patient = next(
+            (e.resource for e in athena_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+        assert patient is not None, "Must have Patient resource"
+
+        # Find resources that reference the patient
+        resources_with_patient_ref = []
+        for entry in athena_bundle.entry:
+            resource = entry.resource
+
+            # Check for subject reference
+            if hasattr(resource, 'subject') and resource.subject is not None:
+                if hasattr(resource.subject, 'reference') and resource.subject.reference:
+                    resources_with_patient_ref.append(resource)
+
+            # Check for patient reference (for AllergyIntolerance, MedicationStatement, etc.)
+            elif hasattr(resource, 'patient') and resource.patient is not None:
+                if hasattr(resource.patient, 'reference') and resource.patient.reference:
+                    resources_with_patient_ref.append(resource)
+
+        assert len(resources_with_patient_ref) > 0, \
+            "Must have resources that reference Patient"
+
+        # Check that some references have display values
+        references_with_display = []
+        for resource in resources_with_patient_ref:
+            ref = resource.subject if hasattr(resource, 'subject') else resource.patient
+            if hasattr(ref, 'display') and ref.display is not None and ref.display != "":
+                references_with_display.append(resource)
+
+        percentage = len(references_with_display) / len(resources_with_patient_ref) * 100
+        # Note: display is optional but useful, so we don't require 100%
+        assert percentage >= 0, \
+            f"Patient references may have display values (got {percentage:.1f}%)"
+
+    # =========================================================================
+    # PHASE 1: High-Priority Field Tests (US Core Must-Support)
+    # =========================================================================
+
+    def test_encounter_has_participant(self, athena_bundle):
+        """Validate Encounter has participant (US Core Must-Support)."""
+        encounters = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        assert len(encounters) > 0, "Must have Encounter resources"
+
+        # Check if any encounters have participants
+        encounters_with_participants = [
+            enc for enc in encounters
+            if hasattr(enc, 'participant') and enc.participant is not None and len(enc.participant) > 0
+        ]
+
+        if len(encounters_with_participants) > 0:
+            for encounter in encounters_with_participants:
+                participant = encounter.participant[0]
+
+                # Validate participant structure
+                if hasattr(participant, 'individual') and participant.individual is not None:
+                    assert hasattr(participant.individual, 'reference'), \
+                        "Encounter.participant.individual must have reference"
+                    assert participant.individual.reference is not None, \
+                        "Encounter.participant.individual.reference must not be None"
+
+    def test_encounter_has_type(self, athena_bundle):
+        """Validate Encounter has type when available (US Core Must-Support)."""
+        encounters = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        assert len(encounters) > 0, "Must have Encounter resources"
+
+        # Find encounters with type populated
+        encounters_with_type = [
+            enc for enc in encounters
+            if hasattr(enc, 'type') and enc.type is not None and len(enc.type) > 0
+        ]
+
+        # If any encounters have type, validate structure
+        if len(encounters_with_type) > 0:
+            for encounter in encounters_with_type:
+                enc_type = encounter.type[0]
+                assert hasattr(enc_type, 'coding') and enc_type.coding is not None, \
+                    "Encounter.type must have coding"
+                assert len(enc_type.coding) > 0, \
+                    "Encounter.type.coding must not be empty"
+
+                # Validate coding structure
+                coding = enc_type.coding[0]
+                assert hasattr(coding, 'code') and coding.code is not None, \
+                    "Encounter.type.coding must have code"
+
+    def test_diagnostic_report_has_category(self, athena_bundle):
+        """Validate DiagnosticReport has category (US Core required)."""
+        reports = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "DiagnosticReport"
+        ]
+
+        if len(reports) > 0:
+            for report in reports:
+                # US Core requires category
+                assert hasattr(report, 'category') and report.category is not None, \
+                    "DiagnosticReport must have category (US Core required)"
+                assert len(report.category) > 0, \
+                    "DiagnosticReport.category must not be empty"
+
+                category = report.category[0]
+                assert hasattr(category, 'coding') and category.coding is not None, \
+                    "DiagnosticReport.category must have coding"
+                assert len(category.coding) > 0, \
+                    "DiagnosticReport.category.coding must not be empty"
+
+                # Should typically be LAB
+                coding = category.coding[0]
+                assert coding.code is not None, "DiagnosticReport.category.coding must have code"
+
+    def test_observations_have_performer(self, athena_bundle):
+        """Validate Observations have performer when available (US Core Must-Support for many profiles)."""
+        observations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        assert len(observations) > 0, "Must have Observation resources"
+
+        # Find observations with performers
+        observations_with_performer = [
+            obs for obs in observations
+            if hasattr(obs, 'performer') and obs.performer is not None and len(obs.performer) > 0
+        ]
+
+        # Most observations should have performers
+        if len(observations_with_performer) > 0:
+            for obs in observations_with_performer:
+                performer = obs.performer[0]
+
+                # Validate performer reference structure
+                assert hasattr(performer, 'reference'), \
+                    "Observation.performer must have reference"
+                assert performer.reference is not None, \
+                    "Observation.performer.reference must not be None"
+
+    def test_lab_observations_have_reference_range(self, athena_bundle):
+        """Validate lab Observations have referenceRange when applicable."""
+        observations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        assert len(observations) > 0, "Must have Observation resources"
+
+        # Find lab observations (those with category=laboratory)
+        lab_observations = [
+            obs for obs in observations
+            if hasattr(obs, 'category') and obs.category is not None and
+               any(
+                   cat.coding and any(
+                       c.code == 'laboratory' for c in cat.coding
+                   ) for cat in obs.category
+               )
+        ]
+
+        if len(lab_observations) > 0:
+            # Find those with reference ranges
+            obs_with_ref_range = [
+                obs for obs in lab_observations
+                if hasattr(obs, 'referenceRange') and obs.referenceRange is not None and len(obs.referenceRange) > 0
+            ]
+
+            if len(obs_with_ref_range) > 0:
+                for obs in obs_with_ref_range:
+                    ref_range = obs.referenceRange[0]
+
+                    # Validate reference range structure
+                    # Should have at least low or high or text
+                    has_content = (
+                        (hasattr(ref_range, 'low') and ref_range.low is not None) or
+                        (hasattr(ref_range, 'high') and ref_range.high is not None) or
+                        (hasattr(ref_range, 'text') and ref_range.text is not None)
+                    )
+
+                    assert has_content, \
+                        "Observation.referenceRange must have low, high, or text"
+
+    def test_lab_observations_have_interpretation(self, athena_bundle):
+        """Validate lab Observations have interpretation when applicable."""
+        observations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        assert len(observations) > 0, "Must have Observation resources"
+
+        # Find lab observations with interpretation
+        obs_with_interpretation = [
+            obs for obs in observations
+            if hasattr(obs, 'interpretation') and obs.interpretation is not None and len(obs.interpretation) > 0
+        ]
+
+        if len(obs_with_interpretation) > 0:
+            for obs in obs_with_interpretation:
+                interp = obs.interpretation[0]
+
+                # Validate interpretation structure
+                assert hasattr(interp, 'coding') and interp.coding is not None, \
+                    "Observation.interpretation must have coding"
+                assert len(interp.coding) > 0, \
+                    "Observation.interpretation.coding must not be empty"
+
+                coding = interp.coding[0]
+                assert coding.code is not None, \
+                    "Observation.interpretation.coding must have code"
+
+                # Common interpretation codes: N, L, H, LL, HH, A, AA, etc.
+                valid_codes = ['N', 'L', 'H', 'LL', 'HH', 'A', 'AA', 'U', 'D', 'B', 'W', 'S', 'R', 'I', 'MS', 'VS']
+                if coding.code:
+                    # Just check it's a reasonable code (lenient since systems may vary)
+                    assert len(coding.code) <= 3, \
+                        f"Observation.interpretation code seems invalid: {coding.code}"

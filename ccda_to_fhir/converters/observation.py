@@ -226,7 +226,27 @@ class ObservationConverter(BaseConverter[Observation]):
             if ref_ranges:
                 fhir_obs["referenceRange"] = ref_ranges
 
-        # 13. Pregnancy observation special handling
+        # 13. Performers (who performed/observed the observation)
+        # Per US Core: performer is Must-Support for many observation profiles
+        # Maps from C-CDA performer element to FHIR Reference(Practitioner|Organization)
+        if observation.performer:
+            performers = []
+            for performer in observation.performer:
+                if performer.assigned_entity and performer.assigned_entity.id:
+                    # Extract practitioner ID from assigned entity
+                    for id_elem in performer.assigned_entity.id:
+                        if id_elem.root:
+                            practitioner_id = self._generate_practitioner_id(
+                                id_elem.root, id_elem.extension
+                            )
+                            performers.append({
+                                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{practitioner_id}"
+                            })
+                            break  # Use first valid ID
+            if performers:
+                fhir_obs["performer"] = performers
+
+        # 14. Pregnancy observation special handling
         if observation.template_id:
             from ccda_to_fhir.constants import TemplateIds
             is_pregnancy = any(
@@ -237,7 +257,7 @@ class ObservationConverter(BaseConverter[Observation]):
             if is_pregnancy:
                 self._handle_pregnancy_observation(observation, fhir_obs)
 
-        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        # 15. Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=observation, section=section)
         if narrative:
             fhir_obs["text"] = narrative
@@ -1544,3 +1564,17 @@ class ObservationConverter(BaseConverter[Observation]):
         # O2 flow and concentration reference ranges are not typically included in FHIR pulse ox panels
 
         return pulse_ox_obs
+
+    def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
+        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Practitioner", root, extension)

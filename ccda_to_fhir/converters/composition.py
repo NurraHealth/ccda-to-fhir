@@ -272,6 +272,13 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 "US Realm Header Profile requires custodian with cardinality 1..1."
             )
 
+        # Encounter - optional reference to the encompassing encounter
+        # Maps from ClinicalDocument.componentOf.encompassingEncounter
+        if self.reference_registry:
+            encounter_ref = self.reference_registry.get_encounter_reference()
+            if encounter_ref:
+                composition["encounter"] = encounter_ref
+
         # Sections - convert structured body to Composition sections
         if clinical_document.component and clinical_document.component.structured_body:
             sections = self._convert_sections(clinical_document.component.structured_body)

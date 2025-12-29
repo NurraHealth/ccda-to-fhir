@@ -121,7 +121,27 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         if effective_time:
             report["effectiveDateTime"] = effective_time
 
-        # 8. Convert component observations to standalone resources
+        # 8. Results interpreter (who interpreted the results)
+        # Per US Core: resultsInterpreter is Must-Support
+        # Maps from C-CDA organizer.performer to FHIR Reference(Practitioner|Organization)
+        if organizer.performer:
+            interpreters = []
+            for performer in organizer.performer:
+                if performer.assigned_entity and performer.assigned_entity.id:
+                    # Extract practitioner ID from assigned entity
+                    for id_elem in performer.assigned_entity.id:
+                        if id_elem.root:
+                            practitioner_id = self._generate_practitioner_id(
+                                id_elem.root, id_elem.extension
+                            )
+                            interpreters.append({
+                                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{practitioner_id}"
+                            })
+                            break  # Use first valid ID
+            if interpreters:
+                report["resultsInterpreter"] = interpreters
+
+        # 9. Convert component observations to standalone resources
         # Per FHIR best practices: use standalone resources (not contained) since
         # these observations have proper identifiers and independent existence.
         # Reference: https://www.hl7.org/fhir/R4/references.html#contained
@@ -266,3 +286,17 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
             return self.convert_date(organizer.effective_time.value)
 
         return None
+
+    def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
+        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Practitioner", root, extension)
