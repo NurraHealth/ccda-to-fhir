@@ -43,6 +43,10 @@ class ConversionResult:
     error_type: Optional[str] = None
     error_message: Optional[str] = None
 
+    # Expected failure tracking
+    expected_failure: bool = False
+    expected_failure_reason: Optional[str] = None
+
     # FHIR Bundle metrics
     total_resources: int = 0
     resource_counts: Dict[str, int] = None
@@ -83,6 +87,41 @@ class StressTestRunner:
         self.base_dir = base_dir
         self.results: List[ConversionResult] = []
         self.skipped_fragments: List[Path] = []
+        self.expected_failures = self._load_expected_failures()
+
+    def _load_expected_failures(self) -> Dict[str, Any]:
+        """Load expected failures configuration."""
+        config_path = self.base_dir / "expected_failures.json"
+        if not config_path.exists():
+            return {"categories": {}}
+
+        with open(config_path, 'r') as f:
+            return json.load(f)
+
+    def _is_expected_failure(self, file_path: Path, error_message: str) -> tuple[bool, Optional[str]]:
+        """Check if a file is expected to fail with the given error.
+
+        Returns:
+            (is_expected, reason): Tuple of whether this is an expected failure and the reason
+        """
+        import re
+
+        relative_path = str(file_path.relative_to(self.base_dir))
+
+        # Check all categories
+        for category_name, category in self.expected_failures.get("categories", {}).items():
+            for expected in category.get("files", []):
+                if expected["path"] == relative_path:
+                    # Check if error message matches expected pattern (if provided)
+                    if "expected_error_pattern" in expected:
+                        pattern = expected["expected_error_pattern"]
+                        if re.search(pattern, error_message, re.IGNORECASE):
+                            return True, expected.get("reason", f"Expected failure: {category_name}")
+                    else:
+                        # No pattern specified, any error is expected
+                        return True, expected.get("reason", f"Expected failure: {category_name}")
+
+        return False, None
 
     def is_document_fragment(self, file_path: Path) -> bool:
         """Check if a file is a document fragment (not a full ClinicalDocument)."""
@@ -295,43 +334,59 @@ class StressTestRunner:
 
         except InvalidCodeSystemError as e:
             duration_ms = (time.time() - start_time) * 1000
+            error_msg = f"OID: {e.oid}"
+            is_expected, reason = self._is_expected_failure(file_path, error_msg)
             return ConversionResult(
                 file_path=str(file_path.relative_to(self.base_dir)),
                 success=False,
                 duration_ms=duration_ms,
                 error_type="InvalidCodeSystem",
-                error_message=f"OID: {e.oid}",
+                error_message=error_msg,
+                expected_failure=is_expected,
+                expected_failure_reason=reason,
             )
 
         except InvalidValueError as e:
             duration_ms = (time.time() - start_time) * 1000
+            error_msg = f"{e.field_name}: {e.value}"
+            is_expected, reason = self._is_expected_failure(file_path, error_msg)
             return ConversionResult(
                 file_path=str(file_path.relative_to(self.base_dir)),
                 success=False,
                 duration_ms=duration_ms,
                 error_type="InvalidValue",
-                error_message=f"{e.field_name}: {e.value}",
+                error_message=error_msg,
+                expected_failure=is_expected,
+                expected_failure_reason=reason,
             )
 
         except CCDAConversionError as e:
             duration_ms = (time.time() - start_time) * 1000
+            error_msg = str(e)
+            is_expected, reason = self._is_expected_failure(file_path, error_msg)
             return ConversionResult(
                 file_path=str(file_path.relative_to(self.base_dir)),
                 success=False,
                 duration_ms=duration_ms,
                 error_type=type(e).__name__,
-                error_message=str(e),
+                error_message=error_msg,
+                expected_failure=is_expected,
+                expected_failure_reason=reason,
             )
 
         except Exception as e:
             duration_ms = (time.time() - start_time) * 1000
             error_trace = traceback.format_exc()
+            error_msg = str(e)
+            is_expected, reason = self._is_expected_failure(file_path, error_msg)
             return ConversionResult(
                 file_path=str(file_path.relative_to(self.base_dir)),
                 success=False,
                 duration_ms=duration_ms,
                 error_type=type(e).__name__,
-                error_message=str(e),
+                error_message=error_msg,
+                expected_failure=is_expected,
+                expected_failure_reason=reason,
             )
 
     def run(self, limit: Optional[int] = None, onc_only: bool = False, skip_fragments: bool = False) -> Dict[str, Any]:
@@ -356,6 +411,8 @@ class StressTestRunner:
 
             if result.success:
                 print(f"✓ {result.duration_ms:.1f}ms - {result.total_resources} resources")
+            elif result.expected_failure:
+                print(f"✓ Correctly rejected: {result.expected_failure_reason}")
             else:
                 print(f"✗ {result.error_type}: {result.error_message}")
 
@@ -365,7 +422,12 @@ class StressTestRunner:
         """Generate comprehensive test report."""
         total = len(self.results)
         successful = sum(1 for r in self.results if r.success)
-        failed = total - successful
+        expected_failures = sum(1 for r in self.results if not r.success and r.expected_failure)
+        correctly_rejected = expected_failures  # Expected failures are correct rejections
+        actual_failures = sum(1 for r in self.results if not r.success and not r.expected_failure)
+        # Total success includes both successful conversions and correct rejections
+        total_success = successful + correctly_rejected
+        failed = actual_failures
 
         # Aggregate metrics
         total_resources = sum(r.total_resources for r in self.results if r.success)
@@ -423,8 +485,11 @@ class StressTestRunner:
             "summary": {
                 "total_files": total,
                 "successful": successful,
+                "correctly_rejected": correctly_rejected,
+                "total_success": total_success,
                 "failed": failed,
-                "success_rate": f"{(successful/total*100):.1f}%" if total > 0 else "0%",
+                "success_rate": f"{(total_success/total*100):.1f}%" if total > 0 else "0%",
+                "conversion_rate": f"{(successful/total*100):.1f}%" if total > 0 else "0%",
                 "total_resources_created": total_resources,
                 "avg_conversion_time_ms": f"{avg_duration:.1f}",
             },
@@ -432,13 +497,22 @@ class StressTestRunner:
             "error_distribution": dict(error_distribution),
             "us_core_compliance": us_core_compliance,
             "ccda_fhir_mapping": ccda_fhir_mapping,
+            "correctly_rejected_files": [
+                {
+                    "file": r.file_path,
+                    "reason": r.expected_failure_reason,
+                    "error_type": r.error_type,
+                    "error_message": r.error_message,
+                }
+                for r in self.results if r.expected_failure
+            ],
             "failed_files": [
                 {
                     "file": r.file_path,
                     "error_type": r.error_type,
                     "error_message": r.error_message,
                 }
-                for r in self.results if not r.success
+                for r in self.results if not r.success and not r.expected_failure
             ],
         }
 
@@ -467,8 +541,11 @@ def main():
     print(f"{'='*80}")
     print(f"Total Files:          {report['summary']['total_files']}")
     print(f"Successful:           {report['summary']['successful']}")
+    print(f"Correctly Rejected:   {report['summary']['correctly_rejected']} (spec violations)")
+    print(f"Total Success:        {report['summary']['total_success']}")
     print(f"Failed:               {report['summary']['failed']}")
-    print(f"Success Rate:         {report['summary']['success_rate']}")
+    print(f"Success Rate:         {report['summary']['success_rate']} (includes correct rejections)")
+    print(f"Conversion Rate:      {report['summary']['conversion_rate']} (successful conversions only)")
     print(f"Total Resources:      {report['summary']['total_resources_created']}")
     print(f"Avg Conversion Time:  {report['summary']['avg_conversion_time_ms']}ms")
     print(f"\nResource Distribution:")

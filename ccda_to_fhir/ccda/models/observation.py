@@ -548,15 +548,11 @@ class Observation(CDAModel):
         Reference: docs/ccda/observation-smoking-status.md
 
         Conformance requirements:
-        1. SHALL contain at least one [1..*] id (relaxed - vendor variance)
+        1. SHALL contain at least one [1..*] id
         2. SHALL contain exactly one [1..1] code
         3. SHALL contain exactly one [1..1] statusCode with code="completed"
         4. SHALL contain exactly one [1..1] effectiveTime
         5. SHALL contain exactly one [1..1] value with xsi:type="CD"
-
-        Note: ID requirement is relaxed to accommodate real-world vendor implementations
-        (Advanced Technologies Group) that omit the id element. Converters will generate
-        synthetic IDs using code + effectiveTime for deterministic fallback.
 
         Raises:
             ValueError: If any SHALL requirement is violated
@@ -564,13 +560,11 @@ class Observation(CDAModel):
         if not self._has_template("2.16.840.1.113883.10.20.22.4.78"):
             return self
 
-        # ID validation relaxed - some vendors (ATG) omit this
-        # Converters will generate synthetic ID if missing
-        # if not self.id or len(self.id) == 0:
-        #     raise ValueError(
-        #         "Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78): "
-        #         "SHALL contain at least one [1..*] id"
-        #     )
+        if not self.id or len(self.id) == 0:
+            raise ValueError(
+                "Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78): "
+                "SHALL contain at least one [1..*] id"
+            )
 
         if not self.code:
             raise ValueError(

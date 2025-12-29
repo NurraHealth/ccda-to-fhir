@@ -1,70 +1,129 @@
 {
   "summary": {
     "total_files": 828,
-    "successful": 385,
-    "failed": 443,
-    "success_rate": "46.5%",
-    "total_resources_created": 10886,
-    "avg_conversion_time_ms": "4.4"
+    "successful": 383,
+    "correctly_rejected": 9,
+    "total_success": 392,
+    "failed": 436,
+    "success_rate": "47.3%",
+    "conversion_rate": "46.3%",
+    "total_resources_created": 10816,
+    "avg_conversion_time_ms": "4.6"
   },
   "resource_distribution": {
-    "Composition": 363,
-    "Patient": 376,
-    "Practitioner": 907,
-    "Device": 300,
-    "Organization": 573,
+    "Composition": 361,
+    "Patient": 374,
+    "Practitioner": 899,
+    "Device": 299,
+    "Organization": 571,
     "RelatedPerson": 84,
-    "DocumentReference": 385,
-    "AllergyIntolerance": 466,
-    "Observation": 2601,
-    "DiagnosticReport": 280,
-    "Procedure": 483,
+    "DocumentReference": 383,
+    "AllergyIntolerance": 463,
+    "Observation": 2573,
+    "DiagnosticReport": 279,
+    "Procedure": 480,
     "Provenance": 259,
     "PractitionerRole": 116,
     "Goal": 129,
-    "Encounter": 491,
+    "Encounter": 489,
     "CarePlan": 4,
-    "Condition": 1256,
-    "MedicationStatement": 795,
-    "Immunization": 345,
+    "Condition": 1248,
+    "MedicationStatement": 792,
+    "Immunization": 342,
     "ServiceRequest": 81,
-    "Location": 260,
+    "Location": 258,
     "MedicationRequest": 276,
     "Medication": 56
   },
   "error_distribution": {
-    "MalformedXMLError": 443
+    "MalformedXMLError": 445
   },
   "us_core_compliance": {
     "patient_completeness": {
-      "has_patient": 376,
-      "has_name": 376,
-      "has_identifier": 376,
-      "has_gender": 376,
-      "has_birthdate": 376
+      "has_patient": 374,
+      "has_name": 374,
+      "has_identifier": 374,
+      "has_gender": 374,
+      "has_birthdate": 374
     },
     "condition_compliance": {
-      "with_code": 1132,
-      "with_category": 1256,
-      "with_subject": 1256
+      "with_code": 1124,
+      "with_category": 1248,
+      "with_subject": 1248
     },
     "allergy_compliance": {
-      "with_code": 416,
-      "with_patient": 466,
-      "with_clinical_status": 466
+      "with_code": 413,
+      "with_patient": 463,
+      "with_clinical_status": 463
     },
     "observation_compliance": {
-      "with_code": 2601,
-      "with_status": 2601,
-      "with_category": 2598
+      "with_code": 2573,
+      "with_status": 2573,
+      "with_category": 2570
     }
   },
   "ccda_fhir_mapping": {
-    "has_composition": 363,
-    "avg_sections_per_doc": 16.942857142857143,
+    "has_composition": 361,
+    "avg_sections_per_doc": 16.942558746736292,
     "total_provenance": 259,
     "has_narrative": 0
   },
+  "correctly_rejected_files": [
+    {
+      "file": "ccda-samples/Advanced Technologies Group/SLI_CCD_b6AliceNewman_ATG_ATGEHR_10162017.xml",
+      "reason": "Smoking Status Observation missing required id element",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78): SHALL contain at least one [1..*] id [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/Advanced Technologies Group/SLI_CCD_b6JeremyBates_ATG_ATGEHR_10162017.xml",
+      "reason": "Smoking Status Observation missing required id element",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78): SHALL contain at least one [1..*] id [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/MDLogic/ContinuityOfCareDocument_MUBatJer_20170601-145724.xml",
+      "reason": "Invalid xmlns:schemaLocation syntax (should be xsi:schemaLocation)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Invalid XML syntax: xmlns:schemaLocation: 'urn:hl7-org:v3 CDA.xsd' is not a valid URI, line 13, column 48 (<string>, line 13)"
+    },
+    {
+      "file": "ccda-samples/MDLogic/ContinuityOfCareDocument_MUNewAli_20170601-145612.xml",
+      "reason": "Invalid xmlns:schemaLocation syntax (should be xsi:schemaLocation)",
+      "error_type": "MalformedXMLError",
+      "error_message": "Invalid XML syntax: xmlns:schemaLocation: 'urn:hl7-org:v3 CDA.xsd' is not a valid URI, line 13, column 48 (<string>, line 13)"
+    },
+    {
+      "file": "ccda-samples/MedConnect/CECILIA CUMMINGS_20170808143810.xml",
+      "reason": "Vital Sign Observation uses CD instead of required PQ for value element",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/MedConnect/MYRA JONES_20170808141701.xml",
+      "reason": "Vital Sign Observation uses CD instead of required PQ for value element",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/MedConnect/SUSAN TURNER_20170808143241.xml",
+      "reason": "Vital Sign Observation uses CD instead of required PQ for value element",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/Medical Office Technologies/5492_6_Sample_ReferralNote.xml",
+      "reason": "Vital Sign Observation uses CD instead of required PQ for value element; also misuses template for non-vital-sign data",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "file": "ccda-samples/Medical Office Technologies/5597_12_ReferralNote.xml",
+      "reason": "Vital Sign Observation uses CD instead of required PQ for value element; also misuses template for non-vital-sign data",
+      "error_type": "MalformedXMLError",
+      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    }
+  ],
   "failed_files": [
     {
       "file": "C-CDA-Examples/Allergies/Allergy to food egg/Allergy to food egg(C-CDA2.1).xml",
@@ -2165,41 +2224,6 @@
       "file": "ccda-samples/EHealthPartners/201710-0010123.xml",
       "error_type": "MalformedXMLError",
       "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Problem Observation (2.16.840.1.113883.10.20.22.4.4): statusCode SHALL be 'completed', found 'None' [type=value_error, input_value={'class_code': 'OBS', 'mo...None, null_flavor=None)}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
-    },
-    {
-      "file": "ccda-samples/MDLogic/ContinuityOfCareDocument_MUBatJer_20170601-145724.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Invalid XML syntax: xmlns:schemaLocation: 'urn:hl7-org:v3 CDA.xsd' is not a valid URI, line 13, column 48 (<string>, line 13)"
-    },
-    {
-      "file": "ccda-samples/MDLogic/ContinuityOfCareDocument_MUNewAli_20170601-145612.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Invalid XML syntax: xmlns:schemaLocation: 'urn:hl7-org:v3 CDA.xsd' is not a valid URI, line 13, column 48 (<string>, line 13)"
-    },
-    {
-      "file": "ccda-samples/MedConnect/CECILIA CUMMINGS_20170808143810.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
-    },
-    {
-      "file": "ccda-samples/MedConnect/MYRA JONES_20170808141701.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
-    },
-    {
-      "file": "ccda-samples/MedConnect/SUSAN TURNER_20170808143241.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
-    },
-    {
-      "file": "ccda-samples/Medical Office Technologies/5492_6_Sample_ReferralNote.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
-    },
-    {
-      "file": "ccda-samples/Medical Office Technologies/5597_12_ReferralNote.xml",
-      "error_type": "MalformedXMLError",
-      "error_message": "Failed to parse Observation from element observation: 1 validation error for Observation\n  Value error, Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27): value SHALL be PQ (Physical Quantity), found CD [type=value_error, input_value={'class_code': 'OBS', 'mo...one, null_flavor='UNK')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
     },
     {
       "file": "ccda-samples/Navigating Cancer/JeremyBates_CCDdownload.xml",

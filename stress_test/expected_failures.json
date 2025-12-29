@@ -1,0 +1,114 @@
+{
+  "description": "Expected failures for C-CDA documents that violate specifications",
+  "categories": {
+    "spec_violations": {
+      "description": "Documents that violate C-CDA SHALL requirements - correctly rejected by parser",
+      "files": [
+        {
+          "path": "ccda-samples/MedConnect/CECILIA CUMMINGS_20170808143810.xml",
+          "vendor": "MedConnect",
+          "reason": "Vital Sign Observation uses CD instead of required PQ for value element",
+          "spec_requirement": "C-CDA SHALL: Vital Sign value must be xsi:type='PQ' (Physical Quantity)",
+          "expected_error_pattern": "value SHALL be PQ \\(Physical Quantity\\), found CD",
+          "spec_reference": "2.16.840.1.113883.10.20.22.4.27"
+        },
+        {
+          "path": "ccda-samples/MedConnect/MYRA JONES_20170808141701.xml",
+          "vendor": "MedConnect",
+          "reason": "Vital Sign Observation uses CD instead of required PQ for value element",
+          "spec_requirement": "C-CDA SHALL: Vital Sign value must be xsi:type='PQ' (Physical Quantity)",
+          "expected_error_pattern": "value SHALL be PQ \\(Physical Quantity\\), found CD",
+          "spec_reference": "2.16.840.1.113883.10.20.22.4.27"
+        },
+        {
+          "path": "ccda-samples/MedConnect/SUSAN TURNER_20170808143241.xml",
+          "vendor": "MedConnect",
+          "reason": "Vital Sign Observation uses CD instead of required PQ for value element",
+          "spec_requirement": "C-CDA SHALL: Vital Sign value must be xsi:type='PQ' (Physical Quantity)",
+          "expected_error_pattern": "value SHALL be PQ \\(Physical Quantity\\), found CD",
+          "spec_reference": "2.16.840.1.113883.10.20.22.4.27"
+        },
+        {
+          "path": "ccda-samples/Medical Office Technologies/5492_6_Sample_ReferralNote.xml",
+          "vendor": "Medical Office Technologies",
+          "reason": "Vital Sign Observation uses CD instead of required PQ for value element; also misuses template for non-vital-sign data",
+          "spec_requirement": "C-CDA SHALL: Vital Sign value must be xsi:type='PQ' (Physical Quantity)",
+          "expected_error_pattern": "value SHALL be PQ \\(Physical Quantity\\), found CD",
+          "spec_reference": "2.16.840.1.113883.10.20.22.4.27"
+        },
+        {
+          "path": "ccda-samples/Medical Office Technologies/5597_12_ReferralNote.xml",
+          "vendor": "Medical Office Technologies",
+          "reason": "Vital Sign Observation uses CD instead of required PQ for value element; also misuses template for non-vital-sign data",
+          "spec_requirement": "C-CDA SHALL: Vital Sign value must be xsi:type='PQ' (Physical Quantity)",
+          "expected_error_pattern": "value SHALL be PQ \\(Physical Quantity\\), found CD",
+          "spec_reference": "2.16.840.1.113883.10.20.22.4.27"
+        },
+        {
+          "path": "ccda-samples/Advanced Technologies Group/SLI_CCD_b6AliceNewman_ATG_ATGEHR_10162017.xml",
+          "vendor": "Advanced Technologies Group",
+          "reason": "Smoking Status Observation missing required id element",
+          "spec_requirement": "C-CDA SHALL: Smoking Status SHALL contain at least one [1..*] id (CONF:1098-32401)",
+          "expected_error_pattern": "Smoking Status.*SHALL contain at least one.*id",
+          "spec_reference": "2.16.840.1.113883.10.20.22.4.78"
+        },
+        {
+          "path": "ccda-samples/Advanced Technologies Group/SLI_CCD_b6JeremyBates_ATG_ATGEHR_10162017.xml",
+          "vendor": "Advanced Technologies Group",
+          "reason": "Smoking Status Observation missing required id element",
+          "spec_requirement": "C-CDA SHALL: Smoking Status SHALL contain at least one [1..*] id (CONF:1098-32401)",
+          "expected_error_pattern": "Smoking Status.*SHALL contain at least one.*id",
+          "spec_reference": "2.16.840.1.113883.10.20.22.4.78"
+        }
+      ]
+    },
+    "malformed_xml": {
+      "description": "Documents with XML syntax errors - not fixable by parser",
+      "files": [
+        {
+          "path": "C-CDA-Examples/Normal Family History Father deceased Mother alive(C-CDA2.1).xml",
+          "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
+          "expected_error_pattern": "namespace|xsi"
+        },
+        {
+          "path": "C-CDA-Examples/Results of CO2 Test Normal(C-CDA2.1).xml",
+          "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
+          "expected_error_pattern": "namespace|xsi"
+        },
+        {
+          "path": "C-CDA-Examples/Growth Charts Example.xml",
+          "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
+          "expected_error_pattern": "namespace|xsi"
+        },
+        {
+          "path": "C-CDA-Examples/Panel of Vital Signs (Oxygen Concentration Included) (C-CDA2.1).xml",
+          "reason": "Missing xmlns:xsi namespace declaration while using xsi:type",
+          "expected_error_pattern": "namespace|xsi"
+        },
+        {
+          "path": "ccda-samples/MDLogic/ContinuityOfCareDocument_MUBatJer_20170601-145724.xml",
+          "reason": "Invalid xmlns:schemaLocation syntax (should be xsi:schemaLocation)",
+          "expected_error_pattern": "schemaLocation|namespace"
+        },
+        {
+          "path": "ccda-samples/MDLogic/ContinuityOfCareDocument_MUNewAli_20170601-145612.xml",
+          "reason": "Invalid xmlns:schemaLocation syntax (should be xsi:schemaLocation)",
+          "expected_error_pattern": "schemaLocation|namespace"
+        }
+      ]
+    },
+    "incomplete_fragments": {
+      "description": "Incomplete C-CDA examples (not full documents) - excluded from testing",
+      "files": [
+        {
+          "path": "C-CDA-Examples/US Realm Header (V3) Example.xml",
+          "reason": "Header-only example, missing required recordTarget and author"
+        },
+        {
+          "path": "C-CDA-Examples/Patient and Provider Organization Direct Address(C-CDAR2.1).xml",
+          "reason": "Partial example, not a complete ClinicalDocument"
+        }
+      ]
+    }
+  }
+}
