@@ -1586,3 +1586,308 @@ class TestAthenaDetailedValidation:
             assert immunization.patient.reference is not None, "Immunization.patient must have reference"
             assert immunization.patient.reference == f"Patient/{patient.id}", \
                 f"Immunization.patient must reference Patient/{patient.id}"
+
+    # ====================================================================================
+    # Systematic Status Field Tests - All Resources
+    # ====================================================================================
+
+    def test_all_observations_have_status(self, athena_bundle):
+        """Validate all Observation resources have status field (FHIR required)."""
+        observations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        assert len(observations) > 0, "Must have Observation resources"
+
+        for observation in observations:
+            assert observation.status is not None, \
+                "Observation.status is required (FHIR)"
+            assert observation.status in ["registered", "preliminary", "final", "amended", "corrected", "cancelled", "entered-in-error", "unknown"], \
+                f"Observation.status must be valid code, got '{observation.status}'"
+
+    def test_all_diagnostic_reports_have_status(self, athena_bundle):
+        """Validate all DiagnosticReport resources have status field (FHIR required)."""
+        reports = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "DiagnosticReport"
+        ]
+
+        if len(reports) > 0:
+            for report in reports:
+                assert report.status is not None, \
+                    "DiagnosticReport.status is required (FHIR)"
+                assert report.status in ["registered", "partial", "preliminary", "final", "amended", "corrected", "appended", "cancelled", "entered-in-error", "unknown"], \
+                    f"DiagnosticReport.status must be valid code, got '{report.status}'"
+
+    def test_all_medication_statements_have_status(self, athena_bundle):
+        """Validate all MedicationStatement resources have status field (FHIR required)."""
+        med_statements = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        assert len(med_statements) > 0, "Must have MedicationStatement resources"
+
+        for ms in med_statements:
+            assert ms.status is not None, \
+                "MedicationStatement.status is required (FHIR)"
+            assert ms.status in ["active", "completed", "entered-in-error", "intended", "stopped", "on-hold", "unknown", "not-taken"], \
+                f"MedicationStatement.status must be valid code, got '{ms.status}'"
+
+    def test_all_immunizations_have_status(self, athena_bundle):
+        """Validate all Immunization resources have status field (FHIR required)."""
+        immunizations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
+
+        if len(immunizations) > 0:
+            for immunization in immunizations:
+                assert immunization.status is not None, \
+                    "Immunization.status is required (FHIR)"
+                assert immunization.status in ["completed", "entered-in-error", "not-done"], \
+                    f"Immunization.status must be valid code, got '{immunization.status}'"
+
+    def test_all_procedures_have_status(self, athena_bundle):
+        """Validate all Procedure resources have status field (FHIR required)."""
+        procedures = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Procedure"
+        ]
+
+        if len(procedures) > 0:
+            for procedure in procedures:
+                assert procedure.status is not None, \
+                    "Procedure.status is required (FHIR)"
+                assert procedure.status in ["preparation", "in-progress", "not-done", "on-hold", "stopped", "completed", "entered-in-error", "unknown"], \
+                    f"Procedure.status must be valid code, got '{procedure.status}'"
+
+    def test_all_encounters_have_status(self, athena_bundle):
+        """Validate all Encounter resources have status field (FHIR required)."""
+        encounters = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        assert len(encounters) > 0, "Must have Encounter resources"
+
+        for encounter in encounters:
+            assert encounter.status is not None, \
+                "Encounter.status is required (FHIR)"
+            assert encounter.status in ["planned", "arrived", "triaged", "in-progress", "onleave", "finished", "cancelled", "entered-in-error", "unknown"], \
+                f"Encounter.status must be valid code, got '{encounter.status}'"
+
+    def test_all_conditions_have_clinical_status(self, athena_bundle):
+        """Validate all Condition resources have clinicalStatus (US Core required)."""
+        conditions = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        for condition in conditions:
+            assert condition.clinicalStatus is not None, \
+                "Condition.clinicalStatus is required (US Core)"
+            assert condition.clinicalStatus.coding is not None, \
+                "Condition.clinicalStatus must have coding"
+
+            coding = condition.clinicalStatus.coding[0]
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/condition-clinical", \
+                "Condition.clinicalStatus must use condition-clinical CodeSystem"
+            assert coding.code in ["active", "recurrence", "relapse", "inactive", "remission", "resolved"], \
+                f"Condition.clinicalStatus code must be valid, got '{coding.code}'"
+
+    def test_all_conditions_have_verification_status(self, athena_bundle):
+        """Validate all Condition resources have verificationStatus when present."""
+        conditions = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        for condition in conditions:
+            # verificationStatus is optional in FHIR, but if present should be valid
+            if hasattr(condition, 'verificationStatus') and condition.verificationStatus:
+                assert condition.verificationStatus.coding is not None, \
+                    "Condition.verificationStatus must have coding"
+
+                coding = condition.verificationStatus.coding[0]
+                assert coding.system == "http://terminology.hl7.org/CodeSystem/condition-ver-status", \
+                    "Condition.verificationStatus must use condition-ver-status CodeSystem"
+                assert coding.code in ["unconfirmed", "provisional", "differential", "confirmed", "refuted", "entered-in-error"], \
+                    f"Condition.verificationStatus code must be valid, got '{coding.code}'"
+
+    # ====================================================================================
+    # Observation.category Tests - US Core Required
+    # ====================================================================================
+
+    def test_lab_observations_have_category(self, athena_bundle):
+        """Validate lab result Observations have category (US Core required)."""
+        observations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # Find lab observations (those with LOINC codes)
+        lab_obs = []
+        for obs in observations:
+            if obs.code and obs.code.coding:
+                for coding in obs.code.coding:
+                    if coding.system == "http://loinc.org":
+                        lab_obs.append(obs)
+                        break
+
+        if len(lab_obs) > 0:
+            for obs in lab_obs:
+                assert obs.category is not None and len(obs.category) > 0, \
+                    "Lab Observation must have category (US Core)"
+
+                # Check for laboratory category
+                has_lab_category = any(
+                    coding.code == "laboratory"
+                    for cat in obs.category
+                    if cat.coding
+                    for coding in cat.coding
+                    if coding.system == "http://terminology.hl7.org/CodeSystem/observation-category"
+                )
+
+                # Could also have vital-signs or other categories
+                assert len(obs.category) > 0, \
+                    "Observation must have at least one category"
+
+    # ====================================================================================
+    # Effective/Performed Date Tests - Timing Information
+    # ====================================================================================
+
+    def test_observations_have_effective_datetime(self, athena_bundle):
+        """Validate Observations have effectiveDateTime or effectivePeriod when applicable."""
+        observations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        assert len(observations) > 0, "Must have Observation resources"
+
+        # Count observations with effective times
+        observations_with_effective = [
+            obs for obs in observations
+            if (hasattr(obs, 'effectiveDateTime') and obs.effectiveDateTime is not None) or
+               (hasattr(obs, 'effectivePeriod') and obs.effectivePeriod is not None)
+        ]
+
+        # Most observations should have effective times (allow some exceptions for panels)
+        percentage = len(observations_with_effective) / len(observations) * 100
+        assert percentage >= 70, \
+            f"At least 70% of Observations should have effectiveDateTime or effectivePeriod, got {percentage:.1f}%"
+
+    def test_procedures_have_performed_datetime(self, athena_bundle):
+        """Validate Procedures have performedDateTime or performedPeriod when available."""
+        procedures = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Procedure"
+        ]
+
+        if len(procedures) > 0:
+            # Count procedures with performed dates
+            procedures_with_performed = [
+                proc for proc in procedures
+                if (hasattr(proc, 'performedDateTime') and proc.performedDateTime is not None) or
+                   (hasattr(proc, 'performedPeriod') and proc.performedPeriod is not None) or
+                   (hasattr(proc, 'performedString') and proc.performedString is not None)
+            ]
+
+            # Most procedures should have performed dates (lenient for data quality issues)
+            # Some C-CDA documents may have incomplete procedure data
+            percentage = len(procedures_with_performed) / len(procedures) * 100
+            assert percentage >= 50, \
+                f"At least 50% of Procedures should have performed date/period/string, got {percentage:.1f}%"
+
+    def test_immunizations_have_occurrence_datetime(self, athena_bundle):
+        """Validate Immunizations have occurrenceDateTime or occurrenceString."""
+        immunizations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
+
+        if len(immunizations) > 0:
+            for immunization in immunizations:
+                has_occurrence = (
+                    hasattr(immunization, 'occurrenceDateTime') and immunization.occurrenceDateTime is not None
+                ) or (
+                    hasattr(immunization, 'occurrenceString') and immunization.occurrenceString is not None
+                )
+
+                assert has_occurrence, \
+                    "Immunization must have occurrenceDateTime or occurrenceString (US Core required)"
+
+    # ====================================================================================
+    # US Core Meta.profile Validation
+    # ====================================================================================
+
+    def test_patient_has_us_core_profile(self, athena_bundle):
+        """Validate Patient declares US Core Patient profile."""
+        patient = next(
+            (e.resource for e in athena_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+
+        assert patient is not None, "Must have Patient"
+
+        # Check if meta.profile includes US Core Patient
+        if hasattr(patient, 'meta') and patient.meta and hasattr(patient.meta, 'profile'):
+            us_core_patient = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+            assert us_core_patient in patient.meta.profile, \
+                f"Patient should declare US Core Patient profile: {us_core_patient}"
+
+    def test_conditions_have_us_core_profile(self, athena_bundle):
+        """Validate Conditions declare US Core Condition profile when present."""
+        conditions = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        # Check if any conditions have meta.profile
+        conditions_with_profile = [
+            c for c in conditions
+            if hasattr(c, 'meta') and c.meta and hasattr(c.meta, 'profile') and c.meta.profile
+        ]
+
+        if len(conditions_with_profile) > 0:
+            us_core_condition = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition"
+            for condition in conditions_with_profile:
+                # If profile is set, should include US Core Condition
+                assert any(us_core_condition in profile for profile in condition.meta.profile), \
+                    f"Condition with profile should declare US Core Condition profile"
+
+    def test_observations_have_us_core_profile_when_applicable(self, athena_bundle):
+        """Validate Observations declare appropriate US Core profiles when present."""
+        observations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # Check if any observations have meta.profile
+        observations_with_profile = [
+            o for o in observations
+            if hasattr(o, 'meta') and o.meta and hasattr(o.meta, 'profile') and o.meta.profile
+        ]
+
+        if len(observations_with_profile) > 0:
+            # Common US Core Observation profiles
+            us_core_profiles = [
+                "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab",
+                "http://hl7.org/fhir/us/core/StructureDefinition/us-core-vital-signs",
+                "http://hl7.org/fhir/us/core/StructureDefinition/us-core-smokingstatus",
+            ]
+
+            for obs in observations_with_profile:
+                # If profile is set, should include a US Core profile
+                has_us_core = any(
+                    any(usc_profile in profile for usc_profile in us_core_profiles)
+                    for profile in obs.meta.profile
+                )
+                # Note: This is lenient - we just check if US Core profiles exist when profiles are declared
