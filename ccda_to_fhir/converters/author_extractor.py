@@ -56,6 +56,7 @@ class AuthorInfo:
             assigned = self.author.assigned_author
 
             # Extract practitioner ID (from assignedPerson)
+            # Only create practitioner ID if we have an explicit ID with root
             if assigned.assigned_person and assigned.id:
                 for id_elem in assigned.id:
                     if id_elem.root:

@@ -3268,14 +3268,16 @@ class DocumentConverter:
                     if assigned.assigned_person:
                         try:
                             practitioner = self.practitioner_converter.convert(assigned)
-                            practitioner_id = practitioner.get("id")
+                            # Use the practitioner_id from author_info (already generated deterministically)
+                            # instead of relying on PractitionerConverter, which may not have valid IIs
+                            practitioner["id"] = author_info.practitioner_id
 
                             if self._validate_resource(practitioner):
-                                if practitioner_id and practitioner_id not in seen_practitioners:
+                                if author_info.practitioner_id not in seen_practitioners:
                                     practitioners.append(practitioner)
-                                    seen_practitioners.add(practitioner_id)
+                                    seen_practitioners.add(author_info.practitioner_id)
                             else:
-                                logger.warning("Practitioner failed validation, skipping", practitioner_id=practitioner_id)
+                                logger.warning("Practitioner failed validation, skipping", practitioner_id=author_info.practitioner_id)
                         except Exception as e:
                             logger.error("Error converting practitioner from entry author", exc_info=True)
                     else:

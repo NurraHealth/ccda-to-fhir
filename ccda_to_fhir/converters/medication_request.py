@@ -173,6 +173,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                     assigned = latest_author.assigned_author
 
                     # Check for practitioner
+                    # Only create reference if we have an explicit ID with root
                     if hasattr(assigned, 'assigned_person') and assigned.assigned_person:
                         if hasattr(assigned, 'id') and assigned.id:
                             for id_elem in assigned.id:
