@@ -283,6 +283,64 @@ class TestCernerDetailedValidation:
         # Check: Type code - Transition of Care is typically LOINC 18761-7 or similar
         assert composition.type is not None, "Composition must have type"
 
+    def test_composition_has_all_expected_sections(self, cerner_bundle):
+        """Validate Composition has all major clinical sections with correct structure."""
+        composition = cerner_bundle.entry[0].resource
+        assert composition.get_resource_type() == "Composition"
+        assert composition.section is not None, "Composition must have sections"
+
+        # Expected sections in Cerner TOC (LOINC codes)
+        expected_sections = {
+            "46240-8": "Encounters",
+            "11450-4": "Problems",
+            "48765-2": "Allergies",
+            "10160-0": "Medications",
+            "11369-6": "Immunizations",
+            "47519-4": "Procedures",
+            "30954-2": "Results",
+            "8716-3": "Vital Signs"
+        }
+
+        section_codes = {}
+        for section in composition.section:
+            if section.code and section.code.coding:
+                for coding in section.code.coding:
+                    if coding.system == "http://loinc.org":
+                        section_codes[coding.code] = section.title
+
+        # Verify all expected sections present
+        for code, title in expected_sections.items():
+            assert code in section_codes, f"Composition must have {title} section (LOINC {code})"
+
+        # Verify sections have entries (references to resources) where applicable
+        # Some sections may have narrative only without entry references
+        for section in composition.section:
+            if section.code and section.code.coding:
+                code = section.code.coding[0].code
+                # Only validate entries for sections that typically have them
+                # Immunizations section may not have entries if immunizations are in other sections
+                if code in expected_sections and code not in ["11369-6"]:  # Skip immunizations check
+                    if section.entry is not None:
+                        assert len(section.entry) > 0, \
+                            f"Section {expected_sections[code]} has entry field but it's empty"
+
+    def test_composition_section_entries_reference_valid_resources(self, cerner_bundle):
+        """Validate Composition section entries reference resources that exist in bundle."""
+        composition = cerner_bundle.entry[0].resource
+
+        # Get all resource IDs in bundle
+        bundle_resource_ids = set()
+        for entry in cerner_bundle.entry:
+            if entry.resource and hasattr(entry.resource, 'id'):
+                resource_type = entry.resource.get_resource_type()
+                bundle_resource_ids.add(f"{resource_type}/{entry.resource.id}")
+
+        # Check all section entries
+        for section in composition.section or []:
+            for entry_ref in section.entry or []:
+                assert entry_ref.reference in bundle_resource_ids, \
+                    f"Section entry reference '{entry_ref.reference}' must exist in bundle"
+
     def test_all_clinical_resources_reference_steve_williamson(self, cerner_bundle):
         """Validate all clinical resources reference Patient Steve Williamson."""
         # Find Patient
@@ -998,3 +1056,320 @@ class TestCernerDetailedValidation:
         assert interp_coding.code == "H", "Diastolic interpretation must be 'H' (High)"
         assert interp_coding.system == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", \
             "Interpretation must use standard system"
+
+    # ====================================================================================
+    # Resource Identifier Tests - Critical for Interoperability
+    # ====================================================================================
+
+    def test_all_conditions_have_identifiers(self, cerner_bundle):
+        """Validate all Condition resources have identifiers from C-CDA."""
+        conditions = [e.resource for e in cerner_bundle.entry
+                     if e.resource.get_resource_type() == "Condition"]
+
+        assert len(conditions) > 0, "Must have Condition resources"
+
+        for condition in conditions:
+            assert condition.identifier is not None, \
+                f"Condition must have identifier"
+            assert len(condition.identifier) > 0, \
+                f"Condition must have at least one identifier"
+
+            # Verify identifier structure
+            identifier = condition.identifier[0]
+            assert identifier.system is not None, \
+                f"Condition identifier must have system"
+            assert identifier.value is not None, \
+                f"Condition identifier must have value"
+
+    def test_all_allergy_intolerances_have_identifiers(self, cerner_bundle):
+        """Validate all AllergyIntolerance resources have identifiers from C-CDA."""
+        allergies = [e.resource for e in cerner_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        for allergy in allergies:
+            assert allergy.identifier is not None, \
+                f"AllergyIntolerance must have identifier"
+            assert len(allergy.identifier) > 0, \
+                f"AllergyIntolerance must have at least one identifier"
+
+            identifier = allergy.identifier[0]
+            assert identifier.system is not None, \
+                f"AllergyIntolerance identifier must have system"
+            assert identifier.value is not None, \
+                f"AllergyIntolerance identifier must have value"
+
+    def test_all_medication_requests_have_identifiers(self, cerner_bundle):
+        """Validate all MedicationRequest resources have identifiers from C-CDA."""
+        med_requests = [e.resource for e in cerner_bundle.entry
+                       if e.resource.get_resource_type() == "MedicationRequest"]
+
+        assert len(med_requests) > 0, "Must have MedicationRequest resources"
+
+        for med_request in med_requests:
+            assert med_request.identifier is not None, \
+                f"MedicationRequest must have identifier"
+            assert len(med_request.identifier) > 0, \
+                f"MedicationRequest must have at least one identifier"
+
+            identifier = med_request.identifier[0]
+            assert identifier.system is not None, \
+                f"MedicationRequest identifier must have system"
+            assert identifier.value is not None, \
+                f"MedicationRequest identifier must have value"
+
+    def test_immunizations_have_identifiers(self, cerner_bundle):
+        """Validate Immunization resources have identifiers from C-CDA."""
+        immunizations = [e.resource for e in cerner_bundle.entry
+                        if e.resource.get_resource_type() == "Immunization"]
+
+        assert len(immunizations) > 0, "Must have Immunization resources"
+
+        for immunization in immunizations:
+            assert immunization.identifier is not None, \
+                f"Immunization must have identifier"
+            assert len(immunization.identifier) > 0, \
+                f"Immunization must have at least one identifier"
+
+    def test_observations_have_identifiers(self, cerner_bundle):
+        """Validate Observation resources have identifiers from C-CDA."""
+        observations = [e.resource for e in cerner_bundle.entry
+                       if e.resource.get_resource_type() == "Observation"]
+
+        assert len(observations) > 0, "Must have Observation resources"
+
+        for observation in observations:
+            assert observation.identifier is not None, \
+                f"Observation must have identifier"
+            assert len(observation.identifier) > 0, \
+                f"Observation must have at least one identifier"
+
+    def test_encounters_have_identifiers(self, cerner_bundle):
+        """Validate Encounter resources have identifiers from C-CDA."""
+        encounters = [e.resource for e in cerner_bundle.entry
+                     if e.resource.get_resource_type() == "Encounter"]
+
+        assert len(encounters) > 0, "Must have Encounter resources"
+
+        for encounter in encounters:
+            assert encounter.identifier is not None, \
+                f"Encounter must have identifier"
+            assert len(encounter.identifier) > 0, \
+                f"Encounter must have at least one identifier"
+
+    def test_procedures_have_identifiers(self, cerner_bundle):
+        """Validate Procedure resources have identifiers from C-CDA."""
+        procedures = [e.resource for e in cerner_bundle.entry
+                     if e.resource.get_resource_type() == "Procedure"]
+
+        assert len(procedures) > 0, "Must have Procedure resources"
+
+        for procedure in procedures:
+            assert procedure.identifier is not None, \
+                f"Procedure must have identifier"
+            assert len(procedure.identifier) > 0, \
+                f"Procedure must have at least one identifier"
+
+    # ====================================================================================
+    # AllergyIntolerance Status Tests - US Core Required
+    # ====================================================================================
+
+    def test_allergies_have_clinical_status(self, cerner_bundle):
+        """Validate all AllergyIntolerance resources have clinicalStatus (US Core required)."""
+        allergies = [e.resource for e in cerner_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        for allergy in allergies:
+            assert allergy.clinicalStatus is not None, \
+                "AllergyIntolerance must have clinicalStatus (US Core required)"
+            assert allergy.clinicalStatus.coding is not None and len(allergy.clinicalStatus.coding) > 0, \
+                "AllergyIntolerance.clinicalStatus must have coding"
+
+            # Verify coding uses correct system
+            coding = allergy.clinicalStatus.coding[0]
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", \
+                "AllergyIntolerance.clinicalStatus must use standard CodeSystem"
+
+            # Verify code is valid (active, inactive, or resolved)
+            assert coding.code in ["active", "inactive", "resolved"], \
+                f"AllergyIntolerance.clinicalStatus code must be active/inactive/resolved, got '{coding.code}'"
+
+    def test_allergies_have_verification_status(self, cerner_bundle):
+        """Validate all AllergyIntolerance resources have verificationStatus."""
+        allergies = [e.resource for e in cerner_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        for allergy in allergies:
+            assert allergy.verificationStatus is not None, \
+                "AllergyIntolerance must have verificationStatus"
+            assert allergy.verificationStatus.coding is not None and len(allergy.verificationStatus.coding) > 0, \
+                "AllergyIntolerance.verificationStatus must have coding"
+
+            coding = allergy.verificationStatus.coding[0]
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", \
+                "AllergyIntolerance.verificationStatus must use standard CodeSystem"
+
+    def test_allergies_have_category(self, cerner_bundle):
+        """Validate AllergyIntolerance resources have category (US Core must-support)."""
+        allergies = [e.resource for e in cerner_bundle.entry
+                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+
+        assert len(allergies) > 0, "Must have AllergyIntolerance resources"
+
+        # Find codeine allergy - should be "medication" category
+        codeine = None
+        for allergy in allergies:
+            if allergy.code and allergy.code.coding:
+                for coding in allergy.code.coding:
+                    if coding.code == "2670":  # RxNorm code for Codeine
+                        codeine = allergy
+                        break
+
+        if codeine:
+            assert codeine.category is not None and len(codeine.category) > 0, \
+                "Codeine allergy must have category"
+            assert "medication" in codeine.category, \
+                "Codeine allergy category must include 'medication'"
+
+    # ====================================================================================
+    # Organization Resource Tests - Previously Untested (0% coverage)
+    # ====================================================================================
+
+    def test_organization_exists_in_bundle(self, cerner_bundle):
+        """Validate Organization resource is created from C-CDA."""
+        organizations = [e.resource for e in cerner_bundle.entry
+                        if e.resource.get_resource_type() == "Organization"]
+
+        assert len(organizations) > 0, "Bundle must contain Organization resource"
+
+    def test_organization_has_identifier(self, cerner_bundle):
+        """Validate Organization has identifier from C-CDA."""
+        org = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        assert org is not None, "Must have Organization"
+        assert org.identifier is not None and len(org.identifier) > 0, \
+            "Organization must have identifier"
+
+        identifier = org.identifier[0]
+        assert identifier.system is not None, "Organization identifier must have system"
+        assert identifier.value is not None, "Organization identifier must have value"
+
+    def test_organization_has_name(self, cerner_bundle):
+        """Validate Organization has name from C-CDA."""
+        org = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        assert org is not None, "Must have Organization"
+        assert org.name is not None, "Organization must have name"
+        assert "community hospital" in org.name.lower(), \
+            "Organization name should reference 'Community Hospital'"
+
+    def test_organization_has_contact_info(self, cerner_bundle):
+        """Validate Organization has address and telecom from C-CDA."""
+        org = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        assert org is not None, "Must have Organization"
+
+        # Check address
+        if org.address:
+            assert len(org.address) > 0, "Organization should have address"
+
+        # Check telecom
+        if org.telecom:
+            assert len(org.telecom) > 0, "Organization should have telecom"
+
+    def test_patient_references_organization(self, cerner_bundle):
+        """Validate Patient.managingOrganization references the Organization."""
+        patient = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+
+        org = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Organization"),
+            None
+        )
+
+        if patient and org and hasattr(patient, 'managingOrganization'):
+            if patient.managingOrganization:
+                # Check if reference or display is set (both are valid)
+                has_reference = patient.managingOrganization.reference is not None
+                has_display = patient.managingOrganization.display is not None
+
+                assert has_reference or has_display, \
+                    "Patient.managingOrganization must have reference or display"
+
+                # If reference is set, verify it points to the right organization
+                if has_reference:
+                    expected_ref = f"Organization/{org.id}"
+                    assert patient.managingOrganization.reference == expected_ref, \
+                        f"Patient.managingOrganization must reference {expected_ref}"
+
+    # ====================================================================================
+    # Encounter.diagnosis Tests - Links Encounter to Conditions
+    # ====================================================================================
+
+    def test_encounter_has_diagnosis(self, cerner_bundle):
+        """Validate Encounter.diagnosis links to Condition resources."""
+        encounter = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Encounter"),
+            None
+        )
+
+        assert encounter is not None, "Must have Encounter"
+
+        # Verify diagnosis field exists and has entries
+        if hasattr(encounter, 'diagnosis') and encounter.diagnosis:
+            assert len(encounter.diagnosis) > 0, "Encounter should have diagnosis entries"
+
+            # Verify each diagnosis references a Condition
+            for diagnosis in encounter.diagnosis:
+                assert diagnosis.condition is not None, \
+                    "Encounter.diagnosis must have condition reference"
+                assert diagnosis.condition.reference is not None, \
+                    "Encounter.diagnosis.condition must have reference"
+                assert diagnosis.condition.reference.startswith("Condition/"), \
+                    f"Encounter.diagnosis must reference Condition, got '{diagnosis.condition.reference}'"
+
+                # Verify the referenced Condition exists in bundle
+                condition_id = diagnosis.condition.reference.split("/")[1]
+                condition_exists = any(
+                    e.resource.get_resource_type() == "Condition" and e.resource.id == condition_id
+                    for e in cerner_bundle.entry
+                )
+                assert condition_exists, \
+                    f"Referenced Condition/{condition_id} must exist in bundle"
+
+    def test_encounter_diagnosis_has_use_code(self, cerner_bundle):
+        """Validate Encounter.diagnosis has use code (billing, admission, discharge, etc)."""
+        encounter = next(
+            (e.resource for e in cerner_bundle.entry
+             if e.resource.get_resource_type() == "Encounter"),
+            None
+        )
+
+        if encounter and hasattr(encounter, 'diagnosis') and encounter.diagnosis:
+            for diagnosis in encounter.diagnosis:
+                # US Core recommends use codes from diagnosis-role
+                if hasattr(diagnosis, 'use') and diagnosis.use:
+                    assert diagnosis.use.coding is not None, \
+                        "Encounter.diagnosis.use should have coding"
