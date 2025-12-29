@@ -89,12 +89,13 @@ class TestPreprocessingImprovesSuccessRate:
 
         summary = results["summary"]
 
-        # Baseline: 46.1% success rate (382/828) on full C-CDA-Examples dataset
+        # Baseline: 46.3% success rate (383/828) on full C-CDA-Examples dataset
         # Includes complete documents and fragments
         # After namespace preprocessing improvements, most failures are fragments
+        # As of 2025-12-29: +1 from Observation.code datatype fix (CD | CE)
         assert summary["total_files"] == 828
-        assert summary["successful"] == 382
-        assert summary["failed"] == 446
+        assert summary["successful"] == 383
+        assert summary["failed"] == 445
 
         # Most failures are MalformedXMLError (fragments + 4 malformed namespace examples)
         assert results["error_distribution"]["MalformedXMLError"] >= 400
