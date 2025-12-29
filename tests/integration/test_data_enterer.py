@@ -61,7 +61,7 @@ class TestDataEntererConversion:
             </dataEnterer>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -100,7 +100,7 @@ class TestDataEntererConversion:
             </dataEnterer>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -136,7 +136,7 @@ class TestDataEntererConversion:
             </dataEnterer>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -173,7 +173,7 @@ class TestDataEntererConversion:
             </dataEnterer>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find data enterer practitioner
         practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
@@ -215,7 +215,7 @@ class TestDataEntererConversion:
             </dataEnterer>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find data enterer practitioner
         practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
@@ -257,7 +257,7 @@ class TestDataEntererConversion:
             </dataEnterer>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -312,7 +312,7 @@ class TestDataEntererConversion:
             </dataEnterer>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find data enterer practitioner
         practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
@@ -343,7 +343,7 @@ class TestDataEntererConversion:
     def test_no_data_enterer_no_extension(self) -> None:
         """Test that absence of dataEnterer doesn't create extension."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None

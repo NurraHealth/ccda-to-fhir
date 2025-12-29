@@ -36,7 +36,7 @@ class TestSexExtension:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -67,7 +67,7 @@ class TestSexExtension:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -96,7 +96,7 @@ class TestSexExtension:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -125,7 +125,7 @@ class TestSexExtension:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -155,7 +155,7 @@ class TestSexExtension:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Should NOT create a separate Observation resource for sex
         observations = [
@@ -245,7 +245,7 @@ class TestSexExtension:
         </structuredBody>
     </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -297,7 +297,7 @@ class TestSexExtension:
     def test_no_sex_extension_when_not_present(self) -> None:
         """Test that sex extension is not added when observation is absent."""
         ccda_doc = wrap_in_ccda_document("")  # No social history section
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None

@@ -19,7 +19,7 @@ class TestImmunizationNegation:
     ) -> None:
         """Test that negated immunization converts refusal reason to statusReason."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_negated, TemplateIds.IMMUNIZATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -60,7 +60,7 @@ class TestImmunizationNegation:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_entry, TemplateIds.IMMUNIZATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -93,7 +93,7 @@ class TestImmunizationNegation:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_entry, TemplateIds.IMMUNIZATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -127,7 +127,7 @@ class TestImmunizationNegation:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_entry, TemplateIds.IMMUNIZATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -161,7 +161,7 @@ class TestImmunizationNegation:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_entry, TemplateIds.IMMUNIZATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -200,7 +200,7 @@ class TestImmunizationNegation:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_entry, TemplateIds.IMMUNIZATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -233,7 +233,7 @@ class TestImmunizationNegation:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_entry, TemplateIds.IMMUNIZATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None

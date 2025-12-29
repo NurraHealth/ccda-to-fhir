@@ -14,7 +14,7 @@ def test_convert_returns_bundle() -> None:
         </component>
     </ClinicalDocument>
     """
-    result = convert_document(xml)
+    result = convert_document(xml)["bundle"]
 
     assert result["resourceType"] == "Bundle"
     assert result["type"] == "document"

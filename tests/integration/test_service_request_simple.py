@@ -98,7 +98,7 @@ CCDA_PLANNED_COLONOSCOPY = """<?xml version="1.0" encoding="UTF-8"?>
 
 def test_basic_service_request_conversion():
     """Test that a basic planned procedure is converted to ServiceRequest."""
-    bundle = convert_document(CCDA_PLANNED_COLONOSCOPY)
+    bundle = convert_document(CCDA_PLANNED_COLONOSCOPY)["bundle"]
 
     # Find the ServiceRequest resource in the bundle
     service_request = None

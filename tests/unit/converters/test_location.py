@@ -187,11 +187,12 @@ class TestLocationConverter:
     def test_generates_id_from_npi(
         self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
     ) -> None:
-        """Test that ID is generated from NPI identifier."""
+        """Test that ID is generated from NPI identifier using standard generation."""
         location = location_converter.convert(sample_service_delivery_location)
 
         assert "id" in location
-        assert location["id"] == "location-npi-1234567890"
+        # After standardization: uses extension value with resource type prefix
+        assert location["id"] == "location-1234567890"
 
     # ============================================================================
     # B. Identifier Mapping (5 tests)
@@ -261,17 +262,15 @@ class TestLocationConverter:
     def test_id_generation_without_npi(
         self, location_converter: LocationConverter, patient_home_location: ParticipantRole
     ) -> None:
-        """Test ID generation for locations without NPI (uses name-based hash)."""
-        import uuid as uuid_module
-
+        """Test ID generation for locations without identifiers (uses fallback hash)."""
         location = location_converter.convert(patient_home_location)
 
         assert "id" in location
-        # Should be a UUID v4 when no NPI is available
-        try:
-            uuid_module.UUID(location["id"], version=4)
-        except ValueError:
-            pytest.fail(f"ID {location['id']} is not a valid UUID v4")
+        # After standardization: nullFlavor extension results in hashed root
+        # ID should start with "location-" prefix
+        assert location["id"].startswith("location-")
+        # Should be hashed since no valid extension
+        assert len(location["id"]) > len("location-")
 
     # ============================================================================
     # C. Name Mapping (3 tests)

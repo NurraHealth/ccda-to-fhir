@@ -28,7 +28,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that vaccine code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -47,7 +47,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that completed immunization has correct status."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -58,7 +58,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that effectiveTime is converted to occurrenceDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -70,7 +70,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that dose quantity is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -83,7 +83,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that lot number is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -94,7 +94,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that manufacturer organization is converted."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -106,7 +106,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that route code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -118,7 +118,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that approach site is converted to site."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -130,7 +130,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that indication is converted to reasonCode."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -142,7 +142,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that repeat number is converted to protocolApplied.doseNumber."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -154,7 +154,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that NDC translation codes are included."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -172,7 +172,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that the resource type is Immunization."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -183,7 +183,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -212,7 +212,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -247,7 +247,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that multiple authors create multiple Provenance agents."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_multiple_authors, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -287,7 +287,7 @@ class TestImmunizationConversion:
         rather than using data-absent-reason.
         """
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -302,7 +302,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that reaction creates a reference to an Observation resource."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -326,7 +326,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that reaction Observation resource is created in the bundle."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -359,7 +359,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that reaction Observation has the correct code from C-CDA value."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -390,7 +390,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that reaction Observation has valueCodeableConcept."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -417,7 +417,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that reaction includes date from effectiveTime."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -432,7 +432,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that reaction Observation has effectiveDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -459,7 +459,7 @@ class TestImmunizationConversion:
     ) -> None:
         """Test that Comment Activity is converted to Immunization.note."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_with_comment, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -480,7 +480,7 @@ class TestImmunizationConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_immunization_with_supporting_observations, IMMUNIZATIONS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -513,7 +513,7 @@ class TestImmunizationConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_immunization_with_supporting_observations, IMMUNIZATIONS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None
@@ -548,7 +548,7 @@ class TestImmunizationConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_immunization_with_supporting_observations, IMMUNIZATIONS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find observations with LOINC code 22600-1 (Influenza virus A Ab [Titer])
         observations = [
@@ -589,7 +589,7 @@ class TestImmunizationConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_immunization_with_supporting_observations, IMMUNIZATIONS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find observations with value code 40983000 (Injection site infection)
         observations = [
@@ -629,7 +629,7 @@ class TestImmunizationConversion:
         This ensures strict validation and FHIR compliance.
         """
         ccda_doc = wrap_in_ccda_document(ccda_immunization_no_vaccine_code, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Immunization should NOT be created when vaccine code is missing
         immunization = _find_resource_in_bundle(bundle, "Immunization")
@@ -676,7 +676,7 @@ class TestImmunizationConversion:
             </substanceAdministration>
         """
         ccda_doc = wrap_in_ccda_document(ccda_immunization_with_performer, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is not None

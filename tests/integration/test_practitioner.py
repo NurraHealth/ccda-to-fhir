@@ -37,7 +37,7 @@ class TestAuthorConversion:
         """Test that author creates a Practitioner."""
         # Author should be at document level, not in section content
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         assert practitioner is not None
@@ -48,7 +48,7 @@ class TestAuthorConversion:
     ) -> None:
         """Test that NPI is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         assert practitioner is not None
@@ -66,7 +66,7 @@ class TestAuthorConversion:
     ) -> None:
         """Test that name is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         assert practitioner is not None
@@ -81,7 +81,7 @@ class TestAuthorConversion:
     ) -> None:
         """Test that name prefix is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         assert practitioner is not None
@@ -95,7 +95,7 @@ class TestAuthorConversion:
     ) -> None:
         """Test that name suffix is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         assert practitioner is not None
@@ -109,7 +109,7 @@ class TestAuthorConversion:
     ) -> None:
         """Test that telecom is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         assert practitioner is not None
@@ -124,7 +124,7 @@ class TestAuthorConversion:
     ) -> None:
         """Test that address is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         assert practitioner is not None
@@ -146,7 +146,7 @@ class TestAuthorConversion:
         See: docs/mapping/09-practitioner.md lines 133-160
         """
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         practitioner_role = _find_resource_in_bundle(bundle, "PractitionerRole")
@@ -179,7 +179,7 @@ class TestOrganizationConversion:
     ) -> None:
         """Test that represented organization is converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         organization = _find_resource_in_bundle(bundle, "Organization")
         assert organization is not None
@@ -191,7 +191,7 @@ class TestOrganizationConversion:
     ) -> None:
         """Test that organization identifier is converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         organization = _find_resource_in_bundle(bundle, "Organization")
         assert organization is not None
@@ -209,7 +209,7 @@ class TestOrganizationConversion:
     ) -> None:
         """Test that organization telecom is converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         organization = _find_resource_in_bundle(bundle, "Organization")
         assert organization is not None
@@ -221,7 +221,7 @@ class TestOrganizationConversion:
     ) -> None:
         """Test that organization address is converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         organization = _find_resource_in_bundle(bundle, "Organization")
         assert organization is not None

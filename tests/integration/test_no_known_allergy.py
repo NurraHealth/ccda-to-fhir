@@ -32,7 +32,7 @@ class TestNoKnownAllergies:
             section_template_id=ALLERGIES_TEMPLATE_ID,
             section_code="48765-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None, "AllergyIntolerance resource not found"
@@ -59,7 +59,7 @@ class TestNoKnownAllergies:
             section_template_id=ALLERGIES_TEMPLATE_ID,
             section_code="48765-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None, "AllergyIntolerance resource not found"
@@ -86,7 +86,7 @@ class TestNoKnownAllergies:
             section_template_id=ALLERGIES_TEMPLATE_ID,
             section_code="48765-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None, "AllergyIntolerance resource not found"
@@ -113,7 +113,7 @@ class TestNoKnownAllergies:
             section_template_id=ALLERGIES_TEMPLATE_ID,
             section_code="48765-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None, "AllergyIntolerance resource not found"
@@ -140,7 +140,7 @@ class TestNoKnownAllergies:
             section_template_id=ALLERGIES_TEMPLATE_ID,
             section_code="48765-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -163,7 +163,7 @@ class TestNoKnownAllergies:
             section_template_id=ALLERGIES_TEMPLATE_ID,
             section_code="48765-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -186,7 +186,7 @@ class TestNoKnownAllergies:
             section_template_id=ALLERGIES_TEMPLATE_ID,
             section_code="48765-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -207,7 +207,7 @@ class TestNoKnownAllergies:
             section_template_id=ALLERGIES_TEMPLATE_ID,
             section_code="48765-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -228,7 +228,7 @@ class TestNoKnownAllergies:
             section_template_id=ALLERGIES_TEMPLATE_ID,
             section_code="48765-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -249,7 +249,7 @@ class TestNoKnownAllergies:
             section_template_id=ALLERGIES_TEMPLATE_ID,
             section_code="48765-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None

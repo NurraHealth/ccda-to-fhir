@@ -74,6 +74,9 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
 
         allergy: JSONObject = {
             "resourceType": "AllergyIntolerance",
+            "meta": {
+                "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-allergyintolerance"]
+            },
         }
 
         # Generate ID from observation identifier
@@ -266,6 +269,8 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
     def _generate_allergy_id(self, root: str | None, extension: str | None) -> str:
         """Generate an allergy resource ID.
 
+        Uses standard ID generation with hashing for consistency across all converters.
+
         Args:
             root: The OID or UUID root
             extension: The extension value
@@ -273,18 +278,11 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         Returns:
             A resource ID string
         """
-        if extension:
-            # Use sanitize_id to handle all invalid characters (spaces, pipes, slashes, etc.)
-            clean_ext = self.sanitize_id(extension.lower())
-            return f"allergy-{clean_ext}"
-        elif root:
-            root_suffix = root.replace(".", "").replace("-", "")[-16:]
-            return f"allergy-{root_suffix}"
-        else:
-            raise ValueError(
-                "Cannot generate AllergyIntolerance ID: no identifiers provided. "
-                "C-CDA Allergy Concern Act or Allergy Intolerance Observation must have id element."
-            )
+        return self.generate_resource_id(
+            root=root,
+            extension=extension,
+            resource_type="allergyintolerance"
+        )
 
     def _is_no_known_allergy(self, observation: Observation) -> bool:
         """Check if this is a "no known allergy" observation.

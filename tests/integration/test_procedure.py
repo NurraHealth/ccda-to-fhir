@@ -38,7 +38,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that procedure code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -57,7 +57,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -68,7 +68,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that effectiveTime is converted to performedDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -80,7 +80,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that identifiers are correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -93,7 +93,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that ICD-10 PCS translation is included."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -111,7 +111,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that code text is populated from displayName."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -123,7 +123,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that the resource type is Procedure."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -132,7 +132,7 @@ class TestProcedureConversion:
     def test_converts_body_site(self, ccda_procedure_with_body_site: str) -> None:
         """Test that targetSiteCode is converted to bodySite."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_body_site, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -155,7 +155,7 @@ class TestProcedureConversion:
         (Left - code 7771000) which should be added as an additional coding in bodySite.
         """
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_body_site, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -188,7 +188,7 @@ class TestProcedureConversion:
     def test_converts_performer(self, ccda_procedure_with_performer: str) -> None:
         """Test that performer is converted to performer.actor."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_performer, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -221,7 +221,7 @@ class TestProcedureConversion:
             </procedure>""",
             PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         procedure = _find_resource_in_bundle(bundle, "Procedure")
 
         assert procedure is not None
@@ -255,7 +255,7 @@ class TestProcedureConversion:
             </procedure>""",
             PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         procedure = _find_resource_in_bundle(bundle, "Procedure")
 
         assert procedure is not None
@@ -288,7 +288,7 @@ class TestProcedureConversion:
             </procedure>""",
             PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         procedure = _find_resource_in_bundle(bundle, "Procedure")
 
         assert procedure is not None
@@ -322,7 +322,7 @@ class TestProcedureConversion:
             </procedure>""",
             PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         procedure = _find_resource_in_bundle(bundle, "Procedure")
 
         assert procedure is not None
@@ -337,7 +337,7 @@ class TestProcedureConversion:
     def test_converts_location(self, ccda_procedure_with_location: str) -> None:
         """Test that LOC participant is converted to location."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_location, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -351,7 +351,7 @@ class TestProcedureConversion:
     def test_converts_reason_code(self, ccda_procedure_with_reason: str) -> None:
         """Test that RSON entryRelationship is converted to reasonCode."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_reason, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -369,7 +369,7 @@ class TestProcedureConversion:
     def test_converts_inline_problem_to_reason_code(self, ccda_procedure_with_reason_reference: str) -> None:
         """Test that inline Problem Observation (not in Problems section) creates reasonCode."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_reason_reference, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -386,7 +386,7 @@ class TestProcedureConversion:
     def test_inline_problem_has_no_reason_reference(self, ccda_procedure_with_reason_reference: str) -> None:
         """Test that inline Problem Observation creates reasonCode, not reasonReference."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_reason_reference, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -398,7 +398,7 @@ class TestProcedureConversion:
     def test_converts_referenced_problem_to_reason_reference(self, ccda_procedure_with_problem_reference: str) -> None:
         """Test that Problem Observation from Problems section creates reasonReference."""
         # This fixture includes both Problems section and Procedures section
-        bundle = convert_document(ccda_procedure_with_problem_reference)
+        bundle = convert_document(ccda_procedure_with_problem_reference)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -428,7 +428,7 @@ class TestProcedureConversion:
 
     def test_referenced_problem_has_no_reason_code(self, ccda_procedure_with_problem_reference: str) -> None:
         """Test that referenced Problem Observation creates reasonReference, not reasonCode."""
-        bundle = convert_document(ccda_procedure_with_problem_reference)
+        bundle = convert_document(ccda_procedure_with_problem_reference)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -439,7 +439,7 @@ class TestProcedureConversion:
 
     def test_reason_reference_condition_id_format(self, ccda_procedure_with_problem_reference: str) -> None:
         """Test that reasonReference uses consistent Condition ID format."""
-        bundle = convert_document(ccda_procedure_with_problem_reference)
+        bundle = convert_document(ccda_procedure_with_problem_reference)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -456,7 +456,7 @@ class TestProcedureConversion:
     def test_converts_author_to_recorder(self, ccda_procedure_with_author: str) -> None:
         """Test that author is converted to recorder."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -467,7 +467,7 @@ class TestProcedureConversion:
     def test_converts_outcome(self, ccda_procedure_with_outcome: str) -> None:
         """Test that OUTC entryRelationship is converted to outcome."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_outcome, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -484,7 +484,7 @@ class TestProcedureConversion:
     def test_converts_complications(self, ccda_procedure_with_complications: str) -> None:
         """Test that COMP entryRelationship is converted to complication."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_complications, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -502,7 +502,7 @@ class TestProcedureConversion:
     def test_converts_followup(self, ccda_procedure_with_followup: str) -> None:
         """Test that SPRT entryRelationship is converted to followUp."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_followup, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -520,7 +520,7 @@ class TestProcedureConversion:
     def test_converts_notes(self, ccda_procedure_with_notes: str) -> None:
         """Test that text and Comment Activity are converted to note."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_notes, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -543,7 +543,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that latest author (by timestamp) is selected for recorder field."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_multiple_authors, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -563,7 +563,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that recorder and Provenance both reference the same Practitioner."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -602,7 +602,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -631,7 +631,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -666,7 +666,7 @@ class TestProcedureConversion:
     ) -> None:
         """Test that multiple authors create multiple Provenance agents."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_multiple_authors, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -763,7 +763,7 @@ class TestProcedureConversion:
         </structuredBody>
     </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -805,7 +805,7 @@ class TestRepresentedOrganization:
         ccda_doc = wrap_in_ccda_document(
             ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find all Organization resources
         organizations = _find_all_resources_in_bundle(bundle, "Organization")
@@ -826,7 +826,7 @@ class TestRepresentedOrganization:
         ccda_doc = wrap_in_ccda_document(
             ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         organizations = _find_all_resources_in_bundle(bundle, "Organization")
         entry_org = next(
@@ -855,7 +855,7 @@ class TestRepresentedOrganization:
         ccda_doc = wrap_in_ccda_document(
             ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         organizations = _find_all_resources_in_bundle(bundle, "Organization")
         entry_org = next(
@@ -886,7 +886,7 @@ class TestRepresentedOrganization:
         ccda_doc = wrap_in_ccda_document(
             ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -924,7 +924,7 @@ class TestRepresentedOrganization:
         ccda_doc = wrap_in_ccda_document(
             ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Get the entry-level Organization resource (Good Health Surgical Center)
         organizations = _find_all_resources_in_bundle(bundle, "Organization")
@@ -974,7 +974,7 @@ class TestRepresentedOrganization:
         ccda_doc = wrap_in_ccda_document(
             ccda_procedure_with_author_and_organization, PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Entry-level author creates Practitioner
         practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
@@ -1001,7 +1001,7 @@ class TestRepresentedOrganization:
     ) -> None:
         """Test that author without representedOrganization has no onBehalfOf."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1037,7 +1037,7 @@ class TestProcedureActivityObservation:
     ) -> None:
         """Test that Procedure Activity Observation is converted to FHIR Procedure."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1048,7 +1048,7 @@ class TestProcedureActivityObservation:
     ) -> None:
         """Test that observation code is correctly converted to Procedure.code."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1067,7 +1067,7 @@ class TestProcedureActivityObservation:
     ) -> None:
         """Test that observation status is correctly mapped to Procedure.status."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1078,7 +1078,7 @@ class TestProcedureActivityObservation:
     ) -> None:
         """Test that observation effectiveTime is converted to performedDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1090,7 +1090,7 @@ class TestProcedureActivityObservation:
     ) -> None:
         """Test that observation identifiers are correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1103,7 +1103,7 @@ class TestProcedureActivityObservation:
     ) -> None:
         """Test that observation targetSiteCode is converted to bodySite."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1124,7 +1124,7 @@ class TestProcedureActivityObservation:
     ) -> None:
         """Test that observation performer is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1139,7 +1139,7 @@ class TestProcedureActivityObservation:
     ) -> None:
         """Test that observation location participant is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1154,7 +1154,7 @@ class TestProcedureActivityObservation:
     ) -> None:
         """Test that observation author is converted to recorder."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1166,7 +1166,7 @@ class TestProcedureActivityObservation:
     ) -> None:
         """Test that observation reason is correctly converted to reasonCode."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1202,7 +1202,7 @@ class TestProcedureActivityObservation:
             </observation>""",
             PROCEDURES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedures = _find_all_resources_in_bundle(bundle, "Procedure")
         assert len(procedures) == 2, "Should convert both Procedure and Observation to Procedure resources"
@@ -1226,7 +1226,7 @@ class TestProcedureMissingEffectiveTime:
     ) -> None:
         """Test that missing effectiveTime adds _performedDateTime with data-absent-reason extension."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_no_effective_time, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1251,7 +1251,7 @@ class TestProcedureMissingEffectiveTime:
     ) -> None:
         """Test that missing effectiveTime doesn't affect other procedure fields."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_no_effective_time, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1267,7 +1267,7 @@ class TestProcedureMissingEffectiveTime:
     ) -> None:
         """Test that procedures WITH effectiveTime don't get data-absent-reason extension."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -1300,7 +1300,7 @@ class TestProcedureIDSanitization:
             PROCEDURES_TEMPLATE_ID
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         procedure = _find_resource_in_bundle(bundle, "Procedure")
 
         assert procedure is not None

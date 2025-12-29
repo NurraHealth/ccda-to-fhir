@@ -19,7 +19,7 @@ class TestMedicationNegation:
     ) -> None:
         """Test that negationInd=true is converted to doNotPerform=True."""
         ccda_doc = wrap_in_ccda_document(ccda_medication_negated, TemplateIds.MEDICATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None

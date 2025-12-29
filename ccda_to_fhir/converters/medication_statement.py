@@ -169,19 +169,15 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         return med_statement
 
     def _generate_medication_statement_id(self, root: str | None, extension: str | None) -> str:
-        """Generate a medication statement resource ID from C-CDA identifier."""
-        if extension:
-            # Use sanitize_id to handle all invalid characters (spaces, pipes, slashes, etc.)
-            clean_ext = self.sanitize_id(extension.lower())
-            return f"medicationstatement-{clean_ext}"
-        elif root:
-            root_suffix = root.replace(".", "").replace("-", "")[-16:]
-            return f"medicationstatement-{root_suffix}"
-        else:
-            raise ValueError(
-                "Cannot generate MedicationStatement ID: no identifiers provided. "
-                "C-CDA Substance Administration must have id element."
-            )
+        """Generate a medication statement resource ID from C-CDA identifier.
+
+        Uses standard ID generation with hashing for consistency across all converters.
+        """
+        return self.generate_resource_id(
+            root=root,
+            extension=extension,
+            resource_type="medicationstatement"
+        )
 
     def _determine_status(self, substance_admin: SubstanceAdministration) -> str:
         """Map C-CDA statusCode to FHIR MedicationStatement status.

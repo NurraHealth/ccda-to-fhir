@@ -73,7 +73,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         diagnostic_report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert diagnostic_report is not None
@@ -106,7 +106,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
@@ -133,7 +133,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
@@ -155,7 +155,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
@@ -182,7 +182,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
@@ -213,7 +213,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
@@ -240,7 +240,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
@@ -283,7 +283,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
@@ -328,7 +328,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
@@ -359,7 +359,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
@@ -385,7 +385,7 @@ class TestDiagnosticReportConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
             section_code="30954-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
@@ -479,7 +479,7 @@ class TestDiagnosticReportConversion:
     </component>
 </ClinicalDocument>
 """
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         diagnostic_reports = _find_all_resources_in_bundle(bundle, "DiagnosticReport")
         assert len(diagnostic_reports) == 2
@@ -496,7 +496,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -531,7 +531,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -564,7 +564,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -594,7 +594,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -628,7 +628,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_result_multiple_authors, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None

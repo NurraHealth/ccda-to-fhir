@@ -576,14 +576,17 @@ def preprocess_ccda_namespaces(xml_string: str) -> str:
     """Add missing namespace declarations to C-CDA XML.
 
     Automatically adds xmlns:xsi and xmlns:sdtc namespace declarations
-    to the ClinicalDocument root element when these prefixes are used
-    but not declared in the document.
+    to the root element when these prefixes are used but not declared
+    in the document.
 
     This preprocessing step fixes malformed XML from some C-CDA example
     documents while maintaining 100% W3C XML Namespaces compliance.
 
+    Works with both complete ClinicalDocument files and document fragments
+    (sections, entries, etc.) for testing purposes.
+
     Args:
-        xml_string: C-CDA XML document as string
+        xml_string: C-CDA XML document or fragment as string
 
     Returns:
         XML string with namespace declarations added if needed
@@ -602,10 +605,6 @@ def preprocess_ccda_namespaces(xml_string: str) -> str:
         >>> 'xmlns:xsi=' in preprocessed
         True
     """
-    # Early exit if not a ClinicalDocument
-    if '<ClinicalDocument' not in xml_string:
-        return xml_string
-
     # Check if xsi: prefix is used but not declared
     needs_xsi = (
         'xsi:' in xml_string and
@@ -622,14 +621,15 @@ def preprocess_ccda_namespaces(xml_string: str) -> str:
     if not needs_xsi and not needs_sdtc:
         return xml_string
 
-    # Find the ClinicalDocument opening tag
-    # Pattern: <ClinicalDocument ... > or <ClinicalDocument>
-    pattern = r'(<ClinicalDocument)(\s|>)'
+    # Find the root element opening tag (any tag)
+    # Look for first opening tag: <tagname ... > or <tagname>
+    # Pattern matches: <tagname followed by space or >
+    pattern = r'<([a-zA-Z][a-zA-Z0-9:._-]*)(\s|>)'
 
     def add_namespaces(match):
         """Add namespace declarations to opening tag."""
-        prefix = match.group(1)  # '<ClinicalDocument'
-        suffix = match.group(2)  # ' ' or '>'
+        tag_name = match.group(1)  # tag name (e.g., 'ClinicalDocument', 'section')
+        suffix = match.group(2)     # ' ' or '>'
 
         # Build namespace declarations
         namespaces = []
@@ -642,11 +642,11 @@ def preprocess_ccda_namespaces(xml_string: str) -> str:
         # If suffix is '>', add space before it
         # If suffix is ' ', namespaces will naturally space-separate
         if suffix == '>':
-            return f"{prefix} {' '.join(namespaces)}>"
+            return f"<{tag_name} {' '.join(namespaces)}>"
         else:
-            return f"{prefix} {' '.join(namespaces)}{suffix}"
+            return f"<{tag_name} {' '.join(namespaces)}{suffix}"
 
-    # Replace first occurrence only
+    # Replace first occurrence only (root element)
     xml_string = re.sub(pattern, add_namespaces, xml_string, count=1)
 
     return xml_string

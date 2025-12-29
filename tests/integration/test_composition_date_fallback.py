@@ -61,7 +61,7 @@ def test_composition_date_with_valid_effective_time():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find Composition
@@ -132,7 +132,7 @@ def test_composition_date_with_missing_effective_time():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find Composition
@@ -206,7 +206,7 @@ def test_composition_date_with_invalid_effective_time():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find Composition
@@ -280,7 +280,7 @@ def test_composition_date_with_null_flavor_effective_time():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find Composition

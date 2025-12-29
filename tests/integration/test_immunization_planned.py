@@ -28,7 +28,7 @@ class TestPlannedImmunizationConversion:
     ) -> None:
         """Test that planned immunization (moodCode='INT') creates MedicationRequest."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Should create MedicationRequest, not Immunization
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
@@ -44,7 +44,7 @@ class TestPlannedImmunizationConversion:
     ) -> None:
         """Test that planned immunization has intent='plan'."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert medication_request is not None
@@ -56,7 +56,7 @@ class TestPlannedImmunizationConversion:
     ) -> None:
         """Test that planned immunization status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert medication_request is not None
@@ -71,7 +71,7 @@ class TestPlannedImmunizationConversion:
         The code is in the Medication resource.
         """
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert medication_request is not None
@@ -110,7 +110,7 @@ class TestPlannedImmunizationConversion:
     ) -> None:
         """Test that NDC translation codes are included."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert medication_request is not None
@@ -146,7 +146,7 @@ class TestPlannedImmunizationConversion:
     ) -> None:
         """Test that authoredOn is set from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert medication_request is not None
@@ -158,7 +158,7 @@ class TestPlannedImmunizationConversion:
     ) -> None:
         """Test that dosage instructions include route and dose."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert medication_request is not None
@@ -184,7 +184,7 @@ class TestPlannedImmunizationConversion:
     ) -> None:
         """Test that indication is converted to reasonCode."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert medication_request is not None
@@ -197,7 +197,7 @@ class TestPlannedImmunizationConversion:
     ) -> None:
         """Test that identifier is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert medication_request is not None
@@ -214,7 +214,7 @@ class TestPlannedImmunizationConversion:
     ) -> None:
         """Test that historical immunization (moodCode='EVN') still creates Immunization."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Should create Immunization, not MedicationRequest
         immunization = _find_resource_in_bundle(bundle, "Immunization")

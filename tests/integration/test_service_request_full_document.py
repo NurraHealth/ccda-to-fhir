@@ -333,7 +333,7 @@ def test_full_ccd_with_planned_procedures():
     - All sections processed correctly
     - No placeholder references
     """
-    bundle = convert_document(CCDA_CCD_WITH_PLAN_OF_CARE)
+    bundle = convert_document(CCDA_CCD_WITH_PLAN_OF_CARE)["bundle"]
 
     # Verify bundle structure
     assert bundle["resourceType"] == "Bundle"

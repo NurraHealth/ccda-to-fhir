@@ -78,7 +78,7 @@ def test_observation_with_co_value_converts_to_codeable_concept():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find Observation resource
@@ -172,7 +172,7 @@ def test_observation_with_co_stage_classification():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find Observation resource
@@ -273,7 +273,7 @@ def test_observation_with_co_severity_scale():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find Observation resource
@@ -370,7 +370,7 @@ def test_multiple_observations_with_different_co_values():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find all Observation resources

@@ -28,7 +28,7 @@ class TestPregnancyObservation:
     ) -> None:
         """Test that ASSERTION code is transformed to LOINC 82810-3."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -45,7 +45,7 @@ class TestPregnancyObservation:
     ) -> None:
         """Test that pregnancy status value is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -62,7 +62,7 @@ class TestPregnancyObservation:
     ) -> None:
         """Test that pregnancy observation has social-history category."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -79,7 +79,7 @@ class TestPregnancyObservation:
     ) -> None:
         """Test that estimated delivery date is mapped to component."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -104,7 +104,7 @@ class TestPregnancyObservation:
     ) -> None:
         """Test that effective time is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -117,7 +117,7 @@ class TestPregnancyObservation:
     ) -> None:
         """Test that status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -130,7 +130,7 @@ class TestPregnancyObservation:
     ) -> None:
         """Test that identifier is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -146,7 +146,7 @@ class TestPregnancyObservation:
     ) -> None:
         """Test that the resource type is Observation."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -157,7 +157,7 @@ class TestPregnancyObservation:
     ) -> None:
         """Test that observation has a subject reference to Patient."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -174,7 +174,7 @@ class TestPregnancyWithoutEDD:
     ) -> None:
         """Test pregnancy observation without EDD still creates valid observation."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_no_edd, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -196,7 +196,7 @@ class TestPregnancyCodeVariants:
     ) -> None:
         """Test pregnancy observation with LOINC 82810-3 code (C-CDA 4.0+)."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_loinc, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -215,7 +215,7 @@ class TestPregnancyGestationalAge:
     ) -> None:
         """Test pregnancy observation with gestational age component."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_with_gestational_age, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -263,7 +263,7 @@ class TestPregnancyGestationalAge:
         )
 
         ccda_doc = wrap_in_ccda_document(modified_ccda, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -290,7 +290,7 @@ class TestPregnancyLastMenstrualPeriod:
     ) -> None:
         """Test pregnancy observation with last menstrual period component."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_with_lmp, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -313,7 +313,7 @@ class TestPregnancyLastMenstrualPeriod:
     ) -> None:
         """Test that LMP date is correctly converted from C-CDA format."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_with_lmp, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -330,7 +330,7 @@ class TestPregnancyComprehensive:
     ) -> None:
         """Test pregnancy observation with EDD, LMP, and gestational age."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_comprehensive, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -353,7 +353,7 @@ class TestPregnancyComprehensive:
     ) -> None:
         """Test that all component values are correctly extracted."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_comprehensive, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -382,7 +382,7 @@ class TestPregnancyComprehensive:
     ) -> None:
         """Test that base pregnancy observation is correct with components."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_comprehensive, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None

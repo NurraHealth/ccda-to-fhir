@@ -74,7 +74,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that vital signs organizer creates a panel Observation."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         panel = _find_vital_signs_panel(bundle)
         assert panel is not None
@@ -86,7 +86,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that panel uses vital signs panel code."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         panel = _find_vital_signs_panel(bundle)
         assert panel is not None
@@ -98,7 +98,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that category is set to vital-signs."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         panel = _find_vital_signs_panel(bundle)
         assert panel is not None
@@ -110,7 +110,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that effectiveTime is converted to effectiveDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         panel = _find_vital_signs_panel(bundle)
         assert panel is not None
@@ -122,7 +122,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         panel = _find_vital_signs_panel(bundle)
         assert panel is not None
@@ -133,7 +133,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that individual observations are created in the bundle."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find all individual vital sign observations in the bundle
         individual_obs = _find_all_vital_sign_observations(bundle)
@@ -145,7 +145,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that heart rate observation is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation in bundle
         hr = _find_observation_by_code(bundle, "8867-4")
@@ -158,7 +158,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that blood pressure observations are combined with components."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find combined BP observation in bundle
         bp = _find_observation_by_code(bundle, "85354-9")  # BP panel code
@@ -181,7 +181,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that identifiers are correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         panel = _find_vital_signs_panel(bundle)
         assert panel is not None
@@ -193,7 +193,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that individual observation identifiers are preserved."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find all individual vital sign observations
         individual_obs = _find_all_vital_sign_observations(bundle)
@@ -206,7 +206,7 @@ class TestVitalSignsConversion:
     ) -> None:
         """Test that hasMember references point to individual observations."""
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         panel = _find_vital_signs_panel(bundle)
         assert panel is not None
@@ -299,7 +299,7 @@ class TestVitalSignsConversion:
         </structuredBody>
     </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find the heart rate observation (component observation, not the panel)
         observations = [
@@ -341,7 +341,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find body temperature observation
         temp_obs = _find_observation_by_code(bundle, "8310-5")
@@ -368,7 +368,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find body temperature observation
         temp_obs = _find_observation_by_code(bundle, "8310-5")
@@ -395,7 +395,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation (no method code in this fixture)
         hr_obs = _find_observation_by_code(bundle, "8867-4")
@@ -411,7 +411,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find combined blood pressure observation (should combine systolic/diastolic)
         bp_obs = _find_observation_by_code(bundle, "85354-9")
@@ -438,7 +438,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation
         hr_obs = _find_observation_by_code(bundle, "8867-4")
@@ -465,7 +465,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation (no body site in this fixture)
         hr_obs = _find_observation_by_code(bundle, "8867-4")
@@ -481,7 +481,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find combined blood pressure observation
         bp_obs = _find_observation_by_code(bundle, "85354-9")
@@ -519,7 +519,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation
         hr_obs = _find_observation_by_code(bundle, "8867-4")
@@ -557,7 +557,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation (Normal interpretation)
         hr_obs = _find_observation_by_code(bundle, "8867-4")
@@ -589,7 +589,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find combined BP observation
         bp_obs = _find_observation_by_code(bundle, "85354-9")
@@ -617,7 +617,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find body temperature observation (Low interpretation)
         temp_obs = _find_observation_by_code(bundle, "8310-5")
@@ -640,7 +640,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find respiratory rate observation (Abnormal interpretation)
         rr_obs = _find_observation_by_code(bundle, "9279-1")
@@ -663,7 +663,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation (Critical high interpretation)
         hr_obs = _find_observation_by_code(bundle, "8867-4")
@@ -686,7 +686,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find body temperature observation (Critical low interpretation)
         temp_obs = _find_observation_by_code(bundle, "8310-5")
@@ -709,7 +709,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation (no interpretation code in this fixture)
         hr_obs = _find_observation_by_code(bundle, "8867-4")
@@ -725,7 +725,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation
         hr_obs = _find_observation_by_code(bundle, "8867-4")
@@ -764,7 +764,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find combined blood pressure observation (should combine systolic/diastolic)
         bp_obs = _find_observation_by_code(bundle, "85354-9")
@@ -803,7 +803,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation (no reference range in this fixture)
         hr_obs = _find_observation_by_code(bundle, "8867-4")
@@ -826,7 +826,7 @@ class TestVitalSignsConversion:
             ccda_vital_signs = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_vital_signs, VITAL_SIGNS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find heart rate observation
         hr_obs = _find_observation_by_code(bundle, "8867-4")

@@ -41,7 +41,7 @@ class TestPulseOximetryComponents:
             section_template_id="2.16.840.1.113883.10.20.22.2.4.1",
             section_code="8716-3"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_observations_in_bundle(bundle)
 
@@ -75,7 +75,7 @@ class TestPulseOximetryComponents:
             section_template_id="2.16.840.1.113883.10.20.22.2.4.1",
             section_code="8716-3"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_observations_in_bundle(bundle)
 
@@ -109,7 +109,7 @@ class TestPulseOximetryComponents:
             section_template_id="2.16.840.1.113883.10.20.22.2.4.1",
             section_code="8716-3"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_observations_in_bundle(bundle)
 
@@ -153,7 +153,7 @@ class TestPulseOximetryComponents:
             section_template_id="2.16.840.1.113883.10.20.22.2.4.1",
             section_code="8716-3"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_observations_in_bundle(bundle)
         pulse_ox = _get_observation_by_code(observations, "59408-5")
@@ -174,7 +174,7 @@ class TestPulseOximetryComponents:
             section_template_id="2.16.840.1.113883.10.20.22.2.4.1",
             section_code="8716-3"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_observations_in_bundle(bundle)
         pulse_ox = _get_observation_by_code(observations, "59408-5")

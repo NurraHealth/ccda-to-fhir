@@ -22,10 +22,10 @@ class TestCompleteDocumentsParsing:
     """Test complete ClinicalDocument files parse successfully."""
 
     @pytest.mark.parametrize("file_path", [
-        "General/CCD.xml",
-        "General/Care_Plan.xml",
-        "General/Consultation_Note.xml",
-        "General/Discharge_Summary.xml",
+        "Documents/CCD/CCD 2/CCD.xml",
+        "Documents/Care Plan/Care_Plan.xml",
+        "Documents/Consultation Note/Consultation_Note.xml",
+        "Documents/Discharge Summary/Discharge_Summary.xml",
     ])
     def test_parses_complete_clinical_documents(self, file_path):
         """Parse complete ClinicalDocument files that should parse successfully."""
@@ -53,11 +53,12 @@ class TestDocumentsWithSdtcExtensions:
     """Test documents using SDTC extensions."""
 
     @pytest.mark.parametrize("file_path,sdtc_element", [
-        # Add test cases if we find documents with sdtc: usage
-        # Example: ("Encounters/Example with SDTC.xml", "sdtc:dischargeDispositionCode")
+        ("Documents/CCD/CCD 2/CCD.xml", "sdtc:raceCode"),
+        ("Documents/Care Plan/Care_Plan.xml", "sdtc:"),
+        ("Documents/Transfer Summary/Transfer_Summary.xml", "sdtc:"),
     ])
     def test_parses_documents_with_sdtc_extensions(self, file_path, sdtc_element):
-        """Parse documents with SDTC extensions but missing xmlns:sdtc."""
+        """Parse documents with SDTC extensions."""
         full_path = EXAMPLES_DIR / file_path
 
         if not full_path.exists():
@@ -88,14 +89,15 @@ class TestPreprocessingImprovesSuccessRate:
 
         summary = results["summary"]
 
-        # Baseline: 35% success rate (7/20)
-        # Note: Reduced from 50 to 20 files in stress test configuration
-        assert summary["total_files"] == 20
-        assert summary["successful"] == 7
-        assert summary["failed"] == 13
+        # Baseline: 46.1% success rate (382/828) on full C-CDA-Examples dataset
+        # Includes complete documents and fragments
+        # After namespace preprocessing improvements, most failures are fragments
+        assert summary["total_files"] == 828
+        assert summary["successful"] == 382
+        assert summary["failed"] == 446
 
-        # Most failures are MalformedXMLError
-        assert results["error_distribution"]["MalformedXMLError"] >= 10
+        # Most failures are MalformedXMLError (fragments + 4 malformed namespace examples)
+        assert results["error_distribution"]["MalformedXMLError"] >= 400
 
     def test_preprocessing_doesnt_break_fragments(self):
         """Test that preprocessing correctly ignores fragment files."""
@@ -110,6 +112,7 @@ class TestPreprocessingImprovesSuccessRate:
         failed_files = results["failed_files"]
 
         # Test fragments - they should still fail (correctly) because they're not ClinicalDocuments
+        # But preprocessing will add namespaces to them to fix xsi:/sdtc: prefix errors
         fragment_count = 0
 
         for failed_file in failed_files[:10]:
@@ -124,9 +127,14 @@ class TestPreprocessingImprovesSuccessRate:
             if '<ClinicalDocument' not in xml_string[:500]:  # Check first 500 chars
                 fragment_count += 1
 
-                # Preprocessing should not modify fragments
+                # Preprocessing WILL modify fragments to add missing namespaces
                 preprocessed = preprocess_ccda_namespaces(xml_string)
-                assert preprocessed == xml_string, "Fragments should not be modified"
+
+                # If fragment has xsi: or sdtc: usage, namespace should be added
+                if 'xsi:' in xml_string and 'xmlns:xsi=' not in xml_string:
+                    assert 'xmlns:xsi=' in preprocessed, "Should add xsi namespace to fragment"
+                if 'sdtc:' in xml_string and 'xmlns:sdtc=' not in xml_string:
+                    assert 'xmlns:sdtc=' in preprocessed, "Should add sdtc namespace to fragment"
 
         # We expect to find at least some fragments in the failed files
         assert fragment_count > 0, "Expected to find fragment files in failed files list"

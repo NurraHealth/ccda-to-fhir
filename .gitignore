@@ -86,3 +86,4 @@ Thumbs.db
 *.xml
 !samples/*.xml
 !tests/integration/fixtures/**/*.xml
+stress_test/chb-samples/

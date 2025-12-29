@@ -11,7 +11,8 @@ from typing import Callable, Literal
 
 from ccda_to_fhir.ccda.models.section import StructuredBody
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict
+from ccda_to_fhir.template_registry import SupportedTemplates
+from ccda_to_fhir.types import ConversionMetadata, FHIRResourceDict
 
 logger = get_logger(__name__)
 
@@ -73,15 +74,18 @@ class SectionProcessor:
     def process(
         self,
         structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
         **converter_kwargs,
     ) -> list[FHIRResourceDict]:
         """Process a structured body and extract resources.
 
         Recursively traverses sections, finds matching entries,
-        and converts them to FHIR resources.
+        and converts them to FHIR resources. Tracks metadata about
+        processed, skipped, and failed templates.
 
         Args:
             structured_body: The C-CDA structuredBody element
+            metadata: Optional metadata tracker for conversion statistics
             **converter_kwargs: Additional kwargs to pass to converter
 
         Returns:
@@ -110,8 +114,14 @@ class SectionProcessor:
 
                     # Check template IDs
                     if entry_element.template_id:
+                        # Track all templates encountered
+                        entry_templates = [t.root for t in entry_element.template_id if t.root]
+
+                        # Check if this entry matches our configured template
+                        matched = False
                         for template in entry_element.template_id:
                             if template.root == self.config.template_id:
+                                matched = True
                                 # Found a match - convert it
                                 try:
                                     # Build converter arguments
@@ -145,12 +155,39 @@ class SectionProcessor:
                                     elif result is not None:
                                         resources.append(result)
 
+                                    # Track successful conversion
+                                    if metadata is not None:
+                                        self._track_processed(metadata, template.root)
+
                                 except Exception as e:
+                                    # Track error
+                                    if metadata is not None:
+                                        entry_id = None
+                                        if hasattr(entry_element, "id") and entry_element.id:
+                                            ids = entry_element.id if isinstance(entry_element.id, list) else [entry_element.id]
+                                            if ids and ids[0]:
+                                                entry_id = f"{ids[0].root}/{ids[0].extension or ''}"
+
+                                        metadata["errors"].append({
+                                            "template_id": template.root,
+                                            "entry_id": entry_id,
+                                            "error_type": type(e).__name__,
+                                            "error_message": str(e),
+                                        })
+
                                     logger.error(
                                         f"Error converting {self.config.error_message}",
                                         exc_info=True,
                                     )
                                 break
+
+                        # Track skipped templates (not matched by any processor)
+                        if not matched and metadata is not None:
+                            for template_id in entry_templates:
+                                # Only track as skipped if it's not a supported template
+                                # (might be processed by a different processor)
+                                if not SupportedTemplates.is_supported(template_id):
+                                    self._track_skipped(metadata, template_id)
 
             # Process nested sections recursively
             if section.component:
@@ -158,7 +195,7 @@ class SectionProcessor:
                     if nested_comp.section:
                         # Create a temporary structured body for recursion
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        nested_resources = self.process(temp_body, **converter_kwargs)
+                        nested_resources = self.process(temp_body, metadata, **converter_kwargs)
                         resources.extend(nested_resources)
 
         return resources
@@ -173,3 +210,33 @@ class SectionProcessor:
             The entry element (act, observation, etc.) or None
         """
         return getattr(entry, self.config.entry_type, None)
+
+    def _track_processed(self, metadata: ConversionMetadata, template_id: str) -> None:
+        """Track a successfully processed template.
+
+        Args:
+            metadata: The conversion metadata to update
+            template_id: The C-CDA template ID that was processed
+        """
+        if template_id not in metadata["processed_templates"]:
+            metadata["processed_templates"][template_id] = {
+                "template_id": template_id,
+                "name": SupportedTemplates.get_template_name(template_id),
+                "count": 0,
+            }
+        metadata["processed_templates"][template_id]["count"] += 1
+
+    def _track_skipped(self, metadata: ConversionMetadata, template_id: str) -> None:
+        """Track a skipped (unsupported) template.
+
+        Args:
+            metadata: The conversion metadata to update
+            template_id: The C-CDA template ID that was skipped
+        """
+        if template_id not in metadata["skipped_templates"]:
+            metadata["skipped_templates"][template_id] = {
+                "template_id": template_id,
+                "name": SupportedTemplates.get_template_name(template_id),
+                "count": 0,
+            }
+        metadata["skipped_templates"][template_id]["count"] += 1

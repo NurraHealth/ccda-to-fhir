@@ -27,7 +27,7 @@ class TestProblemConversion:
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that the problem code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -45,7 +45,7 @@ class TestProblemConversion:
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that clinical status is correctly mapped from status observation."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -56,7 +56,7 @@ class TestProblemConversion:
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that category is set to problem-list-item."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -75,7 +75,7 @@ class TestProblemConversion:
         2. encounter-diagnosis (from problem type code)
         """
         ccda_doc = wrap_in_ccda_document(ccda_problem_with_diagnosis_type, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -102,7 +102,7 @@ class TestProblemConversion:
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that onset is correctly converted (prioritizes age over date per choice type logic)."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -114,7 +114,7 @@ class TestProblemConversion:
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that age at onset is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -126,7 +126,7 @@ class TestProblemConversion:
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that author time is converted to recordedDate."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -137,7 +137,7 @@ class TestProblemConversion:
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that ICD-9 and ICD-10 translations are included."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -162,7 +162,7 @@ class TestProblemConversion:
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that identifiers are correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -173,7 +173,7 @@ class TestProblemConversion:
         self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that the resource type is Condition."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -182,7 +182,7 @@ class TestProblemConversion:
     def test_converts_abatement_date(self, ccda_condition_with_abatement: str) -> None:
         """Test that effectiveTime with low and high is converted to onsetPeriod (per choice type priority)."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_abatement, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -203,7 +203,7 @@ class TestProblemConversion:
         Reference: http://hl7.org/fhir/extension-data-absent-reason.html
         """
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_abatement_unknown, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -229,7 +229,7 @@ class TestProblemConversion:
     def test_converts_body_site(self, ccda_condition_with_body_site: str) -> None:
         """Test that targetSiteCode is converted to bodySite."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_body_site, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -247,7 +247,7 @@ class TestProblemConversion:
     def test_converts_severity(self, ccda_condition_with_severity: str) -> None:
         """Test that Severity Observation is converted to severity."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_severity, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -264,7 +264,7 @@ class TestProblemConversion:
     def test_converts_note_from_text(self, ccda_condition_with_note: str) -> None:
         """Test that observation.text is converted to note."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_note, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -277,7 +277,7 @@ class TestProblemConversion:
     ) -> None:
         """Test that negationInd=true is converted to verificationStatus=refuted."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_negated, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -300,7 +300,7 @@ class TestProblemConversion:
         This follows FHIR best practice for representing "no known problems" scenarios.
         """
         ccda_doc = wrap_in_ccda_document(ccda_problem_no_known_problems, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -324,7 +324,7 @@ class TestProblemConversion:
     ) -> None:
         """Test that Date of Diagnosis Act is converted to assertedDate extension."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_asserted_date, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -342,7 +342,7 @@ class TestProblemConversion:
     ) -> None:
         """Test that Comment Activity is converted to note."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_comment, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -355,7 +355,7 @@ class TestProblemConversion:
     ) -> None:
         """Test that supporting observations (typeCode=SPRT) are converted to evidence.detail."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_evidence, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -381,7 +381,7 @@ class TestProblemConversion:
         Observation resources and referenced to provide supporting evidence for conditions.
         """
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_assessment_scale, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -400,7 +400,7 @@ class TestProblemConversion:
     ) -> None:
         """Test that recorder field is populated from latest author."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -420,7 +420,7 @@ class TestProblemConversion:
     ) -> None:
         """Test that recorder and Provenance both reference the same Practitioner."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -459,7 +459,7 @@ class TestProblemConversion:
     ) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -488,7 +488,7 @@ class TestProblemConversion:
     ) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -523,7 +523,7 @@ class TestProblemConversion:
     ) -> None:
         """Test that multiple authors create multiple Provenance agents."""
         ccda_doc = wrap_in_ccda_document(ccda_problem_multiple_authors, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -558,7 +558,7 @@ class TestProblemConversion:
     ) -> None:
         """Test that latest author (by timestamp) is selected for recorder field."""
         ccda_doc = wrap_in_ccda_document(ccda_problem_multiple_authors, PROBLEMS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -658,7 +658,7 @@ class TestProblemConversion:
         </structuredBody>
     </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
@@ -720,7 +720,7 @@ class TestCodeWhitespaceSanitization:
             PROBLEMS_TEMPLATE_ID
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         condition = _find_resource_in_bundle(bundle, "Condition")
 
         assert condition is not None

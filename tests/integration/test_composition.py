@@ -24,7 +24,7 @@ class TestCompositionConversion:
     def test_bundle_has_composition_as_first_entry(self) -> None:
         """Test that Composition is the first entry in a document bundle."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         assert bundle["type"] == "document"
         assert len(bundle["entry"]) > 0
@@ -33,7 +33,7 @@ class TestCompositionConversion:
     def test_creates_composition_resource(self) -> None:
         """Test that Composition resource is created."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -47,7 +47,7 @@ class TestCompositionConversion:
         authentication state, so we default to 'final' for all documents.
         """
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -58,7 +58,7 @@ class TestCompositionConversion:
         # wrap_in_ccda_document uses default document ID
         # <id root="2.16.840.1.113883.19.5.99999.1"/>
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -71,7 +71,7 @@ class TestCompositionConversion:
         # <code code="34133-9" displayName="Summarization of Episode Note"
         #       codeSystem="2.16.840.1.113883.6.1"/>
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -90,7 +90,7 @@ class TestCompositionConversion:
     def test_converts_subject_reference(self) -> None:
         """Test that patient reference is created."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -104,7 +104,7 @@ class TestCompositionConversion:
         # Default effectiveTime from wrap_in_ccda_document:
         # <effectiveTime value="20231215120000-0500"/>
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -115,7 +115,7 @@ class TestCompositionConversion:
     def test_converts_author_references(self) -> None:
         """Test that document authors are referenced."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -127,7 +127,7 @@ class TestCompositionConversion:
     def test_converts_title(self) -> None:
         """Test that title is set."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -139,7 +139,7 @@ class TestCompositionConversion:
         # Default confidentialityCode from wrap_in_ccda_document:
         # <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -149,7 +149,7 @@ class TestCompositionConversion:
     def test_converts_custodian_reference(self) -> None:
         """Test that custodian is converted to organization reference."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -160,7 +160,7 @@ class TestCompositionConversion:
     def test_resource_type_is_composition(self) -> None:
         """Test that resourceType is Composition."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -186,7 +186,7 @@ class TestCompositionConversion:
             </legalAuthenticator>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -256,7 +256,7 @@ class TestCompositionConversion:
             </legalAuthenticator>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -285,7 +285,7 @@ class TestCompositionConversion:
             </legalAuthenticator>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -295,7 +295,7 @@ class TestCompositionConversion:
     def test_no_attester_without_legal_authenticator(self) -> None:
         """Test that no attester is created when legalAuthenticator is absent."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -322,7 +322,7 @@ class TestCompositionConversion:
             </authenticator>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -377,7 +377,7 @@ class TestCompositionConversion:
             </authenticator>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -429,7 +429,7 @@ class TestCompositionConversion:
             </authenticator>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -467,7 +467,7 @@ class TestCompositionConversion:
             </authenticator>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -496,7 +496,7 @@ class TestCompositionConversion:
             </authenticator>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -633,7 +633,7 @@ class TestCompositionConversion:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -701,7 +701,7 @@ class TestCompositionConversion:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -769,7 +769,7 @@ class TestCompositionSections:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_section)
+        bundle = convert_document(ccda_doc_with_section)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -831,7 +831,7 @@ class TestCompositionSections:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_section)
+        bundle = convert_document(ccda_doc_with_section)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -894,7 +894,7 @@ class TestCompositionSections:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_section)
+        bundle = convert_document(ccda_doc_with_section)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -967,7 +967,7 @@ class TestCompositionSections:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_section)
+        bundle = convert_document(ccda_doc_with_section)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -1051,7 +1051,7 @@ class TestCompositionSections:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_structured_section)
+        bundle = convert_document(ccda_doc_with_structured_section)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -1151,7 +1151,7 @@ class TestEmptySectionsWithNullFlavor:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         assert "section" in composition
@@ -1221,7 +1221,7 @@ class TestEmptySectionsWithNullFlavor:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         section = composition["section"][0]
@@ -1283,7 +1283,7 @@ class TestEmptySectionsWithNullFlavor:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         section = composition["section"][0]
@@ -1345,7 +1345,7 @@ class TestEmptySectionsWithNullFlavor:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         section = composition["section"][0]
@@ -1407,7 +1407,7 @@ class TestEmptySectionsWithNullFlavor:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         section = composition["section"][0]
@@ -1470,7 +1470,7 @@ class TestEmptySectionsWithNullFlavor:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         section = composition["section"][0]
@@ -1514,7 +1514,7 @@ class TestParticipantExtensions:
             </dataEnterer>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
@@ -1550,7 +1550,7 @@ class TestParticipantExtensions:
             </informant>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
@@ -1583,7 +1583,7 @@ class TestParticipantExtensions:
             </informant>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
@@ -1618,7 +1618,7 @@ class TestParticipantExtensions:
             </informationRecipient>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
@@ -1654,7 +1654,7 @@ class TestParticipantExtensions:
             </participant>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
@@ -1698,7 +1698,7 @@ class TestParticipantExtensions:
             </documentationOf>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
@@ -1727,7 +1727,7 @@ class TestParticipantExtensions:
             </authorization>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
@@ -1756,7 +1756,7 @@ class TestParticipantExtensions:
             </inFulfillmentOf>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
@@ -1806,7 +1806,7 @@ class TestParticipantExtensions:
             </informationRecipient>
             """
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
 
@@ -1849,7 +1849,7 @@ class TestBundleStructure:
         Reference: https://hl7.org/fhir/R4/documents.html
         """
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         assert "identifier" in bundle
         assert bundle["identifier"]["system"] == "urn:oid:2.16.840.1.113883.19.5.99999.1"
@@ -1861,7 +1861,7 @@ class TestBundleStructure:
         Reference: https://hl7.org/fhir/R4/documents.html
         """
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         assert "timestamp" in bundle
         # Default timestamp from wrap_in_ccda_document: 20231215120000-0500
@@ -1875,7 +1875,7 @@ class TestBundleStructure:
         Both should be derived from the same ClinicalDocument/id element.
         """
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -1891,7 +1891,7 @@ class TestBundleStructure:
         Both should be derived from the same ClinicalDocument/effectiveTime element.
         """
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -1907,7 +1907,7 @@ class TestBundleStructure:
         Document bundles must have type='document'.
         """
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         assert bundle["type"] == "document"
 
@@ -1922,7 +1922,7 @@ class TestBundleStructure:
         - timestamp (document timestamp)
         """
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Check all required fields
         assert bundle["resourceType"] == "Bundle"
@@ -1984,7 +1984,7 @@ class TestBundleEdgeCases:
 '''
 
         ccda_doc = parse_ccda(ccda_xml)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Bundle.timestamp is optional (0..1), should be omitted when timezone missing
         assert "timestamp" not in bundle
@@ -1993,7 +1993,7 @@ class TestBundleEdgeCases:
         """Bundle.timestamp should be present when effectiveTime has timezone."""
         # Default wrap_in_ccda_document includes timezone
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         assert "timestamp" in bundle
         # Verify it's a valid instant (has timezone)
@@ -2047,7 +2047,7 @@ class TestBundleEdgeCases:
 '''
 
         ccda_doc = parse_ccda(ccda_xml)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         assert "identifier" in bundle
         assert "system" in bundle["identifier"]
@@ -2057,7 +2057,7 @@ class TestBundleEdgeCases:
     def test_bundle_timestamp_format_is_valid_instant(self) -> None:
         """Bundle.timestamp should be valid FHIR instant format."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         if "timestamp" in bundle:
             timestamp = bundle["timestamp"]

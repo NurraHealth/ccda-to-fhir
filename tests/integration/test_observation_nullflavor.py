@@ -55,7 +55,7 @@ class TestObservationNullFlavor:
 </organizer>
 """
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find all observations
         observations = _find_all_resources_in_bundle(bundle, "Observation")
@@ -91,7 +91,7 @@ class TestObservationNullFlavor:
 </organizer>
 """
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find all observations
         observations = _find_all_resources_in_bundle(bundle, "Observation")
@@ -168,7 +168,7 @@ class TestObservationNullFlavor:
 </organizer>
 """
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Find all observations
         observations = _find_all_resources_in_bundle(bundle, "Observation")

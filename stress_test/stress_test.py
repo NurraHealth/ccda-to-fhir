@@ -244,8 +244,11 @@ class StressTestRunner:
             with open(file_path, 'r', encoding='utf-8') as f:
                 ccda_xml = f.read()
 
-            bundle_dict = convert_document(ccda_xml)
+            result_dict = convert_document(ccda_xml)
             duration_ms = (time.time() - start_time) * 1000
+
+            # Extract bundle from ConversionResult
+            bundle_dict = result_dict["bundle"]
 
             # Count resources by type
             resource_counts = defaultdict(int)

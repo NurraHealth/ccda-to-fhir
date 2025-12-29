@@ -25,7 +25,7 @@ class TestGoalConversion:
     def test_converts_goal_description(self, ccda_goal_weight_loss: str) -> None:
         """Test that the goal description is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_weight_loss, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -44,7 +44,7 @@ class TestGoalConversion:
     def test_converts_lifecycle_status(self, ccda_goal_weight_loss: str) -> None:
         """Test that lifecycle status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_weight_loss, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -54,7 +54,7 @@ class TestGoalConversion:
     def test_converts_start_date(self, ccda_goal_weight_loss: str) -> None:
         """Test that start date is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_weight_loss, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -64,7 +64,7 @@ class TestGoalConversion:
     def test_converts_target_with_due_date(self, ccda_goal_weight_loss: str) -> None:
         """Test that target with quantity and due date is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_weight_loss, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -98,7 +98,7 @@ class TestGoalConversion:
     def test_converts_expressed_by_patient(self, ccda_goal_weight_loss: str) -> None:
         """Test that expressedBy is correctly mapped to patient."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_weight_loss, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -109,7 +109,7 @@ class TestGoalConversion:
     def test_converts_priority(self, ccda_goal_with_priority: str) -> None:
         """Test that priority preference is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_with_priority, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -121,7 +121,7 @@ class TestGoalConversion:
     def test_converts_achievement_status(self, ccda_goal_with_progress: str) -> None:
         """Test that progress toward goal is correctly converted to achievement status."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_with_progress, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -133,7 +133,7 @@ class TestGoalConversion:
     def test_converts_addresses_health_concern(self, ccda_goal_with_health_concern: str) -> None:
         """Test that health concern reference is correctly mapped to addresses."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_with_health_concern, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -146,7 +146,7 @@ class TestGoalConversion:
     def test_converts_target_range(self, ccda_goal_blood_pressure: str) -> None:
         """Test that target with range is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_blood_pressure, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -167,7 +167,7 @@ class TestGoalConversion:
     def test_converts_qualitative_goal_without_target(self, ccda_goal_qualitative: str) -> None:
         """Test that qualitative goal without measurable target is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_qualitative, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -179,7 +179,7 @@ class TestGoalConversion:
     def test_includes_us_core_profile(self, ccda_goal_weight_loss: str) -> None:
         """Test that US Core Goal profile is included in meta.profile."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_weight_loss, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -190,7 +190,7 @@ class TestGoalConversion:
     def test_has_subject_reference(self, ccda_goal_weight_loss: str) -> None:
         """Test that subject reference to patient is correctly set."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_weight_loss, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -201,7 +201,7 @@ class TestGoalConversion:
     def test_has_identifier(self, ccda_goal_weight_loss: str) -> None:
         """Test that goal identifier is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_goal_weight_loss, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
@@ -222,7 +222,7 @@ class TestGoalConversion:
         a description (what the objective is) is clinically useless.
         """
         ccda_doc = wrap_in_ccda_document(ccda_goal_narrative_only, GOALS_SECTION_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Goal should not be created when description is unavailable
         goal = _find_resource_in_bundle(bundle, "Goal")

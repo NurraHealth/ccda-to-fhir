@@ -22,7 +22,7 @@ def test_composition_has_get_resource_type_method():
     with open(fixture_path) as f:
         xml = f.read()
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find Composition resource
@@ -47,7 +47,7 @@ def test_all_fhir_resources_have_get_resource_type():
     with open(fixture_path) as f:
         xml = f.read()
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # All resources should have get_resource_type() method
@@ -106,7 +106,7 @@ def test_resource_type_matches_class_name():
     with open(fixture_path) as f:
         xml = f.read()
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     for entry in bundle.entry:

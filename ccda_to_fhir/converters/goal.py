@@ -131,6 +131,7 @@ class GoalConverter(BaseConverter[Observation]):
         fhir_goal["subject"] = self.reference_registry.get_patient_reference()
 
         # 6. Start date and target due date from effectiveTime
+        target_due_date = None  # Initialize outside if block to avoid UnboundLocalError
         if observation.effective_time:
             # effectiveTime/low → startDate
             if hasattr(observation.effective_time, "low") and observation.effective_time.low:
@@ -139,8 +140,6 @@ class GoalConverter(BaseConverter[Observation]):
                     fhir_goal["startDate"] = start_date
 
             # effectiveTime/high → target.dueDate (will be added to targets below)
-            # Store it temporarily
-            target_due_date = None
             if hasattr(observation.effective_time, "high") and observation.effective_time.high:
                 target_due_date = self.convert_date(observation.effective_time.high.value)
 

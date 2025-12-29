@@ -33,7 +33,12 @@ from fhir.resources.R4B.relatedperson import RelatedPerson
 from fhir.resources.R4B.servicerequest import ServiceRequest
 
 from ccda_to_fhir.exceptions import CCDAConversionError
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import (
+    ConversionMetadata,
+    ConversionResult,
+    FHIRResourceDict,
+    JSONObject,
+)
 from ccda_to_fhir.validation import FHIRValidator
 
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
@@ -651,14 +656,14 @@ class DocumentConverter:
             return self.validator.get_stats()
         return {"validated": 0, "passed": 0, "failed": 0, "warnings": 0}
 
-    def convert(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict:
-        """Convert a C-CDA document to a FHIR Bundle.
+    def convert(self, ccda_doc: ClinicalDocument) -> ConversionResult:
+        """Convert a C-CDA document to a FHIR Bundle with metadata.
 
         Args:
             ccda_doc: Parsed C-CDA document (ClinicalDocument model)
 
         Returns:
-            FHIR Bundle as a dict with Composition as first entry
+            ConversionResult with bundle and metadata about processing
         """
         # Clear medication registries at start of conversion
         clear_medication_registry()
@@ -667,6 +672,13 @@ class DocumentConverter:
         # Reset ID cache for this document to ensure consistency within document
         from ccda_to_fhir.id_generator import reset_id_cache
         reset_id_cache()
+
+        # Initialize conversion metadata
+        metadata: ConversionMetadata = {
+            "processed_templates": {},
+            "skipped_templates": {},
+            "errors": [],
+        }
 
         resources = []
         # Section→resource mapping for Composition.section[].entry references
@@ -856,7 +868,7 @@ class DocumentConverter:
         # Convert section-based resources and build section→resource mapping
         if ccda_doc.component and ccda_doc.component.structured_body:
             # Conditions (from Problem sections)
-            conditions = self._extract_conditions(ccda_doc.component.structured_body)
+            conditions = self._extract_conditions(ccda_doc.component.structured_body, metadata)
             resources.extend(conditions)
             for condition in conditions:
                 self.reference_registry.register_resource(condition)
@@ -864,7 +876,7 @@ class DocumentConverter:
                 section_resource_map[TemplateIds.PROBLEM_SECTION] = conditions
 
             # Allergies (from Allergy sections)
-            allergies = self._extract_allergies(ccda_doc.component.structured_body)
+            allergies = self._extract_allergies(ccda_doc.component.structured_body, metadata)
             resources.extend(allergies)
             for allergy in allergies:
                 self.reference_registry.register_resource(allergy)
@@ -872,7 +884,7 @@ class DocumentConverter:
                 section_resource_map[TemplateIds.ALLERGY_SECTION] = allergies
 
             # Medications (from Medications sections)
-            medications = self._extract_medications(ccda_doc.component.structured_body)
+            medications = self._extract_medications(ccda_doc.component.structured_body, metadata)
             resources.extend(medications)
             for medication in medications:
                 self.reference_registry.register_resource(medication)
@@ -880,7 +892,7 @@ class DocumentConverter:
                 section_resource_map[TemplateIds.MEDICATIONS_SECTION] = medications
 
             # Immunizations (from Immunizations sections)
-            immunizations = self._extract_immunizations(ccda_doc.component.structured_body)
+            immunizations = self._extract_immunizations(ccda_doc.component.structured_body, metadata)
             resources.extend(immunizations)
             for immunization in immunizations:
                 self.reference_registry.register_resource(immunization)
@@ -912,7 +924,7 @@ class DocumentConverter:
                 section_resource_map[TemplateIds.SOCIAL_HISTORY_SECTION] = social_history
 
             # Goals (from Goals sections)
-            goals = self._extract_goals(ccda_doc.component.structured_body)
+            goals = self._extract_goals(ccda_doc.component.structured_body, metadata)
             resources.extend(goals)
             for goal in goals:
                 self.reference_registry.register_resource(goal)
@@ -922,7 +934,7 @@ class DocumentConverter:
             # Care Teams (from Care Teams section)
             # Note: _extract_careteams returns CareTeam resources plus related
             # Practitioner, PractitionerRole, and Organization resources
-            careteam_resources = self._extract_careteams(ccda_doc.component.structured_body)
+            careteam_resources = self._extract_careteams(ccda_doc.component.structured_body, metadata)
             resources.extend(careteam_resources)
 
             # Register all resources and collect just CareTeams for section map
@@ -1248,7 +1260,10 @@ class DocumentConverter:
                 pass_rate=f"{(stats['passed'] / stats['validated'] * 100):.1f}%" if stats["validated"] > 0 else "N/A"
             )
 
-        return bundle
+        return {
+            "bundle": bundle,
+            "metadata": metadata,
+        }
 
     def _is_care_plan_document(self, doc: ClinicalDocument) -> bool:
         """Check if document is a Care Plan Document.
@@ -1268,39 +1283,55 @@ class DocumentConverter:
             if t.root
         )
 
-    def _extract_conditions(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
+    def _extract_conditions(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
         """Extract and convert Conditions from the structured body.
 
         Args:
             structured_body: The structuredBody element
+            metadata: Optional conversion metadata tracker
 
         Returns:
             List of FHIR Condition resources
         """
         return self.condition_processor.process(
             structured_body,
+            metadata=metadata,
             code_system_mapper=self.code_system_mapper,
             metadata_callback=self._store_author_metadata,
             reference_registry=self.reference_registry,
         )
 
-    def _extract_allergies(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
+    def _extract_allergies(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
         """Extract and convert Allergies from the structured body.
 
         Args:
             structured_body: The structuredBody element
+            metadata: Optional conversion metadata tracker
 
         Returns:
             List of FHIR AllergyIntolerance resources
         """
         return self.allergy_processor.process(
             structured_body,
+            metadata=metadata,
             code_system_mapper=self.code_system_mapper,
             reference_registry=self.reference_registry,
             metadata_callback=self._store_author_metadata,
         )
 
-    def _extract_medications(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
+    def _extract_medications(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
         """Extract and convert Medications from the structured body.
 
         Routes to MedicationRequest (moodCode=INT/RQO/PRMS/PRP) or
@@ -1308,58 +1339,78 @@ class DocumentConverter:
 
         Args:
             structured_body: The structuredBody element
+            metadata: Optional conversion metadata tracker
 
         Returns:
             List of FHIR MedicationRequest and/or MedicationStatement resources
         """
         return self.medication_processor.process(
             structured_body,
+            metadata=metadata,
             code_system_mapper=self.code_system_mapper,
             metadata_callback=self._store_author_metadata,
             reference_registry=self.reference_registry,
         )
 
-    def _extract_immunizations(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
+    def _extract_immunizations(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
         """Extract and convert Immunizations from the structured body.
 
         Args:
             structured_body: The structuredBody element
+            metadata: Optional conversion metadata tracker
 
         Returns:
             List of FHIR Immunization resources
         """
         return self.immunization_processor.process(
             structured_body,
+            metadata=metadata,
             code_system_mapper=self.code_system_mapper,
             metadata_callback=self._store_author_metadata,
             reference_registry=self.reference_registry,
         )
 
-    def _extract_goals(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
+    def _extract_goals(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
         """Extract and convert Goals from the structured body.
 
         Args:
             structured_body: The structuredBody element
+            metadata: Optional conversion metadata tracker
 
         Returns:
             List of FHIR Goal resources
         """
         return self.goal_processor.process(
             structured_body,
+            metadata=metadata,
             reference_registry=self.reference_registry,
         )
 
-    def _extract_careteams(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
+    def _extract_careteams(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
         """Extract and convert CareTeams from the structured body.
 
         Args:
             structured_body: The structuredBody element
+            metadata: Optional conversion metadata tracker
 
         Returns:
             List of FHIR CareTeam resources
         """
         return self.careteam_processor.process(
             structured_body,
+            metadata=metadata,
             reference_registry=self.reference_registry,
             code_system_mapper=self.code_system_mapper,
         )
@@ -3503,7 +3554,7 @@ class DocumentConverter:
         return (practitioners, related_persons)
 
 
-def convert_document(ccda_input: str | ClinicalDocument) -> FHIRResourceDict:
+def convert_document(ccda_input: str | ClinicalDocument) -> ConversionResult:
     """Main conversion entry point.
 
     This is a convenience function that handles both XML strings and
@@ -3513,7 +3564,7 @@ def convert_document(ccda_input: str | ClinicalDocument) -> FHIRResourceDict:
         ccda_input: Either an XML string or a parsed ClinicalDocument
 
     Returns:
-        FHIR Bundle as a dict
+        ConversionResult with bundle and metadata about processing
 
     Raises:
         Exception: If parsing or conversion fails

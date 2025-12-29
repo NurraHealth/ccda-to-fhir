@@ -54,6 +54,9 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
 
         medication: JSONObject = {
             "resourceType": "Medication",
+            "meta": {
+                "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-medication"]
+            },
         }
 
         # 1. Generate ID from product identifier or material code
@@ -133,6 +136,9 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
     def _generate_medication_id(self, manufactured_product: ManufacturedProduct) -> str:
         """Generate a medication resource ID from C-CDA manufactured product.
 
+        Uses standard ID generation with hashing for consistency across all converters.
+        Falls back to material code if no ID present.
+
         Args:
             manufactured_product: The manufactured product
 
@@ -142,12 +148,11 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
         # Try to use product ID first
         if manufactured_product.id and len(manufactured_product.id) > 0:
             first_id = manufactured_product.id[0]
-            if first_id.extension:
-                clean_ext = first_id.extension.lower().replace(" ", "-").replace(".", "-")
-                return f"medication-{clean_ext}"
-            elif first_id.root:
-                root_suffix = first_id.root.replace(".", "").replace("-", "")[-16:]
-                return f"medication-{root_suffix}"
+            return self.generate_resource_id(
+                root=first_id.root,
+                extension=first_id.extension,
+                resource_type="medication"
+            )
 
         # Fall back to material code
         if (
@@ -156,8 +161,12 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
             and manufactured_product.manufactured_material.code.code
         ):
             code = manufactured_product.manufactured_material.code.code
-            clean_code = code.lower().replace(" ", "-").replace(".", "-")
-            return f"medication-{clean_code}"
+            return self.generate_resource_id(
+                root=None,
+                extension=None,
+                resource_type="medication",
+                fallback_context=code
+            )
 
         raise ValueError(
             "Cannot generate Medication ID: no identifiers or material code provided. "

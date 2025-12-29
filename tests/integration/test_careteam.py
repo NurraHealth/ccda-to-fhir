@@ -18,7 +18,7 @@ class TestCareTeamExtraction:
 
     def test_extracts_careteam_from_care_teams_section(self, careteam_document):
         """Test that CareTeam resource is extracted from Care Teams Section."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         # Find CareTeam resources
         careteams = [
@@ -32,7 +32,7 @@ class TestCareTeamExtraction:
 
     def test_careteam_has_required_fields(self, careteam_document):
         """Test that CareTeam has US Core required fields."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         careteams = [
             entry["resource"]
@@ -61,7 +61,7 @@ class TestCareTeamExtraction:
 
     def test_careteam_extracts_multiple_participants(self, careteam_document):
         """Test that multiple team members are extracted as participants."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         careteams = [
             entry["resource"]
@@ -80,7 +80,7 @@ class TestCareTeamExtraction:
 
     def test_careteam_creates_practitioner_resources(self, careteam_document):
         """Test that Practitioner resources are created for team members."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         practitioners = [
             entry["resource"]
@@ -106,7 +106,7 @@ class TestCareTeamExtraction:
 
     def test_careteam_creates_practitioner_role_resources(self, careteam_document):
         """Test that PractitionerRole resources are created for team members."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         practitioner_roles = [
             entry["resource"]
@@ -125,7 +125,7 @@ class TestCareTeamExtraction:
 
     def test_careteam_participant_references_practitioner_role(self, careteam_document):
         """Test that CareTeam participants reference PractitionerRole (US Core recommendation)."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         careteams = [
             entry["resource"]
@@ -143,7 +143,7 @@ class TestCareTeamExtraction:
 
     def test_careteam_has_managing_organization(self, careteam_document):
         """Test that CareTeam has managing organization extracted."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         careteams = [
             entry["resource"]
@@ -173,7 +173,7 @@ class TestCareTeamExtraction:
 
     def test_careteam_team_lead_is_first_participant(self, careteam_document):
         """Test that team lead (typeCode='PPRF') is placed first in participants list."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         careteams = [
             entry["resource"]
@@ -192,7 +192,7 @@ class TestCareTeamExtraction:
 
     def test_careteam_has_period_from_effective_time(self, careteam_document):
         """Test that CareTeam period is extracted from effectiveTime."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         careteams = [
             entry["resource"]
@@ -209,7 +209,7 @@ class TestCareTeamExtraction:
 
     def test_careteam_has_us_core_profile(self, careteam_document):
         """Test that CareTeam includes US Core profile in meta."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         careteams = [
             entry["resource"]
@@ -229,7 +229,7 @@ class TestCareTeamExtraction:
 
     def test_bundle_has_valid_references(self, careteam_document):
         """Test that all references in bundle are valid."""
-        bundle = convert_document(careteam_document)
+        bundle = convert_document(careteam_document)["bundle"]
 
         # Collect all resource IDs
         resource_ids = set()

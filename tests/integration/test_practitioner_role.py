@@ -42,7 +42,7 @@ class TestPractitionerRoleConversion:
     ) -> None:
         """Test that author creates a PractitionerRole resource in the bundle."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner_role = _find_resource_in_bundle(bundle, "PractitionerRole")
         assert practitioner_role is not None
@@ -53,7 +53,7 @@ class TestPractitionerRoleConversion:
     ) -> None:
         """Test that PractitionerRole references the Practitioner."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         practitioner_role = _find_resource_in_bundle(bundle, "PractitionerRole")
@@ -72,7 +72,7 @@ class TestPractitionerRoleConversion:
     ) -> None:
         """Test that PractitionerRole references the Organization."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         organization = _find_resource_in_bundle(bundle, "Organization")
         practitioner_role = _find_resource_in_bundle(bundle, "PractitionerRole")
@@ -95,7 +95,7 @@ class TestPractitionerRoleConversion:
         NOT Practitioner.qualification (which is for academic degrees like MD, PhD).
         """
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         practitioner_role = _find_resource_in_bundle(bundle, "PractitionerRole")
@@ -116,7 +116,7 @@ class TestPractitionerRoleConversion:
     ) -> None:
         """Test that specialty code and display are correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner_role = _find_resource_in_bundle(bundle, "PractitionerRole")
         assert practitioner_role is not None
@@ -138,7 +138,7 @@ class TestPractitionerRoleConversion:
     ) -> None:
         """Test that NUCC taxonomy code system is correctly mapped."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner_role = _find_resource_in_bundle(bundle, "PractitionerRole")
         assert practitioner_role is not None
@@ -154,7 +154,7 @@ class TestPractitionerRoleConversion:
         import uuid as uuid_module
 
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         role = _find_resource_in_bundle(bundle, "PractitionerRole")
         assert role is not None
@@ -264,7 +264,7 @@ class TestPractitionerRoleConversion:
         </ClinicalDocument>
         """
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner_roles = _find_all_resources_in_bundle(bundle, "PractitionerRole")
 
@@ -357,7 +357,7 @@ class TestPractitionerRoleConversion:
         </ClinicalDocument>
         """
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner_roles = _find_all_resources_in_bundle(bundle, "PractitionerRole")
         practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
@@ -393,7 +393,7 @@ class TestPractitionerRoleConversion:
     ) -> None:
         """Test that PractitionerRole has a valid ID."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         practitioner_role = _find_resource_in_bundle(bundle, "PractitionerRole")
         assert practitioner_role is not None
@@ -458,7 +458,7 @@ class TestPractitionerRoleConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
         practitioner_roles = _find_all_resources_in_bundle(bundle, "PractitionerRole")
@@ -534,7 +534,7 @@ class TestPractitionerRoleConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
         organizations = _find_all_resources_in_bundle(bundle, "Organization")

@@ -77,7 +77,7 @@ def test_composition_has_all_required_fields():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)  # Should not raise validation error
 
     # Find Composition resource
@@ -144,7 +144,7 @@ def test_composition_with_missing_author_person():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     composition = next(
@@ -176,7 +176,7 @@ def test_diagnostic_report_has_required_fields(ccda_result):
         section_code="30954-2"
     )
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find DiagnosticReport resource
@@ -271,7 +271,7 @@ def test_diagnostic_report_with_minimal_organizer():
     </ClinicalDocument>
     """
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find DiagnosticReport
@@ -302,7 +302,7 @@ def test_observation_has_required_fields(ccda_result):
         section_code="30954-2"
     )
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
     bundle = Bundle(**bundle_dict)
 
     # Find Observation resources
@@ -405,7 +405,7 @@ def test_all_resources_in_bundle_are_valid():
     with open(fixture_path) as f:
         xml = f.read()
 
-    bundle_dict = convert_document(xml)
+    bundle_dict = convert_document(xml)["bundle"]
 
     # This should not raise any validation errors
     bundle = Bundle(**bundle_dict)

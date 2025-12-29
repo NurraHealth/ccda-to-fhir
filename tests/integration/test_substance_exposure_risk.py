@@ -40,7 +40,7 @@ class TestSubstanceExposureRiskExtension:
             concern_act_xml = f.read()
 
         ccda_xml = wrap_in_ccda_document(concern_act_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         # Find the AllergyIntolerance resource
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
@@ -63,7 +63,7 @@ class TestSubstanceExposureRiskExtension:
             concern_act_xml = f.read()
 
         ccda_xml = wrap_in_ccda_document(concern_act_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 
@@ -103,7 +103,7 @@ class TestSubstanceExposureRiskExtension:
             concern_act_xml = f.read()
 
         ccda_xml = wrap_in_ccda_document(concern_act_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 
@@ -142,7 +142,7 @@ class TestSubstanceExposureRiskExtension:
             concern_act_xml = f.read()
 
         ccda_xml = wrap_in_ccda_document(concern_act_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 
@@ -155,7 +155,7 @@ class TestSubstanceExposureRiskExtension:
             concern_act_xml = f.read()
 
         ccda_xml = wrap_in_ccda_document(concern_act_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 
@@ -169,7 +169,7 @@ class TestSubstanceExposureRiskExtension:
             concern_act_xml = f.read()
 
         ccda_xml = wrap_in_ccda_document(concern_act_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -215,7 +215,7 @@ class TestSubstanceExposureRiskExtension:
             concern_act_xml = f.read()
 
         ccda_xml = wrap_in_ccda_document(concern_act_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -253,7 +253,7 @@ class TestSubstanceExposureRiskExtension:
             concern_act_xml = f.read()
 
         ccda_xml = wrap_in_ccda_document(concern_act_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 

@@ -33,7 +33,7 @@ class TestMedicationConversion:
         Medication resource.
         """
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -67,7 +67,7 @@ class TestMedicationConversion:
     ) -> None:
         """Test that status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -77,7 +77,7 @@ class TestMedicationConversion:
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that intent is correctly determined from moodCode."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -87,7 +87,7 @@ class TestMedicationConversion:
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that author time is converted to authoredOn."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -98,7 +98,7 @@ class TestMedicationConversion:
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that timing is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -112,7 +112,7 @@ class TestMedicationConversion:
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that route code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -124,7 +124,7 @@ class TestMedicationConversion:
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that dose quantity is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -136,7 +136,7 @@ class TestMedicationConversion:
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that max dose is correctly converted to FHIR Ratio with complete Quantity structure."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -159,7 +159,7 @@ class TestMedicationConversion:
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that precondition with coded value is converted to asNeededCodeableConcept."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -188,7 +188,7 @@ class TestMedicationConversion:
             ccda_medication = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -207,7 +207,7 @@ class TestMedicationConversion:
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that indication is converted to reasonCode."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -218,7 +218,7 @@ class TestMedicationConversion:
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that instructions are converted to patientInstruction."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -229,7 +229,7 @@ class TestMedicationConversion:
         self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that the resource type is MedicationRequest."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -240,7 +240,7 @@ class TestMedicationConversion:
     ) -> None:
         """Test that requester field is populated from latest author."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -253,7 +253,7 @@ class TestMedicationConversion:
     ) -> None:
         """Test that requester and Provenance both reference the same Practitioner."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -292,7 +292,7 @@ class TestMedicationConversion:
     ) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -321,7 +321,7 @@ class TestMedicationConversion:
     ) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -356,7 +356,7 @@ class TestMedicationConversion:
     ) -> None:
         """Test that multiple authors create multiple Provenance agents."""
         ccda_doc = wrap_in_ccda_document(ccda_medication_multiple_authors, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -393,7 +393,7 @@ class TestMedicationConversion:
         import uuid as uuid_module
 
         ccda_doc = wrap_in_ccda_document(ccda_medication_multiple_authors, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -443,7 +443,7 @@ class TestMedicationConversion:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -477,7 +477,7 @@ class TestMedicationConversion:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -510,7 +510,7 @@ class TestMedicationConversion:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -524,7 +524,7 @@ class TestEIVLTimingConversion:
     def test_converts_bedtime_hs_event(self, ccda_medication_bedtime_hs: str) -> None:
         """Test that EIVL_TS with HS (bedtime) event is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_medication_bedtime_hs, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -541,7 +541,7 @@ class TestEIVLTimingConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_medication_before_breakfast_acm, MEDICATIONS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -554,7 +554,7 @@ class TestEIVLTimingConversion:
     def test_converts_event_with_offset(self, ccda_medication_with_offset: str) -> None:
         """Test that EIVL_TS with offset is correctly converted to timing.repeat.offset."""
         ccda_doc = wrap_in_ccda_document(ccda_medication_with_offset, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -573,7 +573,7 @@ class TestEIVLTimingConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_medication_pivl_eivl_combined, MEDICATIONS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -596,7 +596,7 @@ class TestBoundsPeriodConversion:
     def test_converts_start_date_only(self, ccda_medication_with_start_date: str) -> None:
         """Test that IVL_TS with only start date is correctly converted to boundsPeriod.start."""
         ccda_doc = wrap_in_ccda_document(ccda_medication_with_start_date, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -612,7 +612,7 @@ class TestBoundsPeriodConversion:
     def test_converts_start_and_end_dates(self, ccda_medication_with_start_end_dates: str) -> None:
         """Test that IVL_TS with start and end dates is correctly converted to boundsPeriod."""
         ccda_doc = wrap_in_ccda_document(ccda_medication_with_start_end_dates, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -632,7 +632,7 @@ class TestBoundsPeriodConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_medication_bounds_period_with_frequency, MEDICATIONS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -657,7 +657,7 @@ class TestBoundsPeriodConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_medication_bounds_period_with_frequency, MEDICATIONS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -685,7 +685,7 @@ class TestDosageInstructionText:
         Per FHIR R4: Dosage.text = "Free text dosage instructions e.g. SIG"
         """
         ccda_doc = wrap_in_ccda_document(ccda_medication_with_sig, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -707,7 +707,7 @@ class TestDosageInstructionText:
         ccda_doc = wrap_in_ccda_document(
             ccda_medication_with_sig_and_patient_instruction, MEDICATIONS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -731,7 +731,7 @@ class TestDosageInstructionText:
         that could not be conveyed by the other attributes."
         """
         ccda_doc = wrap_in_ccda_document(ccda_medication_with_sig, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -753,7 +753,7 @@ class TestDosageInstructionText:
         be created and referenced by the MedicationRequest.
         """
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Should have a Medication resource
         medication = _find_resource_in_bundle(bundle, "Medication")
@@ -769,7 +769,7 @@ class TestDosageInstructionText:
     ) -> None:
         """Test that MedicationRequest uses medicationReference for complex medication."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
@@ -792,7 +792,7 @@ class TestDosageInstructionText:
     def test_medication_resource_has_code(self, ccda_medication: str) -> None:
         """Test that Medication resource has medication code."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication = _find_resource_in_bundle(bundle, "Medication")
         assert medication is not None
@@ -811,7 +811,7 @@ class TestDosageInstructionText:
     def test_medication_resource_has_manufacturer(self, ccda_medication: str) -> None:
         """Test that Medication resource has manufacturer from manufacturerOrganization."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication = _find_resource_in_bundle(bundle, "Medication")
         assert medication is not None
@@ -824,7 +824,7 @@ class TestDosageInstructionText:
     def test_medication_resource_has_form(self, ccda_medication: str) -> None:
         """Test that Medication resource has form from administrationUnitCode."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication = _find_resource_in_bundle(bundle, "Medication")
         assert medication is not None
@@ -839,7 +839,7 @@ class TestDosageInstructionText:
     def test_medication_resource_has_ingredient(self, ccda_medication: str) -> None:
         """Test that Medication resource has ingredient from drug vehicle participant."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         medication = _find_resource_in_bundle(bundle, "Medication")
         assert medication is not None
@@ -894,7 +894,7 @@ class TestCSRouteCodeHandling:
         xml_string = echoman_file.read_text()
 
         # Should parse successfully (would previously fail with validation error)
-        bundle = convert_document(xml_string)
+        bundle = convert_document(xml_string)["bundle"]
 
         assert bundle is not None
         assert "entry" in bundle
@@ -911,7 +911,7 @@ class TestCSRouteCodeHandling:
             pytest.skip(f"EchoMan test file not found: {echoman_file}")
 
         xml_string = echoman_file.read_text()
-        bundle = convert_document(xml_string)
+        bundle = convert_document(xml_string)["bundle"]
 
         # Find MedicationRequest resources
         med_requests = [
@@ -938,7 +938,7 @@ class TestCSRouteCodeHandling:
             pytest.skip(f"EchoMan test file not found: {echoman_file}")
 
         xml_string = echoman_file.read_text()
-        bundle = convert_document(xml_string)
+        bundle = convert_document(xml_string)["bundle"]
 
         # Find MedicationRequest resources
         med_requests = [
@@ -986,7 +986,7 @@ class TestCSRouteCodeHandling:
 """
         # The key test: document should parse without error
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None

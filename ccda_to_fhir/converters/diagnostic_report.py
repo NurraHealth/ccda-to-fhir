@@ -156,6 +156,8 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
     def _generate_report_id(self, root: str | None, extension: str | None) -> str:
         """Generate a FHIR resource ID from C-CDA identifier.
 
+        Uses standard ID generation with hashing for consistency across all converters.
+
         Args:
             root: The OID or UUID root
             extension: The extension value
@@ -163,17 +165,11 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         Returns:
             A valid FHIR ID string
         """
-        if extension:
-            # Use extension as ID (sanitize to meet FHIR constraints)
-            return self.sanitize_id(extension)
-        elif root:
-            # Use root as ID (sanitize to meet FHIR constraints)
-            return self.sanitize_id(root)
-        else:
-            raise ValueError(
-                "Cannot generate DiagnosticReport ID: no identifiers provided. "
-                "C-CDA Result Organizer must have id element."
-            )
+        return self.generate_resource_id(
+            root=root,
+            extension=extension,
+            resource_type="diagnosticreport"
+        )
 
     def _determine_status(self, organizer: Organizer) -> str:
         """Determine FHIR DiagnosticReport status from C-CDA status code.

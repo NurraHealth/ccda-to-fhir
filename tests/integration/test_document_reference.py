@@ -24,7 +24,7 @@ class TestDocumentReferenceConversion:
     def test_creates_document_reference(self) -> None:
         """Test that DocumentReference resource is created."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -33,7 +33,7 @@ class TestDocumentReferenceConversion:
     def test_converts_status_to_current(self) -> None:
         """Test that status is set to 'current'."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -44,7 +44,7 @@ class TestDocumentReferenceConversion:
         # Note: wrap_in_ccda_document uses default document ID
         # <id root="2.16.840.1.113883.19.5.99999.1"/>
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -57,7 +57,7 @@ class TestDocumentReferenceConversion:
         # <code code="34133-9" displayName="Summarization of Episode Note"
         #       codeSystem="2.16.840.1.113883.6.1"/>
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -76,7 +76,7 @@ class TestDocumentReferenceConversion:
     def test_converts_subject_reference(self) -> None:
         """Test that patient reference is created."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -90,7 +90,7 @@ class TestDocumentReferenceConversion:
         # Default effectiveTime from wrap_in_ccda_document:
         # <effectiveTime value="20231215120000-0500"/>
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -101,7 +101,7 @@ class TestDocumentReferenceConversion:
     def test_converts_author_references(self) -> None:
         """Test that document authors are referenced."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -113,7 +113,7 @@ class TestDocumentReferenceConversion:
     def test_converts_custodian_reference(self) -> None:
         """Test that custodian is converted to organization reference."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -127,7 +127,7 @@ class TestDocumentReferenceConversion:
         # Default confidentialityCode from wrap_in_ccda_document:
         # <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -142,7 +142,7 @@ class TestDocumentReferenceConversion:
     def test_converts_content_with_attachment(self) -> None:
         """Test that content element with attachment is created."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -158,7 +158,7 @@ class TestDocumentReferenceConversion:
         # Default languageCode from wrap_in_ccda_document:
         # <languageCode code="en-US"/>
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -169,7 +169,7 @@ class TestDocumentReferenceConversion:
     def test_converts_content_title_from_doc_code(self) -> None:
         """Test that document code display name is used as attachment title."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -181,7 +181,7 @@ class TestDocumentReferenceConversion:
     def test_converts_content_format(self) -> None:
         """Test that content format is set for C-CDA."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -194,7 +194,7 @@ class TestDocumentReferenceConversion:
     def test_format_uses_hl7_system(self) -> None:
         """Test format.system uses HL7 standard URI."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -204,7 +204,7 @@ class TestDocumentReferenceConversion:
     def test_resource_type_is_document_reference(self) -> None:
         """Test that resourceType is DocumentReference."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -278,7 +278,7 @@ class TestDocumentReferenceWithContext:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_encounter)
+        bundle = convert_document(ccda_doc_with_encounter)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -345,7 +345,7 @@ class TestDocumentReferenceWithContext:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_encounter)
+        bundle = convert_document(ccda_doc_with_encounter)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -361,7 +361,7 @@ class TestDocumentReferenceNewFeatures:
     def test_converts_attachment_hash(self) -> None:
         """Test that SHA-1 hash is calculated for attachment."""
         ccda_doc = wrap_in_ccda_document("")
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -430,7 +430,7 @@ class TestDocumentReferenceNewFeatures:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_related)
+        bundle = convert_document(ccda_doc_with_related)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -496,7 +496,7 @@ class TestDocumentReferenceNewFeatures:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_apnd)
+        bundle = convert_document(ccda_doc_with_apnd)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -561,7 +561,7 @@ class TestDocumentReferenceNewFeatures:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_xfrm)
+        bundle = convert_document(ccda_doc_with_xfrm)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -629,7 +629,7 @@ class TestDocumentReferenceNewFeatures:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc_with_event)
+        bundle = convert_document(ccda_doc_with_event)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None

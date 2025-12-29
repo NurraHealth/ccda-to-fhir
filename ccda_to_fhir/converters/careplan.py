@@ -501,12 +501,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
     def _generate_resource_id_from_entry(self, entry, resource_type: str) -> str | None:
         """Generate FHIR resource ID from C-CDA entry identifiers.
 
-        Uses the same ID generation logic as resource converters to ensure
-        CarePlan can find resources in the registry.
-
-        NOTE: Observation converter uses a different ID generation strategy
-        (sanitize root/extension directly without hashing), so we handle that
-        as a special case.
+        Uses the same standardized ID generation logic as all resource converters.
 
         Args:
             entry: C-CDA entry element (observation, act, procedure, etc.)
@@ -538,15 +533,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         if extension is not None and not isinstance(extension, str):
             extension = str(extension) if extension else None
 
-        # Observation converter uses special logic (sanitize only, no hash)
-        if resource_type.lower() == "observation":
-            if extension:
-                return self.sanitize_id(extension)
-            elif root:
-                return self.sanitize_id(root)
-            return None
-
-        # Other converters use standard generate_resource_id with hashing
+        # All converters now use standard generate_resource_id with hashing
         return self.generate_resource_id(
             root=root,
             extension=extension,

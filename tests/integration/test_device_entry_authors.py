@@ -142,7 +142,7 @@ class TestDeviceEntryAuthors:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         # Should have a Device resource for the device author
         device = _find_device_by_identifier(bundle, "DEVICE-ROBOT")
@@ -225,7 +225,7 @@ class TestDeviceEntryAuthors:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_device_by_identifier(bundle, "DEVICE-ROBOT")
         assert device is not None
@@ -322,7 +322,7 @@ class TestDeviceEntryAuthors:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         # Check that both Device and Provenance exist
         device = _find_device_by_identifier(bundle, "DEVICE-ROBOT")
@@ -440,7 +440,7 @@ class TestDeviceEntryAuthors:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         # Should have exactly 1 Device resource (deduplicated)
         devices = _find_all_resources_in_bundle(bundle, "Device")

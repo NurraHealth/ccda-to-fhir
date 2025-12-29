@@ -28,7 +28,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that identifier is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -41,7 +41,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that status is always 'finished' for documented encounters."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -52,7 +52,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that class defaults to ambulatory."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -65,7 +65,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that encounter type code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -85,7 +85,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that type text is derived from display name."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -97,7 +97,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that effectiveTime is converted to period.start."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -110,7 +110,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that encounter diagnosis is converted to diagnosis references."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -128,7 +128,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that the resource type is Encounter."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -139,7 +139,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that statusCode 'completed' is converted to status 'finished'."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_status_code, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -150,7 +150,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that V3 ActCode class is correctly mapped to encounter.class."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_inpatient_v3, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -168,7 +168,7 @@ class TestEncounterConversion:
         per mapping spec docs/mapping/08-encounter.md lines 217-223.
         """
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_function_code, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -200,7 +200,7 @@ class TestEncounterConversion:
         import uuid as uuid_module
 
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_location, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -228,7 +228,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test location status is 'completed' when participant.time has both start and end."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_location_with_time_period, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -251,7 +251,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test location status is 'active' when participant.time has only start (no end)."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_location_active, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -273,7 +273,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test location status falls back to 'active' when no time and encounter is in-progress."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_location_no_time_in_progress, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -292,7 +292,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test location status is 'planned' for planned encounters."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_location_planned, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -311,7 +311,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that discharge disposition is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_discharge, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -336,7 +336,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -363,7 +363,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -386,7 +386,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -409,7 +409,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -429,7 +429,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -450,7 +450,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -480,7 +480,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -507,7 +507,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         participant = next((p for p in encounter["participant"] if "type" in p), None)
@@ -535,7 +535,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         participant = next((p for p in encounter["participant"] if "type" in p), None)
@@ -563,7 +563,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         participant = next((p for p in encounter["participant"] if "type" in p), None)
@@ -590,7 +590,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         participant = next((p for p in encounter["participant"] if "type" in p), None)
@@ -622,7 +622,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         participant = next((p for p in encounter["participant"] if "type" in p), None)
@@ -653,7 +653,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         participant = next((p for p in encounter["participant"] if "type" in p), None)
@@ -667,7 +667,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that header encompassingEncounter creates an Encounter resource when no body encounters exist."""
         # This is a full document, not a wrapped encounter
-        bundle = convert_document(ccda_header_encounter_only)
+        bundle = convert_document(ccda_header_encounter_only)["bundle"]
 
         # Should have an Encounter resource from header
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -740,7 +740,7 @@ class TestEncounterConversion:
         self, ccda_header_and_body_encounter: str
     ) -> None:
         """Test that when header and body encounters have same ID, body version is used."""
-        bundle = convert_document(ccda_header_and_body_encounter)
+        bundle = convert_document(ccda_header_and_body_encounter)["bundle"]
 
         # Find all Encounter resources
         encounters = [
@@ -795,7 +795,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that Provenance resource is created for Encounter with author."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_author, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -828,7 +828,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that Provenance agent references Practitioner."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_author, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -859,7 +859,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_author, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -890,7 +890,7 @@ class TestEncounterConversion:
     ) -> None:
         """Test that multiple authors create multiple Provenance agents."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_multiple_authors, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -923,7 +923,7 @@ class TestEncounterConversion:
     def test_converts_inline_problem_to_reason_code(self, ccda_encounter_with_reason_reference: str) -> None:
         """Test that inline Problem Observation (not in Problems section) creates reasonCode."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_reason_reference, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -940,7 +940,7 @@ class TestEncounterConversion:
     def test_inline_problem_has_no_reason_reference(self, ccda_encounter_with_reason_reference: str) -> None:
         """Test that inline Problem Observation creates reasonCode, not reasonReference."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_reason_reference, ENCOUNTERS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -954,7 +954,7 @@ class TestEncounterConversion:
         import uuid as uuid_module
 
         # This fixture includes both Problems section and Encounters section
-        bundle = convert_document(ccda_encounter_with_problem_reference)
+        bundle = convert_document(ccda_encounter_with_problem_reference)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -983,7 +983,7 @@ class TestEncounterConversion:
 
     def test_referenced_problem_has_no_reason_code(self, ccda_encounter_with_problem_reference: str) -> None:
         """Test that referenced Problem Observation creates reasonReference, not reasonCode."""
-        bundle = convert_document(ccda_encounter_with_problem_reference)
+        bundle = convert_document(ccda_encounter_with_problem_reference)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -996,7 +996,7 @@ class TestEncounterConversion:
         """Test that reasonReference uses consistent Condition ID format (UUID v4)."""
         import uuid as uuid_module
 
-        bundle = convert_document(ccda_encounter_with_problem_reference)
+        bundle = convert_document(ccda_encounter_with_problem_reference)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
@@ -1026,7 +1026,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1061,7 +1061,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1096,7 +1096,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1131,7 +1131,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1166,7 +1166,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1196,7 +1196,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1214,7 +1214,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1277,7 +1277,7 @@ class TestEncounterConversion:
     </structuredBody>
   </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1343,7 +1343,7 @@ class TestEncounterConversion:
     </structuredBody>
   </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1409,7 +1409,7 @@ class TestEncounterConversion:
     </structuredBody>
   </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1475,7 +1475,7 @@ class TestEncounterConversion:
     </structuredBody>
   </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1547,7 +1547,7 @@ class TestEncounterConversion:
     </structuredBody>
   </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1585,7 +1585,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1623,7 +1623,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1661,7 +1661,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1700,7 +1700,7 @@ class TestEncounterConversion:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1732,7 +1732,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1751,7 +1751,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1770,7 +1770,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1789,7 +1789,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1808,7 +1808,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1827,7 +1827,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1846,7 +1846,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1865,7 +1865,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1884,7 +1884,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1903,7 +1903,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1922,7 +1922,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1943,7 +1943,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1963,7 +1963,7 @@ class TestV3ActCodeStandardDisplayNames:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -1996,7 +1996,7 @@ class TestEncounterNullFlavorIdentifiers:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -2023,7 +2023,7 @@ class TestEncounterNullFlavorIdentifiers:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -2050,7 +2050,7 @@ class TestEncounterNullFlavorIdentifiers:
             </encounter>""",
             ENCOUNTERS_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -2081,7 +2081,7 @@ class TestEncounterIDSanitization:
             ENCOUNTERS_TEMPLATE_ID
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
@@ -2106,7 +2106,7 @@ class TestEncounterIDSanitization:
             ENCOUNTERS_TEMPLATE_ID
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None

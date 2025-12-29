@@ -222,17 +222,17 @@ class TestEdgeCases:
         # Should be unchanged
         assert result == xml
 
-    def test_no_op_when_not_clinical_document(self):
-        """Return unchanged when root is not ClinicalDocument."""
+    def test_processes_fragments_not_just_clinical_documents(self):
+        """Process fragments (sections, entries, etc.) not just ClinicalDocument."""
         xml = """<section>
             <value xsi:type="CD"/>
         </section>"""
 
         result = preprocess_ccda_namespaces(xml)
 
-        # Should be unchanged (no ClinicalDocument tag)
-        assert result == xml
-        assert 'xmlns:xsi=' not in result
+        # Should add namespace to fragments too (for test fixtures)
+        assert 'xmlns:xsi=' in result
+        assert '<section xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' in result
 
     def test_handles_self_closing_clinical_document(self):
         """Handle self-closing ClinicalDocument tag (edge case)."""
@@ -532,11 +532,12 @@ class TestParseFragmentIntegration:
             <value xsi:type="PQ" value="120" unit="mm[Hg]"/>
         </observation>"""
 
-        # Should fail - fragments are not preprocessed
-        with pytest.raises(MalformedXMLError) as exc_info:
-            parse_ccda_fragment(xml_missing_ns, Observation)
+        # Should now succeed - fragments ARE preprocessed to auto-add namespaces
+        result = parse_ccda_fragment(xml_missing_ns, Observation)
 
-        assert "Namespace prefix xsi" in str(exc_info.value)
+        # Verify it parsed successfully
+        assert result is not None
+        assert result.code.code == "8867-4"
 
     def test_parse_fragment_succeeds_with_proper_namespaces(self):
         """Test that fragments parse successfully when namespaces are declared."""

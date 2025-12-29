@@ -25,7 +25,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that patient name is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -39,7 +39,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that administrative gender is correctly mapped."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -49,7 +49,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that birthTime is converted to birthDate."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -59,7 +59,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that address is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -76,7 +76,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that telecom is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -91,7 +91,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that marital status is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -103,7 +103,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that race is converted to US Core race extension."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -128,7 +128,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that ethnicity is converted to US Core ethnicity extension."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -153,7 +153,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that guardian is converted to Patient.contact."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -176,7 +176,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that languageCommunication is converted."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -213,7 +213,7 @@ class TestPatientConversion:
         </recordTarget>
         """
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -224,7 +224,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that sdtc:deceasedInd is converted to deceasedBoolean."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -246,7 +246,7 @@ class TestPatientConversion:
         </recordTarget>
         """
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -270,7 +270,7 @@ class TestPatientConversion:
         </recordTarget>
         """
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -295,7 +295,7 @@ class TestPatientConversion:
         </recordTarget>
         """
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -318,7 +318,7 @@ class TestPatientConversion:
         </recordTarget>
         """
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -330,7 +330,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that birthplace is converted to patient-birthPlace extension."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -348,7 +348,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that religiousAffiliationCode is converted to patient-religion extension."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -365,7 +365,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that patient ID is converted to identifier."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -380,7 +380,7 @@ class TestPatientConversion:
         self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that the resource type is Patient."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -403,7 +403,7 @@ class TestPatientConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -446,7 +446,7 @@ class TestPatientConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -476,7 +476,7 @@ class TestPatientConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -506,7 +506,7 @@ class TestPatientConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -553,7 +553,7 @@ class TestPatientConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -585,7 +585,7 @@ class TestPatientConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -668,7 +668,7 @@ class TestPatientConversion:
         </structuredBody>
     </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -710,7 +710,7 @@ class TestPatientConversion:
     def test_no_birth_sex_or_gender_identity_when_not_present(self) -> None:
         """Test that birth sex and gender identity extensions are not added when observations are absent."""
         ccda_doc = wrap_in_ccda_document("")  # No social history section
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -748,7 +748,7 @@ class TestPatientConversion:
         </recordTarget>
         """
         ccda_doc = wrap_in_ccda_document("", patient=patient_xml)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -788,7 +788,7 @@ class TestPatientConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -844,7 +844,7 @@ class TestPatientConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -951,7 +951,7 @@ class TestPatientConversion:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
@@ -996,7 +996,7 @@ class TestPatientConversion:
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
             section_code="29762-2"
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Check that no Observation resource was created
         observations = [
@@ -1008,7 +1008,7 @@ class TestPatientConversion:
     def test_no_tribal_affiliation_when_not_present(self) -> None:
         """Test that tribal affiliation extension is not added when observation is absent."""
         ccda_doc = wrap_in_ccda_document("")  # No social history section
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None

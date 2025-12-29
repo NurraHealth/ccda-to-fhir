@@ -142,9 +142,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
     def _generate_location_id(self, identifiers: list["II"]) -> str:
         """Generate FHIR Location ID from C-CDA identifiers.
 
-        Priority:
-        1. NPI-based ID: location-npi-{extension}
-        2. UUID v4 from cached ID generator
+        Uses standard ID generation with hashing for consistency across all converters.
 
         Args:
             identifiers: List of C-CDA II identifiers
@@ -152,18 +150,15 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         Returns:
             Generated Location ID
         """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        # Check for NPI identifier (root = 2.16.840.1.113883.4.6)
-        for identifier in identifiers:
-            if identifier.root == "2.16.840.1.113883.4.6" and identifier.extension:
-                return f"location-npi-{identifier.extension}"
-
-        # Use cached UUID v4 generator for other identifiers
+        # Use first valid identifier
         root = identifiers[0].root if identifiers and identifiers[0].root else None
         extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
 
-        return generate_id_from_identifiers("Location", root, extension)
+        return self.generate_resource_id(
+            root=root,
+            extension=extension,
+            resource_type="location"
+        )
 
     def _convert_identifiers(self, identifiers: list["II"] | None) -> list[JSONObject]:
         """Convert C-CDA identifiers to FHIR identifiers with special handling.

@@ -44,7 +44,7 @@ class TestHistoricalMedicationConversion:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Should create MedicationStatement, not MedicationRequest
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
@@ -78,7 +78,7 @@ class TestHistoricalMedicationConversion:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
         assert med_statement is not None
@@ -119,7 +119,7 @@ class TestHistoricalMedicationConversion:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
         assert med_statement is not None
@@ -152,7 +152,7 @@ class TestHistoricalMedicationConversion:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
         assert med_statement is not None
@@ -192,7 +192,7 @@ class TestHistoricalMedicationConversion:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
         assert med_statement is not None
@@ -233,7 +233,7 @@ class TestHistoricalMedicationConversion:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
         assert med_statement is not None
@@ -276,7 +276,7 @@ class TestHistoricalMedicationConversion:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
         assert med_statement is not None
@@ -338,7 +338,7 @@ class TestPPD_PQDataType:
 </substanceAdministration>
 """
         ccda_doc = wrap_in_ccda_document(ccda_medication, TemplateIds.MEDICATIONS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
         assert med_statement is not None
@@ -397,7 +397,7 @@ class TestMedicationStatementMissingMedication:
             TemplateIds.MEDICATIONS_SECTION
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
 
         assert med_statement is not None
@@ -443,7 +443,7 @@ class TestMedicationStatementIDSanitization:
             TemplateIds.MEDICATIONS_SECTION
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
 
         assert med_statement is not None
@@ -475,7 +475,7 @@ class TestMedicationStatementIDSanitization:
             TemplateIds.MEDICATIONS_SECTION
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
 
         assert med_statement is not None

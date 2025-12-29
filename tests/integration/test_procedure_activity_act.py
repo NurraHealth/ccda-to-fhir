@@ -26,7 +26,7 @@ class TestProcedureActivityAct:
     ) -> None:
         """Test that Procedure Activity Act is converted to FHIR Procedure."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_activity_act, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -37,7 +37,7 @@ class TestProcedureActivityAct:
     ) -> None:
         """Test that procedure code from Act is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_activity_act, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -58,7 +58,7 @@ class TestProcedureActivityAct:
     ) -> None:
         """Test that status code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_activity_act, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -69,7 +69,7 @@ class TestProcedureActivityAct:
     ) -> None:
         """Test that effectiveTime is correctly converted to performedDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_activity_act, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -82,7 +82,7 @@ class TestProcedureActivityAct:
     ) -> None:
         """Test that procedure identifier is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_activity_act, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
@@ -99,7 +99,7 @@ class TestProcedureActivityAct:
     ) -> None:
         """Test that performer is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_activity_act, PROCEDURES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None

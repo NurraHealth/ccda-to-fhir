@@ -66,7 +66,7 @@ def real_bundle(request):
     """
     sample_path = Path(__file__).parent / "fixtures" / request.param
     xml = sample_path.read_text()
-    bundle = convert_document(xml)
+    bundle = convert_document(xml)["bundle"]
 
     # Attach metadata for reporting
     bundle["_test_metadata"] = {

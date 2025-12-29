@@ -89,6 +89,9 @@ class ObservationConverter(BaseConverter[Observation]):
             "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
         }
 
+        # US Core profile will be determined after category is established
+        # (different profiles for lab, vital signs, smoking status, etc.)
+
         # 1. Generate ID from observation identifier
         if observation.id and len(observation.id) > 0:
             for id_elem in observation.id:
@@ -135,6 +138,11 @@ class ObservationConverter(BaseConverter[Observation]):
         categories = self._determine_category(observation)
         if categories:
             fhir_obs["category"] = categories
+
+        # 4b. Set US Core profile based on category
+        profile = self._determine_us_core_profile(categories, observation)
+        if profile:
+            fhir_obs["meta"] = {"profile": [profile]}
 
         # 5. Code (required) - already validated and extracted above
         fhir_obs["code"] = code_cc
@@ -489,6 +497,8 @@ class ObservationConverter(BaseConverter[Observation]):
     ) -> str:
         """Generate a FHIR resource ID from C-CDA identifier.
 
+        Uses standard ID generation with hashing for consistency across all converters.
+
         Args:
             root: The OID or UUID root
             extension: The extension value
@@ -496,17 +506,11 @@ class ObservationConverter(BaseConverter[Observation]):
         Returns:
             A valid FHIR ID string
         """
-        if extension:
-            # Use extension as ID (sanitize to remove invalid characters)
-            return self.sanitize_id(extension)
-        elif root:
-            # Use root as ID (sanitize to remove invalid characters)
-            return self.sanitize_id(root)
-        else:
-            raise ValueError(
-                "Cannot generate Observation ID: no identifiers provided. "
-                "C-CDA Observation must have id element."
-            )
+        return self.generate_resource_id(
+            root=root,
+            extension=extension,
+            resource_type="observation"
+        )
 
     def _determine_status(self, observation: Observation) -> str:
         """Determine FHIR Observation status from C-CDA status code.
@@ -619,6 +623,49 @@ class ObservationConverter(BaseConverter[Observation]):
                 })
 
         return categories if categories else None
+
+    def _determine_us_core_profile(
+        self, categories: list[JSONObject] | None, observation: Observation
+    ) -> str | None:
+        """Determine appropriate US Core profile based on observation category and code.
+
+        Args:
+            categories: FHIR categories assigned to this observation
+            observation: The C-CDA Observation
+
+        Returns:
+            US Core profile URL, or None
+        """
+        if not categories:
+            # Default to clinical result if no category
+            return "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-clinical-result"
+
+        # Check category codes to determine profile
+        for category in categories:
+            if "coding" in category:
+                for coding in category["coding"]:
+                    code = coding.get("code")
+
+                    # Vital signs
+                    if code == "vital-signs":
+                        return "http://hl7.org/fhir/us/core/StructureDefinition/us-core-vital-signs"
+
+                    # Laboratory
+                    if code == "laboratory":
+                        return "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"
+
+                    # Social history - check for smoking status
+                    if code == "social-history":
+                        # Check if this is smoking status (LOINC 72166-2)
+                        if observation.code:
+                            loinc_code = self._get_loinc_code_from_cd(observation.code)
+                            if loinc_code == "72166-2":
+                                return "http://hl7.org/fhir/us/core/StructureDefinition/us-core-smokingstatus"
+                        # SDOH assessment
+                        return "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-sdoh-assessment"
+
+        # Default to clinical result
+        return "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-clinical-result"
 
     def _get_loinc_code_from_cd(self, code: CD | CE | None) -> str | None:
         """Extract LOINC code from a CD/CE element.

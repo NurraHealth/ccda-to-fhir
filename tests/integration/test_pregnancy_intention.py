@@ -23,7 +23,7 @@ class TestPregnancyIntentionObservation:
     ) -> None:
         """Test that pregnancy intention code (86645-9) is converted correctly."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_intention, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -39,7 +39,7 @@ class TestPregnancyIntentionObservation:
     ) -> None:
         """Test that pregnancy intention value is converted to valueCodeableConcept."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_intention, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -55,7 +55,7 @@ class TestPregnancyIntentionObservation:
     ) -> None:
         """Test that pregnancy intention has social-history category."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_intention, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -71,7 +71,7 @@ class TestPregnancyIntentionObservation:
     ) -> None:
         """Test that pregnancy intention status is converted."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_intention, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
@@ -82,7 +82,7 @@ class TestPregnancyIntentionObservation:
     ) -> None:
         """Test that pregnancy intention effectiveTime is converted."""
         ccda_doc = wrap_in_ccda_document(ccda_pregnancy_intention, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None

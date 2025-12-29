@@ -36,7 +36,7 @@ class TestMedicationDispenseConversion:
         ccda_doc = wrap_in_ccda_document(
             ccda_medication_dispense_no_product_code, MEDICATIONS_SECTION_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # MedicationDispense should NOT be created when medication code is missing
         med_dispense = _find_resource_in_bundle(bundle, "MedicationDispense")

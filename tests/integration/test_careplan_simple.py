@@ -107,7 +107,7 @@ def test_care_plan_document_creates_careplan():
 </ClinicalDocument>"""
 
     # Convert the document
-    result = convert_document(ccda_xml)
+    result = convert_document(ccda_xml)["bundle"]
 
     # Verify we got a bundle
     assert result["resourceType"] == "Bundle"

@@ -27,7 +27,7 @@ class TestAllergyConversion:
         self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that the allergen code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -45,7 +45,7 @@ class TestAllergyConversion:
         self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that clinical status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -58,7 +58,7 @@ class TestAllergyConversion:
         self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that category is correctly determined."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -69,7 +69,7 @@ class TestAllergyConversion:
         self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that onset date is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -80,7 +80,7 @@ class TestAllergyConversion:
         self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that reaction manifestation is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -102,7 +102,7 @@ class TestAllergyConversion:
         self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that reaction severity is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -114,7 +114,7 @@ class TestAllergyConversion:
         self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that identifiers are correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -125,7 +125,7 @@ class TestAllergyConversion:
         self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that translation codes are included in code.coding."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -142,7 +142,7 @@ class TestAllergyConversion:
         self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that the resource type is AllergyIntolerance."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -151,7 +151,7 @@ class TestAllergyConversion:
     def test_converts_type_field(self, ccda_allergy_with_type: str) -> None:
         """Test that observation value code is converted to type field (allergy vs intolerance)."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_type, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -163,7 +163,7 @@ class TestAllergyConversion:
     ) -> None:
         """Test that non-negated allergies have verificationStatus=confirmed."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_verification_status, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -177,7 +177,7 @@ class TestAllergyConversion:
     def test_converts_criticality(self, ccda_allergy_with_criticality: str) -> None:
         """Test that Criticality Observation is converted to criticality field."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_criticality, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -187,7 +187,7 @@ class TestAllergyConversion:
     def test_converts_abatement_extension(self, ccda_allergy_with_abatement: str) -> None:
         """Test that effectiveTime/high is converted to allergyintolerance-abatement extension."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_abatement, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -203,7 +203,7 @@ class TestAllergyConversion:
     def test_converts_recorded_date(self, ccda_allergy_with_recorded_date: str) -> None:
         """Test that author/time is converted to recordedDate."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_recorded_date, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -215,7 +215,7 @@ class TestAllergyConversion:
     ) -> None:
         """Test that Comment Activity is converted to note."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_comment, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -228,7 +228,7 @@ class TestAllergyConversion:
     ) -> None:
         """Test that recorder field is populated from latest author."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_recorded_date, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -241,7 +241,7 @@ class TestAllergyConversion:
     ) -> None:
         """Test that recorder and Provenance both reference the same Practitioner."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_recorded_date, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -280,7 +280,7 @@ class TestAllergyConversion:
     ) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_recorded_date, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -309,7 +309,7 @@ class TestAllergyConversion:
     ) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_recorded_date, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -344,7 +344,7 @@ class TestAllergyConversion:
     ) -> None:
         """Test that multiple authors create multiple Provenance agents."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_multiple_authors, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -379,7 +379,7 @@ class TestAllergyConversion:
     ) -> None:
         """Test that latest author (by timestamp) is selected for recorder field."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_multiple_authors, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -413,7 +413,7 @@ class TestAllergyConversion:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -431,7 +431,7 @@ class TestAllergyConversion:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -449,7 +449,7 @@ class TestAllergyConversion:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -480,7 +480,7 @@ class TestAllergyInheritanceSeverity:
         ccda_doc = wrap_in_ccda_document(
             ccda_allergy_with_allergy_level_severity, ALLERGIES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -500,7 +500,7 @@ class TestAllergyInheritanceSeverity:
         ccda_doc = wrap_in_ccda_document(
             ccda_allergy_with_allergy_level_severity, ALLERGIES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -534,7 +534,7 @@ class TestAllergyInheritanceSeverity:
         ccda_doc = wrap_in_ccda_document(
             ccda_allergy_with_both_level_severity, ALLERGIES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -575,7 +575,7 @@ class TestAllergyInheritanceSeverity:
         ccda_doc = wrap_in_ccda_document(
             ccda_allergy_with_both_level_severity, ALLERGIES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -598,7 +598,7 @@ class TestAllergyInheritanceSeverity:
     ) -> None:
         """Test Scenario C: Severity only at reaction level (original behavior)."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -619,7 +619,7 @@ class TestAllergyInheritanceSeverity:
         ccda_doc = wrap_in_ccda_document(
             ccda_allergy_with_allergy_level_severity, ALLERGIES_TEMPLATE_ID
         )
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -702,7 +702,7 @@ class TestAllergyNarrativePropagation:
     </component>
 </ClinicalDocument>"""
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 
         assert allergy is not None
@@ -745,7 +745,7 @@ class TestAllergyReactionDetails:
 
         ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
         ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -765,7 +765,7 @@ class TestAllergyReactionDetails:
 
         ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
         ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -784,7 +784,7 @@ class TestAllergyReactionDetails:
 
         ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
         ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -807,7 +807,7 @@ class TestAllergyReactionDetails:
 
         ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
         ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -826,7 +826,7 @@ class TestAllergyReactionDetails:
 
         ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
         ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -856,7 +856,7 @@ class TestAllergyReactionDetails:
 
         ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
         ccda_doc = wrap_in_ccda_document(allergy_xml, ALLERGIES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
@@ -878,6 +878,7 @@ class TestAllergyIntoleranceIDSanitization:
 
         Real-world C-CDA documents may have IDs with pipes (e.g., 'allergy-130||alg-001')
         which violates FHIR R4B spec. IDs can only contain: A-Z, a-z, 0-9, -, .
+        After standardization, IDs use sanitized extension (pipes → hyphens).
         """
         ccda_doc = wrap_in_ccda_document(
             """<act classCode="ACT" moodCode="EVN">
@@ -914,12 +915,12 @@ class TestAllergyIntoleranceIDSanitization:
             ALLERGIES_TEMPLATE_ID
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 
         assert allergy is not None
-        # Pipe characters should be replaced with hyphens
-        assert allergy["id"] == "allergy-130--alg-001"
+        # After standardization: pipe characters replaced with hyphens in extension
+        assert allergy["id"] == "allergyintolerance-130--alg-001"
         # Verify it's the correct allergy
         assert allergy["code"]["coding"][0]["code"] == "1191"
 
@@ -960,11 +961,11 @@ class TestAllergyIntoleranceIDSanitization:
             ALLERGIES_TEMPLATE_ID
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 
         assert allergy is not None
-        # Slash characters should be replaced with hyphens
-        assert allergy["id"] == "allergy-allergy-patient-123"
+        # After standardization: slash characters replaced with hyphens in extension
+        assert allergy["id"] == "allergyintolerance-allergy-patient-123"
         # Verify it's the correct allergy
         assert allergy["code"]["coding"][0]["code"] == "1191"

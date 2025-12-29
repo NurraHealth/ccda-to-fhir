@@ -72,7 +72,7 @@ class TestRealWorldDocuments:
         assert doc.custodian is not None
 
         # Test conversion to FHIR
-        bundle = convert_document(xml)
+        bundle = convert_document(xml)["bundle"]
 
         assert bundle is not None
         assert bundle["resourceType"] == "Bundle"
@@ -114,7 +114,7 @@ class TestRealWorldDocuments:
         assert doc.custodian is not None
 
         # Test conversion to FHIR
-        bundle = convert_document(xml)
+        bundle = convert_document(xml)["bundle"]
 
         assert bundle is not None
         assert bundle["resourceType"] == "Bundle"

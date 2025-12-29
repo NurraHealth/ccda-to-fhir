@@ -61,7 +61,7 @@ class TestObservationEDValue:
 </organizer>
         """
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = _find_observation_by_code(observations, "5778-6")
@@ -110,7 +110,7 @@ class TestObservationEDValue:
 </organizer>
         """
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = _find_observation_by_code(observations, "18748-4")
@@ -156,7 +156,7 @@ class TestObservationEDValue:
 </organizer>
         """
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = _find_observation_by_code(observations, "11502-2")
@@ -196,7 +196,7 @@ class TestObservationEDValue:
 </organizer>
         """
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = _find_observation_by_code(observations, "11502-2")
@@ -236,7 +236,7 @@ class TestObservationEDValue:
 </organizer>
         """
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = _find_observation_by_code(observations, "5778-6")
@@ -272,7 +272,7 @@ class TestObservationEDValue:
 </organizer>
         """
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = _find_observation_by_code(observations, "5778-6")
@@ -319,7 +319,7 @@ class TestObservationEDValue:
 </organizer>
         """
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = _find_observation_by_code(observations, "18748-4")

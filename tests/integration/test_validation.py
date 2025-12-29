@@ -40,7 +40,7 @@ def test_athena_ccd_validation():
     # Load and convert
     xml_path = DOCUMENTS_DIR / "athena_ccd.xml"
     ccda_xml = xml_path.read_text()
-    bundle = convert_document(ccda_xml)
+    bundle = convert_document(ccda_xml)["bundle"]
 
     # Validate bundle structure
     assert bundle["resourceType"] == "Bundle"
@@ -94,7 +94,7 @@ def test_athena_ccd_critical_bugs_fixed():
     # Load and convert
     xml_path = DOCUMENTS_DIR / "athena_ccd.xml"
     ccda_xml = xml_path.read_text()
-    bundle = convert_document(ccda_xml)
+    bundle = convert_document(ccda_xml)["bundle"]
 
     # Bug #1: Patient placeholder references
     placeholder_count = 0
@@ -173,7 +173,7 @@ def test_athena_ccd_resource_counts():
     """
     xml_path = DOCUMENTS_DIR / "athena_ccd.xml"
     ccda_xml = xml_path.read_text()
-    bundle = convert_document(ccda_xml)
+    bundle = convert_document(ccda_xml)["bundle"]
 
     # Must have
     assert count_resources_by_type(bundle, "Composition") == 1

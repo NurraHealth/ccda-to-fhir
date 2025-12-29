@@ -16,7 +16,7 @@ class TestInformantPractitionerMapping:
 
     def test_informant_with_assigned_entity_creates_practitioner(self, sample_ccda_with_practitioner_informant):
         """Test that informant with assignedEntity creates Practitioner resource."""
-        bundle = convert_document(sample_ccda_with_practitioner_informant)
+        bundle = convert_document(sample_ccda_with_practitioner_informant)["bundle"]
 
         # Find Practitioner resources
         practitioners = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "Practitioner"]
@@ -31,7 +31,7 @@ class TestInformantPractitionerMapping:
 
     def test_informant_practitioner_has_correct_identifiers(self, sample_ccda_with_practitioner_informant):
         """Test that informant practitioner has correct NPI identifier."""
-        bundle = convert_document(sample_ccda_with_practitioner_informant)
+        bundle = convert_document(sample_ccda_with_practitioner_informant)["bundle"]
 
         practitioners = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "Practitioner"]
         practitioner = practitioners[0]["resource"]
@@ -51,7 +51,7 @@ class TestInformantRelatedPersonMapping:
 
     def test_informant_with_related_entity_creates_related_person(self, sample_ccda_with_related_person_informant):
         """Test that informant with relatedEntity creates RelatedPerson resource."""
-        bundle = convert_document(sample_ccda_with_related_person_informant)
+        bundle = convert_document(sample_ccda_with_related_person_informant)["bundle"]
 
         # Find RelatedPerson resources
         related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
@@ -65,7 +65,7 @@ class TestInformantRelatedPersonMapping:
 
     def test_related_person_has_patient_reference(self, sample_ccda_with_related_person_informant):
         """Test that RelatedPerson has correct patient reference."""
-        bundle = convert_document(sample_ccda_with_related_person_informant)
+        bundle = convert_document(sample_ccda_with_related_person_informant)["bundle"]
 
         related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
         related_person = related_persons[0]["resource"]
@@ -84,7 +84,7 @@ class TestInformantRelatedPersonMapping:
 
     def test_related_person_has_relationship_code(self, sample_ccda_with_mother_informant):
         """Test that RelatedPerson has relationship code (e.g., MTH for Mother)."""
-        bundle = convert_document(sample_ccda_with_mother_informant)
+        bundle = convert_document(sample_ccda_with_mother_informant)["bundle"]
 
         related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
         related_person = related_persons[0]["resource"]
@@ -106,7 +106,7 @@ class TestInformantRelatedPersonMapping:
 
     def test_related_person_has_name(self, sample_ccda_with_mother_informant):
         """Test that RelatedPerson has name from relatedPerson.name."""
-        bundle = convert_document(sample_ccda_with_mother_informant)
+        bundle = convert_document(sample_ccda_with_mother_informant)["bundle"]
 
         related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
         related_person = related_persons[0]["resource"]
@@ -124,7 +124,7 @@ class TestInformantRelatedPersonMapping:
         Regression test for BUG-004: RelatedPersonConverter called non-existent
         _convert_oid_to_uri() method. Should use map_oid_to_uri() from BaseConverter.
         """
-        bundle = convert_document(sample_ccda_with_snomed_relationship_code)
+        bundle = convert_document(sample_ccda_with_snomed_relationship_code)["bundle"]
 
         related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
         assert len(related_persons) == 1
@@ -156,7 +156,7 @@ class TestInformantDeduplication:
         self, sample_ccda_with_same_practitioner_as_author_and_informant
     ):
         """Test that same practitioner appearing as both author and informant is not duplicated."""
-        bundle = convert_document(sample_ccda_with_same_practitioner_as_author_and_informant)
+        bundle = convert_document(sample_ccda_with_same_practitioner_as_author_and_informant)["bundle"]
 
         practitioners = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "Practitioner"]
 

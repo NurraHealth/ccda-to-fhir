@@ -30,7 +30,7 @@ def test_athena_ccd_comprehensive() -> None:
     # Load and convert
     xml_path = DOCUMENTS_DIR / "athena_ccd.xml"
     ccda_xml = xml_path.read_text()
-    bundle = convert_document(ccda_xml)
+    bundle = convert_document(ccda_xml)["bundle"]
 
     # === BUNDLE STRUCTURE ===
     assert bundle["resourceType"] == "Bundle"

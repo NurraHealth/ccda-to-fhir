@@ -31,7 +31,7 @@ class TestSmokingStatusConversion:
     ) -> None:
         """Test that the resource type is Observation."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
@@ -42,7 +42,7 @@ class TestSmokingStatusConversion:
     ) -> None:
         """Test that status is correctly mapped to final."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
@@ -53,7 +53,7 @@ class TestSmokingStatusConversion:
     ) -> None:
         """Test that category is set to social-history."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
@@ -65,7 +65,7 @@ class TestSmokingStatusConversion:
     ) -> None:
         """Test that observation code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
@@ -84,7 +84,7 @@ class TestSmokingStatusConversion:
     ) -> None:
         """Test that effectiveTime is converted to effectiveDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
@@ -96,7 +96,7 @@ class TestSmokingStatusConversion:
     ) -> None:
         """Test that CD value is converted to valueCodeableConcept."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
@@ -115,7 +115,7 @@ class TestSmokingStatusConversion:
     ) -> None:
         """Test that identifier is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
@@ -127,7 +127,7 @@ class TestSmokingStatusConversion:
     ) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status_with_author, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
@@ -156,7 +156,7 @@ class TestSmokingStatusConversion:
     ) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status_with_author, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
@@ -191,7 +191,7 @@ class TestSmokingStatusConversion:
     ) -> None:
         """Test that multiple authors create multiple Provenance agents."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status_multiple_authors, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
@@ -290,7 +290,7 @@ class TestSmokingStatusConversion:
         </structuredBody>
     </component>
 </ClinicalDocument>"""
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         smoking_obs = _find_smoking_status_observation(bundle)
         assert smoking_obs is not None

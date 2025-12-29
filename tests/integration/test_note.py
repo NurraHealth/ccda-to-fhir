@@ -49,7 +49,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that note activity creates a DocumentReference."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -60,7 +60,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that note code is converted to type."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -78,7 +78,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that translation codes are included in type."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -90,7 +90,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -101,7 +101,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that docStatus is mapped from statusCode."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -113,7 +113,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that category is set to clinical-note."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -125,7 +125,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that author time is converted to date."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -137,7 +137,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that text content is converted to attachment."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -151,7 +151,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that effectiveTime is converted to context.period."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -164,7 +164,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that type.text is derived from displayName."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -195,7 +195,7 @@ class TestNoteConversion:
         </section>
         """
         ccda_doc = wrap_in_ccda_document(ccda_with_reference, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -217,7 +217,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that Provenance resource is created for DocumentReference with author."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -250,7 +250,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that Provenance agent references Practitioner."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -281,7 +281,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that Provenance has recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -309,7 +309,7 @@ class TestNoteConversion:
     ) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -417,7 +417,7 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
   </component>
 </ClinicalDocument>
         """
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -503,7 +503,7 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
   </component>
 </ClinicalDocument>
         """
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -595,7 +595,7 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
   </component>
 </ClinicalDocument>
         """
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -625,7 +625,7 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
             ccda_note = f.read()
 
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -712,7 +712,7 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
   </component>
 </ClinicalDocument>
         """
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -795,7 +795,7 @@ class TestNoteMissingContent:
   </component>
 </ClinicalDocument>
         """
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -883,7 +883,7 @@ class TestNoteMissingContent:
   </component>
 </ClinicalDocument>
         """
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
@@ -956,7 +956,7 @@ class TestNoteMissingContent:
   </component>
 </ClinicalDocument>
         """
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         attachment = doc_ref["content"][0]["attachment"]

@@ -90,7 +90,7 @@ CCDA_GOAL_WEIGHT_LOSS = """<?xml version="1.0" encoding="UTF-8"?>
 
 def test_basic_goal_conversion():
     """Test that a basic goal is converted correctly."""
-    bundle = convert_document(CCDA_GOAL_WEIGHT_LOSS)
+    bundle = convert_document(CCDA_GOAL_WEIGHT_LOSS)["bundle"]
 
     # Find the Goal resource in the bundle
     goal = None

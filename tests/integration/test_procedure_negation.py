@@ -19,7 +19,7 @@ class TestProcedureNegation:
     ) -> None:
         """Test that negationInd=true is converted to status=not-done."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_negated, TemplateIds.PROCEDURES_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None

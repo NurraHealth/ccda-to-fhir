@@ -186,7 +186,7 @@ def test_careplan_with_interventions_and_outcomes_full_integration():
 </ClinicalDocument>"""
 
     # Convert the document
-    result = convert_document(ccda_xml)
+    result = convert_document(ccda_xml)["bundle"]
 
     # Verify we got a bundle
     assert result["resourceType"] == "Bundle"
@@ -405,7 +405,7 @@ def test_careplan_with_multiple_interventions_different_outcomes():
 </ClinicalDocument>"""
 
     # Convert the document
-    result = convert_document(ccda_xml)
+    result = convert_document(ccda_xml)["bundle"]
 
     # Verify we got a bundle
     assert result["resourceType"] == "Bundle"
@@ -538,7 +538,7 @@ def test_careplan_intervention_without_outcome():
 </ClinicalDocument>"""
 
     # Convert the document
-    result = convert_document(ccda_xml)
+    result = convert_document(ccda_xml)["bundle"]
 
     # Verify we got a bundle
     assert result["resourceType"] == "Bundle"

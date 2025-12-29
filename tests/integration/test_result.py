@@ -38,7 +38,7 @@ class TestResultConversion:
     ) -> None:
         """Test that result organizer creates a DiagnosticReport."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -49,7 +49,7 @@ class TestResultConversion:
     ) -> None:
         """Test that organizer code is converted to DiagnosticReport.code."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -67,7 +67,7 @@ class TestResultConversion:
     ) -> None:
         """Test that status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -78,7 +78,7 @@ class TestResultConversion:
     ) -> None:
         """Test that category is set to LAB."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -90,7 +90,7 @@ class TestResultConversion:
     ) -> None:
         """Test that effectiveTime is converted to effectiveDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -102,7 +102,7 @@ class TestResultConversion:
     ) -> None:
         """Test that component observations are converted."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -117,7 +117,7 @@ class TestResultConversion:
     ) -> None:
         """Test that observation code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -136,7 +136,7 @@ class TestResultConversion:
     ) -> None:
         """Test that PQ value is converted to valueQuantity."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -150,7 +150,7 @@ class TestResultConversion:
     ) -> None:
         """Test that reference range is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -166,7 +166,7 @@ class TestResultConversion:
     ) -> None:
         """Test that observation status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -179,7 +179,7 @@ class TestResultConversion:
     ) -> None:
         """Test that observation category is set to laboratory."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -192,7 +192,7 @@ class TestResultConversion:
     ) -> None:
         """Test that identifier is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -204,7 +204,7 @@ class TestResultConversion:
     ) -> None:
         """Test that result references point to standalone observations."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None

@@ -32,7 +32,7 @@ class TestObservationRange:
         This test verifies IVL_PQ conversion works within compliant structure.
         """
         ccda_doc = wrap_in_ccda_document(ccda_observation_ivl_pq, TemplateIds.RESULTS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Result Organizer maps to DiagnosticReport
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
@@ -60,7 +60,7 @@ class TestObservationRange:
             organizer_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Result Organizer maps to DiagnosticReport
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
@@ -87,7 +87,7 @@ class TestObservationRange:
             organizer_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Result Organizer maps to DiagnosticReport
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
@@ -114,7 +114,7 @@ class TestObservationRange:
             organizer_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -131,7 +131,7 @@ class TestObservationRange:
             organizer_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -148,7 +148,7 @@ class TestObservationRange:
             organizer_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -168,7 +168,7 @@ class TestObservationRange:
             organizer_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Result Organizer maps to DiagnosticReport
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
@@ -197,7 +197,7 @@ class TestObservationRange:
             organizer_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -218,7 +218,7 @@ class TestObservationRange:
             organizer_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
@@ -241,6 +241,7 @@ class TestObservationIDSanitization:
 
         Real-world C-CDA documents may have IDs with underscores (e.g., '16_Height')
         which violates FHIR R4B spec. IDs can only contain: A-Z, a-z, 0-9, -, .
+        After standardization, IDs use sanitized extension (underscores → hyphens).
         """
         ccda_doc = wrap_in_ccda_document(
             """<organizer classCode="CLUSTER" moodCode="EVN">
@@ -263,15 +264,15 @@ class TestObservationIDSanitization:
             TemplateIds.VITAL_SIGNS_SECTION
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         observations = _find_all_resources_in_bundle(bundle, "Observation")
 
-        # Find the Height observation
-        height_obs = next((obs for obs in observations if obs.get("id") == "16-Height"), None)
+        # Find the Height observation with sanitized ID (lowercase)
+        height_obs = next((obs for obs in observations if "16-height" in obs.get("id", "")), None)
 
         assert height_obs is not None, "Should find observation with sanitized ID"
-        # ID should have underscore replaced with hyphen
-        assert height_obs["id"] == "16-Height"
+        # After standardization: underscore replaced with hyphen, converted to lowercase
+        assert height_obs["id"] == "observation-16-height"
         # Verify it's the correct observation
         assert height_obs["code"]["coding"][0]["code"] == "8302-2"
 
@@ -298,14 +299,14 @@ class TestObservationIDSanitization:
             TemplateIds.VITAL_SIGNS_SECTION
         )
 
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
         observations = _find_all_resources_in_bundle(bundle, "Observation")
 
-        # Find the temperature observation
-        temp_obs = next((obs for obs in observations if "Body" in obs.get("id", "")), None)
+        # Find the temperature observation (lowercase)
+        temp_obs = next((obs for obs in observations if "body" in obs.get("id", "")), None)
 
         assert temp_obs is not None, "Should find observation with sanitized ID"
-        # ID should have underscore and space replaced with hyphens
-        assert temp_obs["id"] == "8-Body-temperature"
+        # After standardization: underscore and space replaced with hyphens, converted to lowercase
+        assert temp_obs["id"] == "observation-8-body-temperature"
         # Verify it's the correct observation
         assert temp_obs["code"]["coding"][0]["code"] == "8310-5"

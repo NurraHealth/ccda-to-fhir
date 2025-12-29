@@ -88,7 +88,7 @@ class TestGracefulDegradation:
         """
 
         ccda_doc = wrap_in_ccda_document("", custodian=invalid_custodian)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         # Composition creation should fail, so it's not the first entry
         if len(bundle.get("entry", [])) > 0:
@@ -112,7 +112,7 @@ class TestGracefulDegradation:
         """
 
         ccda_doc = wrap_in_ccda_document("", custodian=invalid_custodian)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         composition = bundle["entry"][0]["resource"]
         assert composition["resourceType"] == "Composition"

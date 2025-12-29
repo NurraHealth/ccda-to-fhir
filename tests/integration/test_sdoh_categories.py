@@ -47,7 +47,7 @@ class TestSDOHCategoryMapping:
             "88121-9", "Hunger Vital Sign [HVS]", "At risk"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "88121-9")
         assert observation is not None, "Observation should be created"
@@ -81,7 +81,7 @@ class TestSDOHCategoryMapping:
             "93033-9", "Are you worried about losing your housing [PRAPARE]", "Yes"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "93033-9")
         assert observation is not None
@@ -104,7 +104,7 @@ class TestSDOHCategoryMapping:
             "67875-5", "Employment status - current", "Employed full time"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "67875-5")
         assert observation is not None
@@ -127,7 +127,7 @@ class TestSDOHCategoryMapping:
             "93030-5", "Has lack of transportation kept you from medical appointments", "Yes"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "93030-5")
         assert observation is not None
@@ -150,7 +150,7 @@ class TestSDOHCategoryMapping:
             "76513-1", "How hard is it for you to pay for the very basics", "Very hard"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "76513-1")
         assert observation is not None
@@ -173,7 +173,7 @@ class TestSDOHCategoryMapping:
             "93029-7", "How often do you see or talk to people that you care about", "Rarely"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "93029-7")
         assert observation is not None
@@ -196,7 +196,7 @@ class TestSDOHCategoryMapping:
             "93038-8", "Stress level", "High"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "93038-8")
         assert observation is not None
@@ -219,7 +219,7 @@ class TestSDOHCategoryMapping:
             "82589-3", "Highest level of education", "High school graduate"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "82589-3")
         assert observation is not None
@@ -242,7 +242,7 @@ class TestSDOHCategoryMapping:
             "93034-7", "Discharged from the U.S. Armed Forces", "Yes"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "93034-7")
         assert observation is not None
@@ -265,7 +265,7 @@ class TestSDOHCategoryMapping:
             "76501-6", "Within the last year, have you been afraid of your partner or ex-partner", "Yes"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "76501-6")
         assert observation is not None
@@ -289,7 +289,7 @@ class TestSDOHCategoryMapping:
             "11367-0", "History of Tobacco use", "20 pack-year history"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "11367-0")
         assert observation is not None
@@ -317,7 +317,7 @@ class TestSDOHCategoryMapping:
         </observation>
         """
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "72166-2")
         assert observation is not None
@@ -333,7 +333,7 @@ class TestSDOHCategoryMapping:
             "96779-4", "Has the electric, gas, oil, or water company threatened to shut off", "Yes"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "96779-4")
         assert observation is not None
@@ -356,7 +356,7 @@ class TestSDOHCategoryMapping:
             "93028-9", "Have you spent more than 2 nights in a row in a jail, prison", "Yes"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "93028-9")
         assert observation is not None
@@ -379,7 +379,7 @@ class TestSDOHCategoryMapping:
             "54899-0", "Preferred language", "Spanish"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "54899-0")
         assert observation is not None
@@ -402,7 +402,7 @@ class TestSDOHCategoryMapping:
             "93031-3", "Have you or any family members you live with been unable to get", "Yes"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "93031-3")
         assert observation is not None
@@ -425,7 +425,7 @@ class TestSDOHCategoryMapping:
             "76437-3", "Primary insurance", "Medicare"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "76437-3")
         assert observation is not None
@@ -448,7 +448,7 @@ class TestSDOHCategoryMapping:
             "93026-3", "Do you feel physically and emotionally safe where you currently live", "No"
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
-        bundle = convert_document(ccda_doc)
+        bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_observation_by_loinc(bundle, "93026-3")
         assert observation is not None

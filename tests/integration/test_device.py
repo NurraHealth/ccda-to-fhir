@@ -100,7 +100,7 @@ class TestDeviceConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_resource_in_bundle(bundle, "Device")
         assert device is not None
@@ -157,7 +157,7 @@ class TestDeviceConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_resource_in_bundle(bundle, "Device")
         assert device["resourceType"] == "Device"
@@ -218,7 +218,7 @@ class TestDeviceConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_resource_in_bundle(bundle, "Device")
         assert "identifier" in device
@@ -278,7 +278,7 @@ class TestDeviceConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_resource_in_bundle(bundle, "Device")
         assert "deviceName" in device
@@ -363,7 +363,7 @@ class TestDeviceConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         devices = _find_all_resources_in_bundle(bundle, "Device")
         # Should have only 1 device (deduplicated)
@@ -437,7 +437,7 @@ class TestDeviceConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
@@ -497,7 +497,7 @@ class TestDeviceConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition["author"][0]["display"] == "Epic EHR (Epic 2020)"
@@ -568,7 +568,7 @@ class TestDeviceConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         # Should have both Practitioner and Device
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
@@ -637,7 +637,7 @@ class TestDeviceConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_resource_in_bundle(bundle, "Device")
         assert "type" in device
@@ -700,7 +700,7 @@ class TestDeviceConversion:
             </section></component></structuredBody></component>
         </ClinicalDocument>""")
 
-        bundle = convert_document(ccda_xml)
+        bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_resource_in_bundle(bundle, "Device")
         assert "version" in device
