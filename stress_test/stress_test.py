@@ -108,7 +108,11 @@ class StressTestRunner:
 
         relative_path = str(file_path.relative_to(self.base_dir))
 
-        # Check all categories
+        # First, check if this is a fragment (pattern-based detection)
+        if "Root element must be 'ClinicalDocument'" in error_message:
+            return True, "Fragment: Not a complete ClinicalDocument (expected)"
+
+        # Check all categories in expected_failures.json
         for category_name, category in self.expected_failures.get("categories", {}).items():
             for expected in category.get("files", []):
                 if expected["path"] == relative_path:
