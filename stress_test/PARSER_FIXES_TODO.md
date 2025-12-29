@@ -2,17 +2,17 @@
 
 **Last Updated:** 2025-12-29
 **Total Tasks:** 24
-**Completed:** 4/24
+**Completed:** 6/24
 **Not Implemented (Strict):** 13/24
-**Remaining Fixable:** 7/24
-**Progress:** 16.7% (4 fixed, 13 excluded due to vendor bugs)
+**Remaining Fixable:** 5/24
+**Progress:** 25.0% (6 fixed, 13 excluded due to vendor bugs)
 
-**Stress Test Status:** 383/828 successful (46.3% raw, +1 from last update)
-**Real Success Rate:** ~91% (383/422 complete documents, excluding 406 fragments + 8 unfixable)
+**Stress Test Status:** 385/828 successful (46.5% raw, +2 from last update)
+**Real Success Rate:** ~91% (385/422 complete documents, excluding 406 fragments + 8 unfixable)
 
 ---
 
-## ✅ Completed Fixes (4)
+## ✅ Completed Fixes (6)
 
 ### ClinicalDocument - effectiveTime datatype (1 task)
 - [x] **Task ClinicalDocument-01**: JONEM00.xml (EchoMan)
@@ -35,9 +35,20 @@
   - **Standards Research:** CD is the correct datatype per HL7 CDA specification (supports complex terminologies)
   - **Impact:** +1 document successfully parsed (383/828)
 
+### Observation - Smoking Status missing id (2 tasks)
+- [x] **Task Observation-02**: SLI_CCD_b6AliceNewman_ATG_ATGEHR_10162017.xml (Advanced Technologies Group)
+  - **Fix Applied:** Relaxed validation to make `id` optional for Smoking Status observations (observation.py:567-573)
+  - **Root Cause:** ATG vendor omits required id element; C-CDA spec requires at least one id
+  - **Strategy:** Allow missing id during parsing; converters will generate synthetic ID using code + effectiveTime
+  - **Impact:** +1 document successfully parsed
+
+- [x] **Task Observation-03**: SLI_CCD_b6JeremyBates_ATG_ATGEHR_10162017.xml (Advanced Technologies Group)
+  - **Fix Applied:** Same as Observation-02
+  - **Impact:** +1 document successfully parsed (total: 385/828)
+
 ---
 
-## 🔧 Pending Fixes (7 tasks)
+## 🔧 Pending Fixes (5 tasks)
 
 ### Author - time datatype (13 tasks) - ❌ NOT IMPLEMENTED
 
@@ -103,21 +114,6 @@
 
 ---
 
-### Observation - Smoking Status missing id (2 tasks)
-
-**Issue:** Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78) requires at least one `id` element.
-
-**Root Cause:** Advanced Technologies Group EHR omits `id` from Smoking Status observations.
-
-**Standards Check:** C-CDA spec says SHALL contain at least one [1..*] id. This is a C-CDA violation.
-
-**Fix:** Relax validation to make `id` optional for Smoking Status, or inject synthetic ID during parsing.
-
-**Affected Files:**
-- [ ] SLI_CCD_b6AliceNewman_ATG_ATGEHR_10162017.xml (Advanced Technologies Group)
-- [ ] SLI_CCD_b6JeremyBates_ATG_ATGEHR_10162017.xml (Advanced Technologies Group)
-
----
 
 ### Observation - Problem Observation missing statusCode (2 tasks)
 
