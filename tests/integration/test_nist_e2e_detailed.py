@@ -2708,3 +2708,296 @@ class TestNISTDetailedValidation:
                     # Just check it's a reasonable code (lenient since systems may vary)
                     assert len(coding.code) <= 3, \
                         f"Observation.interpretation code seems invalid: {coding.code}"
+
+    # =========================================================================
+    # PHASE 2: High-Priority Validations (Observation Details & US Core)
+    # =========================================================================
+
+    def test_observation_interpretation_exact(self, nist_bundle):
+        """PHASE 2.1: Validate Observation.interpretation with exact CodeableConcept structure."""
+        observations = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # Find observations with interpretation
+        obs_with_interp = [
+            obs for obs in observations
+            if hasattr(obs, 'interpretation') and obs.interpretation is not None and len(obs.interpretation) > 0
+        ]
+
+        if len(obs_with_interp) == 0:
+            import pytest
+            pytest.skip("No observations with interpretation in this document")
+
+        for obs in obs_with_interp:
+            interp = obs.interpretation[0]
+
+            # Validate coding structure
+            assert hasattr(interp, 'coding') and interp.coding is not None, \
+                "Interpretation must have coding"
+            assert len(interp.coding) > 0, \
+                "Interpretation coding must not be empty"
+
+            coding = interp.coding[0]
+
+            # Exact system validation
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", \
+                f"Interpretation system must be exact ObservationInterpretation URL, got '{coding.system}'"
+
+            # Valid interpretation codes
+            valid_codes = ["N", "L", "H", "LL", "HH", "A", "AA", "<", ">", "NEG", "POS"]
+            assert coding.code in valid_codes, \
+                f"Interpretation code must be valid, got '{coding.code}'"
+
+            # Display text should be present (from terminology.py)
+            if coding.code and coding.display:
+                display_map = {
+                    "N": "Normal", "L": "Low", "H": "High",
+                    "LL": "Critical low", "HH": "Critical high",
+                    "A": "Abnormal", "AA": "Critical abnormal"
+                }
+                expected_display = display_map.get(coding.code)
+                if expected_display:
+                    assert coding.display == expected_display, \
+                        f"Interpretation display for '{coding.code}' must be '{expected_display}', got '{coding.display}'"
+
+    def test_observation_reference_range_ucum_exact(self, nist_bundle):
+        """PHASE 2.2: Validate Observation.referenceRange has exact UCUM Quantity structure."""
+        observations = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # Find observations with reference ranges
+        obs_with_ref_range = [
+            obs for obs in observations
+            if hasattr(obs, 'referenceRange') and obs.referenceRange is not None and len(obs.referenceRange) > 0
+        ]
+
+        if len(obs_with_ref_range) == 0:
+            import pytest
+            pytest.skip("No observations with reference ranges in this document")
+
+        for obs in obs_with_ref_range:
+            for ref_range in obs.referenceRange:
+                # Validate low Quantity structure (if present)
+                if hasattr(ref_range, 'low') and ref_range.low is not None:
+                    low = ref_range.low
+                    assert hasattr(low, 'value') and low.value is not None, \
+                        "Reference range low must have value"
+
+                    # UCUM system validation
+                    if hasattr(low, 'system') and low.system is not None:
+                        assert low.system == "http://unitsofmeasure.org", \
+                            f"Reference range low.system must be UCUM, got '{low.system}'"
+
+                # Validate high Quantity structure (if present)
+                if hasattr(ref_range, 'high') and ref_range.high is not None:
+                    high = ref_range.high
+                    assert hasattr(high, 'value') and high.value is not None, \
+                        "Reference range high must have value"
+
+                    # UCUM system validation
+                    if hasattr(high, 'system') and high.system is not None:
+                        assert high.system == "http://unitsofmeasure.org", \
+                            f"Reference range high.system must be UCUM, got '{high.system}'"
+
+    def test_allergy_verification_status_exact(self, nist_bundle):
+        """PHASE 2.4: Validate AllergyIntolerance.verificationStatus exact CodeableConcept."""
+        allergies = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        if len(allergies) == 0:
+            import pytest
+            pytest.skip("No AllergyIntolerance resources in this document")
+
+        # Find allergies with verificationStatus
+        allergies_with_vs = [
+            a for a in allergies
+            if hasattr(a, 'verificationStatus') and a.verificationStatus is not None
+        ]
+
+        if len(allergies_with_vs) == 0:
+            import pytest
+            pytest.skip("No allergies with verificationStatus in this document")
+
+        for allergy in allergies_with_vs:
+            vs = allergy.verificationStatus
+
+            # Validate coding structure
+            assert hasattr(vs, 'coding') and vs.coding is not None, \
+                "VerificationStatus must have coding"
+            assert len(vs.coding) > 0, \
+                "VerificationStatus coding must not be empty"
+
+            coding = vs.coding[0]
+
+            # Exact system validation
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", \
+                f"VerificationStatus system must be exact, got '{coding.system}'"
+
+            # Valid codes
+            valid_codes = ["confirmed", "unconfirmed", "refuted", "entered-in-error", "presumed"]
+            assert coding.code in valid_codes, \
+                f"VerificationStatus code must be valid, got '{coding.code}'"
+
+    def test_condition_verification_status_exact(self, nist_bundle):
+        """PHASE 2.4: Validate Condition.verificationStatus exact CodeableConcept."""
+        conditions = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        if len(conditions) == 0:
+            import pytest
+            pytest.skip("No Condition resources in this document")
+
+        # Find conditions with verificationStatus
+        conditions_with_vs = [
+            c for c in conditions
+            if hasattr(c, 'verificationStatus') and c.verificationStatus is not None
+        ]
+
+        if len(conditions_with_vs) == 0:
+            import pytest
+            pytest.skip("No conditions with verificationStatus in this document")
+
+        for condition in conditions_with_vs:
+            vs = condition.verificationStatus
+
+            # Validate coding structure
+            assert hasattr(vs, 'coding') and vs.coding is not None, \
+                "VerificationStatus must have coding"
+            assert len(vs.coding) > 0, \
+                "VerificationStatus coding must not be empty"
+
+            coding = vs.coding[0]
+
+            # Exact system validation
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/condition-ver-status", \
+                f"VerificationStatus system must be exact, got '{coding.system}'"
+
+            # Valid codes
+            valid_codes = ["unconfirmed", "provisional", "differential", "confirmed", "refuted", "entered-in-error"]
+            assert coding.code in valid_codes, \
+                f"VerificationStatus code must be valid, got '{coding.code}'"
+
+    def test_patient_race_extension_exact_structure(self, nist_bundle):
+        """PHASE 2.3: Validate US Core race extension has exact structure."""
+        patients = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Patient"
+        ]
+
+        assert len(patients) == 1, "Must have exactly 1 Patient"
+        patient = patients[0]
+
+        # Find race extension
+        race_ext = None
+        if hasattr(patient, 'extension') and patient.extension is not None:
+            race_ext = next(
+                (e for e in patient.extension
+                 if e.url == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"),
+                None
+            )
+
+        if race_ext is None:
+            import pytest
+            pytest.skip("Patient does not have us-core-race extension")
+
+        # Validate extension has sub-extensions
+        assert hasattr(race_ext, 'extension') and race_ext.extension is not None, \
+            "Race extension must have nested extensions"
+        assert len(race_ext.extension) > 0, \
+            "Race extension must have at least one sub-extension"
+
+        # Find ombCategory sub-extensions
+        omb_exts = [e for e in race_ext.extension if e.url == "ombCategory"]
+
+        if len(omb_exts) > 0:
+            for omb in omb_exts:
+                # Validate valueCoding structure
+                assert hasattr(omb, 'valueCoding') and omb.valueCoding is not None, \
+                    "ombCategory extension must have valueCoding"
+
+                # Exact system validation
+                assert omb.valueCoding.system == "urn:oid:2.16.840.1.113883.6.238", \
+                    f"ombCategory system must be exact OMB race code system, got '{omb.valueCoding.system}'"
+
+                # Valid OMB race codes
+                valid_omb_codes = [
+                    "1002-5",  # American Indian or Alaska Native
+                    "2028-9",  # Asian
+                    "2054-5",  # Black or African American
+                    "2076-8",  # Native Hawaiian or Other Pacific Islander
+                    "2106-3",  # White
+                ]
+                assert omb.valueCoding.code in valid_omb_codes, \
+                    f"ombCategory code must be valid OMB code, got '{omb.valueCoding.code}'"
+
+        # Text sub-extension is REQUIRED per US Core
+        text_ext = next((e for e in race_ext.extension if e.url == "text"), None)
+        assert text_ext is not None, \
+            "Race extension must have 'text' sub-extension (US Core required)"
+        assert hasattr(text_ext, 'valueString') and text_ext.valueString is not None, \
+            "Race text extension must have valueString"
+
+    def test_patient_ethnicity_extension_exact_structure(self, nist_bundle):
+        """PHASE 2.3: Validate US Core ethnicity extension has exact structure."""
+        patients = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Patient"
+        ]
+
+        assert len(patients) == 1, "Must have exactly 1 Patient"
+        patient = patients[0]
+
+        # Find ethnicity extension
+        ethnicity_ext = None
+        if hasattr(patient, 'extension') and patient.extension is not None:
+            ethnicity_ext = next(
+                (e for e in patient.extension
+                 if e.url == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"),
+                None
+            )
+
+        if ethnicity_ext is None:
+            import pytest
+            pytest.skip("Patient does not have us-core-ethnicity extension")
+
+        # Validate extension has sub-extensions
+        assert hasattr(ethnicity_ext, 'extension') and ethnicity_ext.extension is not None, \
+            "Ethnicity extension must have nested extensions"
+        assert len(ethnicity_ext.extension) > 0, \
+            "Ethnicity extension must have at least one sub-extension"
+
+        # Find ombCategory sub-extension
+        omb_exts = [e for e in ethnicity_ext.extension if e.url == "ombCategory"]
+
+        if len(omb_exts) > 0:
+            for omb in omb_exts:
+                # Validate valueCoding structure
+                assert hasattr(omb, 'valueCoding') and omb.valueCoding is not None, \
+                    "ombCategory extension must have valueCoding"
+
+                # Exact system validation
+                assert omb.valueCoding.system == "urn:oid:2.16.840.1.113883.6.238", \
+                    f"ombCategory system must be exact OMB ethnicity code system, got '{omb.valueCoding.system}'"
+
+                # Valid OMB ethnicity codes
+                valid_omb_codes = [
+                    "2135-2",  # Hispanic or Latino
+                    "2186-5",  # Not Hispanic or Latino
+                ]
+                assert omb.valueCoding.code in valid_omb_codes, \
+                    f"ombCategory code must be valid OMB ethnicity code, got '{omb.valueCoding.code}'"
+
+        # Text sub-extension is REQUIRED per US Core
+        text_ext = next((e for e in ethnicity_ext.extension if e.url == "text"), None)
+        assert text_ext is not None, \
+            "Ethnicity extension must have 'text' sub-extension (US Core required)"
+        assert hasattr(text_ext, 'valueString') and text_ext.valueString is not None, \
+            "Ethnicity text extension must have valueString"
