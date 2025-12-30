@@ -13,8 +13,10 @@ Key Features Tested:
 - Composition metadata
 """
 
-import pytest
 from datetime import datetime
+
+import pytest
+
 from ccda_to_fhir.convert import convert_document
 from fhir.resources.bundle import Bundle
 
@@ -22,7 +24,7 @@ from fhir.resources.bundle import Bundle
 @pytest.fixture
 def lab_reference_ranges_bundle():
     """Load and convert the lab reference ranges C-CDA document."""
-    with open("tests/integration/fixtures/documents/lab_reference_ranges.xml", "r") as f:
+    with open("tests/integration/fixtures/documents/lab_reference_ranges.xml") as f:
         ccda_xml = f.read()
 
     result = convert_document(ccda_xml)
@@ -320,7 +322,7 @@ class TestLabReferenceRangesE2E:
         print("✅ SUCCESS: Observation.referenceRange.text is correctly implemented!")
         print("="*70)
         print(f"Validated referenceRange with text: '{neg_range['text']}'")
-        print(f"Note: Only Normal ranges (interpretationCode='N') converted per C-CDA on FHIR IG")
+        print("Note: Only Normal ranges (interpretationCode='N') converted per C-CDA on FHIR IG")
         print("="*70)
 
         # Exact performer (lab technologist)

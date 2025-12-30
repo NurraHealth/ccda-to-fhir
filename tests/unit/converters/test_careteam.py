@@ -10,11 +10,16 @@ from __future__ import annotations
 import pytest
 
 from ccda_to_fhir.ccda.models.act import Act
-from ccda_to_fhir.ccda.models.datatypes import AD, CE, CS, ED, ENXP, II, IVL_TS, ON, PN, TS, TEL
+from ccda_to_fhir.ccda.models.datatypes import AD, CE, CS, ENXP, II, IVL_TS, ON, PN, TEL, TS
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.ccda.models.organizer import Organizer, OrganizerComponent
 from ccda_to_fhir.ccda.models.participant import Participant, ParticipantRole
-from ccda_to_fhir.ccda.models.performer import AssignedEntity, AssignedPerson, Performer, RepresentedOrganization
+from ccda_to_fhir.ccda.models.performer import (
+    AssignedEntity,
+    AssignedPerson,
+    Performer,
+    RepresentedOrganization,
+)
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.converters.careteam import CareTeamConverter
 

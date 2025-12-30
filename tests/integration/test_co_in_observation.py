@@ -4,9 +4,8 @@ Tests end-to-end conversion of observations containing CO values
 from C-CDA to FHIR.
 """
 
-from fhir.resources.bundle import Bundle
-
 from ccda_to_fhir import convert_document
+from fhir.resources.bundle import Bundle
 
 
 def test_observation_with_co_value_converts_to_codeable_concept():

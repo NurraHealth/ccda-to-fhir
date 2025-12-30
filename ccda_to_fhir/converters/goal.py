@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, PQ
-from ccda_to_fhir.constants import FHIRCodes, FHIRSystems, TemplateIds
+from ccda_to_fhir.ccda.models.observation import Observation
+from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 

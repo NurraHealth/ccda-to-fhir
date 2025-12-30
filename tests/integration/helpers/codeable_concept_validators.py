@@ -4,7 +4,7 @@ These validators ensure exact compliance with FHIR R4 CodeableConcept
 requirements per C-CDA on FHIR IG and US Core profiles.
 """
 
-from typing import Optional, List, Dict
+from typing import Optional
 
 
 def assert_codeable_concept_exact(

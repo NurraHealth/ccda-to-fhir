@@ -14,13 +14,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ccda_to_fhir.constants import ADDRESS_USE_MAP, FHIRCodes, TELECOM_USE_MAP
+from ccda_to_fhir.constants import ADDRESS_USE_MAP, TELECOM_USE_MAP, FHIRCodes
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
 if TYPE_CHECKING:
-    from ccda_to_fhir.ccda.models.datatypes import AD, CE, II, ON, TEL
+    from ccda_to_fhir.ccda.models.datatypes import AD, CE, II, TEL
     from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
 
@@ -37,7 +37,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
     # US Core Location profile
     US_CORE_LOCATION_PROFILE = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location"
 
-    def convert(self, participant_role: "ParticipantRole") -> FHIRResourceDict:
+    def convert(self, participant_role: ParticipantRole) -> FHIRResourceDict:
         """Convert Service Delivery Location to Location resource.
 
         Args:
@@ -130,7 +130,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         return location
 
-    def _validate_class_code(self, participant_role: "ParticipantRole") -> None:
+    def _validate_class_code(self, participant_role: ParticipantRole) -> None:
         """Validate that classCode is SDLOC (Service Delivery Location).
 
         Args:
@@ -146,7 +146,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 f"a different type of entity (e.g., MANU=Manufactured Product) and should not be converted to Location."
             )
 
-    def _generate_location_id(self, identifiers: list["II"]) -> str:
+    def _generate_location_id(self, identifiers: list[II]) -> str:
         """Generate FHIR Location ID from C-CDA identifiers.
 
         Uses standard ID generation with hashing for consistency across all converters.
@@ -200,7 +200,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         return f"location-{hash_value}"
 
-    def _convert_identifiers(self, identifiers: list["II"] | None) -> list[JSONObject]:
+    def _convert_identifiers(self, identifiers: list[II] | None) -> list[JSONObject]:
         """Convert C-CDA identifiers to FHIR identifiers with special handling.
 
         Special OID mappings:
@@ -243,7 +243,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         return fhir_identifiers
 
-    def _extract_name(self, participant_role: "ParticipantRole") -> str:
+    def _extract_name(self, participant_role: ParticipantRole) -> str:
         """Extract facility name with fallback strategies.
 
         Attempts to extract location name using the following priority:
@@ -348,7 +348,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         )
         return "Unknown Location"
 
-    def _convert_type(self, code: "CE") -> JSONObject:
+    def _convert_type(self, code: CE) -> JSONObject:
         """Convert facility type code to FHIR Location.type CodeableConcept.
 
         Supports multiple code systems:
@@ -391,7 +391,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         return codeable_concept
 
-    def _create_coding(self, code: "CE") -> JSONObject:
+    def _create_coding(self, code: CE) -> JSONObject:
         """Create a FHIR Coding from C-CDA CE.
 
         Args:
@@ -416,7 +416,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         return coding
 
-    def _convert_telecom(self, telecoms: list["TEL"] | "TEL") -> list[JSONObject]:
+    def _convert_telecom(self, telecoms: list[TEL] | TEL) -> list[JSONObject]:
         """Convert C-CDA telecom to FHIR ContactPoint.
 
         Parses URI schemes (tel:, fax:, mailto:, http:) and maps to FHIR system codes.
@@ -468,7 +468,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         return fhir_telecom
 
-    def _convert_address(self, addresses: list["AD"] | "AD") -> JSONObject:
+    def _convert_address(self, addresses: list[AD] | AD) -> JSONObject:
         """Convert C-CDA address to FHIR Address.
 
         Note: Location.address is 0..1 (single address), not array.
@@ -520,7 +520,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         return fhir_address if fhir_address else {}
 
-    def _infer_physical_type(self, location_code: "CE") -> JSONObject | None:
+    def _infer_physical_type(self, location_code: CE) -> JSONObject | None:
         """Infer physical type from location type code.
 
         Maps C-CDA location codes to FHIR location-physical-type codes.
@@ -635,7 +635,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             }]
         }
 
-    def _determine_mode(self, location_code: "CE") -> str:
+    def _determine_mode(self, location_code: CE) -> str:
         """Determine location mode (instance vs kind).
 
         Per FHIR R4 specification:
@@ -686,7 +686,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
     def _get_managing_organization_reference(
         self,
-        participant_role: "ParticipantRole"
+        participant_role: ParticipantRole
     ) -> JSONObject | None:
         """Extract managing organization reference from location's scoping entity.
 
@@ -733,7 +733,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # The organization may be created later or may not be relevant
         return None
 
-    def _generate_organization_id(self, identifiers: list["II"]) -> str:
+    def _generate_organization_id(self, identifiers: list[II]) -> str:
         """Generate FHIR Organization ID from C-CDA identifiers.
 
         Uses the same logic as OrganizationConverter to ensure consistent IDs.

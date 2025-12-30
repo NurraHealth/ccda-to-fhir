@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.ccda.models.datatypes import IVL_TS
 from ccda_to_fhir.ccda.models.supply import Supply
 from ccda_to_fhir.constants import (
@@ -13,8 +11,8 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -556,7 +554,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
     def _create_pharmacy_location(
         self,
-        organization: "RepresentedOrganization"
+        organization: RepresentedOrganization
     ) -> str | None:
         """Create Location resource for pharmacy organization.
 
@@ -652,7 +650,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
     def _create_pharmacy_organization(
         self,
-        organization: "RepresentedOrganization"
+        organization: RepresentedOrganization
     ) -> str | None:
         """Create Organization resource for pharmacy.
 
@@ -722,7 +720,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         return org_id
 
-    def _generate_location_id(self, organization: "RepresentedOrganization") -> str:
+    def _generate_location_id(self, organization: RepresentedOrganization) -> str:
         """Generate FHIR Location ID from pharmacy organization.
 
         Uses organization identifiers if available, otherwise generates
@@ -767,7 +765,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         # Ultimate fallback: Generate random ID
         return generate_id_from_identifiers("Location", None, None)
 
-    def _extract_organization_name(self, organization: "RepresentedOrganization") -> str | None:
+    def _extract_organization_name(self, organization: RepresentedOrganization) -> str | None:
         """Extract organization name from representedOrganization.
 
         Args:
@@ -807,7 +805,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         return None
 
-    def _convert_address(self, addresses: list["AD"] | "AD") -> JSONObject:
+    def _convert_address(self, addresses: list[AD] | AD) -> JSONObject:
         """Convert C-CDA address to FHIR Address.
 
         Note: Location.address is 0..1 (single address), not array.
@@ -871,7 +869,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         return fhir_address if fhir_address else {}
 
-    def _convert_telecom(self, telecoms: list["TEL"] | "TEL") -> list[JSONObject]:
+    def _convert_telecom(self, telecoms: list[TEL] | TEL) -> list[JSONObject]:
         """Convert C-CDA telecom to FHIR ContactPoint.
 
         Parses URI schemes (tel:, fax:, mailto:, http:) and maps to FHIR system codes.
@@ -935,7 +933,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         return fhir_telecom
 
-    def _map_participation_function_to_fhir(self, function_code: "CE") -> str | None:
+    def _map_participation_function_to_fhir(self, function_code: CE) -> str | None:
         """Map C-CDA ParticipationFunction code to FHIR MedicationDispense performer function code.
 
         C-CDA uses ParticipationFunction codes (from HL7 v3 code system 2.16.840.1.113883.5.88)
@@ -952,7 +950,6 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             - C-CDA ParticipationFunction: http://terminology.hl7.org/CodeSystem/v3-ParticipationFunction
             - FHIR codes: http://terminology.hl7.org/CodeSystem/medicationdispense-performer-function
         """
-        from ccda_to_fhir.ccda.models.datatypes import CE
 
         if not function_code or not hasattr(function_code, "code") or not function_code.code:
             return None

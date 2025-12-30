@@ -32,7 +32,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
     def __init__(
         self,
         code_system_mapper: CodeSystemMapper | None = None,
-        reference_registry: "ReferenceRegistry | None" = None,
+        reference_registry: ReferenceRegistry | None = None,
     ):
         """Initialize the converter.
 
@@ -566,7 +566,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if len(parts) == 5:
                 return all(
                     len(part) == expected
-                    for part, expected in zip(parts, [8, 4, 4, 4, 12])
+                    for part, expected in zip(parts, [8, 4, 4, 4, 12], strict=False)
                 )
         # Also check for UUID without dashes
         if len(value) == 32:
@@ -754,7 +754,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     return {"status": "generated", "div": xhtml_div}
                 return None
 
-            from ccda_to_fhir.utils.struc_doc_utils import find_element_by_id, element_to_html
+            from ccda_to_fhir.utils.struc_doc_utils import element_to_html, find_element_by_id
 
             # Find the referenced element in section narrative
             referenced_element = find_element_by_id(section.text, reference_id)
@@ -838,7 +838,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             - C-CDA NullFlavor: http://terminology.hl7.org/CodeSystem/v3-NullFlavor
             - FHIR DataAbsentReason: http://terminology.hl7.org/CodeSystem/data-absent-reason
         """
-        from ccda_to_fhir.constants import FHIRSystems, NULL_FLAVOR_TO_DATA_ABSENT_REASON
+        from ccda_to_fhir.constants import NULL_FLAVOR_TO_DATA_ABSENT_REASON, FHIRSystems
 
         # Map nullFlavor to data-absent-reason code
         if null_flavor:

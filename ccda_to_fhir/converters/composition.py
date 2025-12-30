@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.ccda.models.datatypes import II
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
-from ccda_to_fhir.constants import FHIRCodes, TemplateIds
+from ccda_to_fhir.constants import FHIRCodes
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -32,7 +31,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
     def __init__(
         self,
         section_resource_map: dict[str, list[FHIRResourceDict]] | None = None,
-        reference_registry: "ReferenceRegistry | None" = None,
+        reference_registry: ReferenceRegistry | None = None,
         **kwargs,
     ):
         """Initialize the converter.
@@ -45,7 +44,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         super().__init__(**kwargs)
         self.section_resource_map = section_resource_map or {}
         self.reference_registry = reference_registry
-        
+
     def convert(self, clinical_document: ClinicalDocument) -> FHIRResourceDict:
         """Convert a C-CDA ClinicalDocument to a FHIR Composition resource.
 

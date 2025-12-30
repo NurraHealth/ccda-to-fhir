@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, IVL_TS, PQ, TS
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.constants import (
+    NO_IMMUNIZATION_REASON_CODES,
     FHIRCodes,
     FHIRSystems,
-    NO_IMMUNIZATION_REASON_CODES,
     TemplateIds,
     TypeCodes,
     V2ParticipationFunctionCodes,
 )
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 from .medication_request import MedicationRequestConverter

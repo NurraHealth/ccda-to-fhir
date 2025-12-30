@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.exceptions import MissingRequiredFieldError
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.datatypes import CD, CE
 from ccda_to_fhir.ccda.models.observation import Observation
@@ -20,12 +17,13 @@ from ccda_to_fhir.constants import (
     TemplateIds,
     TypeCodes,
 )
-
+from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.utils.terminology import get_display_for_allergy_clinical_status
 
 from .author_extractor import AuthorExtractor
 from .base import BaseConverter
-from ccda_to_fhir.utils.terminology import get_display_for_allergy_clinical_status
 
 logger = get_logger(__name__)
 
@@ -812,8 +810,8 @@ def convert_allergy_concern_act(
                         ccda_element=rel.observation,
                         concern_act=act,
                     )
-            except Exception as e:
+            except Exception:
                 # Log error but continue
-                logger.error(f"Error converting allergy observation", exc_info=True)
+                logger.error("Error converting allergy observation", exc_info=True)
 
     return allergies

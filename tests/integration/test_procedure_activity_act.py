@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import JSONObject
 from ccda_to_fhir.convert import convert_document
+from ccda_to_fhir.types import JSONObject
+
 from .conftest import wrap_in_ccda_document
 
 PROCEDURES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.7.1"

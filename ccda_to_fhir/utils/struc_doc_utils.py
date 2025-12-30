@@ -1095,9 +1095,18 @@ def element_to_html(element) -> str:
 
     # Import to avoid circular dependency
     from ccda_to_fhir.ccda.models.struc_doc import (
-        Paragraph, Content, Table, List, ListItem,
-        TableRow, TableHeaderCell, TableDataCell,
-        LinkHtml, Footnote, Caption, RenderMultiMedia
+        Caption,
+        Content,
+        Footnote,
+        LinkHtml,
+        List,
+        ListItem,
+        Paragraph,
+        RenderMultiMedia,
+        Table,
+        TableDataCell,
+        TableHeaderCell,
+        TableRow,
     )
 
     # Dispatch to appropriate converter

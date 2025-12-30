@@ -6,7 +6,6 @@ organized by category for maintainability and clarity.
 
 from __future__ import annotations
 
-
 # =============================================================================
 # C-CDA Template IDs
 # =============================================================================

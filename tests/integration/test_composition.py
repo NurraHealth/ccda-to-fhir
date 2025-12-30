@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import JSONObject
-
 from ccda_to_fhir.convert import convert_document
+from ccda_to_fhir.types import JSONObject
 
 from .conftest import wrap_in_ccda_document
 
@@ -513,6 +512,7 @@ class TestCompositionConversion:
         and creates a collection bundle instead of propagating them.
         """
         import pytest
+
         from ccda_to_fhir.ccda.parser import parse_ccda
         from ccda_to_fhir.converters.composition import CompositionConverter
         from ccda_to_fhir.converters.references import ReferenceRegistry

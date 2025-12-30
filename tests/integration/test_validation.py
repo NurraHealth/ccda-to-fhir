@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from ccda_to_fhir.convert import convert_document
 from tests.integration.validation_helpers import (
     assert_all_references_resolve,
@@ -188,7 +186,7 @@ def test_athena_ccd_resource_counts():
     procedures = count_resources_by_type(bundle, "Procedure")
     observations = count_resources_by_type(bundle, "Observation")
 
-    print(f"\nResource counts:")
+    print("\nResource counts:")
     print(f"  Conditions: {count_resources_by_type(bundle, 'Condition')}")
     print(f"  Allergies: {count_resources_by_type(bundle, 'AllergyIntolerance')}")
     print(f"  Medications: {count_resources_by_type(bundle, 'MedicationStatement')}")

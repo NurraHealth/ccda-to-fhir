@@ -17,20 +17,21 @@ from typing import Any, TypeVar
 from lxml import etree
 from pydantic import BaseModel
 
+# Trigger model rebuilds for forward references
+# This is necessary because models use TYPE_CHECKING for circular dependencies
+# Import ALL models first so forward references resolve
 from .models import (
+    AD,
+    BL,
     CD,
     CE,
     CO,
     CS,
-    II,
-    ST,
-    TS,
-    AD,
-    BL,
     ED,
+    EIVL_TS,
     EN,
     ENXP,
-    EIVL_TS,
+    II,
     INT,
     IVL_INT,
     IVL_PQ,
@@ -43,42 +44,34 @@ from .models import (
     PQ,
     REAL,
     RTO,
+    ST,
     SXCM_TS,
     TEL,
     TN,
-    ClinicalDocument,
-)
-
-# Trigger model rebuilds for forward references
-# This is necessary because models use TYPE_CHECKING for circular dependencies
-# Import ALL models first so forward references resolve
-from .models import (
+    TS,
     Act,
+    ClinicalDocument,
+    Encounter,
     Observation,
     Organizer,
     Procedure,
     SubstanceAdministration,
-    Encounter,
     Supply,
-    Informant,  # Needed for forward reference resolution
-    Precondition,  # Needed for forward reference resolution
-    Reference,  # Needed for forward reference resolution
-    ManufacturedProduct,  # Needed for forward reference resolution
 )
-from .models.observation import EntryRelationship
-from .models.section import Entry, Section
-from .models.organizer import OrganizerComponent
+from .models.act import Reference
 from .models.author import AssignedAuthoringDevice
-from .models.clinical_document import HealthCareFacility
+from .models.clinical_document import HealthCareFacility, Informant, RelatedEntity
+from .models.observation import EntryRelationship
+from .models.organizer import OrganizerComponent
+from .models.section import Entry, Section
+from .models.substance_administration import ManufacturedProduct, Precondition
 from .models.struc_doc import (
-    Paragraph,
     Content,
-    List,
     ListItem,
-    Table,
-    TableHeaderCell,
-    TableDataCell,
+    Paragraph,
     StrucDocText,
+    TableDataCell,
+    TableHeaderCell,
 )
 
 # Trigger rebuilds in correct order (dependencies first)
@@ -353,7 +346,7 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
                 if field_tag in child_elements:
                     xml_children = child_elements[field_tag]
                     # Match parsed models with their XML elements by index
-                    for parsed_item, xml_child in zip(field_value, xml_children):
+                    for parsed_item, xml_child in zip(field_value, xml_children, strict=False):
                         if hasattr(parsed_item, 'tail_text') and hasattr(xml_child, 'tail') and xml_child.tail:
                             if xml_child.tail.strip():
                                 parsed_item.tail_text = xml_child.tail.strip()
@@ -568,8 +561,8 @@ def _parse_union_element(element: etree._Element, union_type: Any) -> Any:
 
 
 # Need to import types for UnionType (Python 3.10+)
-import types
 import re
+import types
 
 
 def preprocess_ccda_namespaces(xml_string: str) -> str:

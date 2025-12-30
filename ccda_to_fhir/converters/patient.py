@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
-from ccda_to_fhir.ccda.models.datatypes import AD, CE, EN, ENXP, II, PN, TEL
+from ccda_to_fhir.ccda.models.datatypes import AD, CE, ENXP, II, PN, TEL
 from ccda_to_fhir.ccda.models.record_target import (
     Guardian,
     LanguageCommunication,
     Patient,
-    PatientRole,
     Place,
     RecordTarget,
 )
 from ccda_to_fhir.constants import (
-    ADMINISTRATIVE_GENDER_MAP,
     ADDRESS_USE_MAP,
+    ADMINISTRATIVE_GENDER_MAP,
     NAME_USE_MAP,
     OMB_ETHNICITY_CATEGORIES,
     OMB_RACE_CATEGORIES,
@@ -26,6 +23,7 @@ from ccda_to_fhir.constants import (
     V2IdentifierTypes,
     V3RoleCodes,
 )
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 

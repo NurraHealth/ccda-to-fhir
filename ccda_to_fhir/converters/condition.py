@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.exceptions import MissingRequiredFieldError
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, PQ
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.constants import (
     AGE_UNIT_MAP,
-    AgeUnits,
     PROBLEM_TYPE_TO_CONDITION_CATEGORY,
     SECTION_CODE_TO_CONDITION_CATEGORY,
     SNOMED_PROBLEM_STATUS_TO_FHIR,
     SNOMED_SEVERITY_TO_FHIR,
+    AgeUnits,
     CCDACodes,
     FHIRCodes,
     FHIRSystems,
@@ -22,15 +19,16 @@ from ccda_to_fhir.constants import (
     TemplateIds,
     TypeCodes,
 )
-
+from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.utils.terminology import (
+    get_display_for_code,
+    get_display_for_condition_clinical_status,
+)
 
 from .author_extractor import AuthorExtractor
 from .base import BaseConverter
-from ccda_to_fhir.utils.terminology import (
-    get_display_for_condition_clinical_status,
-    get_display_for_code,
-)
 
 logger = get_logger(__name__)
 
@@ -864,8 +862,8 @@ def convert_problem_concern_act(
                         ccda_element=rel.observation,
                         concern_act=act,
                     )
-            except Exception as e:
+            except Exception:
                 # Log error but continue
-                logger.error(f"Error converting problem observation", exc_info=True)
+                logger.error("Error converting problem observation", exc_info=True)
 
     return conditions

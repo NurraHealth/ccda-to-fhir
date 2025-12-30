@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-from ccda_to_fhir.convert import convert_document
 from ccda_to_fhir.constants import TemplateIds
+from ccda_to_fhir.convert import convert_document
+from ccda_to_fhir.types import JSONObject
+
 from .conftest import wrap_in_ccda_document
 
 

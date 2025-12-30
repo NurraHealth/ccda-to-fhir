@@ -15,9 +15,8 @@ from pathlib import Path
 import pytest
 
 from ccda_to_fhir.ccda.models import ClinicalDocument
-from ccda_to_fhir.ccda.parser import parse_ccda, MalformedXMLError
+from ccda_to_fhir.ccda.parser import MalformedXMLError, parse_ccda
 from ccda_to_fhir.convert import convert_document
-
 
 # Path to test fixtures
 FIXTURES_DIR = Path(__file__).parent / "fixtures"

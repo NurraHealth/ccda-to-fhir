@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
-from ccda_to_fhir.ccda.models.datatypes import CD, II, IVL_TS
-from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
-from ccda_to_fhir.ccda.models.observation import Observation as CCDAObservation
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
+from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS
+from ccda_to_fhir.ccda.models.observation import Observation as CCDAObservation
+from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.constants import (
     PROCEDURE_STATUS_TO_FHIR,
     FHIRCodes,
     FHIRSystems,
     TemplateIds,
 )
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 

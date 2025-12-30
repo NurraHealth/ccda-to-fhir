@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
-from ccda_to_fhir.ccda.models.datatypes import CD, CE, EIVL_TS, IVL_PQ, IVL_TS, PIVL_TS, PQ, RTO
+from ccda_to_fhir.ccda.models.datatypes import CD, CE, EIVL_TS, IVL_PQ, IVL_TS, PIVL_TS, PQ
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.constants import (
     EIVL_EVENT_TO_FHIR_WHEN,
@@ -15,8 +13,8 @@ from ccda_to_fhir.constants import (
     TemplateIds,
     TypeCodes,
 )
-
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 from .medication import MedicationConverter
@@ -998,9 +996,9 @@ def convert_medication_activity(
         )
 
         return medication_request
-    except Exception as e:
+    except Exception:
         # Log error
-        logger.error(f"Error converting medication activity", exc_info=True)
+        logger.error("Error converting medication activity", exc_info=True)
         raise
 
 

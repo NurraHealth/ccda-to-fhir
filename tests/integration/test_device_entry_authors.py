@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from ccda_to_fhir.types import JSONObject
 from ccda_to_fhir.convert import convert_document
+from ccda_to_fhir.types import JSONObject
 
 
 def _find_resource_in_bundle(bundle: JSONObject, resource_type: str, resource_id: str | None = None) -> JSONObject | None:

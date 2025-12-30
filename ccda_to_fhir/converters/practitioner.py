@@ -26,14 +26,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ccda_to_fhir.constants import CodeSystemOIDs, FHIRCodes, FHIRSystems
+from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.types import FHIRResourceDict
 
 from .base import BaseConverter
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.author import AssignedAuthor
-    from ccda_to_fhir.ccda.models.datatypes import AD, CE, II, PN, TEL
+    from ccda_to_fhir.ccda.models.datatypes import AD, II, PN, TEL
     from ccda_to_fhir.ccda.models.performer import AssignedEntity
 
 

@@ -108,7 +108,7 @@ class Encounter(CDAModel):
         return False
 
     @model_validator(mode='after')
-    def validate_encounter_activity(self) -> 'Encounter':
+    def validate_encounter_activity(self) -> Encounter:
         """Validate Encounter Activity template (2.16.840.1.113883.10.20.22.4.49).
 
         Reference: docs/ccda/activity-encounter.md

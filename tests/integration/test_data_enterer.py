@@ -8,9 +8,8 @@ Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/StructureDefinition-DataEn
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import JSONObject
-
 from ccda_to_fhir.convert import convert_document
+from ccda_to_fhir.types import JSONObject
 
 from .conftest import wrap_in_ccda_document
 

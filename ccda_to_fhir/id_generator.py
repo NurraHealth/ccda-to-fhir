@@ -10,7 +10,6 @@ always generate the same UUID to ensure references resolve correctly.
 import uuid
 from typing import Optional
 
-
 # Cache for ID generation within a document conversion
 # Key: (resource_type, root, extension) tuple
 # Value: generated UUID

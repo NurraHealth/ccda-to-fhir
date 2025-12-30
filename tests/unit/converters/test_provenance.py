@@ -10,7 +10,6 @@ from datetime import datetime
 
 import pytest
 
-from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.converters.author_extractor import AuthorInfo
 from ccda_to_fhir.converters.provenance import ProvenanceConverter
 from ccda_to_fhir.types import FHIRResourceDict

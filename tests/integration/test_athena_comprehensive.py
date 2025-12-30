@@ -4,14 +4,15 @@ This test validates that EVERY field in the converted FHIR bundle has the EXACT
 value expected from the C-CDA source document. No field goes untested.
 """
 
-from pathlib import Path
-import pytest
 from datetime import date, datetime
-from fhir.resources.bundle import Bundle
+from pathlib import Path
+
+import pytest
 
 from ccda_to_fhir.convert import convert_document
-from .comprehensive_validator import FieldValidator
+from fhir.resources.bundle import Bundle
 
+from .comprehensive_validator import FieldValidator
 
 ATHENA_CCD = Path(__file__).parent / "fixtures" / "documents" / "athena_ccd.xml"
 
@@ -501,7 +502,7 @@ class TestAthenaComprehensive:
 
         # Has performedDateTime
         if "performedDateTime" in proc:
-            from datetime import datetime, date
+            from datetime import date, datetime
             # Can be datetime, date, or string (per FHIR spec)
             assert isinstance(proc["performedDateTime"], (datetime, date, str))
             if isinstance(proc["performedDateTime"], str):

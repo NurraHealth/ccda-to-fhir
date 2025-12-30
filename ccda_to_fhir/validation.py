@@ -132,7 +132,7 @@ class FHIRValidator:
             self._validation_stats["passed"] += 1
 
             logger.info(
-                f"Bundle validation passed",
+                "Bundle validation passed",
                 entry_count=len(bundle_dict.get("entry", [])),
             )
             return bundle_dict

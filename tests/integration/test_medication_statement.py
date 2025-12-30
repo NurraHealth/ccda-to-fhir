@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import JSONObject
-from ccda_to_fhir.convert import convert_document
 from ccda_to_fhir.constants import TemplateIds
+from ccda_to_fhir.convert import convert_document
+from ccda_to_fhir.types import JSONObject
 
 from .conftest import wrap_in_ccda_document
 
@@ -418,7 +418,7 @@ class TestMedicationStatementIDSanitization:
     def test_sanitizes_id_with_slashes(self) -> None:
         """Test that medication statement IDs with slash characters are sanitized.
 
-        Real-world C-CDA documents may have IDs with slashes 
+        Real-world C-CDA documents may have IDs with slashes
         (e.g., 'medicationstatement-medication/1813433361850990')
         which violates FHIR R4B spec. IDs can only contain: A-Z, a-z, 0-9, -, .
         """

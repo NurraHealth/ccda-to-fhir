@@ -13,13 +13,10 @@ from __future__ import annotations
 
 import pytest
 
+from ccda_to_fhir.ccda.parser import MalformedXMLError
 from ccda_to_fhir.convert import convert_document
-from ccda_to_fhir.converters.composition import CompositionConverter
-from ccda_to_fhir.converters.careteam import CareTeamConverter
 from ccda_to_fhir.converters.condition import ConditionConverter
 from ccda_to_fhir.converters.procedure import ProcedureConverter
-from ccda_to_fhir.ccda.parser import parse_ccda, MalformedXMLError
-from ccda_to_fhir.converters.references import ReferenceRegistry
 
 from .conftest import wrap_in_ccda_document
 
@@ -142,7 +139,7 @@ class TestConverterErrorMessages:
 
         Error message should clearly state reference_registry requirement.
         """
-        from ccda_to_fhir.ccda.models import Procedure, II, CD, CS
+        from ccda_to_fhir.ccda.models import CD, CS, II, Procedure
 
         converter = ProcedureConverter(reference_registry=None)
 

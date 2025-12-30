@@ -4,8 +4,10 @@ Tests the proper linking of outcome observations to intervention activities
 based on entryRelationship with typeCode='GEVL'.
 """
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
+
 from ccda_to_fhir.converters.careplan import CarePlanConverter
 from ccda_to_fhir.converters.references import ReferenceRegistry
 

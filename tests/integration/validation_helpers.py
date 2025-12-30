@@ -562,7 +562,7 @@ def _extract_all_codes(obj: dict | list, path: str = "") -> list[tuple[str, dict
 
     if isinstance(obj, dict):
         # Check if this dict is a CodeableConcept (has 'coding' or 'text')
-        if "coding" in obj or ("text" in obj and not "reference" in obj):
+        if "coding" in obj or ("text" in obj and "reference" not in obj):
             # Likely a CodeableConcept
             if "coding" in obj:
                 codes.append((path, obj))

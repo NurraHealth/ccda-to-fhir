@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from ccda_to_fhir.ccda.models.datatypes import AD, CE, CS, EN, ENXP, II, PN, TEL, TS
+from ccda_to_fhir.ccda.models.datatypes import AD, CE, CS, ENXP, II, PN, TEL, TS
 from ccda_to_fhir.ccda.models.record_target import (
     Birthplace,
     Guardian,
@@ -24,8 +24,6 @@ from ccda_to_fhir.ccda.models.record_target import (
     RecordTarget,
 )
 from ccda_to_fhir.converters.patient import PatientConverter
-from ccda_to_fhir.constants import FHIRCodes
-
 
 # ============================================================================
 # Fixtures - Realistic C-CDA Patient Data
@@ -867,7 +865,6 @@ class TestPatientIDGeneration:
 
     def test_generates_id_from_mrn(self, basic_patient, mock_reference_registry):
         """Test ID generation from MRN extension."""
-        import re
         import uuid
 
         record_target = RecordTarget(

@@ -17,14 +17,15 @@ Coverage:
 - Diagnostic Reports: Lab reports with LOINC codes
 """
 
-from pathlib import Path
-import pytest
 from datetime import date, datetime
-from fhir.resources.bundle import Bundle
+from pathlib import Path
+
+import pytest
 
 from ccda_to_fhir.convert import convert_document
-from .comprehensive_validator import FieldValidator
+from fhir.resources.bundle import Bundle
 
+from .comprehensive_validator import FieldValidator
 
 EPIC_CCD = Path(__file__).parent / "fixtures" / "documents" / "partners_epic.xml"
 

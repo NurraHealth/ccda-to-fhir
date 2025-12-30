@@ -542,12 +542,12 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test basic Product Instance to Device conversion."""
+        from ccda_to_fhir.ccda.models.datatypes import CE, II
         from ccda_to_fhir.ccda.models.participant import (
             ParticipantRole,
             PlayingDevice,
             ScopingEntity,
         )
-        from ccda_to_fhir.ccda.models.datatypes import CE, II
 
         # Create Product Instance
         participant_role = ParticipantRole(
@@ -576,9 +576,10 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test ID generation from Product Instance identifier."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
-        from ccda_to_fhir.ccda.models.datatypes import II
         import uuid as uuid_module
+
+        from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")]
@@ -597,8 +598,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test identifier mapping from Product Instance."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")]
@@ -615,8 +616,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test device type code mapping."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole, PlayingDevice
         from ccda_to_fhir.ccda.models.datatypes import CE, II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole, PlayingDevice
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
@@ -641,11 +642,11 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test manufacturer mapping from scoping entity."""
+        from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import (
             ParticipantRole,
             ScopingEntity,
         )
-        from ccda_to_fhir.ccda.models.datatypes import II
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
@@ -668,8 +669,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test UDI parsing with GS1 format (complete UDI string)."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[
@@ -695,8 +696,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test manufacture date extraction from UDI."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[
@@ -716,8 +717,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test expiration date extraction from UDI."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[
@@ -737,8 +738,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test lot number extraction from UDI."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[
@@ -758,8 +759,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test serial number extraction from UDI."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[
@@ -779,8 +780,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test complete UDI with all production identifiers."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[
@@ -807,8 +808,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test manufacturerModelName mapping to deviceName and modelNumber."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole, PlayingDevice
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole, PlayingDevice
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
@@ -831,8 +832,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test device code displayName mapping to user-friendly deviceName."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole, PlayingDevice
         from ccda_to_fhir.ccda.models.datatypes import CE, II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole, PlayingDevice
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
@@ -859,8 +860,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test that both model name and user-friendly name are included."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole, PlayingDevice
         from ccda_to_fhir.ccda.models.datatypes import CE, II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole, PlayingDevice
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
@@ -891,8 +892,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test patient reference is added for implantable devices."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")]
@@ -911,8 +912,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test US Core Implantable Device profile is applied when patient reference present."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")]
@@ -932,8 +933,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test no US Core profile when patient reference not provided."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")]
@@ -948,8 +949,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test device status inference from procedure status."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")]
@@ -977,11 +978,11 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test Device.owner from scopingEntity."""
+        from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import (
             ParticipantRole,
             ScopingEntity,
         )
-        from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.converters.references import ReferenceRegistry
 
         # Setup reference registry with organization
@@ -1013,8 +1014,8 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test owner omitted when scopingEntity missing."""
-        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.ccda.models.datatypes import II
+        from ccda_to_fhir.ccda.models.participant import ParticipantRole
         from ccda_to_fhir.converters.references import ReferenceRegistry
 
         device_converter.reference_registry = ReferenceRegistry()
@@ -1031,11 +1032,11 @@ class TestProductInstanceConverter:
         self, device_converter: DeviceConverter
     ) -> None:
         """Test owner omitted when Organization not in registry."""
+        from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import (
             ParticipantRole,
             ScopingEntity,
         )
-        from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.converters.references import ReferenceRegistry
 
         # Registry with no organizations

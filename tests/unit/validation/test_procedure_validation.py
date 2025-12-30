@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from ccda_to_fhir.ccda.models import Procedure
-from ccda_to_fhir.ccda.parser import parse_ccda_fragment, MalformedXMLError
+from ccda_to_fhir.ccda.parser import MalformedXMLError, parse_ccda_fragment
 
 
 class TestProcedureActivityProcedureValidation:

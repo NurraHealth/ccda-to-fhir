@@ -6,8 +6,6 @@ element types and convert it into a standardized format for Provenance generatio
 
 from __future__ import annotations
 
-from typing import Union
-
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.author import Author
 from ccda_to_fhir.ccda.models.encounter import Encounter

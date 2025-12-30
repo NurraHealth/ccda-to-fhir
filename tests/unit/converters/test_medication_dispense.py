@@ -2,16 +2,15 @@
 
 import pytest
 
-from ccda_to_fhir.ccda.models.author import Author, AssignedAuthor
+from ccda_to_fhir.ccda.models.author import AssignedAuthor, Author
 from ccda_to_fhir.ccda.models.author import AssignedPerson as AuthorAssignedPerson
 from ccda_to_fhir.ccda.models.datatypes import CE, CS, II, INT, IVL_INT, IVL_TS, PQ, TS
-from ccda_to_fhir.ccda.models.performer import Performer, AssignedEntity
-from ccda_to_fhir.ccda.models.supply import Supply
+from ccda_to_fhir.ccda.models.performer import AssignedEntity, Performer
 from ccda_to_fhir.ccda.models.substance_administration import (
-    Consumable,
     ManufacturedMaterial,
     ManufacturedProduct,
 )
+from ccda_to_fhir.ccda.models.supply import Supply
 from ccda_to_fhir.converters.medication_dispense import MedicationDispenseConverter
 
 
@@ -935,11 +934,11 @@ class TestMedicationDispensePharmacyLocation:
 
     def test_location_created_when_represented_organization_present(self, mock_reference_registry):
         """Test Location resource created for representedOrganization."""
+        from ccda_to_fhir.ccda.models.datatypes import AD, TEL
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
             RepresentedOrganization,
         )
-        from ccda_to_fhir.ccda.models.datatypes import AD, TEL
         from ccda_to_fhir.converters.references import ReferenceRegistry
 
         # Create registry
@@ -1261,11 +1260,11 @@ class TestMedicationDispensePharmacyLocation:
 
     def test_location_with_multiple_address_lines(self, mock_reference_registry):
         """Test Location address with multiple street lines."""
+        from ccda_to_fhir.ccda.models.datatypes import AD
         from ccda_to_fhir.ccda.models.performer import (
             AssignedPerson,
             RepresentedOrganization,
         )
-        from ccda_to_fhir.ccda.models.datatypes import AD
         from ccda_to_fhir.converters.references import ReferenceRegistry
 
         # Create registry

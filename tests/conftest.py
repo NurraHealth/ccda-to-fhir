@@ -23,14 +23,14 @@ def verify_fhir_r4b_compliance():
 
     # Import some representative resources to verify they're from R4B
     from ccda_to_fhir.fhir.models import (
-        Condition,
         AllergyIntolerance,
+        Condition,
+        Device,
         MedicationRequest,
-        Procedure,
+        Organization,
         Patient,
         Practitioner,
-        Organization,
-        Device,
+        Procedure,
         Provenance,
     )
 
@@ -54,8 +54,8 @@ def verify_fhir_r4b_compliance():
             f"Module: {module_path}. Update imports in ccda_to_fhir/fhir/models/__init__.py"
 
     # Verify that recorder/requester fields exist in R4B (these are critical for our implementation)
-    from fhir.resources.R4B.condition import Condition as R4BCondition
     from fhir.resources.R4B.allergyintolerance import AllergyIntolerance as R4BAllergyIntolerance
+    from fhir.resources.R4B.condition import Condition as R4BCondition
     from fhir.resources.R4B.medicationrequest import MedicationRequest as R4BMedicationRequest
     from fhir.resources.R4B.procedure import Procedure as R4BProcedure
 

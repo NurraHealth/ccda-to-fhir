@@ -16,30 +16,27 @@ from __future__ import annotations
 import pytest
 
 from ccda_to_fhir.ccda.models import (
-    CD,
-    CE,
-    CS,
-    II,
-    TS,
     AD,
     BL,
+    CD,
+    CE,
+    II,
     IVL_TS,
     PN,
     PQ,
+    TS,
     Act,
     Observation,
     Organizer,
     Patient,
-    PatientRole,
     RecordTarget,
 )
 from ccda_to_fhir.ccda.parser import (
-    CDAParserError,
     MalformedXMLError,
     UnknownTypeError,
-    parse_ccda_fragment,
     _strip_namespace,
     _to_snake_case,
+    parse_ccda_fragment,
 )
 
 

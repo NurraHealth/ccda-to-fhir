@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from ccda_to_fhir.constants import TemplateIds
 
-
 # =============================================================================
 # Supported C-CDA Templates
 # =============================================================================

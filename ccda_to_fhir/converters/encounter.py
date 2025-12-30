@@ -4,15 +4,13 @@ from __future__ import annotations
 
 import logging
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
 from ccda_to_fhir.ccda.models.observation import EntryRelationship
 from ccda_to_fhir.constants import (
     CPT_CODE_SYSTEM,
     DISCHARGE_DISPOSITION_TO_FHIR,
-    PARTICIPATION_FUNCTION_CODE_MAP,
     ENCOUNTER_STATUS_TO_FHIR,
+    PARTICIPATION_FUNCTION_CODE_MAP,
     V3_ACT_CODE_SYSTEM,
     V3_ACTCODE_DISPLAY_NAMES,
     FHIRCodes,
@@ -21,6 +19,7 @@ from ccda_to_fhir.constants import (
     TypeCodes,
     map_cpt_to_actcode,
 )
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -762,7 +761,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                     else:
                                         # Fallback: Generate deterministic ID from observation content
                                         # Must use same method as ConditionConverter for consistency
-                                        from ccda_to_fhir.converters.condition import generate_id_from_observation_content
+                                        from ccda_to_fhir.converters.condition import (
+                                            generate_id_from_observation_content,
+                                        )
                                         condition_id = generate_id_from_observation_content(obs)
 
                                     diagnosis: JSONObject = {

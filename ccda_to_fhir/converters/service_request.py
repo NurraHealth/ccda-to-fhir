@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
-from ccda_to_fhir.ccda.models.datatypes import CD, II, IVL_TS
-from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
+from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS
+from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.constants import (
-    SERVICE_REQUEST_STATUS_TO_FHIR,
     SERVICE_REQUEST_MOOD_TO_INTENT,
     SERVICE_REQUEST_PRIORITY_TO_FHIR,
+    SERVICE_REQUEST_STATUS_TO_FHIR,
     FHIRCodes,
-    FHIRSystems,
     TemplateIds,
 )
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -61,11 +59,11 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if mood_code not in valid_mood_codes:
             if mood_code == "EVN":
                 raise ValueError(
-                    f"moodCode=EVN indicates completed procedure; use Procedure converter instead"
+                    "moodCode=EVN indicates completed procedure; use Procedure converter instead"
                 )
             elif mood_code == "GOL":
                 raise ValueError(
-                    f"moodCode=GOL indicates goal; use Goal converter instead"
+                    "moodCode=GOL indicates goal; use Goal converter instead"
                 )
             else:
                 raise ValueError(

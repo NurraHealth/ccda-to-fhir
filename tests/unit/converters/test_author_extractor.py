@@ -22,7 +22,6 @@ from ccda_to_fhir.ccda.models.procedure import Procedure
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.converters.author_extractor import AuthorExtractor, AuthorInfo
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

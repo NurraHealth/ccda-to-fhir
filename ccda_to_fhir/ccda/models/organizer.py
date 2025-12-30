@@ -134,7 +134,7 @@ class Organizer(CDAModel):
         return False
 
     @model_validator(mode='after')
-    def validate_vital_signs_organizer(self) -> 'Organizer':
+    def validate_vital_signs_organizer(self) -> Organizer:
         """Validate Vital Signs Organizer (2.16.840.1.113883.10.20.22.4.26).
 
         Reference: docs/ccda/organizer-vital-signs.md
@@ -190,7 +190,7 @@ class Organizer(CDAModel):
         return self
 
     @model_validator(mode='after')
-    def validate_result_organizer(self) -> 'Organizer':
+    def validate_result_organizer(self) -> Organizer:
         """Validate Result Organizer (2.16.840.1.113883.10.20.22.4.1).
 
         Reference: docs/ccda/organizer-results.md

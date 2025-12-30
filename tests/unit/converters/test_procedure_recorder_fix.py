@@ -3,10 +3,10 @@
 import pytest
 
 from ccda_to_fhir.ccda.models.author import (
-    Author,
     AssignedAuthor,
-    AssignedPerson,
     AssignedAuthoringDevice,
+    AssignedPerson,
+    Author,
 )
 from ccda_to_fhir.ccda.models.datatypes import CE, CS, II, TS
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure

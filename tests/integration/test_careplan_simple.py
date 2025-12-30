@@ -3,11 +3,8 @@
 This test verifies basic CarePlan resource creation from a Care Plan Document.
 """
 
-import pytest
-from fhir.resources.careplan import CarePlan
-from fhir.resources.bundle import Bundle
-
 from ccda_to_fhir.convert import convert_document
+from fhir.resources.bundle import Bundle
 
 
 def test_care_plan_document_creates_careplan():

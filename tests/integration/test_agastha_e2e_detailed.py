@@ -27,25 +27,19 @@ Key Features Tested:
 from pathlib import Path
 
 import pytest
-from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
+from fhir.resources.bundle import Bundle
 from tests.integration.helpers.codeable_concept_validators import (
     assert_allergy_clinical_status,
-    assert_allergy_verification_status,
-    assert_condition_clinical_status,
-    assert_condition_category,
-    assert_observation_category,
     assert_immunization_status_reason,
-    assert_clinical_code_exact,
+    assert_observation_category,
 )
 from tests.integration.helpers.quantity_validators import (
     assert_quantity_has_ucum,
-    assert_reference_range_exact,
 )
 from tests.integration.helpers.temporal_validators import (
     assert_datetime_format,
-    assert_timing_repeat_exact,
 )
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "documents"
@@ -971,7 +965,7 @@ class TestAgasthaE2E:
 
     def test_patient_managing_organization(self, agastha_bundle):
         """Validate Patient.managingOrganization reference - CRITICAL.
-        
+
         This tests the feature added in commit 872785c.
         The Agastha CCD has providerOrganization with NPI 1298765654.
         """
@@ -1054,7 +1048,7 @@ class TestAgasthaE2E:
         # Verify manifestation
         assert reaction.manifestation is not None, "Reaction must have manifestation"
         assert len(reaction.manifestation) > 0, "Manifestation must not be empty"
-        
+
         manifestation_code = reaction.manifestation[0].coding[0].code
         assert manifestation_code == "247472004", \
             f"Manifestation code must be '247472004' (Hives), got '{manifestation_code}'"
@@ -1092,7 +1086,7 @@ class TestAgasthaE2E:
         # Verify route
         assert dosage.route is not None, "Dosage must have route"
         assert dosage.route.coding is not None, "Route must have coding"
-        
+
         route_code = dosage.route.coding[0].code
         assert route_code == "C38288", \
             f"Route code must be 'C38288' (ORAL), got '{route_code}'"
@@ -1102,7 +1096,7 @@ class TestAgasthaE2E:
         # Verify doseAndRate
         assert dosage.doseAndRate is not None, "Dosage must have doseAndRate"
         assert len(dosage.doseAndRate) > 0, "doseAndRate must not be empty"
-        
+
         dose_qty = dosage.doseAndRate[0].doseQuantity
         assert dose_qty is not None, "doseAndRate must have doseQuantity"
         assert dose_qty.value == 1, \
@@ -1138,7 +1132,7 @@ class TestAgasthaE2E:
         interp_code = height.interpretation[0].coding[0].code
         assert interp_code == "N", \
             f"Interpretation code must be 'N' (Normal), got '{interp_code}'"
-        
+
         interp_display = height.interpretation[0].coding[0].display
         if interp_display:
             assert interp_display == "Normal", \
@@ -1173,11 +1167,11 @@ class TestAgasthaE2E:
             "referenceRange must not be empty"
 
         ref_range = specific_gravity.referenceRange[0]
-        
+
         assert ref_range.low is not None, "Reference range must have low value"
         assert ref_range.low.value == 1.005, \
             f"Reference range low must be 1.005, got '{ref_range.low.value}'"
-        
+
         assert ref_range.high is not None, "Reference range must have high value"
         assert ref_range.high.value == 1.03, \
             f"Reference range high must be 1.03, got '{ref_range.high.value}'"
@@ -1237,7 +1231,7 @@ class TestAgasthaE2E:
                 "Encounter participant must have individual reference"
             assert participant.individual.reference is not None, \
                 "Participant individual reference must not be null"
-            
+
             # Should reference Practitioner or RelatedPerson
             ref = participant.individual.reference
             assert "Practitioner/" in ref or "RelatedPerson/" in ref, \
@@ -1602,7 +1596,6 @@ class TestAgasthaE2E:
 
     def test_condition_datetime_timezone_exact(self, agastha_bundle):
         """PHASE 3.2: Validate Condition.onsetDateTime has timezone when time present."""
-        from datetime import datetime
 
         conditions = [
             e.resource for e in agastha_bundle.entry
@@ -1721,7 +1714,6 @@ class TestAgasthaE2E:
 
     def test_composition_instant_timezone_exact(self, agastha_bundle):
         """PHASE 3.5: Validate Composition.date (instant) always has timezone."""
-        from datetime import datetime
 
         compositions = [
             e.resource for e in agastha_bundle.entry

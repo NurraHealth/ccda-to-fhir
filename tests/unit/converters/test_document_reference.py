@@ -11,20 +11,18 @@ All test data based on realistic clinical scenarios and official HL7 examples.
 from __future__ import annotations
 
 import pytest
-from unittest.mock import Mock
 
-from ccda_to_fhir.ccda.models.datatypes import CE, CS, II, TS
 from ccda_to_fhir.ccda.models.clinical_document import (
     Authenticator,
     ClinicalDocument,
     LegalAuthenticator,
     RecordTarget,
 )
+from ccda_to_fhir.ccda.models.datatypes import CE, CS, II, TS
 from ccda_to_fhir.ccda.models.performer import AssignedEntity, AssignedPerson
 from ccda_to_fhir.ccda.models.record_target import Patient, PatientRole
 from ccda_to_fhir.converters.document_reference import DocumentReferenceConverter
 from ccda_to_fhir.converters.references import ReferenceRegistry
-
 
 # ============================================================================
 # Fixtures - Realistic C-CDA Clinical Document Data
@@ -34,7 +32,7 @@ from ccda_to_fhir.converters.references import ReferenceRegistry
 @pytest.fixture
 def basic_patient() -> Patient:
     """Create a basic patient for testing."""
-    from ccda_to_fhir.ccda.models.datatypes import PN, ENXP
+    from ccda_to_fhir.ccda.models.datatypes import ENXP, PN
 
     return Patient(
         name=[
@@ -88,7 +86,7 @@ def basic_clinical_document(basic_record_target) -> ClinicalDocument:
 @pytest.fixture
 def legal_authenticator() -> LegalAuthenticator:
     """Create a legal authenticator."""
-    from ccda_to_fhir.ccda.models.datatypes import PN, ENXP
+    from ccda_to_fhir.ccda.models.datatypes import ENXP, PN
 
     return LegalAuthenticator(
         time=TS(value="20231215120000-0500"),
@@ -110,7 +108,7 @@ def legal_authenticator() -> LegalAuthenticator:
 @pytest.fixture
 def regular_authenticator() -> Authenticator:
     """Create a regular authenticator."""
-    from ccda_to_fhir.ccda.models.datatypes import PN, ENXP
+    from ccda_to_fhir.ccda.models.datatypes import ENXP, PN
 
     return Authenticator(
         time=TS(value="20231215120000-0500"),

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.ccda.models.organizer import Organizer
 from ccda_to_fhir.constants import (
     DIAGNOSTIC_REPORT_STATUS_TO_FHIR,
     FHIRCodes,
     FHIRSystems,
 )
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 from .observation import ObservationConverter

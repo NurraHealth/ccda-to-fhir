@@ -4,7 +4,6 @@ Tests the parsing and handling of CO (Coded Ordinal) data type,
 which extends CE with ordering semantics.
 """
 
-from lxml import etree
 
 from ccda_to_fhir.ccda.models import CO
 from ccda_to_fhir.ccda.parser import parse_ccda

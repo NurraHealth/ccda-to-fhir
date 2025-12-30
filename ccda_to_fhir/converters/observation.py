@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, ED, INT, IVL_PQ, PQ, ST
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.ccda.models.organizer import Organizer
-from ccda_to_fhir.utils.terminology import get_display_for_code
 from ccda_to_fhir.constants import (
     BP_DIASTOLIC_CODE,
     BP_DIASTOLIC_DISPLAY,
@@ -15,8 +12,6 @@ from ccda_to_fhir.constants import (
     BP_PANEL_DISPLAY,
     BP_SYSTOLIC_CODE,
     BP_SYSTOLIC_DISPLAY,
-    FHIRCodes,
-    FHIRSystems,
     LOINC_TO_SDOH_CATEGORY,
     O2_CONCENTRATION_CODE,
     O2_CONCENTRATION_DISPLAY,
@@ -26,10 +21,14 @@ from ccda_to_fhir.constants import (
     PULSE_OX_ALT_CODE,
     PULSE_OX_PRIMARY_CODE,
     SDOH_CATEGORY_DISPLAY,
-    TemplateIds,
     VITAL_SIGNS_PANEL_CODE,
     VITAL_SIGNS_PANEL_DISPLAY,
+    FHIRCodes,
+    FHIRSystems,
+    TemplateIds,
 )
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.utils.terminology import get_display_for_code
 
 from .base import BaseConverter
 

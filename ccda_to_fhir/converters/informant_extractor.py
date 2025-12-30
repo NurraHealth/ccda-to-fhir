@@ -7,8 +7,6 @@ related persons (relatedEntity).
 
 from __future__ import annotations
 
-from typing import Union
-
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.clinical_document import Informant
 from ccda_to_fhir.ccda.models.encounter import Encounter

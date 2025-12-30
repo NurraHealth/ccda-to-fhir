@@ -29,7 +29,7 @@ from .base import BaseConverter
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.clinical_document import RelatedEntity
-    from ccda_to_fhir.ccda.models.datatypes import AD, CE, II, PN, TEL
+    from ccda_to_fhir.ccda.models.datatypes import AD, CE, PN, TEL
 
 
 class RelatedPersonConverter(BaseConverter["RelatedEntity"]):

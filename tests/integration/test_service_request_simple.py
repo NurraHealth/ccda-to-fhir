@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from ccda_to_fhir.convert import convert_document
 
-
 CCDA_PLANNED_COLONOSCOPY = """<?xml version="1.0" encoding="UTF-8"?>
 <ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <realmCode code="US"/>

@@ -195,6 +195,6 @@ def test_athena_ccd_comprehensive() -> None:
         assert "recorded" in provenance
         assert "agent" in provenance
 
-    print(f"\n✓ athena_ccd comprehensive validation passed!")
+    print("\n✓ athena_ccd comprehensive validation passed!")
     print(f"  Resources validated: {len(resources_by_id)}")
     print(f"  Resource types: {sorted(resources_by_type.keys())}")

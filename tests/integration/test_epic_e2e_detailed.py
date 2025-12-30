@@ -12,12 +12,12 @@ but we accept it with warnings for real-world compatibility with Epic systems.
 """
 
 from pathlib import Path
+
 import pytest
-from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
+from fhir.resources.bundle import Bundle
 from tests.integration.helpers.temporal_validators import assert_datetime_format
-
 
 EPIC_CCD = Path(__file__).parent / "fixtures" / "documents" / "partners_epic.xml"
 
@@ -512,16 +512,16 @@ class TestEpicDetailedValidation:
 
         for condition in conditions:
             assert condition.identifier is not None, \
-                f"Condition must have identifier"
+                "Condition must have identifier"
             assert len(condition.identifier) > 0, \
-                f"Condition must have at least one identifier"
+                "Condition must have at least one identifier"
 
             # Verify identifier structure
             identifier = condition.identifier[0]
             assert identifier.system is not None, \
-                f"Condition identifier must have system"
+                "Condition identifier must have system"
             assert identifier.value is not None, \
-                f"Condition identifier must have value"
+                "Condition identifier must have value"
 
     def test_all_allergy_intolerances_have_identifiers(self, epic_bundle):
         """Validate all AllergyIntolerance resources have identifiers from C-CDA."""
@@ -532,15 +532,15 @@ class TestEpicDetailedValidation:
 
         for allergy in allergies:
             assert allergy.identifier is not None, \
-                f"AllergyIntolerance must have identifier"
+                "AllergyIntolerance must have identifier"
             assert len(allergy.identifier) > 0, \
-                f"AllergyIntolerance must have at least one identifier"
+                "AllergyIntolerance must have at least one identifier"
 
             identifier = allergy.identifier[0]
             assert identifier.system is not None, \
-                f"AllergyIntolerance identifier must have system"
+                "AllergyIntolerance identifier must have system"
             assert identifier.value is not None, \
-                f"AllergyIntolerance identifier must have value"
+                "AllergyIntolerance identifier must have value"
 
     def test_all_medication_requests_have_identifiers(self, epic_bundle):
         """Validate all MedicationRequest/MedicationStatement resources have identifiers from C-CDA."""
@@ -552,15 +552,15 @@ class TestEpicDetailedValidation:
 
         for med_statement in med_statements:
             assert med_statement.identifier is not None, \
-                f"MedicationStatement must have identifier"
+                "MedicationStatement must have identifier"
             assert len(med_statement.identifier) > 0, \
-                f"MedicationStatement must have at least one identifier"
+                "MedicationStatement must have at least one identifier"
 
             identifier = med_statement.identifier[0]
             assert identifier.system is not None, \
-                f"MedicationStatement identifier must have system"
+                "MedicationStatement identifier must have system"
             assert identifier.value is not None, \
-                f"MedicationStatement identifier must have value"
+                "MedicationStatement identifier must have value"
 
     def test_observations_have_identifiers(self, epic_bundle):
         """Validate Observation resources have identifiers from C-CDA."""
@@ -571,9 +571,9 @@ class TestEpicDetailedValidation:
 
         for observation in observations:
             assert observation.identifier is not None, \
-                f"Observation must have identifier"
+                "Observation must have identifier"
             assert len(observation.identifier) > 0, \
-                f"Observation must have at least one identifier"
+                "Observation must have at least one identifier"
 
     def test_encounters_have_identifiers(self, epic_bundle):
         """Validate Encounter resources have identifiers from C-CDA."""
@@ -584,9 +584,9 @@ class TestEpicDetailedValidation:
 
         for encounter in encounters:
             assert encounter.identifier is not None, \
-                f"Encounter must have identifier"
+                "Encounter must have identifier"
             assert len(encounter.identifier) > 0, \
-                f"Encounter must have at least one identifier"
+                "Encounter must have at least one identifier"
 
     # ====================================================================================
     # HIGH PRIORITY: AllergyIntolerance Status Tests - US Core Required
@@ -1418,7 +1418,7 @@ class TestEpicDetailedValidation:
             for condition in conditions_with_profile:
                 # If profile is set, should include US Core Condition
                 assert any(us_core_condition in profile for profile in condition.meta.profile), \
-                    f"Condition with profile should declare US Core Condition profile"
+                    "Condition with profile should declare US Core Condition profile"
 
     def test_observations_have_us_core_profile_when_applicable(self, epic_bundle):
         """Validate Observations declare appropriate US Core profiles when present."""
@@ -1516,7 +1516,7 @@ class TestEpicDetailedValidation:
                 # Check that primary coding has display
                 primary_coding = procedure.code.coding[0]
                 assert primary_coding.display is not None and primary_coding.display != "", \
-                    f"Procedure.code.coding[0] must have display value"
+                    "Procedure.code.coding[0] must have display value"
 
     def test_allergy_intolerances_have_code_display_values(self, epic_bundle):
         """Validate all AllergyIntolerance resources have display values on their codes."""
@@ -1535,7 +1535,7 @@ class TestEpicDetailedValidation:
                 # Check that primary coding has display
                 primary_coding = allergy.code.coding[0]
                 assert primary_coding.display is not None and primary_coding.display != "", \
-                    f"AllergyIntolerance.code.coding[0] must have display value"
+                    "AllergyIntolerance.code.coding[0] must have display value"
 
     def test_conditions_have_codeable_concept_text(self, epic_bundle):
         """Validate Condition resources have CodeableConcept.text on their codes."""
@@ -2102,7 +2102,6 @@ class TestEpicDetailedValidation:
 
     def test_condition_datetime_timezone_exact(self, epic_bundle):
         """PHASE 3.2: Validate Condition.onsetDateTime has timezone when time present."""
-        from datetime import datetime
 
         conditions = [
             e.resource for e in epic_bundle.entry
@@ -2184,7 +2183,6 @@ class TestEpicDetailedValidation:
 
     def test_composition_instant_timezone_exact(self, epic_bundle):
         """PHASE 3.5: Validate Composition.date (instant) always has timezone."""
-        from datetime import datetime
 
         compositions = [
             e.resource for e in epic_bundle.entry

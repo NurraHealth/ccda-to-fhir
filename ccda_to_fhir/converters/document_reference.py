@@ -5,11 +5,10 @@ from __future__ import annotations
 import base64
 import hashlib
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.ccda.models.datatypes import CE, II
 from ccda_to_fhir.constants import FHIRCodes, FHIRSystems
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 

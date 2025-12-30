@@ -280,7 +280,7 @@ class Observation(CDAModel):
         return False
 
     @model_validator(mode='after')
-    def validate_problem_observation(self) -> 'Observation':
+    def validate_problem_observation(self) -> Observation:
         """Validate Problem Observation template (2.16.840.1.113883.10.20.22.4.4).
 
         Reference: docs/ccda/observation-problem.md
@@ -360,7 +360,7 @@ class Observation(CDAModel):
         return self
 
     @model_validator(mode='after')
-    def validate_allergy_observation(self) -> 'Observation':
+    def validate_allergy_observation(self) -> Observation:
         """Validate Allergy Intolerance Observation (2.16.840.1.113883.10.20.22.4.7).
 
         Reference: docs/ccda/observation-allergy-intolerance.md
@@ -428,7 +428,7 @@ class Observation(CDAModel):
         return self
 
     @model_validator(mode='after')
-    def validate_vital_sign_observation(self) -> 'Observation':
+    def validate_vital_sign_observation(self) -> Observation:
         """Validate Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27).
 
         Reference: docs/ccda/observation-vital-signs.md
@@ -491,7 +491,7 @@ class Observation(CDAModel):
         return self
 
     @model_validator(mode='after')
-    def validate_result_observation(self) -> 'Observation':
+    def validate_result_observation(self) -> Observation:
         """Validate Result Observation (2.16.840.1.113883.10.20.22.4.2).
 
         Reference: docs/ccda/observation-results.md
@@ -542,7 +542,7 @@ class Observation(CDAModel):
         return self
 
     @model_validator(mode='after')
-    def validate_smoking_status_observation(self) -> 'Observation':
+    def validate_smoking_status_observation(self) -> Observation:
         """Validate Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78).
 
         Reference: docs/ccda/observation-smoking-status.md
@@ -604,7 +604,7 @@ class Observation(CDAModel):
         return self
 
     @model_validator(mode='after')
-    def validate_social_history_observation(self) -> 'Observation':
+    def validate_social_history_observation(self) -> Observation:
         """Validate Social History Observation (2.16.840.1.113883.10.20.22.4.38).
 
         Conformance requirements from C-CDA R2.1:
@@ -645,7 +645,7 @@ class Observation(CDAModel):
         return self
 
     @model_validator(mode='after')
-    def validate_family_history_observation(self) -> 'Observation':
+    def validate_family_history_observation(self) -> Observation:
         """Validate Family History Observation (2.16.840.1.113883.10.20.22.4.46).
 
         Conformance requirements from C-CDA R2.1:

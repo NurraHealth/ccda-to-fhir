@@ -4,10 +4,10 @@ import pytest
 
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.author import (
-    Author,
     AssignedAuthor,
-    AssignedPerson,
     AssignedAuthoringDevice,
+    AssignedPerson,
+    Author,
 )
 from ccda_to_fhir.ccda.models.datatypes import CE, II, TS
 from ccda_to_fhir.ccda.models.observation import Observation

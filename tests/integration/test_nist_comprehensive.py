@@ -9,14 +9,15 @@ Allergies: Penicillin (7982), Codeine (2670), Aspirin (1191)
 Medications: Albuterol (573621) inhalant solution
 """
 
-from pathlib import Path
-import pytest
 from datetime import date, datetime
-from fhir.resources.bundle import Bundle
+from pathlib import Path
+
+import pytest
 
 from ccda_to_fhir.convert import convert_document
-from .comprehensive_validator import FieldValidator
+from fhir.resources.bundle import Bundle
 
+from .comprehensive_validator import FieldValidator
 
 NIST_AMBULATORY = Path(__file__).parent / "fixtures" / "documents" / "nist_ambulatory.xml"
 

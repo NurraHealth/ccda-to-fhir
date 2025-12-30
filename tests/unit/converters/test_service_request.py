@@ -10,16 +10,16 @@ All test data based on realistic clinical scenarios and official HL7 examples.
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import Mock
 
+import pytest
+
+from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II, IVL_TS, TS
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
-from ccda_to_fhir.ccda.models.act import Act as CCDAAct
-from ccda_to_fhir.converters.service_request import ServiceRequestConverter
-from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.constants import FHIRCodes
-
+from ccda_to_fhir.converters.references import ReferenceRegistry
+from ccda_to_fhir.converters.service_request import ServiceRequestConverter
 
 # ============================================================================
 # Fixtures - Realistic C-CDA Planned Procedure/Act Data

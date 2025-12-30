@@ -23,28 +23,26 @@ Each real C-CDA sample is tested against all validation layers to ensure:
 
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
 
-from ccda_to_fhir.convert import convert_document, RESOURCE_TYPE_MAPPING
-from ccda_to_fhir.validation import FHIRValidator
-from tests.integration.validation_helpers import (
-    assert_no_placeholder_references,
-    assert_all_references_resolve,
-    assert_valid_fhir_ids,
-    assert_no_empty_codes,
-    assert_all_required_fields_present,
-    assert_no_duplicate_section_references,
-    assert_references_point_to_correct_types,
-    assert_valid_code_systems,
-    assert_chronological_dates,
-    assert_us_core_must_support,
-    assert_fhir_invariants,
-    assert_composition_sections_valid,
-    get_resource_summary,
-    count_resources_by_type,
-)
+import pytest
 
+from ccda_to_fhir.convert import RESOURCE_TYPE_MAPPING, convert_document
+from tests.integration.validation_helpers import (
+    assert_all_references_resolve,
+    assert_all_required_fields_present,
+    assert_chronological_dates,
+    assert_composition_sections_valid,
+    assert_fhir_invariants,
+    assert_no_duplicate_section_references,
+    assert_no_empty_codes,
+    assert_no_placeholder_references,
+    assert_references_point_to_correct_types,
+    assert_us_core_must_support,
+    assert_valid_code_systems,
+    assert_valid_fhir_ids,
+    get_resource_summary,
+)
 
 # Real C-CDA samples from certified EHR systems
 REAL_SAMPLES = [
@@ -365,7 +363,7 @@ class TestComprehensiveReport:
                 try:
                     validated = resource_class(**resource)
                     pydantic_passed += 1
-                except Exception as e:
+                except Exception:
                     pydantic_errors.append(f"{resource_type}/{resource.get('id', '?')}")
 
                 pydantic_total += 1
@@ -383,18 +381,18 @@ class TestComprehensiveReport:
 
         # Print formatted report
         print(f"\n{'=' * 80}")
-        print(f"PRODUCTION READINESS REPORT")
+        print("PRODUCTION READINESS REPORT")
         print(f"{'=' * 80}")
         print(f"Source: {source_file}")
         print(f"Size: {source_size_kb:.1f} KB")
         print(f"Total Resources: {report['total_resources']}")
-        print(f"\nResource Summary:")
+        print("\nResource Summary:")
 
         for resource_type in sorted(report["resource_summary"].keys()):
             count = report["resource_summary"][resource_type]
             print(f"  {resource_type:30s} {count:4d}")
 
-        print(f"\nValidation Results:")
+        print("\nValidation Results:")
 
         passed_count = sum(1 for v in report["validations"].values() if v == "PASS" or v.startswith("PASS"))
         total_count = len(report["validations"])

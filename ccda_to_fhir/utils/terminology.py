@@ -7,14 +7,13 @@ Standard Reference: https://hl7.org/fhir/R4/datatypes.html#CodeableConcept
 "display is a label for the code for use when displaying code-concept to a user"
 """
 
-from typing import Dict, Optional
+from typing import Optional
 
 from ccda_to_fhir.constants import FHIRSystems
 
-
 # AllergyIntolerance Clinical Status
 # System: http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical
-ALLERGY_CLINICAL_STATUS: Dict[str, str] = {
+ALLERGY_CLINICAL_STATUS: dict[str, str] = {
     "active": "Active",
     "inactive": "Inactive",
     "resolved": "Resolved",
@@ -22,7 +21,7 @@ ALLERGY_CLINICAL_STATUS: Dict[str, str] = {
 
 # AllergyIntolerance Verification Status
 # System: http://terminology.hl7.org/CodeSystem/allergyintolerance-verification
-ALLERGY_VERIFICATION_STATUS: Dict[str, str] = {
+ALLERGY_VERIFICATION_STATUS: dict[str, str] = {
     "confirmed": "Confirmed",
     "unconfirmed": "Unconfirmed",
     "presumed": "Presumed",
@@ -31,13 +30,13 @@ ALLERGY_VERIFICATION_STATUS: Dict[str, str] = {
 }
 
 # AllergyIntolerance Type
-ALLERGY_TYPE: Dict[str, str] = {
+ALLERGY_TYPE: dict[str, str] = {
     "allergy": "Allergy",
     "intolerance": "Intolerance",
 }
 
 # AllergyIntolerance Category
-ALLERGY_CATEGORY: Dict[str, str] = {
+ALLERGY_CATEGORY: dict[str, str] = {
     "food": "Food",
     "medication": "Medication",
     "environment": "Environment",
@@ -45,14 +44,14 @@ ALLERGY_CATEGORY: Dict[str, str] = {
 }
 
 # AllergyIntolerance Criticality
-ALLERGY_CRITICALITY: Dict[str, str] = {
+ALLERGY_CRITICALITY: dict[str, str] = {
     "low": "Low Risk",
     "high": "High Risk",
     "unable-to-assess": "Unable to Assess Risk",
 }
 
 # AllergyIntolerance Reaction Severity
-REACTION_SEVERITY: Dict[str, str] = {
+REACTION_SEVERITY: dict[str, str] = {
     "mild": "Mild",
     "moderate": "Moderate",
     "severe": "Severe",
@@ -60,7 +59,7 @@ REACTION_SEVERITY: Dict[str, str] = {
 
 # Condition Clinical Status
 # System: http://terminology.hl7.org/CodeSystem/condition-clinical
-CONDITION_CLINICAL_STATUS: Dict[str, str] = {
+CONDITION_CLINICAL_STATUS: dict[str, str] = {
     "active": "Active",
     "recurrence": "Recurrence",
     "relapse": "Relapse",
@@ -72,7 +71,7 @@ CONDITION_CLINICAL_STATUS: Dict[str, str] = {
 
 # Condition Verification Status
 # System: http://terminology.hl7.org/CodeSystem/condition-ver-status
-CONDITION_VERIFICATION_STATUS: Dict[str, str] = {
+CONDITION_VERIFICATION_STATUS: dict[str, str] = {
     "unconfirmed": "Unconfirmed",
     "provisional": "Provisional",
     "differential": "Differential",
@@ -83,14 +82,14 @@ CONDITION_VERIFICATION_STATUS: Dict[str, str] = {
 
 # Condition Category
 # System: http://terminology.hl7.org/CodeSystem/condition-category
-CONDITION_CATEGORY: Dict[str, str] = {
+CONDITION_CATEGORY: dict[str, str] = {
     "problem-list-item": "Problem List Item",
     "encounter-diagnosis": "Encounter Diagnosis",
 }
 
 # Observation Category
 # System: http://terminology.hl7.org/CodeSystem/observation-category
-OBSERVATION_CATEGORY: Dict[str, str] = {
+OBSERVATION_CATEGORY: dict[str, str] = {
     "social-history": "Social History",
     "vital-signs": "Vital Signs",
     "imaging": "Imaging",
@@ -104,7 +103,7 @@ OBSERVATION_CATEGORY: Dict[str, str] = {
 
 # Observation Status
 # System: http://hl7.org/fhir/observation-status
-OBSERVATION_STATUS: Dict[str, str] = {
+OBSERVATION_STATUS: dict[str, str] = {
     "registered": "Registered",
     "preliminary": "Preliminary",
     "final": "Final",
@@ -117,7 +116,7 @@ OBSERVATION_STATUS: Dict[str, str] = {
 
 # Observation Interpretation
 # System: http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation
-OBSERVATION_INTERPRETATION: Dict[str, str] = {
+OBSERVATION_INTERPRETATION: dict[str, str] = {
     "N": "Normal",
     "L": "Low",
     "H": "High",
@@ -150,7 +149,7 @@ OBSERVATION_INTERPRETATION: Dict[str, str] = {
 
 # Immunization Status
 # System: http://hl7.org/fhir/event-status
-IMMUNIZATION_STATUS: Dict[str, str] = {
+IMMUNIZATION_STATUS: dict[str, str] = {
     "completed": "Completed",
     "entered-in-error": "Entered in Error",
     "not-done": "Not Done",
@@ -158,7 +157,7 @@ IMMUNIZATION_STATUS: Dict[str, str] = {
 
 # Immunization Status Reason (for not-done)
 # System: http://terminology.hl7.org/CodeSystem/v3-ActReason
-IMMUNIZATION_STATUS_REASON: Dict[str, str] = {
+IMMUNIZATION_STATUS_REASON: dict[str, str] = {
     "IMMUNE": "Immunity",
     "MEDPREC": "Medical Precaution",
     "OSTOCK": "Product Out Of Stock",
@@ -171,7 +170,7 @@ IMMUNIZATION_STATUS_REASON: Dict[str, str] = {
 
 # MedicationStatement Status
 # System: http://hl7.org/fhir/CodeSystem/medication-statement-status
-MEDICATION_STATEMENT_STATUS: Dict[str, str] = {
+MEDICATION_STATEMENT_STATUS: dict[str, str] = {
     "active": "Active",
     "completed": "Completed",
     "entered-in-error": "Entered in Error",
@@ -184,7 +183,7 @@ MEDICATION_STATEMENT_STATUS: Dict[str, str] = {
 
 # MedicationRequest Intent
 # System: http://hl7.org/fhir/CodeSystem/medicationrequest-intent
-MEDICATION_REQUEST_INTENT: Dict[str, str] = {
+MEDICATION_REQUEST_INTENT: dict[str, str] = {
     "proposal": "Proposal",
     "plan": "Plan",
     "order": "Order",
@@ -197,7 +196,7 @@ MEDICATION_REQUEST_INTENT: Dict[str, str] = {
 
 # Procedure Status
 # System: http://hl7.org/fhir/event-status
-PROCEDURE_STATUS: Dict[str, str] = {
+PROCEDURE_STATUS: dict[str, str] = {
     "preparation": "Preparation",
     "in-progress": "In Progress",
     "not-done": "Not Done",
@@ -210,7 +209,7 @@ PROCEDURE_STATUS: Dict[str, str] = {
 
 # Goal Lifecycle Status
 # System: http://hl7.org/fhir/goal-status
-GOAL_LIFECYCLE_STATUS: Dict[str, str] = {
+GOAL_LIFECYCLE_STATUS: dict[str, str] = {
     "proposed": "Proposed",
     "planned": "Planned",
     "accepted": "Accepted",
@@ -224,7 +223,7 @@ GOAL_LIFECYCLE_STATUS: Dict[str, str] = {
 
 # DiagnosticReport Status
 # System: http://hl7.org/fhir/diagnostic-report-status
-DIAGNOSTIC_REPORT_STATUS: Dict[str, str] = {
+DIAGNOSTIC_REPORT_STATUS: dict[str, str] = {
     "registered": "Registered",
     "partial": "Partial",
     "preliminary": "Preliminary",
@@ -239,7 +238,7 @@ DIAGNOSTIC_REPORT_STATUS: Dict[str, str] = {
 
 # Device Status
 # System: http://hl7.org/fhir/device-status
-DEVICE_STATUS: Dict[str, str] = {
+DEVICE_STATUS: dict[str, str] = {
     "active": "Active",
     "inactive": "Inactive",
     "entered-in-error": "Entered in Error",
@@ -248,7 +247,7 @@ DEVICE_STATUS: Dict[str, str] = {
 
 
 # Master lookup dictionary mapping system URIs to their display maps
-DISPLAY_MAPS: Dict[str, Dict[str, str]] = {
+DISPLAY_MAPS: dict[str, dict[str, str]] = {
     FHIRSystems.ALLERGY_CLINICAL: ALLERGY_CLINICAL_STATUS,
     FHIRSystems.ALLERGY_VERIFICATION: ALLERGY_VERIFICATION_STATUS,
     FHIRSystems.CONDITION_CLINICAL: CONDITION_CLINICAL_STATUS,

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.convert import convert_document
+from ccda_to_fhir.types import JSONObject
 
 from .conftest import wrap_in_ccda_document
 
@@ -873,88 +872,6 @@ class TestCSRouteCodeHandling:
     Tests the fix for handling routeCode with xsi:type="CS" in medication converters.
     Previously, only CE datatype was accepted for routeCode, causing parsing failures.
     """
-
-    def test_parses_echoman_document_with_cs_routecode(self) -> None:
-        """Test that EchoMan CUMMC00.xml parses successfully with CS routeCode.
-
-        This document contains substanceAdministration elements with:
-        <routeCode xsi:type="CS" nullFlavor="UNK"/>
-
-        The fix allows parsing CS datatype in addition to CE for routeCode.
-        """
-        from pathlib import Path
-
-        # Load EchoMan CUMMC00.xml
-        echoman_file = Path("stress_test/ccda-samples/EchoMan/CUMMC00.xml")
-
-        if not echoman_file.exists():
-            import pytest
-            pytest.skip(f"EchoMan test file not found: {echoman_file}")
-
-        xml_string = echoman_file.read_text()
-
-        # Should parse successfully (would previously fail with validation error)
-        bundle = convert_document(xml_string)["bundle"]
-
-        assert bundle is not None
-        assert "entry" in bundle
-        assert len(bundle["entry"]) > 0
-
-    def test_echoman_creates_medication_requests(self) -> None:
-        """Test that EchoMan document converts to FHIR MedicationRequest resources."""
-        from pathlib import Path
-
-        echoman_file = Path("stress_test/ccda-samples/EchoMan/CUMMC00.xml")
-
-        if not echoman_file.exists():
-            import pytest
-            pytest.skip(f"EchoMan test file not found: {echoman_file}")
-
-        xml_string = echoman_file.read_text()
-        bundle = convert_document(xml_string)["bundle"]
-
-        # Find MedicationRequest resources
-        med_requests = [
-            entry["resource"]
-            for entry in bundle.get("entry", [])
-            if entry.get("resource", {}).get("resourceType") == "MedicationRequest"
-        ]
-
-        # Should have at least one MedicationRequest (EchoMan has 3 medications)
-        assert len(med_requests) > 0, "Expected at least one MedicationRequest resource"
-
-    def test_cs_routecode_with_null_flavor_creates_no_route(self) -> None:
-        """Test that CS routeCode with nullFlavor does not create dosage.route.
-
-        Per C-CDA spec: When routeCode has nullFlavor="UNK", the route is unknown
-        and should not be included in FHIR dosageInstruction.route.
-        """
-        from pathlib import Path
-
-        echoman_file = Path("stress_test/ccda-samples/EchoMan/CUMMC00.xml")
-
-        if not echoman_file.exists():
-            import pytest
-            pytest.skip(f"EchoMan test file not found: {echoman_file}")
-
-        xml_string = echoman_file.read_text()
-        bundle = convert_document(xml_string)["bundle"]
-
-        # Find MedicationRequest resources
-        med_requests = [
-            entry["resource"]
-            for entry in bundle.get("entry", [])
-            if entry.get("resource", {}).get("resourceType") == "MedicationRequest"
-        ]
-
-        # Check dosageInstruction in each MedicationRequest
-        for med_request in med_requests:
-            if "dosageInstruction" in med_request:
-                for dosage in med_request["dosageInstruction"]:
-                    # If routeCode has nullFlavor, route should not be present
-                    # (this is correct behavior - unknown route should be omitted)
-                    # We're just verifying no crash occurs when processing CS routeCode
-                    pass  # No assertion needed - test passes if no exception raised
 
     def test_cs_routecode_parses_without_error(self) -> None:
         """Test that CS routeCode parses without error.

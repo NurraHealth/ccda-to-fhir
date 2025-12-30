@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
-from ccda_to_fhir.ccda.models.datatypes import CD, CE
 from ccda_to_fhir.ccda.models.substance_administration import (
     ManufacturedProduct,
     SubstanceAdministration,
 )
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -240,7 +238,7 @@ def convert_manufactured_product(
     try:
         medication = converter.convert(manufactured_product, substance_admin)
         return medication
-    except Exception as e:
+    except Exception:
         # Log error
-        logger.error(f"Error converting manufactured product to Medication", exc_info=True)
+        logger.error("Error converting manufactured product to Medication", exc_info=True)
         raise

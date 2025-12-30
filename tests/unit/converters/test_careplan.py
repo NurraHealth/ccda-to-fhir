@@ -10,10 +10,11 @@ All test data based on realistic clinical scenarios and official HL7 examples.
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import Mock
 
-from ccda_to_fhir.ccda.models.datatypes import CE, CS, II, IVL_TS, ON, PN, ENXP, TS
+import pytest
+
+from ccda_to_fhir.ccda.models.author import AssignedAuthor, AssignedPerson
 from ccda_to_fhir.ccda.models.clinical_document import (
     AssignedCustodian,
     Author,
@@ -24,13 +25,12 @@ from ccda_to_fhir.ccda.models.clinical_document import (
     ServiceEvent,
     ServiceEventPerformer,
 )
-from ccda_to_fhir.ccda.models.author import AssignedAuthor, AssignedPerson
+from ccda_to_fhir.ccda.models.datatypes import CE, CS, ENXP, II, IVL_TS, ON, PN, TS
 from ccda_to_fhir.ccda.models.performer import AssignedEntity
 from ccda_to_fhir.ccda.models.record_target import Patient, PatientRole, RecordTarget
+from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.converters.careplan import CarePlanConverter
 from ccda_to_fhir.converters.references import ReferenceRegistry
-from ccda_to_fhir.constants import FHIRCodes, TemplateIds
-
 
 # ============================================================================
 # Fixtures - Realistic C-CDA Care Plan Document Data

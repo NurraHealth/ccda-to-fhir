@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -35,7 +35,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
     def __init__(
         self,
-        reference_registry: "ReferenceRegistry | None" = None,
+        reference_registry: ReferenceRegistry | None = None,
         health_concern_refs: list[JSONObject] | None = None,
         goal_refs: list[JSONObject] | None = None,
         intervention_entries: list | None = None,

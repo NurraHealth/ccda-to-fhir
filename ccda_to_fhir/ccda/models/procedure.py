@@ -150,7 +150,7 @@ class Procedure(CDAModel):
         return False
 
     @model_validator(mode='after')
-    def validate_procedure_activity(self) -> 'Procedure':
+    def validate_procedure_activity(self) -> Procedure:
         """Validate Procedure Activity Procedure template (2.16.840.1.113883.10.20.22.4.14).
 
         Reference: docs/ccda/activity-procedure.md

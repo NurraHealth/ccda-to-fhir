@@ -100,7 +100,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         self.organization_converter = OrganizationConverter()
         self.practitioner_role_converter = PractitionerRoleConverter()
 
-    def convert(self, organizer: "Organizer") -> FHIRResourceDict:
+    def convert(self, organizer: Organizer) -> FHIRResourceDict:
         """Convert Care Team Organizer to CareTeam resource.
 
         Args:
@@ -238,7 +238,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return resources
 
-    def _validate_template(self, organizer: "Organizer") -> None:
+    def _validate_template(self, organizer: Organizer) -> None:
         """Validate that this is a Care Team Organizer template.
 
         Validates both root OID and extension date per C-CDA specification.
@@ -394,7 +394,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return period if period else None
 
-    def _extract_categories(self, organizer: "Organizer") -> list[JSONObject]:
+    def _extract_categories(self, organizer: Organizer) -> list[JSONObject]:
         """Extract category from Care Team Type Observations.
 
         Validates both root OID and extension date per C-CDA specification.
@@ -497,7 +497,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return categories
 
-    def _extract_managing_organization(self, organizer: "Organizer") -> str | None:
+    def _extract_managing_organization(self, organizer: Organizer) -> str | None:
         """Extract managing organization from Care Team Member Acts.
 
         Returns the organization ID from the first member who has one.
@@ -571,7 +571,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return None
 
-    def _extract_participants(self, organizer: "Organizer") -> list[JSONObject]:
+    def _extract_participants(self, organizer: Organizer) -> list[JSONObject]:
         """Extract participants from Care Team Member Acts.
 
         Args:
@@ -673,7 +673,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return participants
 
-    def _identify_team_lead(self, organizer: "Organizer") -> object | None:
+    def _identify_team_lead(self, organizer: Organizer) -> object | None:
         """Identify team lead from participant with typeCode='PPRF'.
 
         Args:
@@ -819,7 +819,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return {"reference": f"PractitionerRole/{role_id}"}
 
-    def _generate_name(self, organizer: "Organizer", categories: list[JSONObject]) -> str:
+    def _generate_name(self, organizer: Organizer, categories: list[JSONObject]) -> str:
         """Generate human-readable name for the care team.
 
         Args:
@@ -853,7 +853,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         return f"{team_type} for {patient_name}"
 
     def _generate_narrative(
-        self, organizer: "Organizer", categories: list[JSONObject], participants: list[JSONObject]
+        self, organizer: Organizer, categories: list[JSONObject], participants: list[JSONObject]
     ) -> JSONObject | None:
         """Generate narrative text for the care team.
 

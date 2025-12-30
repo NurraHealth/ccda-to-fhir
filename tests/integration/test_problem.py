@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.convert import convert_document
+from ccda_to_fhir.types import JSONObject
 
 from .conftest import wrap_in_ccda_document
 
@@ -662,22 +661,22 @@ class TestProblemConversion:
 
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
-        
+
         # Verify Condition has text.div with resolved narrative
         assert "text" in condition, "Condition should have .text field"
         assert "status" in condition["text"]
         assert condition["text"]["status"] == "generated"
         assert "div" in condition["text"], "Condition should have .text.div"
-        
+
         div_content = condition["text"]["div"]
-        
+
         # Verify XHTML namespace
         assert 'xmlns="http://www.w3.org/1999/xhtml"' in div_content
-        
+
         # Verify referenced content was resolved
         assert "Type 2 Diabetes Mellitus" in div_content
         assert "metformin" in div_content
-        
+
         # Verify structured markup preserved
         assert "<p" in div_content  # Paragraph converted to <p>
         assert 'id="problem-narrative-1"' in div_content  # ID preserved

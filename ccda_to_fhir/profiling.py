@@ -7,9 +7,10 @@ conversion performance in production environments.
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 from ccda_to_fhir.logging_config import get_logger
 
@@ -236,7 +237,7 @@ class ConversionProfiler:
         """Log the profiling report."""
         report = self.get_report()
 
-        logger.info(f"=== Conversion Profiling Report ===")
+        logger.info("=== Conversion Profiling Report ===")
         logger.info(f"Total time: {report['total_time']:.3f}s")
 
         logger.info("Stages:")

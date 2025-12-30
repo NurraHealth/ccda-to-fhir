@@ -10,12 +10,12 @@ By checking exact values from the C-CDA, we ensure perfect conversion fidelity.
 """
 
 from pathlib import Path
+
 import pytest
-from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
+from fhir.resources.bundle import Bundle
 from tests.integration.helpers.temporal_validators import assert_datetime_format
-
 
 NIST_AMBULATORY = Path(__file__).parent / "fixtures" / "documents" / "nist_ambulatory.xml"
 
@@ -1068,16 +1068,16 @@ class TestNISTDetailedValidation:
 
         for condition in conditions:
             assert condition.identifier is not None, \
-                f"Condition must have identifier"
+                "Condition must have identifier"
             assert len(condition.identifier) > 0, \
-                f"Condition must have at least one identifier"
+                "Condition must have at least one identifier"
 
             # Verify identifier structure
             identifier = condition.identifier[0]
             assert identifier.system is not None, \
-                f"Condition identifier must have system"
+                "Condition identifier must have system"
             assert identifier.value is not None, \
-                f"Condition identifier must have value"
+                "Condition identifier must have value"
 
     def test_all_allergy_intolerances_have_identifiers(self, nist_bundle):
         """Validate all AllergyIntolerance resources have identifiers from C-CDA."""
@@ -1088,15 +1088,15 @@ class TestNISTDetailedValidation:
 
         for allergy in allergies:
             assert allergy.identifier is not None, \
-                f"AllergyIntolerance must have identifier"
+                "AllergyIntolerance must have identifier"
             assert len(allergy.identifier) > 0, \
-                f"AllergyIntolerance must have at least one identifier"
+                "AllergyIntolerance must have at least one identifier"
 
             identifier = allergy.identifier[0]
             assert identifier.system is not None, \
-                f"AllergyIntolerance identifier must have system"
+                "AllergyIntolerance identifier must have system"
             assert identifier.value is not None, \
-                f"AllergyIntolerance identifier must have value"
+                "AllergyIntolerance identifier must have value"
 
     def test_all_medication_requests_have_identifiers(self, nist_bundle):
         """Validate all MedicationRequest resources have identifiers from C-CDA."""
@@ -1114,27 +1114,27 @@ class TestNISTDetailedValidation:
 
             for med_statement in med_statements:
                 assert med_statement.identifier is not None, \
-                    f"MedicationStatement must have identifier"
+                    "MedicationStatement must have identifier"
                 assert len(med_statement.identifier) > 0, \
-                    f"MedicationStatement must have at least one identifier"
+                    "MedicationStatement must have at least one identifier"
 
                 identifier = med_statement.identifier[0]
                 assert identifier.system is not None, \
-                    f"MedicationStatement identifier must have system"
+                    "MedicationStatement identifier must have system"
                 assert identifier.value is not None, \
-                    f"MedicationStatement identifier must have value"
+                    "MedicationStatement identifier must have value"
         else:
             for med_request in med_requests:
                 assert med_request.identifier is not None, \
-                    f"MedicationRequest must have identifier"
+                    "MedicationRequest must have identifier"
                 assert len(med_request.identifier) > 0, \
-                    f"MedicationRequest must have at least one identifier"
+                    "MedicationRequest must have at least one identifier"
 
                 identifier = med_request.identifier[0]
                 assert identifier.system is not None, \
-                    f"MedicationRequest identifier must have system"
+                    "MedicationRequest identifier must have system"
                 assert identifier.value is not None, \
-                    f"MedicationRequest identifier must have value"
+                    "MedicationRequest identifier must have value"
 
     def test_immunizations_have_identifiers(self, nist_bundle):
         """Validate Immunization resources have identifiers from C-CDA."""
@@ -1145,9 +1145,9 @@ class TestNISTDetailedValidation:
 
         for immunization in immunizations:
             assert immunization.identifier is not None, \
-                f"Immunization must have identifier"
+                "Immunization must have identifier"
             assert len(immunization.identifier) > 0, \
-                f"Immunization must have at least one identifier"
+                "Immunization must have at least one identifier"
 
     def test_observations_have_identifiers(self, nist_bundle):
         """Validate Observation resources have identifiers from C-CDA."""
@@ -1158,9 +1158,9 @@ class TestNISTDetailedValidation:
 
         for observation in observations:
             assert observation.identifier is not None, \
-                f"Observation must have identifier"
+                "Observation must have identifier"
             assert len(observation.identifier) > 0, \
-                f"Observation must have at least one identifier"
+                "Observation must have at least one identifier"
 
     def test_encounters_have_identifiers(self, nist_bundle):
         """Validate Encounter resources have identifiers from C-CDA."""
@@ -1171,9 +1171,9 @@ class TestNISTDetailedValidation:
 
         for encounter in encounters:
             assert encounter.identifier is not None, \
-                f"Encounter must have identifier"
+                "Encounter must have identifier"
             assert len(encounter.identifier) > 0, \
-                f"Encounter must have at least one identifier"
+                "Encounter must have at least one identifier"
 
     def test_procedures_have_identifiers(self, nist_bundle):
         """Validate Procedure resources have identifiers from C-CDA."""
@@ -1184,9 +1184,9 @@ class TestNISTDetailedValidation:
         if len(procedures) > 0:
             for procedure in procedures:
                 assert procedure.identifier is not None, \
-                    f"Procedure must have identifier"
+                    "Procedure must have identifier"
                 assert len(procedure.identifier) > 0, \
-                    f"Procedure must have at least one identifier"
+                    "Procedure must have at least one identifier"
 
     # ====================================================================================
     # High Priority Tests - AllergyIntolerance Status
@@ -1246,7 +1246,7 @@ class TestNISTDetailedValidation:
                     if coding.system and "rxnorm" in coding.system.lower():
                         if allergy.category:
                             assert "medication" in allergy.category, \
-                                f"RxNorm allergy should have 'medication' category"
+                                "RxNorm allergy should have 'medication' category"
 
     # ====================================================================================
     # High Priority Tests - Organization
@@ -2217,7 +2217,7 @@ class TestNISTDetailedValidation:
             for condition in conditions_with_profile:
                 # If profile is set, should include US Core Condition
                 assert any(us_core_condition in profile for profile in condition.meta.profile), \
-                    f"Condition with profile should declare US Core Condition profile"
+                    "Condition with profile should declare US Core Condition profile"
 
     def test_observations_have_us_core_profile_when_applicable(self, nist_bundle):
         """Validate Observations declare appropriate US Core profiles when present."""
@@ -2314,7 +2314,7 @@ class TestNISTDetailedValidation:
                 # Check that primary coding has display
                 primary_coding = procedure.code.coding[0]
                 assert primary_coding.display is not None and primary_coding.display != "", \
-                    f"Procedure.code.coding[0] must have display value"
+                    "Procedure.code.coding[0] must have display value"
 
     def test_allergy_intolerances_have_code_display_values(self, nist_bundle):
         """Validate all AllergyIntolerance resources have display values on their codes."""
@@ -2333,7 +2333,7 @@ class TestNISTDetailedValidation:
                 # Check that primary coding has display
                 primary_coding = allergy.code.coding[0]
                 assert primary_coding.display is not None and primary_coding.display != "", \
-                    f"AllergyIntolerance.code.coding[0] must have display value"
+                    "AllergyIntolerance.code.coding[0] must have display value"
 
     def test_conditions_have_codeable_concept_text(self, nist_bundle):
         """Validate Condition resources have CodeableConcept.text on their codes."""
@@ -3049,7 +3049,6 @@ class TestNISTDetailedValidation:
 
     def test_condition_datetime_timezone_exact(self, nist_bundle):
         """PHASE 3.2: Validate Condition.onsetDateTime has timezone when time present."""
-        from datetime import datetime
 
         conditions = [
             e.resource for e in nist_bundle.entry
@@ -3131,7 +3130,6 @@ class TestNISTDetailedValidation:
 
     def test_composition_instant_timezone_exact(self, nist_bundle):
         """PHASE 3.5: Validate Composition.date (instant) always has timezone."""
-        from datetime import datetime
 
         compositions = [
             e.resource for e in nist_bundle.entry

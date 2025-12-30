@@ -8,9 +8,9 @@ input is minimal or has missing optional data.
 from pathlib import Path
 
 import pytest
-from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir import convert_document
+from fhir.resources.bundle import Bundle
 from tests.integration.conftest import wrap_in_ccda_document
 
 

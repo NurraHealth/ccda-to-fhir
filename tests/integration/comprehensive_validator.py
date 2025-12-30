@@ -4,7 +4,8 @@ This module provides utilities to validate EVERY field in converted FHIR resourc
 ensuring complete test coverage of all populated fields.
 """
 
-from typing import Any, Dict, List, Set
+from typing import Any
+
 from fhir.resources.bundle import Bundle
 
 
@@ -14,10 +15,10 @@ class FieldValidator:
     def __init__(self, bundle: Bundle):
         """Initialize with a FHIR Bundle."""
         self.bundle = bundle
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
 
-    def validate_all(self) -> Dict[str, Any]:
+    def validate_all(self) -> dict[str, Any]:
         """Validate all resources in bundle comprehensively.
 
         Returns:
@@ -48,7 +49,7 @@ class FieldValidator:
         stats["warnings"] = self.warnings
         return stats
 
-    def _validate_resource(self, resource_type: str, resource: Dict, path: str = "") -> int:
+    def _validate_resource(self, resource_type: str, resource: dict, path: str = "") -> int:
         """Recursively validate all fields in a resource.
 
         Returns:
@@ -137,7 +138,7 @@ class FieldValidator:
 
 
 def validate_resource_comprehensive(bundle: Bundle, resource_type: str,
-                                   expected_fields: Set[str]) -> Dict[str, Any]:
+                                   expected_fields: set[str]) -> dict[str, Any]:
     """Validate that a specific resource type has all expected fields populated.
 
     Args:

@@ -3,8 +3,9 @@
 Verifies that conversion metadata correctly tracks processed and skipped templates.
 """
 
-from ccda_to_fhir.convert import convert_document
 from ccda_to_fhir.constants import TemplateIds
+from ccda_to_fhir.convert import convert_document
+
 from .conftest import wrap_in_ccda_document
 
 

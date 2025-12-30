@@ -1,10 +1,9 @@
 """Test Composition.date fallback when effectiveTime is missing or invalid."""
 
 import datetime
-import pytest
-from fhir.resources.R4B.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
+from fhir.resources.R4B.bundle import Bundle
 
 
 def test_composition_date_with_valid_effective_time():

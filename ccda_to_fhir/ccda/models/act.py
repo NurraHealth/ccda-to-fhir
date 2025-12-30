@@ -115,7 +115,7 @@ class Act(CDAModel):
         return False
 
     @model_validator(mode='after')
-    def validate_problem_concern_act(self) -> 'Act':
+    def validate_problem_concern_act(self) -> Act:
         """Validate Problem Concern Act (2.16.840.1.113883.10.20.22.4.3).
 
         Reference: docs/ccda/concern-act-problem.md
@@ -187,7 +187,7 @@ class Act(CDAModel):
         return self
 
     @model_validator(mode='after')
-    def validate_procedure_activity_act(self) -> 'Act':
+    def validate_procedure_activity_act(self) -> Act:
         """Validate Procedure Activity Act (2.16.840.1.113883.10.20.22.4.12).
 
         Reference: https://cdasearch.hl7.org/examples/view/Guide Examples/Procedure Activity Act (V2)_2.16.840.1.113883.10.20.22.4.12
@@ -235,7 +235,7 @@ class Act(CDAModel):
         return self
 
     @model_validator(mode='after')
-    def validate_allergy_concern_act(self) -> 'Act':
+    def validate_allergy_concern_act(self) -> Act:
         """Validate Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30).
 
         Same requirements as Problem Concern Act.

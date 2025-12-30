@@ -5,12 +5,13 @@ value expected from the C-CDA source document. No field goes untested.
 """
 
 from pathlib import Path
+
 import pytest
-from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
-from .comprehensive_validator import FieldValidator
+from fhir.resources.bundle import Bundle
 
+from .comprehensive_validator import FieldValidator
 
 CERNER_TOC = Path(__file__).parent / "fixtures" / "documents" / "cerner_toc.xml"
 

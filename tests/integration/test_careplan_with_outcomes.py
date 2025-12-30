@@ -8,13 +8,8 @@ Interventions Section and Outcomes Section, verifying that:
 4. CarePlan.activity references are created correctly
 """
 
-import pytest
-from fhir.resources.careplan import CarePlan
-from fhir.resources.bundle import Bundle
-from fhir.resources.procedure import Procedure
-from fhir.resources.observation import Observation
-
 from ccda_to_fhir.convert import convert_document
+from fhir.resources.bundle import Bundle
 
 
 def test_careplan_with_interventions_and_outcomes_full_integration():

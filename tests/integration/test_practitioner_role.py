@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from ccda_to_fhir.types import JSONObject
 from ccda_to_fhir.convert import convert_document
-from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
+from ccda_to_fhir.types import JSONObject
 
 from .conftest import wrap_in_ccda_document
 

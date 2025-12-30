@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
-import hashlib
-from typing import Type
-
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
+
+from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
+from ccda_to_fhir.ccda.models.datatypes import II
+from ccda_to_fhir.ccda.models.section import StructuredBody
+from ccda_to_fhir.ccda.parser import parse_ccda
+from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP, TemplateIds
+from ccda_to_fhir.exceptions import CCDAConversionError
+from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import (
+    ConversionMetadata,
+    ConversionResult,
+    FHIRResourceDict,
+    JSONObject,
+)
+from ccda_to_fhir.validation import FHIRValidator
 from fhir.resources.R4B.allergyintolerance import AllergyIntolerance
 from fhir.resources.R4B.careplan import CarePlan
 from fhir.resources.R4B.careteam import CareTeam
@@ -32,29 +44,13 @@ from fhir.resources.R4B.provenance import Provenance
 from fhir.resources.R4B.relatedperson import RelatedPerson
 from fhir.resources.R4B.servicerequest import ServiceRequest
 
-from ccda_to_fhir.exceptions import CCDAConversionError
-from ccda_to_fhir.types import (
-    ConversionMetadata,
-    ConversionResult,
-    FHIRResourceDict,
-    JSONObject,
-)
-from ccda_to_fhir.validation import FHIRValidator
-
-from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
-from ccda_to_fhir.ccda.models.datatypes import II
-from ccda_to_fhir.ccda.models.section import StructuredBody
-from ccda_to_fhir.ccda.parser import parse_ccda
-from ccda_to_fhir.constants import TemplateIds, PARTICIPATION_FUNCTION_CODE_MAP
-from ccda_to_fhir.logging_config import get_logger
-
 from .converters.allergy_intolerance import convert_allergy_concern_act
 from .converters.author_extractor import AuthorExtractor, AuthorInfo
 from .converters.careplan import CarePlanConverter
 from .converters.careteam import CareTeamConverter
 from .converters.code_systems import CodeSystemMapper
 from .converters.composition import CompositionConverter
-from .converters.condition import convert_problem_concern_act, ConditionConverter
+from .converters.condition import ConditionConverter, convert_problem_concern_act
 from .converters.device import DeviceConverter
 from .converters.diagnostic_report import DiagnosticReportConverter
 from .converters.document_reference import DocumentReferenceConverter
@@ -62,17 +58,16 @@ from .converters.encounter import EncounterConverter
 from .converters.goal import GoalConverter
 from .converters.immunization import convert_immunization_activity
 from .converters.medication_dispense import (
-    get_medication_dispense_resources,
     clear_medication_dispense_registry,
+    get_medication_dispense_resources,
 )
 from .converters.medication_request import (
+    clear_medication_registry,
     convert_medication_activity,
     get_medication_resources,
-    clear_medication_registry,
 )
 from .converters.medication_statement import convert_medication_statement
 from .converters.note_activity import convert_note_activity
-from .converters.section_processor import SectionConfig, SectionProcessor
 from .converters.observation import ObservationConverter
 from .converters.organization import OrganizationConverter
 from .converters.patient import PatientConverter
@@ -81,12 +76,13 @@ from .converters.practitioner_role import PractitionerRoleConverter
 from .converters.procedure import ProcedureConverter
 from .converters.provenance import ProvenanceConverter
 from .converters.references import ReferenceRegistry
+from .converters.section_processor import SectionConfig, SectionProcessor
 from .converters.service_request import ServiceRequestConverter
 
 logger = get_logger(__name__)
 
 # Mapping of FHIR resource types to their fhir.resources classes for validation
-RESOURCE_TYPE_MAPPING: dict[str, Type[FHIRAbstractModel]] = {
+RESOURCE_TYPE_MAPPING: dict[str, type[FHIRAbstractModel]] = {
     "Patient": Patient,
     "Practitioner": Practitioner,
     "PractitionerRole": PractitionerRole,
@@ -163,8 +159,8 @@ def convert_careteam_organizer(
         resources.extend(converter.get_related_resources())
 
         return resources
-    except Exception as e:
-        logger.error(f"Error converting care team organizer", exc_info=True)
+    except Exception:
+        logger.error("Error converting care team organizer", exc_info=True)
         raise
 
 
@@ -1116,7 +1112,7 @@ class DocumentConverter:
                 self.reference_registry.register_resource(medication)
             else:
                 logger.warning(
-                    f"Medication resource failed validation, skipping",
+                    "Medication resource failed validation, skipping",
                     resource_id=medication.get("id")
                 )
 
@@ -1129,7 +1125,7 @@ class DocumentConverter:
                 self.reference_registry.register_resource(dispense)
             else:
                 logger.warning(
-                    f"MedicationDispense resource failed validation, skipping",
+                    "MedicationDispense resource failed validation, skipping",
                     resource_id=dispense.get("id")
                 )
 
@@ -1178,8 +1174,8 @@ class DocumentConverter:
                     "Composition failed validation - cannot create valid document bundle",
                     resource_id=composition.get("id")
                 )
-        except Exception as e:
-            logger.error(f"Error converting composition", exc_info=True)
+        except Exception:
+            logger.error("Error converting composition", exc_info=True)
             # If Composition fails, we can't create a valid document bundle
             # Fall back to collection bundle type
             logger.warning("Creating collection bundle instead of document bundle (Composition failed)")
@@ -1289,7 +1285,7 @@ class DocumentConverter:
         if self.enable_validation:
             stats = self.get_validation_stats()
             logger.info(
-                f"FHIR validation complete",
+                "FHIR validation complete",
                 validated=stats["validated"],
                 passed=stats["passed"],
                 failed=stats["failed"],
@@ -1509,8 +1505,8 @@ class DocumentConverter:
                                                     ccda_element=entry.organizer,
                                                     concern_act=None,
                                                 )
-                                    except Exception as e:
-                                        logger.error(f"Error converting vital signs organizer", exc_info=True)
+                                    except Exception:
+                                        logger.error("Error converting vital signs organizer", exc_info=True)
                                     break
 
             # Process nested sections recursively
@@ -1655,8 +1651,8 @@ class DocumentConverter:
                                                     ccda_element=entry.organizer,
                                                     concern_act=None,
                                                 )
-                                    except Exception as e:
-                                        logger.error(f"Error converting result organizer", exc_info=True)
+                                    except Exception:
+                                        logger.error("Error converting result organizer", exc_info=True)
                                     break
 
             # Process nested sections recursively
@@ -1684,7 +1680,7 @@ class DocumentConverter:
         Returns:
             List of FHIR extension dicts for Patient resource
         """
-        from ccda_to_fhir.constants import CCDACodes, CodeSystemOIDs, FHIRSystems
+        from ccda_to_fhir.constants import CCDACodes, FHIRSystems
 
         extensions = []
 
@@ -2131,8 +2127,8 @@ class DocumentConverter:
                                                 ccda_element=entry.observation,
                                                 concern_act=None,
                                             )
-                                    except Exception as e:
-                                        logger.error(f"Error converting social history observation", exc_info=True)
+                                    except Exception:
+                                        logger.error("Error converting social history observation", exc_info=True)
                                     break
 
             # Process nested sections recursively
@@ -2809,7 +2805,7 @@ class DocumentConverter:
             # Only applies if no V3 ActCode translation was found above
             # Reference: docs/mapping/08-encounter.md lines 77-86
             if not class_code and encompassing_encounter.code.code_system == "2.16.840.1.113883.6.12":  # CPT
-                from ccda_to_fhir.constants import map_cpt_to_actcode, V3_ACTCODE_DISPLAY_NAMES
+                from ccda_to_fhir.constants import V3_ACTCODE_DISPLAY_NAMES, map_cpt_to_actcode
                 mapped_actcode = map_cpt_to_actcode(encompassing_encounter.code.code)
                 if mapped_actcode:
                     class_code = mapped_actcode
@@ -3149,8 +3145,8 @@ class DocumentConverter:
                             seen_devices.add(device_id)
                     else:
                         logger.warning("Device failed validation, skipping", device_id=device_id)
-                except Exception as e:
-                    logger.error(f"Error converting device", exc_info=True)
+                except Exception:
+                    logger.error("Error converting device", exc_info=True)
 
             # Convert Practitioner (from assigned_person)
             elif assigned_author.assigned_person:
@@ -3167,8 +3163,8 @@ class DocumentConverter:
                     else:
                         logger.warning("Practitioner failed validation, skipping", practitioner_id=practitioner_id)
                         practitioner_id = None  # Don't use for PractitionerRole
-                except Exception as e:
-                    logger.error(f"Error converting practitioner", exc_info=True)
+                except Exception:
+                    logger.error("Error converting practitioner", exc_info=True)
 
             # Convert Organization (from represented_organization)
             if assigned_author.represented_organization:
@@ -3187,8 +3183,8 @@ class DocumentConverter:
                     else:
                         logger.warning("Organization failed validation, skipping", org_id=org_id)
                         org_id = None  # Don't use for PractitionerRole
-                except Exception as e:
-                    logger.error(f"Error converting organization", exc_info=True)
+                except Exception:
+                    logger.error("Error converting organization", exc_info=True)
 
             # Convert PractitionerRole (links Practitioner + Organization + specialty)
             # Only create if we have both practitioner and organization
@@ -3209,8 +3205,8 @@ class DocumentConverter:
                             seen_roles.add(role_id)
                     else:
                         logger.warning("PractitionerRole failed validation, skipping", role_id=role_id)
-                except Exception as e:
-                    logger.error(f"Error converting practitioner role", exc_info=True)
+                except Exception:
+                    logger.error("Error converting practitioner role", exc_info=True)
 
         return resources
 
@@ -3242,8 +3238,8 @@ class DocumentConverter:
                     org_id=organization.get("id")
                 )
                 return None
-        except Exception as e:
-            logger.error(f"Error converting custodian organization", exc_info=True)
+        except Exception:
+            logger.error("Error converting custodian organization", exc_info=True)
             return None
 
     def _create_resources_from_author_info(
@@ -3294,7 +3290,7 @@ class DocumentConverter:
                                     seen_devices.add(device_id)
                             else:
                                 logger.warning("Device failed validation, skipping", device_id=device_id)
-                        except Exception as e:
+                        except Exception:
                             logger.error("Error converting device from entry author", exc_info=True)
 
             # Create Practitioner resource if needed
@@ -3315,7 +3311,7 @@ class DocumentConverter:
                                     seen_practitioners.add(author_info.practitioner_id)
                             else:
                                 logger.warning("Practitioner failed validation, skipping", practitioner_id=author_info.practitioner_id)
-                        except Exception as e:
+                        except Exception:
                             logger.error("Error converting practitioner from entry author", exc_info=True)
                     else:
                         logger.debug(f"Skipping practitioner {author_info.practitioner_id} - no assigned_person in C-CDA")
@@ -3340,7 +3336,7 @@ class DocumentConverter:
                                     seen_organizations.add(org_id)
                             else:
                                 logger.warning("Organization failed validation, skipping", org_id=org_id)
-                        except Exception as e:
+                        except Exception:
                             logger.error("Error converting organization from entry author", exc_info=True)
                     else:
                         logger.debug(f"Skipping organization {author_info.organization_id} - no represented_organization in C-CDA")
@@ -3433,7 +3429,7 @@ class DocumentConverter:
                         logger.warning(
                             f"Provenance for {resource_type}/{resource_id} failed validation, skipping"
                         )
-                except Exception as e:
+                except Exception:
                     logger.error(
                         f"Error creating Provenance for {resource_type}/{resource_id}",
                         exc_info=True,

@@ -518,8 +518,8 @@ class TestParseFragmentIntegration:
         Fragments (non-ClinicalDocument roots) are not preprocessed by design.
         They must have complete namespace declarations to parse successfully.
         """
-        from ccda_to_fhir.ccda.parser import parse_ccda_fragment, MalformedXMLError
         from ccda_to_fhir.ccda.models import Observation
+        from ccda_to_fhir.ccda.parser import parse_ccda_fragment
 
         # Fragment WITHOUT xmlns:xsi - should fail (fragments not preprocessed)
         xml_missing_ns = """<observation classCode="OBS" moodCode="EVN"
@@ -541,8 +541,8 @@ class TestParseFragmentIntegration:
 
     def test_parse_fragment_succeeds_with_proper_namespaces(self):
         """Test that fragments parse successfully when namespaces are declared."""
-        from ccda_to_fhir.ccda.parser import parse_ccda_fragment
         from ccda_to_fhir.ccda.models import Observation
+        from ccda_to_fhir.ccda.parser import parse_ccda_fragment
 
         # Fragment WITH xmlns:xsi - should succeed
         xml_with_ns = """<observation classCode="OBS" moodCode="EVN"

@@ -6,12 +6,10 @@ These tests define the expected behavior of the PractitionerRoleConverter.
 
 from __future__ import annotations
 
-from unittest.mock import Mock
-
 import pytest
 
 from ccda_to_fhir.ccda.models.author import AssignedAuthor, AssignedPerson, RepresentedOrganization
-from ccda_to_fhir.ccda.models.datatypes import CE, ED, II, PN
+from ccda_to_fhir.ccda.models.datatypes import CE, ED, II
 from ccda_to_fhir.constants import CodeSystemOIDs, FHIRCodes, FHIRSystems
 from ccda_to_fhir.converters.code_systems import CodeSystemMapper
 from ccda_to_fhir.converters.practitioner_role import PractitionerRoleConverter

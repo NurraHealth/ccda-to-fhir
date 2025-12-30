@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.datatypes import CD
 from ccda_to_fhir.constants import (
     DOCUMENT_REFERENCE_STATUS_TO_FHIR,
     FHIRCodes,
-    FHIRSystems,
 )
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -535,7 +533,7 @@ class NoteActivityConverter(BaseConverter[Act]):
             return None
 
         # Check if this element has the target ID
-        if hasattr(element, "ID") and element.ID == target_id:
+        if hasattr(element, "ID") and target_id == element.ID:
             # Extract text content from this element
             return self._extract_text_from_element(element)
 
