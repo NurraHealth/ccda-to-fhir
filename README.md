@@ -124,7 +124,7 @@ except MalformedXMLError as e:
 - ✅ Complete Pydantic models for all FHIR resources and datatypes
 - ✅ Wrapper module at `ccda_to_fhir.fhir.models` for easy imports
 
-**For More Details:** See [docs/implementation-status.md](docs/implementation-status.md)
+**For More Details:** See [docs/mapping/](docs/mapping/) for comprehensive field-level mapping documentation
 
 ## Installation
 

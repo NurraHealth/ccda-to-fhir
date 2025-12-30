@@ -173,4 +173,3 @@ Both approaches (static "AD" and context-based detection) are **fully compliant*
 
 ### Implementation Documentation
 - [Local encounter mapping](mapping/08-encounter.md#diagnosis-role-detection)
-- [Implementation status](implementation-status.md)
