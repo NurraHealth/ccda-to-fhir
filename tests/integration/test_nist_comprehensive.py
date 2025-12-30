@@ -653,13 +653,26 @@ class TestNISTComprehensive:
                     assert result["reference"].startswith("Observation/")
 
     def test_organization_exact_values(self, nist_bundle):
-        """Validate Organization has EXACT values."""
+        """Validate Organization has EXACT values (author organization)."""
         organizations = [e.resource for e in nist_bundle.entry
                         if e.resource.get_resource_type() == "Organization"]
 
         assert len(organizations) >= 1, "Must have Organization resource"
 
-        org = organizations[0].dict() if hasattr(organizations[0], 'dict') else organizations[0].model_dump()
+        # Find the author organization by NPI "99999999"
+        # (as opposed to providerOrganization which has identifier root="1.1.1.1.1.1.1.1.4")
+        author_org = None
+        for org_resource in organizations:
+            org_dict = org_resource.dict() if hasattr(org_resource, 'dict') else org_resource.model_dump()
+            if "identifier" in org_dict:
+                npi_ident = next((i for i in org_dict["identifier"]
+                                 if i.get("system") == "http://hl7.org/fhir/sid/us-npi" and i.get("value") == "99999999"), None)
+                if npi_ident:
+                    author_org = org_resource
+                    break
+
+        assert author_org is not None, "Must have author organization with NPI 99999999"
+        org = author_org.dict() if hasattr(author_org, 'dict') else author_org.model_dump()
 
         # Exact name
         assert org["name"] == "Community Health and Hospitals"

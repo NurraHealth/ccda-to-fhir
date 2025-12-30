@@ -1194,37 +1194,71 @@ class TestAthenaDetailedValidation:
             assert len(org.telecom) > 0, "Organization should have telecom"
 
     def test_patient_references_organization(self, athena_bundle):
-        """Validate Patient.managingOrganization references the Organization."""
+        """Validate Patient.managingOrganization references the Organization.
+
+        The Athena CCD has providerOrganization with:
+        - id: 9999999999 (NPI)
+        - name: Test Medical Group
+        - address: 789 Medical Plaza, Springfield, IL 62703
+        """
         patient = next(
             (e.resource for e in athena_bundle.entry
              if e.resource.get_resource_type() == "Patient"),
             None
         )
+        assert patient is not None, "Bundle must contain Patient"
 
-        org = next(
-            (e.resource for e in athena_bundle.entry
-             if e.resource.get_resource_type() == "Organization"),
-            None
-        )
+        # EXACT check: Organization resource exists in bundle
+        organizations = [
+            e.resource for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Organization"
+        ]
+        assert len(organizations) > 0, "Bundle must contain at least one Organization (providerOrganization)"
 
-        # Skip if no organization
-        if org is None:
-            return
+        # Find the managing organization (providerOrganization)
+        managing_org = None
+        for org in organizations:
+            # providerOrganization has NPI identifier 9999999999
+            if hasattr(org, 'identifier') and org.identifier:
+                for identifier in org.identifier:
+                    if identifier.value == "9999999999":
+                        managing_org = org
+                        break
+            if managing_org:
+                break
 
-        if patient and org and hasattr(patient, 'managingOrganization'):
-            if patient.managingOrganization:
-                # Check if reference or display is set (both are valid)
-                has_reference = patient.managingOrganization.reference is not None
-                has_display = patient.managingOrganization.display is not None
+        assert managing_org is not None, "Bundle must contain providerOrganization with NPI 9999999999"
 
-                assert has_reference or has_display, \
-                    "Patient.managingOrganization must have reference or display"
+        # EXACT check: Organization name
+        assert managing_org.name == "Test Medical Group", \
+            "providerOrganization name must be 'Test Medical Group'"
 
-                # If reference is set, verify it points to the right organization
-                if has_reference:
-                    expected_ref = f"Organization/{org.id}"
-                    assert patient.managingOrganization.reference == expected_ref, \
-                        f"Patient.managingOrganization must reference {expected_ref}"
+        # EXACT check: Organization address
+        assert len(managing_org.address) > 0, "providerOrganization must have address"
+        address = managing_org.address[0]
+        assert "789 Medical Plaza" in address.line[0], \
+            "providerOrganization address must include '789 Medical Plaza'"
+        assert address.city == "Springfield", \
+            "providerOrganization city must be Springfield"
+        assert address.state == "IL", \
+            "providerOrganization state must be IL"
+        assert address.postalCode == "62703", \
+            "providerOrganization postal code must be 62703"
+
+        # EXACT check: Patient.managingOrganization reference
+        assert hasattr(patient, 'managingOrganization') and patient.managingOrganization is not None, \
+            "Patient must have managingOrganization"
+
+        assert patient.managingOrganization.reference is not None, \
+            "Patient.managingOrganization must have reference field"
+
+        expected_ref = f"Organization/{managing_org.id}"
+        assert patient.managingOrganization.reference == expected_ref, \
+            f"Patient.managingOrganization.reference must be '{expected_ref}'"
+
+        # EXACT check: Display name (optional but expected)
+        assert patient.managingOrganization.display == "Test Medical Group", \
+            "Patient.managingOrganization.display should be 'Test Medical Group'"
 
     # ====================================================================================
     # HIGH PRIORITY: Encounter.diagnosis Tests - Links Encounter to Conditions

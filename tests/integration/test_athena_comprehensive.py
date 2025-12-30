@@ -517,13 +517,27 @@ class TestAthenaComprehensive:
             assert "coding" in proc["code"] or "text" in proc["code"]
 
     def test_organization_exact_values(self, athena_bundle):
-        """Validate Organization has EXACT values."""
+        """Validate Organization has EXACT values (author organization)."""
         organizations = [e.resource for e in athena_bundle.entry
                         if e.resource.get_resource_type() == "Organization"]
 
         assert len(organizations) >= 1, "Must have Organization resource"
 
-        org = organizations[0].dict() if hasattr(organizations[0], 'dict') else organizations[0].model_dump()
+        # Find the author organization by identifier value "24378"
+        # (as opposed to providerOrganization which has NPI "9999999999")
+        author_org = None
+        for org_resource in organizations:
+            org_dict = org_resource.dict() if hasattr(org_resource, 'dict') else org_resource.model_dump()
+            if "identifier" in org_dict:
+                for ident in org_dict["identifier"]:
+                    if ident.get("value") == "24378":
+                        author_org = org_resource
+                        break
+            if author_org:
+                break
+
+        assert author_org is not None, "Must have author organization with identifier 24378"
+        org = author_org.dict() if hasattr(author_org, 'dict') else author_org.model_dump()
 
         # Exact name
         assert org["name"] == "Test Medical Group, Springfield Main Campus"

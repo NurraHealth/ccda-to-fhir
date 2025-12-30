@@ -710,6 +710,43 @@ class DocumentConverter:
                         # Store patient ID for RelatedPerson references
                         if "id" in patient:
                             self._patient_id = patient["id"]
+
+                        # Convert providerOrganization to Organization resource
+                        if (record_target.patient_role and
+                            record_target.patient_role.provider_organization):
+                            try:
+                                provider_org = record_target.patient_role.provider_organization
+                                organization = self.organization_converter.convert(provider_org)
+
+                                # Validate and add Organization to bundle
+                                if self._validate_resource(organization):
+                                    resources.append(organization)
+                                    self.reference_registry.register_resource(organization)
+
+                                    # Update Patient.managingOrganization with proper reference
+                                    if "id" in organization:
+                                        # Preserve display from PatientConverter if it exists
+                                        org_display = None
+                                        if "managingOrganization" in patient:
+                                            org_display = patient["managingOrganization"].get("display")
+
+                                        # Create reference with display
+                                        patient["managingOrganization"] = {
+                                            "reference": f"Organization/{organization['id']}"
+                                        }
+                                        if org_display:
+                                            patient["managingOrganization"]["display"] = org_display
+                                else:
+                                    logger.warning(
+                                        "Provider organization resource failed validation, skipping",
+                                        resource_id=organization.get("id")
+                                    )
+                            except Exception as e:
+                                logger.warning(
+                                    f"Error converting provider organization: {e}",
+                                    exc_info=True,
+                                    extra={"error_type": type(e).__name__}
+                                )
                     else:
                         logger.warning(
                             "Patient resource failed validation, skipping",

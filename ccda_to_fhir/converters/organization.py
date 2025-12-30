@@ -32,16 +32,17 @@ if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.author import RepresentedOrganization as AuthorOrganization
     from ccda_to_fhir.ccda.models.datatypes import AD, CE, II, ON, TEL
     from ccda_to_fhir.ccda.models.performer import RepresentedOrganization as PerformerOrganization
+    from ccda_to_fhir.ccda.models.record_target import Organization as ProviderOrganization
 
 
-class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganization"]):
+class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganization | ProviderOrganization"]):
     """Convert C-CDA RepresentedOrganization to FHIR Organization.
 
-    Handles RepresentedOrganization from both Author and Performer contexts.
+    Handles RepresentedOrganization from Author, Performer, and Patient contexts.
     """
 
     def convert(
-        self, organization: AuthorOrganization | PerformerOrganization
+        self, organization: AuthorOrganization | PerformerOrganization | ProviderOrganization
     ) -> FHIRResourceDict:
         """Convert RepresentedOrganization to Organization resource.
 
@@ -107,8 +108,11 @@ class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganiz
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
         # Use first identifier for cache key
-        root = identifiers[0].root if identifiers and identifiers[0].root else None
-        extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
+        root = None
+        extension = None
+        if identifiers and len(identifiers) > 0:
+            root = identifiers[0].root if identifiers[0].root else None
+            extension = identifiers[0].extension if identifiers[0].extension else None
 
         return generate_id_from_identifiers("Organization", root, extension)
 
