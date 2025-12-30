@@ -7,6 +7,7 @@ from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, ED, INT, IVL_PQ, PQ, ST
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.ccda.models.organizer import Organizer
+from ccda_to_fhir.utils.terminology import get_display_for_code
 from ccda_to_fhir.constants import (
     BP_DIASTOLIC_CODE,
     BP_DIASTOLIC_DISPLAY,
@@ -740,6 +741,11 @@ class ObservationConverter(BaseConverter[Observation]):
             }
             if code.display_name:
                 coding["display"] = code.display_name
+            else:
+                # Look up display from terminology maps
+                looked_up_display = get_display_for_code(system_uri, code.code)
+                if looked_up_display:
+                    coding["display"] = looked_up_display
             codings.append(coding)
 
         # Translations
@@ -753,6 +759,11 @@ class ObservationConverter(BaseConverter[Observation]):
                     }
                     if trans.display_name:
                         trans_coding["display"] = trans.display_name
+                    else:
+                        # Look up display from terminology maps
+                        looked_up_display = get_display_for_code(trans_system_uri, trans.code)
+                        if looked_up_display:
+                            trans_coding["display"] = looked_up_display
                     codings.append(trans_coding)
 
         if not codings:
@@ -1190,11 +1201,15 @@ class ObservationConverter(BaseConverter[Observation]):
         else:
             quantity["value"] = pq.value
 
-        # Add unit
+        # Add unit and UCUM system
         if pq.unit:
             quantity["unit"] = pq.unit
             quantity["system"] = FHIRSystems.UCUM
             quantity["code"] = pq.unit
+        else:
+            # Always include UCUM system for semantic interoperability, even without unit
+            quantity["system"] = FHIRSystems.UCUM
+            quantity["code"] = "1"  # Dimensionless in UCUM
 
         return quantity
 
