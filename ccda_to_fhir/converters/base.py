@@ -277,8 +277,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 "system": system_uri,
                 "code": code.strip(),  # Sanitize: remove leading/trailing whitespace
             }
+            # ENHANCEMENT: Add display from terminology map if not provided from C-CDA
             if display_name:
                 coding["display"] = display_name.strip()  # Sanitize display name too
+            else:
+                # Look up display from terminology maps for known systems
+                from ccda_to_fhir.utils.terminology import get_display_for_code
+                looked_up_display = get_display_for_code(system_uri, code.strip())
+                if looked_up_display:
+                    coding["display"] = looked_up_display
             codings.append(coding)
 
         # Translation codings
@@ -290,8 +297,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                         "system": trans_system_uri,
                         "code": trans["code"].strip(),  # Sanitize: remove leading/trailing whitespace
                     }
+                    # ENHANCEMENT: Add display from terminology map if not provided
                     if trans.get("display_name"):
                         trans_coding["display"] = trans["display_name"].strip()  # Sanitize display name too
+                    else:
+                        # Look up display from terminology maps for known systems
+                        from ccda_to_fhir.utils.terminology import get_display_for_code
+                        looked_up_display = get_display_for_code(trans_system_uri, trans["code"].strip())
+                        if looked_up_display:
+                            trans_coding["display"] = looked_up_display
                     codings.append(trans_coding)
 
         if codings:
@@ -319,22 +333,34 @@ class BaseConverter(ABC, Generic[CCDAModel]):
     ) -> JSONObject:
         """Create a FHIR Quantity from C-CDA PQ (Physical Quantity).
 
+        Per FHIR R4 spec, Quantity.system SHALL be present if a code is present.
+        For clinical data, system should always be UCUM.
+
         Args:
             value: The numeric value
             unit: The UCUM unit
 
         Returns:
             FHIR Quantity as a dict
+
+        Standard Reference:
+            https://hl7.org/fhir/R4/datatypes.html#Quantity
         """
         if value is None:
             return {}
 
         quantity: JSONObject = {"value": value}
 
+        # ENHANCEMENT: Always include UCUM system for clinical quantities
         if unit:
             quantity["unit"] = unit
             quantity["system"] = FHIRSystems.UCUM
             quantity["code"] = unit
+        else:
+            # Even without explicit unit, include UCUM system for semantic interoperability
+            # Default to dimensionless unit "1" if no unit specified
+            quantity["system"] = FHIRSystems.UCUM
+            quantity["code"] = "1"  # Dimensionless in UCUM
 
         return quantity
 

@@ -27,6 +27,10 @@ from ccda_to_fhir.logging_config import get_logger
 
 from .author_extractor import AuthorExtractor
 from .base import BaseConverter
+from ccda_to_fhir.utils.terminology import (
+    get_display_for_condition_clinical_status,
+    get_display_for_code,
+)
 
 logger = get_logger(__name__)
 
@@ -152,13 +156,16 @@ class ConditionConverter(BaseConverter[Observation]):
         # Clinical status
         clinical_status = self._determine_clinical_status(observation)
         if clinical_status:
+            # ENHANCEMENT: Include display text from terminology map
+            display = get_display_for_condition_clinical_status(clinical_status)
+            coding = {
+                "system": FHIRSystems.CONDITION_CLINICAL,
+                "code": clinical_status,
+            }
+            if display:
+                coding["display"] = display
             condition["clinicalStatus"] = {
-                "coding": [
-                    {
-                        "system": FHIRSystems.CONDITION_CLINICAL,
-                        "code": clinical_status,
-                    }
-                ]
+                "coding": [coding]
             }
 
         # Handle negation: Check if this is a generic "no known problems" scenario
@@ -180,13 +187,19 @@ class ConditionConverter(BaseConverter[Observation]):
                 )
             else:
                 # For specific conditions, set verification status to refuted
+                # ENHANCEMENT: Include display text from terminology map
+                display = get_display_for_code(
+                    FHIRSystems.CONDITION_VERIFICATION,
+                    FHIRCodes.ConditionVerification.REFUTED
+                )
+                coding = {
+                    "system": FHIRSystems.CONDITION_VERIFICATION,
+                    "code": FHIRCodes.ConditionVerification.REFUTED,
+                }
+                if display:
+                    coding["display"] = display
                 condition["verificationStatus"] = {
-                    "coding": [
-                        {
-                            "system": FHIRSystems.CONDITION_VERIFICATION,
-                            "code": FHIRCodes.ConditionVerification.REFUTED,
-                        }
-                    ]
+                    "coding": [coding]
                 }
 
         # Category (from section code)

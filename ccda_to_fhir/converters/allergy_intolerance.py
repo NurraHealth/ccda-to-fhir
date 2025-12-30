@@ -25,6 +25,7 @@ from ccda_to_fhir.logging_config import get_logger
 
 from .author_extractor import AuthorExtractor
 from .base import BaseConverter
+from ccda_to_fhir.utils.terminology import get_display_for_allergy_clinical_status
 
 logger = get_logger(__name__)
 
@@ -95,13 +96,16 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         # Clinical status
         clinical_status = self._determine_clinical_status(observation)
         if clinical_status:
+            # ENHANCEMENT: Include display text from terminology map
+            display = get_display_for_allergy_clinical_status(clinical_status)
+            coding = {
+                "system": FHIRSystems.ALLERGY_CLINICAL,
+                "code": clinical_status,
+            }
+            if display:
+                coding["display"] = display
             allergy["clinicalStatus"] = {
-                "coding": [
-                    {
-                        "system": FHIRSystems.ALLERGY_CLINICAL,
-                        "code": clinical_status,
-                    }
-                ]
+                "coding": [coding]
             }
 
         # Verification status
