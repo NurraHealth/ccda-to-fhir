@@ -3,6 +3,7 @@
     "allow": [
       "Bash(tree:*)",
       "Bash(cat:*)",
+      "Bash(diff:*)",
       "Bash(ls:*)",
       "Bash(pwd:*)",
       "Bash(grep:*)",

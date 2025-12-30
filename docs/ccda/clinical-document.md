@@ -10,7 +10,7 @@ The C-CDA ClinicalDocument is the root element of all C-CDA documents and serves
 This document focuses on the document structure and metadata elements of ClinicalDocument. For the mapping to these FHIR resources, see:
 - Bundle packaging: `docs/fhir/bundle.md` and `docs/mapping/20-bundle.md`
 - Composition structure: `docs/fhir/composition.md` and `docs/mapping/19-composition.md`
-- DocumentReference indexing: `docs/fhir/document_reference.md`
+- DocumentReference indexing: `docs/fhir/document-reference.md`
 
 ## Template Information
 
@@ -528,7 +528,7 @@ When indexing the C-CDA document without full conversion:
 - Lightweight representation for document management
 
 **See:**
-- `docs/fhir/document_reference.md` - DocumentReference resource specification
+- `docs/fhir/document-reference.md` - DocumentReference resource specification
 
 ### Choosing the Approach
 
