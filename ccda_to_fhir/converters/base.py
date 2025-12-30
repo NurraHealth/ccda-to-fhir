@@ -351,16 +351,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         quantity: JSONObject = {"value": value}
 
-        # ENHANCEMENT: Always include UCUM system for clinical quantities
+        # Include UCUM system and code only when unit is present
+        # Per FHIR R4 qty-3: system only required if code is present
+        # Omitting both is valid when no unit exists
         if unit:
             quantity["unit"] = unit
             quantity["system"] = FHIRSystems.UCUM
             quantity["code"] = unit
-        else:
-            # Even without explicit unit, include UCUM system for semantic interoperability
-            # Default to dimensionless unit "1" if no unit specified
-            quantity["system"] = FHIRSystems.UCUM
-            quantity["code"] = "1"  # Dimensionless in UCUM
 
         return quantity
 

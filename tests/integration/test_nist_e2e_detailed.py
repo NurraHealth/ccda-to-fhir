@@ -14,6 +14,7 @@ import pytest
 from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
+from tests.integration.helpers.temporal_validators import assert_datetime_format
 
 
 NIST_AMBULATORY = Path(__file__).parent / "fixtures" / "documents" / "nist_ambulatory.xml"
@@ -3001,3 +3002,255 @@ class TestNISTDetailedValidation:
             "Ethnicity extension must have 'text' sub-extension (US Core required)"
         assert hasattr(text_ext, 'valueString') and text_ext.valueString is not None, \
             "Ethnicity text extension must have valueString"
+
+    # ========================================================================
+    # PHASE 3: TEMPORAL FIELD TIMEZONE VALIDATION & US CORE PROFILE COMPLIANCE
+    # ========================================================================
+
+    def test_observation_datetime_timezone_exact(self, nist_bundle):
+        """PHASE 3.1: Validate Observation.effectiveDateTime and .issued have timezone when time present.
+
+        Per FHIR R4 spec: "If hours and minutes are specified, a time zone SHALL be populated"
+        """
+        observations = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        assert len(observations) > 0, "Must have observations"
+
+        # Check effectiveDateTime timezone
+        obs_with_effective_dt = [
+            obs for obs in observations
+            if hasattr(obs, 'effectiveDateTime') and obs.effectiveDateTime is not None
+        ]
+
+        if len(obs_with_effective_dt) > 0:
+            for obs in obs_with_effective_dt:
+                # effectiveDateTime can be just date or datetime with timezone
+                assert_datetime_format(obs.effectiveDateTime, field_name="Observation.effectiveDateTime")
+
+                # If it has time component, must have timezone
+                if "T" in obs.effectiveDateTime:
+                    assert "+" in obs.effectiveDateTime or "-" in obs.effectiveDateTime[-6:], \
+                        f"Observation.effectiveDateTime with time must have timezone: {obs.effectiveDateTime}"
+
+        # Check issued (instant field - always requires timezone)
+        obs_with_issued = [
+            obs for obs in observations
+            if hasattr(obs, 'issued') and obs.issued is not None
+        ]
+
+        if len(obs_with_issued) > 0:
+            from tests.integration.helpers.temporal_validators import assert_instant_format
+            for obs in obs_with_issued:
+                # issued is instant type - must always have full timestamp + timezone
+                assert_instant_format(obs.issued, field_name="Observation.issued")
+
+    def test_condition_datetime_timezone_exact(self, nist_bundle):
+        """PHASE 3.2: Validate Condition.onsetDateTime has timezone when time present."""
+        from datetime import datetime
+
+        conditions = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        assert len(conditions) > 0, "Must have conditions"
+
+        # Check onsetDateTime
+        conditions_with_onset_dt = [
+            c for c in conditions
+            if hasattr(c, 'onsetDateTime') and c.onsetDateTime is not None
+        ]
+
+        if len(conditions_with_onset_dt) > 0:
+            for condition in conditions_with_onset_dt:
+                # FHIR library may parse to datetime object - convert to string for validation
+                onset_str = condition.onsetDateTime if isinstance(condition.onsetDateTime, str) else condition.onsetDateTime.isoformat()
+                assert_datetime_format(onset_str, field_name="Condition.onsetDateTime")
+
+                # If it has time component, must have timezone
+                if "T" in onset_str:
+                    assert "+" in onset_str or "-" in onset_str[-6:], \
+                        f"Condition.onsetDateTime with time must have timezone: {onset_str}"
+
+        # Check abatementDateTime
+        conditions_with_abatement_dt = [
+            c for c in conditions
+            if hasattr(c, 'abatementDateTime') and c.abatementDateTime is not None
+        ]
+
+        if len(conditions_with_abatement_dt) > 0:
+            for condition in conditions_with_abatement_dt:
+                # FHIR library may parse to datetime object - convert to string for validation
+                abatement_str = condition.abatementDateTime if isinstance(condition.abatementDateTime, str) else condition.abatementDateTime.isoformat()
+                assert_datetime_format(abatement_str, field_name="Condition.abatementDateTime")
+
+                # If it has time component, must have timezone
+                if "T" in abatement_str:
+                    assert "+" in abatement_str or "-" in abatement_str[-6:], \
+                        f"Condition.abatementDateTime with time must have timezone: {abatement_str}"
+
+    def test_medication_datetime_timezone_exact(self, nist_bundle):
+        """PHASE 3.3: Validate MedicationStatement temporal fields have timezone when time present."""
+        med_statements = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        if len(med_statements) == 0:
+            import pytest
+            pytest.skip("No MedicationStatement resources in document")
+
+        # Check effectiveDateTime
+        meds_with_effective_dt = [
+            m for m in med_statements
+            if hasattr(m, 'effectiveDateTime') and m.effectiveDateTime is not None
+        ]
+
+        if len(meds_with_effective_dt) > 0:
+            for med in meds_with_effective_dt:
+                assert_datetime_format(med.effectiveDateTime, field_name="MedicationStatement.effectiveDateTime")
+
+                # If it has time component, must have timezone
+                if "T" in med.effectiveDateTime:
+                    assert "+" in med.effectiveDateTime or "-" in med.effectiveDateTime[-6:], \
+                        f"MedicationStatement.effectiveDateTime with time must have timezone: {med.effectiveDateTime}"
+
+        # Check effectivePeriod
+        meds_with_effective_period = [
+            m for m in med_statements
+            if hasattr(m, 'effectivePeriod') and m.effectivePeriod is not None
+        ]
+
+        if len(meds_with_effective_period) > 0:
+            from tests.integration.helpers.temporal_validators import assert_period_format
+            for med in meds_with_effective_period:
+                assert_period_format(med.effectivePeriod, field_name="MedicationStatement.effectivePeriod")
+
+    def test_procedure_datetime_timezone_exact(self, nist_bundle):
+        """PHASE 3.4: Validate Procedure.performedDateTime/Period have timezone when time present."""
+        procedures = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Procedure"
+        ]
+
+        if len(procedures) == 0:
+            import pytest
+            pytest.skip("No Procedure resources in document")
+
+        # Check performedDateTime
+        procs_with_performed_dt = [
+            p for p in procedures
+            if hasattr(p, 'performedDateTime') and p.performedDateTime is not None
+        ]
+
+        if len(procs_with_performed_dt) > 0:
+            for proc in procs_with_performed_dt:
+                assert_datetime_format(proc.performedDateTime, field_name="Procedure.performedDateTime")
+
+                # If it has time component, must have timezone
+                if "T" in proc.performedDateTime:
+                    assert "+" in proc.performedDateTime or "-" in proc.performedDateTime[-6:], \
+                        f"Procedure.performedDateTime with time must have timezone: {proc.performedDateTime}"
+
+        # Check performedPeriod
+        procs_with_performed_period = [
+            p for p in procedures
+            if hasattr(p, 'performedPeriod') and p.performedPeriod is not None
+        ]
+
+        if len(procs_with_performed_period) > 0:
+            from tests.integration.helpers.temporal_validators import assert_period_format
+            for proc in procs_with_performed_period:
+                assert_period_format(proc.performedPeriod, field_name="Procedure.performedPeriod")
+
+    def test_composition_instant_timezone_exact(self, nist_bundle):
+        """PHASE 3.5: Validate Composition.date (instant) always has timezone."""
+        from datetime import datetime
+
+        compositions = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Composition"
+        ]
+
+        assert len(compositions) == 1, "Must have exactly 1 Composition"
+        composition = compositions[0]
+
+        # Composition.date is instant type - must always have full timestamp + timezone
+        assert hasattr(composition, 'date') and composition.date is not None, \
+            "Composition.date is required"
+
+        # FHIR library may parse to datetime object - convert to string for validation
+        date_str = composition.date if isinstance(composition.date, str) else composition.date.isoformat()
+
+        from tests.integration.helpers.temporal_validators import assert_instant_format
+        assert_instant_format(date_str, field_name="Composition.date")
+
+    def test_observation_component_structure(self, nist_bundle):
+        """PHASE 3.6: Validate Observation.component structure for multi-component observations.
+
+        Examples: Blood pressure (systolic + diastolic), Panel observations
+        """
+        observations = [
+            e.resource for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # Find observations with components
+        obs_with_components = [
+            obs for obs in observations
+            if hasattr(obs, 'component') and obs.component is not None and len(obs.component) > 0
+        ]
+
+        if len(obs_with_components) == 0:
+            import pytest
+            pytest.skip("No observations with components in document")
+
+        for obs in obs_with_components:
+            assert len(obs.component) > 0, \
+                "Observation.component must not be empty if present"
+
+            for i, component in enumerate(obs.component):
+                # Each component must have code
+                assert hasattr(component, 'code') and component.code is not None, \
+                    f"Observation.component[{i}].code is required"
+
+                # Component code must have coding
+                assert hasattr(component.code, 'coding') and component.code.coding is not None, \
+                    f"Observation.component[{i}].code must have coding"
+                assert len(component.code.coding) > 0, \
+                    f"Observation.component[{i}].code.coding must not be empty"
+
+                coding = component.code.coding[0]
+
+                # Validate coding structure
+                assert hasattr(coding, 'system') and coding.system is not None, \
+                    f"Observation.component[{i}].code.coding[0].system is required"
+                assert hasattr(coding, 'code') and coding.code is not None, \
+                    f"Observation.component[{i}].code.coding[0].code is required"
+
+                # Component must have a value (one of: valueQuantity, valueCodeableConcept, etc.)
+                has_value = any([
+                    hasattr(component, 'valueQuantity') and component.valueQuantity is not None,
+                    hasattr(component, 'valueCodeableConcept') and component.valueCodeableConcept is not None,
+                    hasattr(component, 'valueString') and component.valueString is not None,
+                    hasattr(component, 'valueBoolean') and component.valueBoolean is not None,
+                    hasattr(component, 'valueInteger') and component.valueInteger is not None,
+                    hasattr(component, 'valueRange') and component.valueRange is not None,
+                    hasattr(component, 'valueRatio') and component.valueRatio is not None,
+                    hasattr(component, 'valueSampledData') and component.valueSampledData is not None,
+                    hasattr(component, 'valueTime') and component.valueTime is not None,
+                    hasattr(component, 'valueDateTime') and component.valueDateTime is not None,
+                    hasattr(component, 'valuePeriod') and component.valuePeriod is not None,
+                ])
+
+                assert has_value, \
+                    f"Observation.component[{i}] must have a value[x] element"
+
+                # If valueQuantity, validate UCUM
+                if hasattr(component, 'valueQuantity') and component.valueQuantity is not None:
+                    quantity = component.valueQuantity
+                    assert hasattr(quantity, 'value') and quantity.value is not None, \
+                        f"Observation.component[{i}].valueQuantity.value is required"

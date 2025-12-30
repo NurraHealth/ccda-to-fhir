@@ -53,24 +53,37 @@ def assert_quantity_exact(
 
 
 def assert_quantity_has_ucum(quantity, field_name: str = "Quantity", strict_system: bool = True):
-    """Validate Quantity uses UCUM system (less strict).
+    """Validate Quantity uses UCUM system when unit is present.
+
+    Per FHIR R4 qty-3 constraint: system only required if code is present.
+    Unitless quantities (no unit) may omit both system and code.
 
     Args:
         quantity: FHIR Quantity object
         field_name: Name of field for error messages
-        strict_system: If True, require UCUM system. If False, only warn if missing.
+        strict_system: If True, require UCUM system when unit present. If False, only warn if missing.
     """
     assert quantity is not None, f"{field_name} must not be None"
     assert quantity.value is not None, f"{field_name}.value must not be None"
 
+    # Check if quantity has a unit - if not, system and code can be omitted per FHIR spec
+    has_unit = hasattr(quantity, 'unit') and quantity.unit is not None
+
     if strict_system:
-        assert quantity.system == "http://unitsofmeasure.org", \
-            f"{field_name}.system must be UCUM, got '{quantity.system}'"
-        assert quantity.code is not None, f"{field_name}.code must not be None (UCUM required)"
+        if has_unit:
+            # If unit is present, require UCUM system and code
+            assert quantity.system == "http://unitsofmeasure.org", \
+                f"{field_name}.system must be UCUM when unit present, got '{quantity.system}'"
+            assert quantity.code is not None, f"{field_name}.code must not be None when unit present"
+        else:
+            # No unit - system and code are optional per FHIR qty-3
+            # If system is present without unit, it should still be UCUM
+            if hasattr(quantity, 'system') and quantity.system is not None:
+                assert quantity.system == "http://unitsofmeasure.org", \
+                    f"{field_name}.system should be UCUM when present, got '{quantity.system}'"
     else:
-        # Lenient mode: just check if system exists
-        if quantity.system:
-            # If system exists, it should be UCUM for clinical data
+        # Lenient mode: just check if system exists and is UCUM when present
+        if hasattr(quantity, 'system') and quantity.system:
             assert quantity.system == "http://unitsofmeasure.org", \
                 f"{field_name}.system should be UCUM when present, got '{quantity.system}'"
 
