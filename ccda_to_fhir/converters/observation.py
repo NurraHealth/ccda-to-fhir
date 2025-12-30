@@ -1202,14 +1202,12 @@ class ObservationConverter(BaseConverter[Observation]):
             quantity["value"] = pq.value
 
         # Add unit and UCUM system
+        # Per FHIR R4 qty-3: system SHALL be present if code is present
+        # For unitless quantities, omit both system and code
         if pq.unit:
             quantity["unit"] = pq.unit
             quantity["system"] = FHIRSystems.UCUM
             quantity["code"] = pq.unit
-        else:
-            # Always include UCUM system for semantic interoperability, even without unit
-            quantity["system"] = FHIRSystems.UCUM
-            quantity["code"] = "1"  # Dimensionless in UCUM
 
         return quantity
 
