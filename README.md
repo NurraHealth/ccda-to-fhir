@@ -1,18 +1,15 @@
 # ccda-to-fhir
 
-A production-ready Python library to convert C-CDA (Consolidated Clinical Document Architecture) documents to FHIR R4B resources.
+A Python library to convert C-CDA (Consolidated Clinical Document Architecture) documents to FHIR R4B resources.
 
 ## Quick Start
 
 ```python
-from ccda_to_fhir import convert, convert_file
+from ccda_to_fhir import convert_document
 
 # From XML string
 with open('patient_record.xml') as f:
-    bundle = convert(f.read())  # Returns FHIR Bundle
-
-# From file path
-bundle = convert_file('patient_record.xml')
+    bundle = convert_document(f.read())  # Returns FHIR Bundle
 
 # Access converted resources
 for entry in bundle.entry:
@@ -34,11 +31,11 @@ This library is designed to **fail loudly** when it encounters unexpected data. 
 This ensures data integrity and makes it immediately obvious when the converter needs to be extended to handle new cases.
 
 ```python
-from ccda_to_fhir import convert
+from ccda_to_fhir import convert_document
 from ccda_to_fhir.exceptions import UnknownCodeSystemError, UnmappedValueError
 
 try:
-    bundle = convert(xml_content)
+    bundle = convert_document(xml_content)
 except UnknownCodeSystemError as e:
     print(f"Unknown code system: {e.oid}")
 except UnmappedValueError as e:
@@ -97,7 +94,7 @@ except MalformedXMLError as e:
 
 ### Implementation Status
 
-**Overall:** 🟢 **PRODUCTION READY** - Verified against FHIR R4B and US Core STU6.1 specifications
+**Overall:** 🟡 **ALPHA** - Comprehensive feature set with ongoing testing and refinement
 
 **Test Coverage:**
 - ✅ **1928 tests passing** (validation, parsing, conversion, and E2E tests)
@@ -222,24 +219,6 @@ Based on the [HL7 C-CDA on FHIR](https://build.fhir.org/ig/HL7/ccda-on-fhir/) ma
 - **Bundle size**: Average 10-50 FHIR resources per C-CDA document
 
 **Note**: Performance may vary based on document complexity, section count, and clinical statement density.
-
-## Known Limitations
-
-### Critical
-- 🔴 **Custodian cardinality**: Composition.custodian (required 1..1) not enforced when missing from C-CDA
-- 🔴 **Subject cardinality**: Composition.subject (required 1..1) not enforced on patient conversion failure
-
-### Moderate
-- 🟡 **Participant extensions**: DataEnterer, Informant, InformationRecipient, Participant (generic), Authorization, InFulfillmentOfOrder not yet implemented
-- 🟡 **Attester slicing**: Only legal attester implemented; professional/personal attesters missing
-- 🟡 **Medication status ambiguity**: C-CDA "completed" → FHIR status mapping may vary by implementation
-- 🟡 **NullFlavor handling**: Some context-specific variations in nullFlavor → data-absent-reason mapping
-
-### Minor
-- 🟢 **Timezone inference**: Partial timestamps without timezone use system/UTC default
-- 🟢 **No contained resources**: All resources created as Bundle entries (not contained)
-
-**For complete details**: See [docs/mapping/known-issues.md](docs/mapping/known-issues.md)
 
 ## Development
 

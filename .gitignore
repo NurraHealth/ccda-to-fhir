@@ -87,3 +87,6 @@ Thumbs.db
 !samples/*.xml
 !tests/integration/fixtures/**/*.xml
 stress_test/chb-samples/
+
+# Claude Code
+.claude/settings.local.json
