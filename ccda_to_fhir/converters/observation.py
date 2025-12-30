@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
-from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, ED, IVL_PQ, PQ, ST
+from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, ED, INT, IVL_PQ, PQ, ST
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.ccda.models.organizer import Organizer
 from ccda_to_fhir.constants import (
@@ -968,7 +968,12 @@ class ObservationConverter(BaseConverter[Observation]):
         if isinstance(observation.value, ED):
             return self._convert_ed_to_value_attachment(observation.value)
 
-        # Handle other types as needed (INT, REAL, BL, etc.)
+        # Handle INT (Integer) → valueInteger
+        if isinstance(observation.value, INT):
+            if observation.value.value is not None:
+                return {"valueInteger": observation.value.value}
+
+        # Handle other types as needed (REAL, BL, etc.)
         # For now, return None for unsupported types
         return None
 
