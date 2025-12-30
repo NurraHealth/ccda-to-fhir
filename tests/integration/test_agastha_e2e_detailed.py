@@ -1,0 +1,1079 @@
+"""End-to-end tests for Agastha CCD conversion - Alice Newman.
+
+Tests the conversion of a real-world Agastha CCD document (195352.xml)
+to FHIR R4B resources, validating specific clinical data mappings.
+
+Patient: Alice Newman, Female, Beaverton OR
+Key Clinical Data:
+- Conditions: Fever, Chronic renal transplant rejection, Essential HTN, Overweight, Hypothyroidism
+- Allergies: Penicillin G, Ampicillin (both active)
+- Medications: CefTRIAXone, Aranesp, Tylenol
+- Immunizations: 2 completed + 1 negated with statusReason (PATOBJ)
+- Procedures: Cardiac pacemaker insertion, Nebulizer therapy
+- Goals: 2 resident care goals
+- Observations: 17 (vital signs, labs, functional status)
+- Device: Implantable cardiac pacemaker
+- RelatedPerson: Contact person
+
+Key Features Tested:
+- ✅ Immunization.statusReason for negated immunizations with refusal reasons
+- ✅ Device resource (cardiac pacemaker)
+- ✅ Goal resources with lifecycle status
+- ✅ RelatedPerson contact
+- ✅ Multiple active allergies
+- ✅ Chronic kidney transplant condition
+"""
+
+from pathlib import Path
+
+import pytest
+from fhir.resources.bundle import Bundle
+
+from ccda_to_fhir.convert import convert_document
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures" / "documents"
+AGASTHA_CCD = FIXTURES_DIR / "agastha_ccd.xml"
+
+
+class TestAgasthaE2E:
+    """Test conversion of Agastha CCD (Alice Newman) to FHIR Bundle."""
+
+    @pytest.fixture
+    def agastha_bundle(self):
+        """Convert Agastha CCD to FHIR Bundle."""
+        with open(AGASTHA_CCD) as f:
+            xml = f.read()
+        result = convert_document(xml)
+        return Bundle(**result["bundle"])
+
+    # ========================================================================
+    # BUNDLE STRUCTURE
+    # ========================================================================
+
+    def test_bundle_structure(self, agastha_bundle):
+        """Validate Bundle has expected structure."""
+        assert agastha_bundle.type == "document"
+        assert len(agastha_bundle.entry) == 48, "Bundle must contain exactly 48 resources"
+
+        # Verify has Patient and Composition
+        has_patient = any(e.resource.get_resource_type() == "Patient" for e in agastha_bundle.entry)
+        has_composition = any(e.resource.get_resource_type() == "Composition" for e in agastha_bundle.entry)
+        assert has_patient, "Bundle must contain Patient resource"
+        assert has_composition, "Bundle must contain Composition resource"
+
+    def test_resource_counts(self, agastha_bundle):
+        """Validate exact resource counts for each type."""
+        from collections import Counter
+        resource_types = Counter(e.resource.get_resource_type() for e in agastha_bundle.entry)
+
+        assert resource_types["Patient"] == 1
+        assert resource_types["Composition"] == 1
+        assert resource_types["Condition"] == 6
+        assert resource_types["AllergyIntolerance"] == 2
+        assert resource_types["MedicationStatement"] == 3
+        assert resource_types["Immunization"] == 3
+        assert resource_types["Procedure"] == 2
+        assert resource_types["Goal"] == 2
+        assert resource_types["Observation"] == 17
+        assert resource_types["Device"] == 1
+        assert resource_types["RelatedPerson"] == 1
+        assert resource_types["DocumentReference"] == 1
+        assert resource_types["DiagnosticReport"] == 1
+
+    # ========================================================================
+    # PATIENT - Alice Newman
+    # ========================================================================
+
+    def test_patient_alice_newman_demographics(self, agastha_bundle):
+        """Validate patient Alice Newman has correct demographics."""
+        patient = next(
+            (e.resource for e in agastha_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+
+        assert patient is not None, "Bundle must contain Patient"
+
+        # Name: Alice Jones Newman
+        assert len(patient.name) > 0, "Patient must have name"
+        name = patient.name[0]
+        assert "Alice" in name.given, "Patient given name must include 'Alice'"
+        assert "Jones" in name.given, "Patient middle name must include 'Jones'"
+        assert name.family == "Newman", "Patient family name must be 'Newman'"
+
+        # Gender and birth date
+        assert patient.gender == "female", "Patient gender must be 'female'"
+        assert patient.birthDate is not None, "Patient must have birthDate"
+
+    def test_patient_address_beaverton_oregon(self, agastha_bundle):
+        """Validate patient address in Beaverton, Oregon."""
+        patient = next(
+            (e.resource for e in agastha_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+
+        assert len(patient.address) > 0, "Patient must have address"
+        address = patient.address[0]
+        assert address.city == "Beaverton", "City must be 'Beaverton'"
+        assert address.state == "OR", "State must be 'OR'"
+        assert address.postalCode == "97006", "Postal code must be '97006'"
+
+    def test_patient_has_related_person_contact(self, agastha_bundle):
+        """Validate patient has RelatedPerson contact."""
+        related_persons = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "RelatedPerson"
+        ]
+
+        assert len(related_persons) == 1, "Must have exactly 1 RelatedPerson"
+        related_person = related_persons[0]
+        assert related_person.patient is not None, "RelatedPerson must reference patient"
+
+    # ========================================================================
+    # CONDITIONS (6)
+    # ========================================================================
+
+    def test_condition_fever(self, agastha_bundle):
+        """Validate Condition: Fever (SNOMED 386661006)."""
+        conditions = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        fever = next(
+            (c for c in conditions
+             if any(coding.code == "386661006" for coding in c.code.coding)),
+            None
+        )
+
+        assert fever is not None, "Must have Fever condition"
+        assert fever.clinicalStatus is not None, "Condition must have clinicalStatus"
+        assert fever.subject is not None, "Condition must reference patient"
+
+    def test_condition_chronic_renal_transplant_rejection(self, agastha_bundle):
+        """Validate Condition: Chronic rejection of renal transplant (SNOMED 236578006)."""
+        conditions = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        rejection = next(
+            (c for c in conditions
+             if any(coding.code == "236578006" for coding in c.code.coding)),
+            None
+        )
+
+        assert rejection is not None, "Must have chronic renal transplant rejection condition"
+
+        # Verify SNOMED coding
+        snomed_coding = next(
+            (coding for coding in rejection.code.coding
+             if coding.system == "http://snomed.info/sct"),
+            None
+        )
+        assert snomed_coding is not None, "Must have SNOMED coding"
+        assert snomed_coding.display == "Chronic rejection of renal transplant"
+
+    def test_condition_essential_hypertension(self, agastha_bundle):
+        """Validate Condition: Essential Hypertension (SNOMED 59621000)."""
+        conditions = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        htn = next(
+            (c for c in conditions
+             if any(coding.code == "59621000" for coding in c.code.coding)),
+            None
+        )
+
+        assert htn is not None, "Must have Essential Hypertension condition"
+
+    def test_condition_overweight(self, agastha_bundle):
+        """Validate Condition: Overweight (SNOMED 238131007)."""
+        conditions = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        overweight = next(
+            (c for c in conditions
+             if any(coding.code == "238131007" for coding in c.code.coding)),
+            None
+        )
+
+        assert overweight is not None, "Must have Overweight condition"
+
+    def test_condition_severe_hypothyroidism(self, agastha_bundle):
+        """Validate Condition: Severe Hypothyroidism (SNOMED 83986005)."""
+        conditions = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        hypothyroid = next(
+            (c for c in conditions
+             if any(coding.code == "83986005" for coding in c.code.coding)),
+            None
+        )
+
+        assert hypothyroid is not None, "Must have Severe Hypothyroidism condition"
+
+    def test_conditions_have_category(self, agastha_bundle):
+        """Validate all Conditions have category."""
+        conditions = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Condition"
+        ]
+
+        for condition in conditions:
+            assert condition.category is not None, \
+                f"Condition {condition.id} must have category"
+            assert len(condition.category) > 0, \
+                f"Condition {condition.id} category must not be empty"
+
+    # ========================================================================
+    # ALLERGIES (2)
+    # ========================================================================
+
+    def test_allergy_penicillin_g(self, agastha_bundle):
+        """Validate AllergyIntolerance: Penicillin G (RxNorm 7980)."""
+        allergies = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        penicillin = next(
+            (a for a in allergies
+             if any(coding.code == "7980" for coding in a.code.coding)),
+            None
+        )
+
+        assert penicillin is not None, "Must have Penicillin G allergy"
+        assert penicillin.clinicalStatus is not None, "Allergy must have clinicalStatus"
+
+        # Verify active status
+        status_code = penicillin.clinicalStatus.coding[0].code
+        assert status_code == "active", f"Penicillin allergy must be active, got '{status_code}'"
+
+    def test_allergy_ampicillin(self, agastha_bundle):
+        """Validate AllergyIntolerance: Ampicillin (RxNorm 733)."""
+        allergies = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        ampicillin = next(
+            (a for a in allergies
+             if any(coding.code == "733" for coding in a.code.coding)),
+            None
+        )
+
+        assert ampicillin is not None, "Must have Ampicillin allergy"
+
+        # Verify active status
+        status_code = ampicillin.clinicalStatus.coding[0].code
+        assert status_code == "active", f"Ampicillin allergy must be active, got '{status_code}'"
+
+    def test_allergies_have_patient_reference(self, agastha_bundle):
+        """Validate all AllergyIntolerances reference the patient."""
+        allergies = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        for allergy in allergies:
+            assert allergy.patient is not None, \
+                f"Allergy {allergy.id} must reference patient"
+            assert allergy.patient.reference is not None, \
+                f"Allergy {allergy.id} patient reference must not be null"
+
+    # ========================================================================
+    # MEDICATIONS (3)
+    # ========================================================================
+
+    def test_medication_ceftriaxone(self, agastha_bundle):
+        """Validate MedicationStatement: CefTRIAXone Sodium (RxNorm 309090)."""
+        medications = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        ceftriaxone = next(
+            (m for m in medications
+             if any(coding.code == "309090" for coding in m.medicationCodeableConcept.coding)),
+            None
+        )
+
+        assert ceftriaxone is not None, "Must have CefTRIAXone medication"
+        assert ceftriaxone.status == "active", "CefTRIAXone must be active"
+
+    def test_medication_aranesp(self, agastha_bundle):
+        """Validate MedicationStatement: Aranesp (RxNorm 731241)."""
+        medications = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        aranesp = next(
+            (m for m in medications
+             if any(coding.code == "731241" for coding in m.medicationCodeableConcept.coding)),
+            None
+        )
+
+        assert aranesp is not None, "Must have Aranesp medication"
+        assert aranesp.status == "active", "Aranesp must be active"
+
+    def test_medication_tylenol(self, agastha_bundle):
+        """Validate MedicationStatement: Tylenol Extra Strength (RxNorm 209459)."""
+        medications = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        tylenol = next(
+            (m for m in medications
+             if any(coding.code == "209459" for coding in m.medicationCodeableConcept.coding)),
+            None
+        )
+
+        assert tylenol is not None, "Must have Tylenol medication"
+        assert tylenol.status == "active", "Tylenol must be active"
+
+    def test_medications_have_subject(self, agastha_bundle):
+        """Validate all MedicationStatements reference the patient."""
+        medications = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        for med in medications:
+            assert med.subject is not None, \
+                f"Medication {med.id} must reference patient"
+
+    # ========================================================================
+    # IMMUNIZATIONS (3) - Including negated with statusReason
+    # ========================================================================
+
+    def test_immunizations_count(self, agastha_bundle):
+        """Validate Bundle contains expected number of immunizations."""
+        immunizations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
+
+        assert len(immunizations) == 3, "Bundle must contain exactly 3 immunizations"
+
+    def test_immunization_influenza_completed(self, agastha_bundle):
+        """Validate Immunization: Influenza unspecified (CVX 88) - completed."""
+        immunizations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
+
+        influenza = next(
+            (imm for imm in immunizations
+             if any(coding.code == "88" for coding in imm.vaccineCode.coding)),
+            None
+        )
+
+        assert influenza is not None, "Must have Influenza vaccination"
+        assert influenza.status == "completed", "Influenza immunization must be completed"
+        assert influenza.statusReason is None, "Completed immunization should not have statusReason"
+
+    def test_immunization_dtap_completed(self, agastha_bundle):
+        """Validate Immunization: DTaP (CVX 106) - completed."""
+        immunizations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
+
+        dtap = next(
+            (imm for imm in immunizations
+             if any(coding.code == "106" for coding in imm.vaccineCode.coding)),
+            None
+        )
+
+        assert dtap is not None, "Must have DTaP vaccination"
+        assert dtap.status == "completed", "DTaP immunization must be completed"
+        assert dtap.statusReason is None, "Completed immunization should not have statusReason"
+
+    def test_negated_immunization_has_status_reason(self, agastha_bundle):
+        """Validate negated immunization has statusReason field - KEY FEATURE.
+
+        The Agastha CCD has a negated immunization (Influenza vaccine CVX 166)
+        with a refusal reason coded as PATOBJ (Patient objection).
+        This should map to Immunization.statusReason.
+
+        This is the primary reason we added this fixture - to test statusReason!
+        """
+        immunizations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
+
+        # Find the negated immunization
+        negated_immunizations = [imm for imm in immunizations if imm.status == "not-done"]
+        assert len(negated_immunizations) == 1, "Must have exactly one negated immunization"
+
+        negated_imm = negated_immunizations[0]
+
+        # CRITICAL: Verify statusReason is present
+        assert negated_imm.statusReason is not None, \
+            "Negated immunization MUST have statusReason when refusal reason is coded"
+
+        # Verify statusReason content
+        assert negated_imm.statusReason.coding is not None, \
+            "statusReason must have coding"
+        assert len(negated_imm.statusReason.coding) > 0, \
+            "statusReason.coding must have at least one code"
+
+        coding = negated_imm.statusReason.coding[0]
+        assert coding.code == "PATOBJ", \
+            f"statusReason code must be 'PATOBJ', got '{coding.code}'"
+        assert coding.system == "http://terminology.hl7.org/CodeSystem/v3-ActReason", \
+            f"statusReason system must be ActReason, got '{coding.system}'"
+        assert coding.display == "Patient objection", \
+            f"statusReason display must be 'Patient objection', got '{coding.display}'"
+
+    def test_negated_immunization_vaccine_code(self, agastha_bundle):
+        """Validate negated immunization has correct vaccine code (CVX 166)."""
+        immunizations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
+
+        negated_imm = next(imm for imm in immunizations if imm.status == "not-done")
+
+        # Verify vaccine code
+        assert negated_imm.vaccineCode is not None, "Must have vaccineCode"
+        assert negated_imm.vaccineCode.coding is not None, "vaccineCode must have coding"
+
+        # Find CVX coding
+        cvx_coding = next(
+            (c for c in negated_imm.vaccineCode.coding if c.system == "http://hl7.org/fhir/sid/cvx"),
+            None
+        )
+        assert cvx_coding is not None, "Must have CVX coding"
+        assert cvx_coding.code == "166", \
+            f"Vaccine code must be '166' (Influenza Intradermal Quadrivalent), got '{cvx_coding.code}'"
+
+    def test_immunizations_have_patient_reference(self, agastha_bundle):
+        """Validate all Immunizations reference the patient."""
+        immunizations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
+
+        for imm in immunizations:
+            assert imm.patient is not None, \
+                f"Immunization {imm.id} must reference patient"
+
+    # ========================================================================
+    # PROCEDURES (2)
+    # ========================================================================
+
+    def test_procedure_cardiac_pacemaker_insertion(self, agastha_bundle):
+        """Validate Procedure: Introduction of cardiac pacemaker (SNOMED 175135009)."""
+        procedures = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Procedure"
+        ]
+
+        pacemaker = next(
+            (p for p in procedures
+             if any(coding.code == "175135009" for coding in p.code.coding)),
+            None
+        )
+
+        assert pacemaker is not None, "Must have cardiac pacemaker insertion procedure"
+        assert pacemaker.status == "completed", "Pacemaker procedure must be completed"
+        assert pacemaker.subject is not None, "Procedure must reference patient"
+
+    def test_procedure_nebulizer_therapy(self, agastha_bundle):
+        """Validate Procedure: Nebulizer Therapy (SNOMED 56251003)."""
+        procedures = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Procedure"
+        ]
+
+        nebulizer = next(
+            (p for p in procedures
+             if any(coding.code == "56251003" for coding in p.code.coding)),
+            None
+        )
+
+        assert nebulizer is not None, "Must have nebulizer therapy procedure"
+        assert nebulizer.status == "completed", "Nebulizer procedure must be completed"
+
+    # ========================================================================
+    # DEVICE - Cardiac Pacemaker
+    # ========================================================================
+
+    def test_device_cardiac_pacemaker(self, agastha_bundle):
+        """Validate Device: Implantable cardiac pacemaker."""
+        devices = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Device"
+        ]
+
+        assert len(devices) == 1, "Must have exactly 1 Device"
+        device = devices[0]
+
+        # Verify device has patient reference
+        assert device.patient is not None, "Device must reference patient"
+
+        # Verify has status
+        assert device.status is not None, "Device must have status"
+        assert device.status == "active", f"Device status must be 'active', got '{device.status}'"
+
+    # ========================================================================
+    # GOALS (2)
+    # ========================================================================
+
+    def test_goals_count(self, agastha_bundle):
+        """Validate Bundle contains expected number of goals."""
+        goals = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Goal"
+        ]
+
+        assert len(goals) == 2, "Bundle must contain exactly 2 goals"
+
+    def test_goals_have_lifecycle_status(self, agastha_bundle):
+        """Validate Goals have lifecycleStatus."""
+        goals = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Goal"
+        ]
+
+        for goal in goals:
+            assert goal.lifecycleStatus is not None, \
+                f"Goal {goal.id} must have lifecycleStatus"
+            assert goal.lifecycleStatus == "active", \
+                f"Goal {goal.id} lifecycleStatus must be 'active', got '{goal.lifecycleStatus}'"
+
+    def test_goals_have_subject(self, agastha_bundle):
+        """Validate Goals reference the patient."""
+        goals = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Goal"
+        ]
+
+        for goal in goals:
+            assert goal.subject is not None, \
+                f"Goal {goal.id} must reference patient"
+
+    # ========================================================================
+    # OBSERVATIONS (17) - Vital Signs and Labs
+    # ========================================================================
+
+    def test_observations_count(self, agastha_bundle):
+        """Validate Bundle contains expected number of observations."""
+        observations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        assert len(observations) == 17, "Bundle must contain exactly 17 observations"
+
+    def test_observation_vital_signs_panel(self, agastha_bundle):
+        """Validate Observation: Vital signs panel (LOINC 85353-1)."""
+        observations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        panel = next(
+            (obs for obs in observations
+             if any(coding.code == "85353-1" for coding in obs.code.coding)),
+            None
+        )
+
+        assert panel is not None, "Must have vital signs panel"
+
+        # Verify category
+        assert panel.category is not None, "Vital signs panel must have category"
+        cat_code = panel.category[0].coding[0].code
+        assert cat_code == "vital-signs", \
+            f"Panel category must be 'vital-signs', got '{cat_code}'"
+
+    def test_observation_height(self, agastha_bundle):
+        """Validate Observation: Height (LOINC 8302-2)."""
+        observations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        height = next(
+            (obs for obs in observations
+             if any(coding.code == "8302-2" for coding in obs.code.coding)),
+            None
+        )
+
+        assert height is not None, "Must have height observation"
+        assert height.valueQuantity is not None, "Height must have valueQuantity"
+        assert height.valueQuantity.unit is not None, "Height must have unit"
+
+    def test_observation_weight(self, agastha_bundle):
+        """Validate Observation: Weight (LOINC 29463-7)."""
+        observations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        weight = next(
+            (obs for obs in observations
+             if any(coding.code == "29463-7" for coding in obs.code.coding)),
+            None
+        )
+
+        assert weight is not None, "Must have weight observation"
+        assert weight.valueQuantity is not None, "Weight must have valueQuantity"
+
+    def test_observation_bmi(self, agastha_bundle):
+        """Validate Observation: BMI (LOINC 39156-5)."""
+        observations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        bmi = next(
+            (obs for obs in observations
+             if any(coding.code == "39156-5" for coding in obs.code.coding)),
+            None
+        )
+
+        assert bmi is not None, "Must have BMI observation"
+        assert bmi.valueQuantity is not None, "BMI must have valueQuantity"
+
+    def test_observation_body_temperature(self, agastha_bundle):
+        """Validate Observation: Body Temperature (LOINC 8310-5)."""
+        observations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        temp = next(
+            (obs for obs in observations
+             if any(coding.code == "8310-5" for coding in obs.code.coding)),
+            None
+        )
+
+        assert temp is not None, "Must have body temperature observation"
+        assert temp.valueQuantity is not None, "Temperature must have valueQuantity"
+
+    def test_vital_signs_have_category(self, agastha_bundle):
+        """Validate vital sign observations have vital-signs category."""
+        observations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # LOINC codes for vital signs
+        vital_sign_codes = ["85353-1", "8302-2", "29463-7", "39156-5", "8310-5"]
+
+        for obs in observations:
+            # Check if this observation has a vital sign LOINC code
+            has_vital_loinc = any(
+                coding.code in vital_sign_codes
+                for coding in obs.code.coding
+            )
+
+            if has_vital_loinc:
+                assert obs.category is not None, \
+                    f"Vital sign observation {obs.id} must have category"
+
+                has_vital_signs_cat = any(
+                    any(coding.code == "vital-signs" for coding in cat.coding)
+                    for cat in obs.category
+                )
+                assert has_vital_signs_cat, \
+                    f"Vital sign observation {obs.id} must have vital-signs category"
+
+    def test_observations_have_status(self, agastha_bundle):
+        """Validate all Observations have status."""
+        observations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        for obs in observations:
+            assert obs.status is not None, \
+                f"Observation {obs.id} must have status"
+
+    # ========================================================================
+    # DIAGNOSTIC REPORT
+    # ========================================================================
+
+    def test_diagnostic_report_present(self, agastha_bundle):
+        """Validate Bundle contains DiagnosticReport."""
+        reports = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "DiagnosticReport"
+        ]
+
+        assert len(reports) == 1, "Bundle must contain exactly 1 DiagnosticReport"
+        report = reports[0]
+
+        # Verify has code and status
+        assert report.code is not None, "DiagnosticReport must have code"
+        assert report.status is not None, "DiagnosticReport must have status"
+
+    # ========================================================================
+    # DOCUMENT REFERENCE
+    # ========================================================================
+
+    def test_document_reference_present(self, agastha_bundle):
+        """Validate Bundle contains DocumentReference."""
+        doc_refs = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "DocumentReference"
+        ]
+
+        assert len(doc_refs) == 1, "Bundle must contain exactly 1 DocumentReference"
+        doc_ref = doc_refs[0]
+
+        # Verify has status and subject
+        assert doc_ref.status is not None, "DocumentReference must have status"
+        assert doc_ref.subject is not None, "DocumentReference must reference patient"
+
+    # ========================================================================
+    # PRACTITIONERS AND ORGANIZATIONS
+    # ========================================================================
+
+    def test_practitioners_present(self, agastha_bundle):
+        """Validate Bundle contains Practitioners."""
+        practitioners = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Practitioner"
+        ]
+
+        assert len(practitioners) == 3, "Bundle must contain exactly 3 Practitioners"
+
+        # Verify all have names
+        for pract in practitioners:
+            assert pract.name is not None and len(pract.name) > 0, \
+                f"Practitioner {pract.id} must have name"
+
+    def test_organizations_present(self, agastha_bundle):
+        """Validate Bundle contains Organizations."""
+        organizations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Organization"
+        ]
+
+        assert len(organizations) == 2, "Bundle must contain exactly 2 Organizations"
+
+        # Verify all have names
+        for org in organizations:
+            assert org.name is not None, \
+                f"Organization {org.id} must have name"
+
+    # ========================================================================
+    # ENCOUNTER AND LOCATION
+    # ========================================================================
+
+    def test_encounter_present(self, agastha_bundle):
+        """Validate Bundle contains Encounter."""
+        encounters = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        assert len(encounters) == 1, "Bundle must contain exactly 1 Encounter"
+        encounter = encounters[0]
+
+        # Verify has status and class
+        assert encounter.status is not None, "Encounter must have status"
+        assert encounter.class_fhir is not None, "Encounter must have class"
+        assert encounter.subject is not None, "Encounter must reference patient"
+
+    def test_location_present(self, agastha_bundle):
+        """Validate Bundle contains Location."""
+        locations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Location"
+        ]
+
+        assert len(locations) == 1, "Bundle must contain exactly 1 Location"
+        location = locations[0]
+
+        # Verify has name or address
+        assert location.name is not None or location.address is not None, \
+            "Location must have name or address"
+
+    def test_patient_managing_organization(self, agastha_bundle):
+        """Validate Patient.managingOrganization reference - CRITICAL.
+        
+        This tests the feature added in commit 872785c.
+        The Agastha CCD has providerOrganization with NPI 1298765654.
+        """
+        patient = next(
+            (e.resource for e in agastha_bundle.entry
+             if e.resource.get_resource_type() == "Patient"),
+            None
+        )
+
+        assert patient.managingOrganization is not None, \
+            "Patient must have managingOrganization"
+        assert patient.managingOrganization.reference is not None, \
+            "managingOrganization must have reference"
+        assert "Organization/" in patient.managingOrganization.reference, \
+            f"managingOrganization reference must point to Organization, got '{patient.managingOrganization.reference}'"
+        assert patient.managingOrganization.display == "Agastha Medical Center", \
+            f"managingOrganization display must be 'Agastha Medical Center', got '{patient.managingOrganization.display}'"
+
+    def test_organization_agastha_medical_center_details(self, agastha_bundle):
+        """Validate Agastha Medical Center organization with NPI, address, telecom."""
+        orgs = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Organization"
+        ]
+
+        # Find Agastha Medical Center by NPI
+        agastha = next(
+            (o for o in orgs
+             if any(i.value == "1298765654" for i in o.identifier if i.value)),
+            None
+        )
+
+        assert agastha is not None, "Must have Agastha Medical Center organization"
+        assert agastha.name == "Agastha Medical Center", \
+            f"Organization name must be 'Agastha Medical Center', got '{agastha.name}'"
+
+        # Verify NPI identifier
+        npi = next(
+            (i for i in agastha.identifier
+             if i.system == "http://hl7.org/fhir/sid/us-npi"),
+            None
+        )
+        assert npi is not None, "Organization must have NPI identifier"
+        assert npi.value == "1298765654", \
+            f"NPI must be '1298765654', got '{npi.value}'"
+
+        # Verify address
+        assert len(agastha.address) > 0, "Organization must have address"
+        address = agastha.address[0]
+        assert address.city == "Charlotte", f"City must be 'Charlotte', got '{address.city}'"
+        assert address.state == "NC", f"State must be 'NC', got '{address.state}'"
+        assert address.postalCode == "28277", f"Postal code must be '28277', got '{address.postalCode}'"
+
+        # Verify telecom
+        assert len(agastha.telecom) > 0, "Organization must have telecom"
+        phone = next((t for t in agastha.telecom if t.system == "phone"), None)
+        assert phone is not None, "Organization must have phone"
+        assert "+1(704)544-6504" in phone.value, \
+            f"Phone must contain '+1(704)544-6504', got '{phone.value}'"
+
+    def test_allergy_reaction_manifestation_and_severity(self, agastha_bundle):
+        """Validate AllergyIntolerance.reaction with manifestation, severity, description."""
+        allergies = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
+
+        # Penicillin G has reaction details
+        penicillin = next(
+            (a for a in allergies
+             if any(c.code == "7980" for c in a.code.coding)),
+            None
+        )
+
+        assert penicillin.reaction is not None, "Allergy must have reaction"
+        assert len(penicillin.reaction) > 0, "Allergy reaction must not be empty"
+
+        reaction = penicillin.reaction[0]
+
+        # Verify manifestation
+        assert reaction.manifestation is not None, "Reaction must have manifestation"
+        assert len(reaction.manifestation) > 0, "Manifestation must not be empty"
+        
+        manifestation_code = reaction.manifestation[0].coding[0].code
+        assert manifestation_code == "247472004", \
+            f"Manifestation code must be '247472004' (Hives), got '{manifestation_code}'"
+
+        # Verify severity
+        assert reaction.severity == "moderate", \
+            f"Reaction severity must be 'moderate', got '{reaction.severity}'"
+
+        # Verify description
+        assert reaction.description == "Hives", \
+            f"Reaction description must be 'Hives', got '{reaction.description}'"
+
+        # Verify onset
+        assert reaction.onset is not None, "Reaction must have onset"
+
+    def test_medication_dosage_route_and_dose(self, agastha_bundle):
+        """Validate MedicationStatement.dosage with route, timing, doseQuantity."""
+        medications = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
+
+        # Tylenol has dosage with oral route
+        tylenol = next(
+            (m for m in medications
+             if any(c.code == "209459" for c in m.medicationCodeableConcept.coding)),
+            None
+        )
+
+        assert tylenol.dosage is not None, "Medication must have dosage"
+        assert len(tylenol.dosage) > 0, "Dosage must not be empty"
+
+        dosage = tylenol.dosage[0]
+
+        # Verify route
+        assert dosage.route is not None, "Dosage must have route"
+        assert dosage.route.coding is not None, "Route must have coding"
+        
+        route_code = dosage.route.coding[0].code
+        assert route_code == "C38288", \
+            f"Route code must be 'C38288' (ORAL), got '{route_code}'"
+        assert dosage.route.coding[0].display == "ORAL", \
+            f"Route display must be 'ORAL', got '{dosage.route.coding[0].display}'"
+
+        # Verify doseAndRate
+        assert dosage.doseAndRate is not None, "Dosage must have doseAndRate"
+        assert len(dosage.doseAndRate) > 0, "doseAndRate must not be empty"
+        
+        dose_qty = dosage.doseAndRate[0].doseQuantity
+        assert dose_qty is not None, "doseAndRate must have doseQuantity"
+        assert dose_qty.value == 1, \
+            f"Dose value must be 1, got '{dose_qty.value}'"
+
+        # Verify timing
+        assert dosage.timing is not None, "Dosage must have timing"
+        assert dosage.timing.repeat is not None, "Timing must have repeat"
+        assert dosage.timing.repeat.period == 1, \
+            f"Period must be 1, got '{dosage.timing.repeat.period}'"
+        assert dosage.timing.repeat.periodUnit == "d", \
+            f"Period unit must be 'd' (day), got '{dosage.timing.repeat.periodUnit}'"
+
+    def test_observation_interpretation_normal(self, agastha_bundle):
+        """Validate Observation.interpretation for vital signs with 'N' (Normal)."""
+        observations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # Height observation has interpretation "N" (Normal)
+        height = next(
+            (obs for obs in observations
+             if any(c.code == "8302-2" for c in obs.code.coding)),
+            None
+        )
+
+        assert height.interpretation is not None, \
+            "Vital sign observation must have interpretation"
+        assert len(height.interpretation) > 0, \
+            "Interpretation must not be empty"
+
+        interp_code = height.interpretation[0].coding[0].code
+        assert interp_code == "N", \
+            f"Interpretation code must be 'N' (Normal), got '{interp_code}'"
+        
+        interp_display = height.interpretation[0].coding[0].display
+        if interp_display:
+            assert interp_display == "Normal", \
+                f"Interpretation display must be 'Normal', got '{interp_display}'"
+
+        interp_system = height.interpretation[0].coding[0].system
+        assert "ObservationInterpretation" in interp_system, \
+            f"Interpretation system must be ObservationInterpretation, got '{interp_system}'"
+
+    def test_observation_reference_range_lab_results(self, agastha_bundle):
+        """Validate Observation.referenceRange for lab results (Specific Gravity)."""
+        observations = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
+
+        # Find Specific Gravity observation (LOINC 5811-5)
+        specific_gravity = next(
+            (obs for obs in observations
+             if any(c.code == "5811-5" for c in obs.code.coding)),
+            None
+        )
+
+        if specific_gravity is None:
+            # Specific Gravity might not be in this document, skip test
+            import pytest
+            pytest.skip("Specific Gravity observation not found in this document")
+
+        assert specific_gravity.referenceRange is not None, \
+            "Lab observation must have referenceRange"
+        assert len(specific_gravity.referenceRange) > 0, \
+            "referenceRange must not be empty"
+
+        ref_range = specific_gravity.referenceRange[0]
+        
+        assert ref_range.low is not None, "Reference range must have low value"
+        assert ref_range.low.value == 1.005, \
+            f"Reference range low must be 1.005, got '{ref_range.low.value}'"
+        
+        assert ref_range.high is not None, "Reference range must have high value"
+        assert ref_range.high.value == 1.03, \
+            f"Reference range high must be 1.03, got '{ref_range.high.value}'"
+
+    def test_encounter_diagnosis_references(self, agastha_bundle):
+        """Validate Encounter.diagnosis references conditions."""
+        encounters = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        assert len(encounters) == 1, "Must have exactly 1 Encounter"
+        encounter = encounters[0]
+
+        assert encounter.diagnosis is not None, \
+            "Encounter must have diagnosis"
+        assert len(encounter.diagnosis) > 0, \
+            "Encounter diagnosis must not be empty"
+
+        # Verify each diagnosis has a condition reference
+        for diag in encounter.diagnosis:
+            assert diag.condition is not None, \
+                "Encounter diagnosis must have condition reference"
+            assert diag.condition.reference is not None, \
+                "Diagnosis condition reference must not be null"
+            assert "Condition/" in diag.condition.reference, \
+                f"Diagnosis must reference Condition, got '{diag.condition.reference}'"
+
+            # Verify use (role) - Agastha is outpatient, should be "billing"
+            assert diag.use is not None, "Diagnosis must have use/role"
+            assert len(diag.use.coding) > 0, "Diagnosis use must have coding"
+            assert diag.use.coding[0].code == "billing", \
+                f"Diagnosis use code must be 'billing' for outpatient, got '{diag.use.coding[0].code}'"
+            assert diag.use.coding[0].display == "Billing", \
+                f"Diagnosis use display must be 'Billing', got '{diag.use.coding[0].display}'"
+            assert "diagnosis-role" in diag.use.coding[0].system, \
+                f"Diagnosis use system must be diagnosis-role CodeSystem, got '{diag.use.coding[0].system}'"
+
+    def test_encounter_participant_practitioners(self, agastha_bundle):
+        """Validate Encounter.participant references practitioners."""
+        encounters = [
+            e.resource for e in agastha_bundle.entry
+            if e.resource.get_resource_type() == "Encounter"
+        ]
+
+        assert len(encounters) == 1
+        encounter = encounters[0]
+
+        if encounter.participant is None or len(encounter.participant) == 0:
+            # Some encounters may not have participants
+            import pytest
+            pytest.skip("Encounter does not have participants in this document")
+
+        # Verify each participant has an individual reference
+        for participant in encounter.participant:
+            assert participant.individual is not None, \
+                "Encounter participant must have individual reference"
+            assert participant.individual.reference is not None, \
+                "Participant individual reference must not be null"
+            
+            # Should reference Practitioner or RelatedPerson
+            ref = participant.individual.reference
+            assert "Practitioner/" in ref or "RelatedPerson/" in ref, \
+                f"Participant must reference Practitioner or RelatedPerson, got '{ref}'"
