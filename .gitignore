@@ -88,5 +88,5 @@ Thumbs.db
 !tests/integration/fixtures/**/*.xml
 stress_test/chb-samples/
 
-# Claude Code
+# Claude Code - gitignore local overrides only
 .claude/settings.local.json
