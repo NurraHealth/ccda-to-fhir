@@ -1,0 +1,18 @@
+<substanceAdministration classCode="SBADM" moodCode="EVN" negationInd="true">
+    <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+    <id root="cdbd33f0-6cde-11db-9fe1-0800200c9a66"/>
+    <statusCode code="completed"/>
+    <effectiveTime xsi:type="IVL_TS">
+        <low value="20120806"/>
+        <high value="20120806"/>
+    </effectiveTime>
+    <doseQuantity value="1"/>
+    <consumable>
+        <manufacturedProduct classCode="MANU">
+            <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+            <manufacturedMaterial>
+                <code code="313782" codeSystem="2.16.840.1.113883.6.88" displayName="Acetaminophen 325 MG Oral Tablet"/>
+            </manufacturedMaterial>
+        </manufacturedProduct>
+    </consumable>
+</substanceAdministration>

@@ -1,0 +1,44 @@
+{
+  "resourceType": "DocumentReference",
+  "status": "current",
+  "type": {
+    "text": "Note",
+    "coding": [
+      {
+        "code": "34109-9",
+        "system": "http://loinc.org"
+      },
+      {
+        "code": "11488-4",
+        "system": "http://loinc.org",
+        "display": "Consultation Note"
+      }
+    ]
+  },
+  "category": [
+    {
+      "text": "Clinical Note",
+      "coding": [
+        {
+          "code": "clinical-note",
+          "system": "http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category",
+          "display": "Clinical Note"
+        }
+      ]
+    }
+  ],
+  "date": "2016-09-08T08:32:15-05:00",
+  "content": [
+    {
+      "attachment": {
+        "data": "e1xydGYxXGFuc2kgSGVsbG8gd29ybGQhfQ==",
+        "contentType": "application/rtf"
+      }
+    }
+  ],
+  "context": {
+    "period": {
+      "start": "2016-09-08"
+    }
+  }
+}

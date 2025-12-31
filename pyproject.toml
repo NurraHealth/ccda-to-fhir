@@ -1,0 +1,108 @@
+[project]
+name = "ccda-to-fhir"
+version = "0.1.0"
+description = "A Python library to convert C-CDA documents to FHIR R4B resources"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Nurra", email = "hello@nurra.ai" }
+]
+keywords = ["fhir", "ccda", "cda", "hl7", "healthcare", "interoperability", "r4b"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "lxml>=5.0",
+    "fhir-resources>=8.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.8",
+    "mypy>=1.0",
+    "lxml-stubs>=0.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/nurra/ccda-to-fhir"
+Documentation = "https://github.com/nurra/ccda-to-fhir#readme"
+Repository = "https://github.com/nurra/ccda-to-fhir.git"
+Issues = "https://github.com/nurra/ccda-to-fhir/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ccda_to_fhir"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["ccda_to_fhir", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ccda_to_fhir"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "lxml.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["ccda_to_fhir"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]

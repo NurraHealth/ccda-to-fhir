@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="INT" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.16" extension="2014-06-09"/>
+  <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+  <id root="cdbd44f0-7cde-11db-9fe1-0800200c9a77"/>
+  <statusCode code="active"/>
+  <effectiveTime xsi:type="IVL_TS">
+    <low value="20230101"/>
+  </effectiveTime>
+  <effectiveTime xsi:type="PIVL_TS" operator="A">
+    <period value="6" unit="h"/>
+  </effectiveTime>
+  <routeCode code="C38288" codeSystem="2.16.840.1.113883.3.26.1.1" codeSystemName="NCI Thesaurus" displayName="Oral Route of Administration"/>
+  <doseQuantity value="1" unit="{tablet}"/>
+  <consumable>
+    <manufacturedProduct classCode="MANU">
+      <templateId root="2.16.840.1.113883.10.20.22.4.23" extension="2014-06-09"/>
+      <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+      <manufacturedMaterial>
+        <code code="310965" codeSystem="2.16.840.1.113883.6.88" codeSystemName="RxNorm" displayName="acetaminophen 325 MG Oral Tablet"/>
+      </manufacturedMaterial>
+    </manufacturedProduct>
+  </consumable>
+  <author>
+    <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+    <time value="202301010900-0500"/>
+    <assignedAuthor>
+      <id extension="88888888" root="2.16.840.1.113883.4.6"/>
+      <assignedPerson>
+        <name>
+          <given>John</given>
+          <family>Prescriber</family>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <!-- Precondition without coded value - indicates "as needed" without specific reason -->
+  <precondition typeCode="PRCN">
+    <criterion>
+      <templateId root="2.16.840.1.113883.10.20.22.4.25" extension="2014-06-09" />
+      <templateId root="2.16.840.1.113883.10.20.22.4.25"/>
+      <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4" />
+      <!-- No value element - just indicates PRN without specific reason -->
+    </criterion>
+  </precondition>
+</substanceAdministration>

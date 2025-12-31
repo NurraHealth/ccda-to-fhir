@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<act classCode="ACT" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.3" extension="2015-08-01" />
+  <id extension="condition-severity-001" root="1.3.6.1.4.1.22812.3.99" />
+  <code code="CONC" codeSystem="2.16.840.1.113883.5.6" />
+  <statusCode code="active" />
+  <effectiveTime>
+    <low value="20220315" />
+  </effectiveTime>
+  <entryRelationship typeCode="SUBJ">
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01" />
+      <id root="1.3.6.1.4.1.22812.3.99.1" extension="condition-severity-obs-001"/>
+      <code code="55607006" codeSystem="2.16.840.1.113883.6.96" displayName="Problem"/>
+      <statusCode code="completed" />
+      <effectiveTime>
+        <low value="20220315" />
+      </effectiveTime>
+      <value xsi:type="CD" code="25374005" codeSystem="2.16.840.1.113883.6.96" displayName="Migraine"/>
+      <entryRelationship typeCode="REFR">
+        <observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.8" />
+          <code code="SEV" codeSystem="2.16.840.1.113883.5.4" displayName="Severity"/>
+          <statusCode code="completed" />
+          <value xsi:type="CD" code="24484000" codeSystem="2.16.840.1.113883.6.96" displayName="Severe"/>
+        </observation>
+      </entryRelationship>
+    </observation>
+  </entryRelationship>
+</act>

@@ -1,0 +1,131 @@
+{
+  "resourceType": "MedicationRequest",
+  "identifier": [
+    {
+      "system": "urn:ietf:rfc:3986",
+      "value": "urn:uuid:cdbd33f0-6cde-11db-9fe1-0800200c9a66"
+    }
+  ],
+  "status": "active",
+  "intent": "plan",
+  "medicationReference": {
+    "reference": "#containedMed"
+  },
+  "authoredOn": "2013-09-11T16:03:00-07:00",
+  "reasonCode": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "56018004",
+          "display": "wheezing"
+        }
+      ]
+    }
+  ],
+  "dosageInstruction": [
+    {
+      "patientInstruction": "Do not overtake",
+      "additionalInstruction": [
+        {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "1153465004",
+              "display": "Education about overdosing"
+            }
+          ]
+        }
+      ],
+      "timing": {
+        "repeat": {
+          "period": 4,
+          "periodMax": 6,
+          "periodUnit": "h"
+        }
+      },
+      "asNeededCodeableConcept": {
+        "coding": [
+          {
+            "system": "http://snomed.info/sct",
+            "code": "56018004",
+            "display": "wheezing"
+          }
+        ]
+      },
+      "route": {
+        "coding": [
+          {
+            "system": "http://ncithesaurus-stage.nci.nih.gov",
+            "code": "C38288",
+            "display": "Oral Route of Administration"
+          }
+        ]
+      },
+      "doseAndRate": [
+        {
+          "doseQuantity": {
+            "value": 1
+          }
+        }
+      ],
+      "maxDosePerPeriod": {
+        "numerator": {
+          "value": 6,
+          "unit": "{spray}",
+          "code": "{spray}",
+          "system": "http://unitsofmeasure.org"
+        },
+        "denominator": {
+          "value": 1,
+          "unit": "{day}",
+          "code": "{day}",
+          "system": "http://unitsofmeasure.org"
+        }
+      }
+    }
+  ],
+  "dispenseRequest": {
+    "numberOfRepeatsAllowed": 0
+  },
+  "contained": [
+    {
+      "resourceType": "Medication",
+      "id": "containedMed",
+      "code": {
+        "coding": [
+          {
+            "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+            "code": "1190220",
+            "display": "ACTUAT albuterol 0.1 MG/ACTUAT Metered Dose Inhaler"
+          }
+        ]
+      },
+      "form": {
+        "coding": [
+          {
+            "system": "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl",
+            "code": "C48501",
+            "display": "Inhalation dosing unit"
+          }
+        ]
+      },
+      "manufacturer": {
+        "display": "Good Vaccines Inc"
+      },
+      "ingredient": [
+        {
+          "itemCodeableConcept": {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "387390002",
+                "display": "sodium chloride"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

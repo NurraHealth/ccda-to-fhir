@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<observation classCode="OBS" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.13" extension="2014-06-09" />
+  <id root="2.16.840.1.113883.19" extension="proc-obs-detail-001" />
+  <code code="274025005" codeSystem="2.16.840.1.113883.6.96" displayName="Colonic polypectomy" codeSystemName="SNOMED-CT">
+    <originalText>
+      <reference value="#Proc1" />
+    </originalText>
+  </code>
+  <statusCode code="completed" />
+  <effectiveTime value="20230203" />
+  <priorityCode code="CR" codeSystem="2.16.840.1.113883.5.7" codeSystemName="ActPriority" displayName="callback results" />
+  <value xsi:type="CD" nullFlavor="NA" />
+  <methodCode nullFlavor="UNK" />
+  <targetSiteCode code="416949008" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Abdomen and pelvis" />
+  <performer>
+    <assignedEntity>
+      <id root="2.16.840.1.113883.19" extension="1234" />
+      <addr>
+        <streetAddressLine>1001 Village Avenue</streetAddressLine>
+        <city>Portland</city>
+        <state>OR</state>
+        <postalCode>99123</postalCode>
+        <country>US</country>
+      </addr>
+      <telecom use="WP" value="tel: +1(555)-555-5000" />
+      <representedOrganization>
+        <id root="2.16.840.1.113883.19.5" />
+        <name>Community Health and Hospitals</name>
+        <telecom use="WP" value="tel:+1(555)-555-5000" />
+        <addr>
+          <streetAddressLine>1001 Village Avenue</streetAddressLine>
+          <city>Portland</city>
+          <state>OR</state>
+          <postalCode>99123</postalCode>
+          <country>US</country>
+        </addr>
+      </representedOrganization>
+    </assignedEntity>
+  </performer>
+  <participant typeCode="LOC">
+    <participantRole classCode="SDLOC">
+      <templateId root="2.16.840.1.113883.10.20.22.4.32" />
+      <id root="2.16.840.1.113883.19.5" extension="OR-1"/>
+      <code code="22232009" codeSystem="2.16.840.1.113883.6.96" displayName="Hospital"/>
+      <playingEntity classCode="PLC">
+        <name>Endoscopy Suite 1</name>
+      </playingEntity>
+    </participantRole>
+  </participant>
+  <author>
+    <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+    <time value="20230203"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+      <assignedPerson>
+        <name>
+          <given>Jane</given>
+          <family>Gastro</family>
+          <suffix>MD</suffix>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <entryRelationship typeCode="RSON">
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.19" extension="2014-06-09" />
+      <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+      <value xsi:type="CD" code="162004" codeSystem="2.16.840.1.113883.6.96" displayName="Gastrointestinal hemorrhage"/>
+    </observation>
+  </entryRelationship>
+</observation>

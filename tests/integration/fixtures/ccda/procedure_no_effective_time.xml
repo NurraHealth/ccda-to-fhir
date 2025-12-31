@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<procedure classCode="PROC" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.14" extension="2014-06-09" />
+  <templateId root="2.16.840.1.113883.10.20.22.4.14" />
+  <id root="1.3.6.1.4.1.22812.3.2009316.3.4.7" extension="procedure-no-time" />
+  <code code="80146002" codeSystem="2.16.840.1.113883.6.96" displayName="Excision of appendix">
+    <originalText>
+      <reference value="#proc-no-time" />
+    </originalText>
+  </code>
+  <statusCode code="completed" />
+  <!-- Note: No effectiveTime element - should trigger data-absent-reason extension -->
+</procedure>

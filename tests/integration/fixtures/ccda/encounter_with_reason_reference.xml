@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<encounter classCode="ENC" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.49" extension="2015-08-01"/>
+  <id extension="encounter-reasonref-001" root="1.3.6.1.4.1.22812.3.99"/>
+  <code code="AMB" codeSystem="2.16.840.1.113883.5.4" displayName="Ambulatory"/>
+  <statusCode code="completed"/>
+  <effectiveTime>
+    <low value="20231020090000-0500"/>
+    <high value="20231020100000-0500"/>
+  </effectiveTime>
+  <performer>
+    <assignedEntity>
+      <id root="2.16.840.1.113883.4.6" extension="9876543210"/>
+      <assignedPerson>
+        <name>
+          <given>John</given>
+          <family>Provider</family>
+        </name>
+      </assignedPerson>
+    </assignedEntity>
+  </performer>
+  <!-- RSON entry relationship with Problem Observation -->
+  <entryRelationship typeCode="RSON">
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01"/>
+      <id root="1.3.6.1.4.1.22812.3.99.1" extension="problem-hypertension-001"/>
+      <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+      <statusCode code="completed"/>
+      <effectiveTime>
+        <low value="20231015"/>
+      </effectiveTime>
+      <value xsi:type="CD" code="59621000" codeSystem="2.16.840.1.113883.6.96" displayName="Essential hypertension"/>
+    </observation>
+  </entryRelationship>
+</encounter>

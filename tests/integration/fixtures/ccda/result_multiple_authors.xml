@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<organizer classCode="BATTERY" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.1" extension="2015-08-01"/>
+  <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+  <id root="1.3.6.1.4.1.22812.20.1.1.4.5" extension="R456"/>
+  <code code="24357-6" codeSystem="2.16.840.1.113883.6.1" displayName="Urinalysis macro (dipstick) panel">
+    <originalText>
+      <reference value="#_panel1Name"/>
+    </originalText>
+  </code>
+  <statusCode code="completed"/>
+  <effectiveTime xsi:type="IVL_TS">
+    <low value="20150622"/>
+    <high value="20150622"/>
+  </effectiveTime>
+  <author>
+    <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+    <time value="20150622093000-0500"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="EARLY-LAB-DOC"/>
+      <assignedPerson>
+        <name>
+          <given>Early</given>
+          <family>Technician</family>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <author>
+    <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+    <time value="20150622153000-0500"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="LATEST-LAB-DOC"/>
+      <assignedPerson>
+        <name>
+          <given>Latest</given>
+          <family>Reviewer</family>
+          <suffix>MD</suffix>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <component>
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.2" extension="2015-08-01"/>
+      <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+      <id root="1.3.6.1.4.1.22812.20.1.1.4.5" extension="OBS14"/>
+      <code code="5811-5" codeSystem="2.16.840.1.113883.6.1" displayName="Specific gravity of Urine by Test strip">
+        <originalText>
+          <reference value="#_ea838e08-d5eb-4ed4-a176-e5f9a831a780"/>
+        </originalText>
+      </code>
+      <statusCode code="completed"/>
+      <effectiveTime value="20150622"/>
+      <value xsi:type="PQ" value="1.020" unit="1"/>
+    </observation>
+  </component>
+</organizer>

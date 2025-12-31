@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="INT" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.16" extension="2014-06-09"/>
+  <id root="medication-start-end-001"/>
+  <statusCode code="active"/>
+  <!-- IVL_TS with both start and end dates -->
+  <effectiveTime xsi:type="IVL_TS">
+    <low value="20200301"/>
+    <high value="20200531"/>
+  </effectiveTime>
+  <routeCode code="C38288" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="Oral"/>
+  <doseQuantity value="10" unit="mg"/>
+  <consumable>
+    <manufacturedProduct classCode="MANU">
+      <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+      <manufacturedMaterial>
+        <code code="314076" codeSystem="2.16.840.1.113883.6.88" displayName="Metformin 500 MG Oral Tablet"/>
+      </manufacturedMaterial>
+    </manufacturedProduct>
+  </consumable>
+  <author>
+    <time value="20200301"/>
+    <assignedAuthor>
+      <id extension="DOC-002" root="2.16.840.1.113883.4.6"/>
+      <assignedPerson>
+        <name>
+          <given>Jane</given>
+          <family>Physician</family>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+</substanceAdministration>

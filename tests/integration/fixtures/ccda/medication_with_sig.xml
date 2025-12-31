@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="INT" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.16" extension="2014-06-09"/>
+  <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+  <id root="cdbd55f0-6cde-11db-9fe1-0800200c9a77"/>
+  <text>Take one tablet by mouth daily</text>
+  <statusCode code="active"/>
+  <effectiveTime xsi:type="IVL_TS">
+    <low value="20200301"/>
+    <high value="20210301"/>
+  </effectiveTime>
+  <effectiveTime xsi:type="PIVL_TS" operator="A" institutionSpecified="false">
+    <period value="1" unit="d"/>
+  </effectiveTime>
+  <routeCode code="C38288" codeSystem="2.16.840.1.113883.3.26.1.1" codeSystemName="NCI Thesaurus" displayName="Oral Route of Administration"/>
+  <doseQuantity value="1"/>
+  <administrationUnitCode code="C48542" codeSystem="2.16.840.1.113883.3.26.1.1" codeSystemName="National Cancer Institute (NCI) Thesaurus" displayName="Tablet dosing unit"/>
+  <consumable>
+    <manufacturedProduct classCode="MANU">
+      <templateId root="2.16.840.1.113883.10.20.22.4.23" extension="2014-06-09"/>
+      <templateId root="2.16.840.1.113883.10.20.22.4.23"/>
+      <manufacturedMaterial>
+        <code code="197361" codeSystem="2.16.840.1.113883.6.88" codeSystemName="RxNorm" displayName="Lisinopril 10 MG Oral Tablet"/>
+      </manufacturedMaterial>
+      <manufacturerOrganization>
+        <name>Generic Manufacturer</name>
+      </manufacturerOrganization>
+    </manufacturedProduct>
+  </consumable>
+  <author>
+    <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+    <time value="20200301"/>
+    <assignedAuthor>
+      <id extension="123456789" root="2.16.840.1.113883.4.6"/>
+      <telecom use="WP" value="tel:555-555-1001"/>
+      <assignedPerson>
+        <name>
+          <given>Jane</given>
+          <family>Physician</family>
+        </name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <entryRelationship typeCode="RSON">
+    <observation classCode="OBS" moodCode="INT">
+      <templateId root="2.16.840.1.113883.10.20.22.4.19" extension="2014-06-09"/>
+      <templateId root="2.16.840.1.113883.10.20.22.4.19"/>
+      <id extension="45" root="1.3.6.1.4.1.22812.3.99930.3.4.1.3"/>
+      <code codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" code="404684003" displayName="Clinical finding"/>
+      <statusCode code="completed"/>
+      <effectiveTime>
+        <low nullFlavor="NI"/>
+      </effectiveTime>
+      <value xsi:type="CD" code="59621000" codeSystem="2.16.840.1.113883.6.96" displayName="Essential hypertension" />
+    </observation>
+  </entryRelationship>
+</substanceAdministration>

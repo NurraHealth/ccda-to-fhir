@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<act classCode="ACT" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.3" extension="2015-08-01" />
+  <id extension="condition-abatement-unknown-001" root="1.3.6.1.4.1.22812.3.99" />
+  <code code="CONC" codeSystem="2.16.840.1.113883.5.6" />
+  <statusCode code="completed" />
+  <effectiveTime>
+    <low value="20200115" />
+    <high nullFlavor="UNK" />
+  </effectiveTime>
+  <entryRelationship typeCode="SUBJ">
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01" />
+      <id root="1.3.6.1.4.1.22812.3.99.1" extension="condition-abatement-unknown-obs-001"/>
+      <code code="55607006" codeSystem="2.16.840.1.113883.6.96" displayName="Problem"/>
+      <statusCode code="completed" />
+      <effectiveTime>
+        <low value="20200115" />
+        <high nullFlavor="UNK" />
+      </effectiveTime>
+      <value xsi:type="CD" code="233604007" codeSystem="2.16.840.1.113883.6.96" displayName="Pneumonia"/>
+      <entryRelationship typeCode="REFR">
+        <observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.6"/>
+          <code code="33999-4" codeSystem="2.16.840.1.113883.6.1"/>
+          <statusCode code="completed"/>
+          <value xsi:type="CD" code="413322009" codeSystem="2.16.840.1.113883.6.96" displayName="Resolved"/>
+        </observation>
+      </entryRelationship>
+    </observation>
+  </entryRelationship>
+</act>

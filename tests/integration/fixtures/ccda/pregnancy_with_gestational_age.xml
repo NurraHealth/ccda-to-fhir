@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<observation classCode="OBS" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.15.3.8"/>
+  <id extension="preg-ga-001" root="2.16.840.1.113883.19"/>
+  <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+  <statusCode code="completed"/>
+  <effectiveTime>
+    <low value="20220824"/>
+  </effectiveTime>
+  <value xsi:type="CD" code="77386006" displayName="pregnant" codeSystem="2.16.840.1.113883.6.96"/>
+  <entryRelationship typeCode="REFR">
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.15.3.1"/>
+      <code code="11778-8" codeSystem="2.16.840.1.113883.6.1" displayName="Estimated date of delivery"/>
+      <statusCode code="completed"/>
+      <value xsi:type="TS" value="2023-02-14" />
+    </observation>
+  </entryRelationship>
+  <entryRelationship typeCode="REFR">
+    <observation classCode="OBS" moodCode="EVN">
+      <code code="49051-6" codeSystem="2.16.840.1.113883.6.1" displayName="Gestational age in weeks"/>
+      <statusCode code="completed"/>
+      <value xsi:type="PQ" value="24" unit="wk"/>
+    </observation>
+  </entryRelationship>
+</observation>

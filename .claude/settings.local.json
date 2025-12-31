@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(cat:*)",
+      "Bash(diff:*)",
+      "Bash(ls:*)",
+      "Bash(pwd:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(awk:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(wc:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(jq:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv run pytest:*)",
+      "WebSearch",
+      "WebFetch(domain:fhir.org)",
+      "WebFetch(domain:build.fhir.org)",
+      "WebFetch(domain:hl7.org)",
+      "WebFetch(domain:www.hl7.org)",
+      "WebFetch(domain:cdasearch.hl7.org)",
+      "WebFetch(domain:terminology.hl7.org)",
+      "WebFetch(domain:snomed.info)",
+      "WebFetch(domain:loinc.org)",
+      "WebFetch(domain:cdc.gov)",
+      "WebFetch(domain:www.cdc.gov)",
+      "WebFetch(domain:nih.gov)",
+      "WebFetch(domain:www.nih.gov)",
+      "WebFetch(domain:cts.nlm.nih.gov)",
+      "WebFetch(domain:vsac.nlm.nih.gov)",
+      "WebFetch(domain:www.nlm.nih.gov)",
+      "WebFetch(domain:fda.gov)",
+      "WebFetch(domain:www.fda.gov)",
+      "WebFetch(domain:github.com/HL7/C-CDA-Examples/)",
+      "WebFetch(domain:github.com/HL7/CDA-ccda-2.1/)"
+    ]
+  }
+}

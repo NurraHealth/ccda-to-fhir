@@ -1,0 +1,54 @@
+{
+  "resourceType": "Observation",
+  "identifier": [
+    {
+      "system": "urn:oid:2.16.840.1.113883.19",
+      "value": "123456789"
+    }
+  ],
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code": "social-history",
+          "display": "Social History"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "82810-3",
+        "display": "Pregnancy status"
+      }
+    ]
+  },
+  "effectiveDateTime": "2022-08-24T10:39:52Z",
+  "valueCodeableConcept": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "77386006",
+        "display": "Pregnant"
+      }
+    ]
+  },
+  "component": [
+    {
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "11778-8",
+            "display": "Delivery date Estimated"
+          }
+        ]
+      },
+      "valueDateTime": "2023-02-14"
+    }
+  ]
+}

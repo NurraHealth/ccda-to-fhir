@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<substanceAdministration classCode="SBADM" moodCode="INT" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.16" extension="2014-06-09"/>
+  <id root="1310a2d3-f888-4722-b4c4-a3c5911ac7f9"/>
+  <text>
+    <reference value="#Medication_Bedtime"/>
+  </text>
+  <statusCode code="active"/>
+  <effectiveTime xsi:type="IVL_TS">
+    <low value="20090109"/>
+    <high nullFlavor="NI"/>
+  </effectiveTime>
+  <effectiveTime xsi:type="EIVL_TS" operator="A">
+    <event code="HS"/>
+  </effectiveTime>
+  <routeCode code="C38288" codeSystem="2.16.840.1.113883.3.26.1.1" codeSystemName="NCI Thesaurus" displayName="Oral Route of Administration"/>
+  <doseQuantity value="1"/>
+  <consumable>
+    <manufacturedProduct classCode="MANU">
+      <templateId root="2.16.840.1.113883.10.20.22.4.23" extension="2014-06-09"/>
+      <manufacturedMaterial>
+        <code code="197361" codeSystem="2.16.840.1.113883.6.88" codeSystemName="RxNorm" displayName="Melatonin 3 MG Oral Tablet"/>
+      </manufacturedMaterial>
+    </manufacturedProduct>
+  </consumable>
+  <author>
+    <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+    <time value="20090109120000-0500"/>
+    <assignedAuthor/>
+  </author>
+</substanceAdministration>
