@@ -41,6 +41,11 @@ from tests.integration.helpers.quantity_validators import (
 from tests.integration.helpers.temporal_validators import (
     assert_datetime_format,
 )
+from tests.integration.validation_helpers import (
+    assert_all_ids_are_uuid_v4,
+    assert_all_references_resolve,
+    assert_reference_id_consistency,
+)
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "documents"
 AGASTHA_CCD = FIXTURES_DIR / "agastha_ccd.xml"
@@ -64,7 +69,7 @@ class TestAgasthaE2E:
     def test_bundle_structure(self, agastha_bundle):
         """Validate Bundle has expected structure."""
         assert agastha_bundle.type == "document"
-        assert len(agastha_bundle.entry) == 48, "Bundle must contain exactly 48 resources"
+        assert len(agastha_bundle.entry) == 46, "Bundle must contain exactly 46 resources"
 
         # Verify has Patient and Composition
         has_patient = any(e.resource.get_resource_type() == "Patient" for e in agastha_bundle.entry)
@@ -90,6 +95,10 @@ class TestAgasthaE2E:
         assert resource_types["RelatedPerson"] == 1
         assert resource_types["DocumentReference"] == 1
         assert resource_types["DiagnosticReport"] == 1
+        assert resource_types["Encounter"] == 1
+        assert resource_types["Location"] == 1
+        assert resource_types["Organization"] == 2
+        assert resource_types["Practitioner"] == 1  # Properly deduplicated - same NPI appears 15 times
 
     # ========================================================================
     # PATIENT - Alice Newman
@@ -632,6 +641,34 @@ class TestAgasthaE2E:
                 f"Immunization {imm.id} must reference patient"
 
     # ========================================================================
+    # COMPREHENSIVE REFERENCE VALIDATION
+    # ========================================================================
+
+    def test_all_references_resolve(self, agastha_bundle):
+        """Validate all references in bundle resolve to actual resources.
+
+        Comprehensive check that every reference (Patient/123, Practitioner/456, etc.)
+        points to a resource that actually exists in the bundle. No dangling references.
+        """
+        assert_all_references_resolve(agastha_bundle.dict())
+
+    def test_all_ids_are_uuid_v4(self, agastha_bundle):
+        """Validate all resource IDs are valid UUID v4 format.
+
+        All FHIR resource IDs must be UUID v4 (random UUIDs), not hash-based
+        or other formats. This ensures proper ID generation consistency.
+        """
+        assert_all_ids_are_uuid_v4(agastha_bundle.dict())
+
+    def test_reference_id_consistency(self, agastha_bundle):
+        """Validate no duplicate resource IDs and all references use correct IDs.
+
+        Each resource should have exactly one unique ID, and all references
+        to that resource must use the same ID. Detects deduplication issues.
+        """
+        assert_reference_id_consistency(agastha_bundle.dict())
+
+    # ========================================================================
     # PROCEDURES (2)
     # ========================================================================
 
@@ -903,13 +940,17 @@ class TestAgasthaE2E:
     # ========================================================================
 
     def test_practitioners_present(self, agastha_bundle):
-        """Validate Bundle contains Practitioners."""
+        """Validate Bundle contains Practitioners.
+
+        Note: Agastha CCD has 15 assignedAuthor elements, but all share the same NPI (0000000000).
+        Proper deduplication results in 1 unique Practitioner resource.
+        """
         practitioners = [
             e.resource for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Practitioner"
         ]
 
-        assert len(practitioners) == 3, "Bundle must contain exactly 3 Practitioners"
+        assert len(practitioners) == 1, "Bundle must contain exactly 1 Practitioner (properly deduplicated)"
 
         # Verify all have names
         for pract in practitioners:
@@ -1211,7 +1252,12 @@ class TestAgasthaE2E:
                 f"Diagnosis use system must be diagnosis-role CodeSystem, got '{diag.use.coding[0].system}'"
 
     def test_encounter_participant_practitioners(self, agastha_bundle):
-        """Validate Encounter.participant references practitioners."""
+        """Validate Encounter.participant exists and has required structure.
+
+        Per US Core, Encounter.participant is required (SHALL support).
+        The participant.individual field is optional (0..1) - it's only present
+        when the C-CDA performer has an assignedPerson element.
+        """
         encounters = [
             e.resource for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Encounter"
@@ -1220,15 +1266,26 @@ class TestAgasthaE2E:
         assert len(encounters) == 1
         encounter = encounters[0]
 
-        if encounter.participant is None or len(encounter.participant) == 0:
-            # Some encounters may not have participants
-            import pytest
-            pytest.skip("Encounter does not have participants in this document")
+        # US Core requires participant (SHALL support)
+        assert encounter.participant is not None, \
+            "Encounter.participant is required by US Core"
+        assert len(encounter.participant) > 0, \
+            "Encounter.participant must have at least one entry"
 
-        # Verify each participant has an individual reference
+        # Verify each participant has required type field
         for participant in encounter.participant:
-            assert participant.individual is not None, \
-                "Encounter participant must have individual reference"
+            assert participant.type is not None, \
+                "Participant.type is required"
+            assert len(participant.type) > 0, \
+                "Participant.type must not be empty"
+
+        # Verify participants that have individuals have valid references
+        participants_with_individual = [
+            p for p in encounter.participant
+            if p.individual is not None
+        ]
+
+        for participant in participants_with_individual:
             assert participant.individual.reference is not None, \
                 "Participant individual reference must not be null"
 
@@ -1372,7 +1429,11 @@ class TestAgasthaE2E:
                         f"VerificationStatus display for '{coding.code}' must be '{expected_display}', got '{coding.display}'"
 
     def test_condition_verification_status_exact(self, agastha_bundle):
-        """PHASE 2.4: Validate Condition.verificationStatus exact CodeableConcept."""
+        """PHASE 2.4: Validate Condition.verificationStatus exact CodeableConcept.
+
+        Per US Core, verificationStatus is required (SHALL support).
+        All conditions must have verificationStatus.
+        """
         conditions = [
             e.resource for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Condition"
@@ -1380,17 +1441,12 @@ class TestAgasthaE2E:
 
         assert len(conditions) > 0, "Must have Condition resources"
 
-        # Find conditions with verificationStatus
-        conditions_with_vs = [
-            c for c in conditions
-            if hasattr(c, 'verificationStatus') and c.verificationStatus is not None
-        ]
+        # US Core requires verificationStatus on all conditions
+        for condition in conditions:
+            assert hasattr(condition, 'verificationStatus') and condition.verificationStatus is not None, \
+                f"Condition {condition.id} missing verificationStatus (US Core requirement)"
 
-        if len(conditions_with_vs) == 0:
-            import pytest
-            pytest.skip("No conditions with verificationStatus in this document")
-
-        for condition in conditions_with_vs:
+        for condition in conditions:
             vs = condition.verificationStatus
 
             # Validate coding structure

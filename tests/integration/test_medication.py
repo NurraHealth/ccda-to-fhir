@@ -759,9 +759,13 @@ class TestDosageInstructionText:
         assert medication is not None
         assert medication["resourceType"] == "Medication"
 
-        # Should have an ID
+        # Should have an ID (UUID v4)
+        import uuid
         assert "id" in medication
-        assert medication["id"].startswith("medication-")
+        try:
+            uuid.UUID(medication["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Medication ID {medication['id']} is not a valid UUID v4")
 
     def test_medication_request_references_medication_resource(
         self, ccda_medication: str

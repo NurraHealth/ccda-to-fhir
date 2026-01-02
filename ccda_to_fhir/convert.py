@@ -170,6 +170,7 @@ def convert_medication(
     metadata_callback=None,
     section=None,
     reference_registry=None,
+    seen_medication_ids=None,
 ) -> FHIRResourceDict:
     """Route medication activity to appropriate converter based on moodCode.
 
@@ -183,6 +184,7 @@ def convert_medication(
         code_system_mapper: Optional code system mapper
         metadata_callback: Optional callback for storing author metadata
         section: The C-CDA Section containing this medication (for narrative)
+        seen_medication_ids: Set to track medication IDs and detect duplicates within a document
 
     Returns:
         FHIR MedicationRequest or MedicationStatement resource
@@ -209,6 +211,7 @@ def convert_medication(
             metadata_callback=metadata_callback,
             section=section,
             reference_registry=reference_registry,
+            seen_medication_ids=seen_medication_ids,
         )
     else:
         # Intent/order/proposal → MedicationRequest
@@ -260,6 +263,14 @@ class DocumentConverter:
             code_system_mapper=self.code_system_mapper
         )
 
+        # Track seen observation IDs to detect invalid C-CDA with duplicate IDs
+        self._seen_observation_ids: set[tuple[str, str | None]] = set()
+        self._seen_medication_ids: set[tuple[str, str | None]] = set()
+        self._seen_allergy_ids: set[tuple[str, str | None]] = set()
+        self._seen_goal_ids: set[tuple[str, str | None]] = set()
+        self._seen_immunization_ids: set[tuple[str, str | None]] = set()
+        self._seen_diagnostic_report_ids: set[tuple[str, str | None]] = set()
+
         # Informant metadata storage for RelatedPerson/Practitioner generation
         self._informant_metadata: dict[str, list] = {}
         from .converters.informant_extractor import InformantExtractor
@@ -277,10 +288,13 @@ class DocumentConverter:
         self.observation_converter = ObservationConverter(
             code_system_mapper=self.code_system_mapper,
             reference_registry=self.reference_registry,
+            seen_observation_ids=self._seen_observation_ids,
         )
         self.diagnostic_report_converter = DiagnosticReportConverter(
             code_system_mapper=self.code_system_mapper,
             reference_registry=self.reference_registry,
+            seen_observation_ids=self._seen_observation_ids,
+            seen_diagnostic_report_ids=self._seen_diagnostic_report_ids,
         )
         self.procedure_converter = ProcedureConverter(
             code_system_mapper=self.code_system_mapper,
@@ -297,6 +311,7 @@ class DocumentConverter:
         self.goal_converter = GoalConverter(
             code_system_mapper=self.code_system_mapper,
             reference_registry=self.reference_registry,
+            seen_goal_ids=self._seen_goal_ids,
         )
         self.practitioner_converter = PractitionerConverter(
             code_system_mapper=self.code_system_mapper
@@ -714,10 +729,12 @@ class DocumentConverter:
                                 provider_org = record_target.patient_role.provider_organization
                                 organization = self.organization_converter.convert(provider_org)
 
-                                # Validate and add Organization to bundle
+                                # Validate and add Organization to bundle (check for duplicates)
+                                org_id = organization.get("id")
                                 if self._validate_resource(organization):
-                                    resources.append(organization)
-                                    self.reference_registry.register_resource(organization)
+                                    if org_id and not self.reference_registry.has_resource("Organization", org_id):
+                                        resources.append(organization)
+                                        self.reference_registry.register_resource(organization)
 
                                     # Update Patient.managingOrganization with proper reference
                                     if "id" in organization:
@@ -813,9 +830,12 @@ class DocumentConverter:
                 practitioner = self.practitioner_converter.convert(
                     ccda_doc.legal_authenticator.assigned_entity
                 )
+                practitioner_id = practitioner.get("id")
                 if self._validate_resource(practitioner):
-                    resources.append(practitioner)
-                    self.reference_registry.register_resource(practitioner)
+                    # Check for duplicates before adding
+                    if practitioner_id and not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                        resources.append(practitioner)
+                        self.reference_registry.register_resource(practitioner)
             except Exception as e:
                 logger.warning(
                     f"Error converting legal authenticator practitioner: {e}",
@@ -829,9 +849,12 @@ class DocumentConverter:
                 practitioner = self.practitioner_converter.convert(
                     ccda_doc.data_enterer.assigned_entity
                 )
+                practitioner_id = practitioner.get("id")
                 if self._validate_resource(practitioner):
-                    resources.append(practitioner)
-                    self.reference_registry.register_resource(practitioner)
+                    # Check for duplicates before adding
+                    if practitioner_id and not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                        resources.append(practitioner)
+                        self.reference_registry.register_resource(practitioner)
             except Exception as e:
                 logger.warning(
                     f"Error converting data enterer practitioner: {e}",
@@ -843,8 +866,11 @@ class DocumentConverter:
         if ccda_doc.custodian:
             custodian_org = self._extract_custodian_organization(ccda_doc.custodian)
             if custodian_org:
-                resources.append(custodian_org)
-                self.reference_registry.register_resource(custodian_org)
+                org_id = custodian_org.get("id")
+                # Check for duplicates before adding
+                if org_id and not self.reference_registry.has_resource("Organization", org_id):
+                    resources.append(custodian_org)
+                    self.reference_registry.register_resource(custodian_org)
 
         # Convert Practitioners from documentationOf/serviceEvent/performer
         # These represent clinicians who actually carried out clinical services
@@ -1023,6 +1049,15 @@ class DocumentConverter:
             # Deduplication: Only add if not already in body encounters
             header_encounter = self._extract_header_encounter(ccda_doc)
             if header_encounter:
+                # Collect participant and location resources created during header encounter conversion
+                # Add them to the main resources list, NOT to encounters list
+                if hasattr(self, '_temp_header_practitioners'):
+                    resources.extend(self._temp_header_practitioners)
+                    self._temp_header_practitioners = []  # Clear for next conversion
+                if hasattr(self, '_temp_header_locations'):
+                    resources.extend(self._temp_header_locations)
+                    self._temp_header_locations = []  # Clear for next conversion
+
                 # Check if this encounter already exists in body encounters (by ID)
                 header_id = header_encounter.get("id")
                 duplicate_found = False
@@ -1057,7 +1092,15 @@ class DocumentConverter:
             for encounter in encounters:
                 self.reference_registry.register_resource(encounter)
             if encounters:
-                section_resource_map[TemplateIds.ENCOUNTERS_SECTION] = encounters
+                # Filter to only Encounter resources for the section map
+                # The encounters list may contain related Practitioner/Location resources
+                # from encounter participants, which should be in the bundle but NOT
+                # in the Encounters section of the Composition
+                encounter_resources = [
+                    r for r in encounters if r.get("resourceType") == "Encounter"
+                ]
+                if encounter_resources:
+                    section_resource_map[TemplateIds.ENCOUNTERS_SECTION] = encounter_resources
 
             # Extract and convert Encounter Diagnosis observations to Condition resources
             encounter_diagnoses = self._extract_encounter_diagnosis_conditions(
@@ -1336,6 +1379,7 @@ class DocumentConverter:
             code_system_mapper=self.code_system_mapper,
             metadata_callback=self._store_author_metadata,
             reference_registry=self.reference_registry,
+            seen_observation_ids=self._seen_observation_ids,
         )
 
     def _extract_allergies(
@@ -1358,6 +1402,7 @@ class DocumentConverter:
             code_system_mapper=self.code_system_mapper,
             reference_registry=self.reference_registry,
             metadata_callback=self._store_author_metadata,
+            seen_allergy_ids=self._seen_allergy_ids,
         )
 
     def _extract_medications(
@@ -1383,6 +1428,7 @@ class DocumentConverter:
             code_system_mapper=self.code_system_mapper,
             metadata_callback=self._store_author_metadata,
             reference_registry=self.reference_registry,
+            seen_medication_ids=self._seen_medication_ids,
         )
 
     def _extract_immunizations(
@@ -1405,6 +1451,7 @@ class DocumentConverter:
             code_system_mapper=self.code_system_mapper,
             metadata_callback=self._store_author_metadata,
             reference_registry=self.reference_registry,
+            seen_immunization_ids=self._seen_immunization_ids,
         )
 
     def _extract_goals(
@@ -2148,17 +2195,23 @@ class DocumentConverter:
         Processes Procedure Activity Procedure, Procedure Activity Observation,
         and Procedure Activity Act templates, as all map to FHIR Procedure resource.
 
+        Also collects Practitioner and Organization resources created inline during
+        performer extraction.
+
         Args:
             structured_body: The structuredBody element
 
         Returns:
-            List of FHIR Procedure resources
+            List of FHIR resources (Procedures, Practitioners, and Organizations)
         """
         # Process Procedure Activity Procedures
         procedures = self.procedure_processor.process(
             structured_body,
             reference_registry=self.reference_registry,
         )
+
+        # Collect performer resources created during conversion
+        performer_resources = self.procedure_converter.get_pending_resources()
 
         # Process Procedure Activity Observations (also map to Procedure)
         procedure_observations = self.procedure_observation_processor.process(
@@ -2167,6 +2220,9 @@ class DocumentConverter:
         )
         procedures.extend(procedure_observations)
 
+        # Collect more performer resources
+        performer_resources.extend(self.procedure_converter.get_pending_resources())
+
         # Process Procedure Activity Acts (also map to Procedure)
         procedure_acts = self.procedure_act_processor.process(
             structured_body,
@@ -2174,12 +2230,20 @@ class DocumentConverter:
         )
         procedures.extend(procedure_acts)
 
+        # Collect remaining performer resources
+        performer_resources.extend(self.procedure_converter.get_pending_resources())
+
         # Store author metadata for each procedure
         # Note: We need to re-traverse to get the C-CDA elements for metadata
         # This is a limitation of the class-based converter approach
         self._store_procedure_metadata(structured_body, procedures)
 
-        return procedures
+        # Return both procedures and performer resources
+        all_resources = []
+        all_resources.extend(procedures)
+        all_resources.extend(performer_resources)
+
+        return all_resources
 
     def _store_procedure_metadata(
         self, structured_body: StructuredBody, procedures: list[FHIRResourceDict]
@@ -2350,6 +2414,9 @@ class DocumentConverter:
                                                     procedure = self.procedure_converter.convert(rel.procedure)
                                                     if procedure:
                                                         resources.append(procedure)
+                                                    # Collect performer resources created during conversion
+                                                    performer_resources = self.procedure_converter.get_pending_resources()
+                                                    resources.extend(performer_resources)
                                                 except Exception as e:
                                                     logger.warning(f"Failed to convert intervention procedure: {e}")
 
@@ -2359,6 +2426,9 @@ class DocumentConverter:
                                                     procedure = self.procedure_converter.convert(rel.act)
                                                     if procedure:
                                                         resources.append(procedure)
+                                                    # Collect performer resources created during conversion
+                                                    performer_resources = self.procedure_converter.get_pending_resources()
+                                                    resources.extend(performer_resources)
                                                 except Exception as e:
                                                     logger.warning(f"Failed to convert intervention act: {e}")
 
@@ -2462,11 +2532,14 @@ class DocumentConverter:
     def _extract_encounters(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Extract and convert Encounters from the structured body.
 
+        Also collects Practitioner and Location resources created inline during
+        participant/location extraction.
+
         Args:
             structured_body: The structuredBody element
 
         Returns:
-            List of FHIR Encounter resources
+            List of FHIR resources (Encounters, Practitioners, and Locations)
         """
         # Process encounters using the section processor
         encounters = self.encounter_processor.process(
@@ -2474,12 +2547,20 @@ class DocumentConverter:
             reference_registry=self.reference_registry,
         )
 
+        # Collect participant and location resources created during conversion
+        participant_resources = self.encounter_converter.get_pending_resources()
+
         # Store author metadata for each encounter
         # Note: We need to re-traverse to get the C-CDA elements for metadata
         # This is a limitation of the class-based converter approach
         self._store_encounter_metadata(structured_body, encounters)
 
-        return encounters
+        # Return both encounters and participant/location resources
+        all_resources = []
+        all_resources.extend(encounters)
+        all_resources.extend(participant_resources)
+
+        return all_resources
 
     def _store_encounter_metadata(
         self, structured_body: StructuredBody, encounters: list[FHIRResourceDict]
@@ -2585,9 +2666,14 @@ class DocumentConverter:
                                     section=None,
                                     code_system_mapper=self.code_system_mapper,
                                     reference_registry=self.reference_registry,
+                                    seen_observation_ids=self._seen_observation_ids,
                                 )
                                 condition = condition_converter.convert(obs)
-                                conditions.append(condition)
+                                # Check for duplicates before adding (same observation might be in Problem section)
+                                condition_id = condition.get("id")
+                                if condition_id and not self.reference_registry.has_resource("Condition", condition_id):
+                                    conditions.append(condition)
+                                    self.reference_registry.register_resource(condition)
                             except Exception as e:
                                 logger.error(
                                     f"Error converting encounter diagnosis observation: {e}",
@@ -2653,10 +2739,14 @@ class DocumentConverter:
                                             # Convert to Location resource
                                             location = location_converter.convert(participant.participant_role)
 
-                                            # Deduplicate by NPI or name+city
+                                            # Deduplicate by checking both local registry and reference registry
                                             dedup_key = self._get_location_dedup_key(location)
+                                            location_id = location.get("id")
 
-                                            if dedup_key not in location_registry:
+                                            # Skip if already in reference registry (e.g., from header encounter)
+                                            if location_id and self.reference_registry.has_resource("Location", location_id):
+                                                logger.debug(f"Location {location_id} already exists in reference registry, skipping")
+                                            elif dedup_key not in location_registry:
                                                 location_registry[dedup_key] = location
                                                 logger.debug(
                                                     f"Created Location resource: {location.get('name')} (ID: {location.get('id')})"
@@ -2677,10 +2767,14 @@ class DocumentConverter:
                                             # Convert to Location resource
                                             location = location_converter.convert(participant.participant_role)
 
-                                            # Deduplicate by NPI or name+city
+                                            # Deduplicate by checking both local registry and reference registry
                                             dedup_key = self._get_location_dedup_key(location)
+                                            location_id = location.get("id")
 
-                                            if dedup_key not in location_registry:
+                                            # Skip if already in reference registry (e.g., from header encounter)
+                                            if location_id and self.reference_registry.has_resource("Location", location_id):
+                                                logger.debug(f"Location {location_id} already exists in reference registry, skipping")
+                                            elif dedup_key not in location_registry:
                                                 location_registry[dedup_key] = location
                                                 logger.debug(
                                                     f"Created Location resource from Procedure: {location.get('name')} (ID: {location.get('id')})"
@@ -2892,18 +2986,90 @@ class DocumentConverter:
         participants = []
 
         # Responsible party -> participant with type PPRF (primary performer)
-        if encompassing_encounter.responsible_party and encompassing_encounter.responsible_party.assigned_entity:
+        # Only process if the responsible party represents a person (has assigned_person)
+        # Per C-CDA: assignedEntity can be just an organization without a person
+        if (encompassing_encounter.responsible_party and
+            encompassing_encounter.responsible_party.assigned_entity and
+            hasattr(encompassing_encounter.responsible_party.assigned_entity, "assigned_person") and
+            encompassing_encounter.responsible_party.assigned_entity.assigned_person):
+            from ccda_to_fhir.converters.practitioner import PractitionerConverter
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers, generate_id
+
             assigned_entity = encompassing_encounter.responsible_party.assigned_entity
+
+            # Try to find a valid identifier (non-nullFlavor)
+            npi_id = None
+            first_id = None
+
             if assigned_entity.id and len(assigned_entity.id) > 0:
-                first_pract_id = assigned_entity.id[0]
-                # Generate practitioner ID using cached UUID v4
-                from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                for id_elem in assigned_entity.id:
+                    # Skip IDs with nullFlavor
+                    if hasattr(id_elem, 'null_flavor') and id_elem.null_flavor:
+                        continue
+                    if id_elem.root:
+                        if not first_id:
+                            first_id = id_elem
+                        # Prefer NPI identifier
+                        if id_elem.root == "2.16.840.1.113883.4.6":
+                            npi_id = id_elem
+                            break
+
+            # Use NPI if available, otherwise use first identifier
+            selected_id = npi_id if npi_id else first_id
+
+            # Generate practitioner ID
+            if selected_id:
+                # Generate practitioner ID using cached UUID v4 from identifier
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner",
-                    first_pract_id.root,
-                    first_pract_id.extension
+                    selected_id.root,
+                    selected_id.extension
                 )
+            else:
+                # Fallback: Generate ID from person's name if no valid ID
+                # This handles cases where IDs all have nullFlavor
+                person = assigned_entity.assigned_person
+                name_parts = []
+                if hasattr(person, 'name') and person.name:
+                    names = person.name if isinstance(person.name, list) else [person.name]
+                    for name in names:
+                        if hasattr(name, 'family') and name.family:
+                            name_parts.append(str(name.family))
+                        if hasattr(name, 'given') and name.given:
+                            givens = name.given if isinstance(name.given, list) else [name.given]
+                            name_parts.extend(str(g) for g in givens)
 
+                # Generate deterministic ID from name
+                if name_parts:
+                    name_key = "-".join(name_parts).lower().replace(" ", "-")
+                    practitioner_id = generate_id_from_identifiers(
+                        "Practitioner",
+                        f"name-{name_key}",
+                        None
+                    )
+                else:
+                    # Last resort: generate random UUID
+                    practitioner_id = generate_id()
+
+            # Create practitioner if we have an ID
+            if practitioner_id:
+                # Create Practitioner resource if it doesn't already exist
+                if not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                    pract_converter = PractitionerConverter(
+                        code_system_mapper=self.code_system_mapper
+                    )
+                    practitioner = pract_converter.convert(assigned_entity)
+                    practitioner["id"] = practitioner_id
+
+                    # Register with reference registry
+                    self.reference_registry.register_resource(practitioner)
+
+                    # Store temporarily to add to bundle later
+                    if not hasattr(self, '_temp_header_practitioners'):
+                        self._temp_header_practitioners = []
+                    self._temp_header_practitioners.append(practitioner)
+
+                # Add participant reference
                 participants.append({
                     "type": [{
                         "coding": [{
@@ -2918,79 +3084,197 @@ class DocumentConverter:
                 })
 
         # Encounter participants
+        # Create Practitioner resources for participants that don't already exist
         if encompassing_encounter.encounter_participant:
-            for participant in encompassing_encounter.encounter_participant:
-                if participant.assigned_entity and participant.assigned_entity.id:
-                    first_pract_id = participant.assigned_entity.id[0]
-                    # Generate practitioner ID using cached UUID v4
-                    from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                    practitioner_id = generate_id_from_identifiers(
-                        "Practitioner",
-                        first_pract_id.root,
-                        first_pract_id.extension
-                    )
+            from ccda_to_fhir.converters.practitioner import PractitionerConverter
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-                    part_dict = {
-                        "individual": {
-                            "reference": f"Practitioner/{practitioner_id}"
-                        }
-                    }
-                    # Add type code - map C-CDA ParticipationFunction codes to FHIR ParticipationType codes
-                    # Reference: docs/mapping/08-encounter.md lines 217-223
-                    # Reference: docs/mapping/09-participations.md lines 217-232
-                    if participant.type_code:
-                        # Map known function codes (PCP→PPRF, ATTPHYS→ATND, ANEST→SPRF, etc.)
-                        mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(
-                            participant.type_code,
-                            participant.type_code  # Pass through if not in map
+            for participant in encompassing_encounter.encounter_participant:
+                # Only create Practitioner if the participant represents a person (has assigned_person)
+                # Per C-CDA: assignedEntity can be just an organization without a person
+                if (participant.assigned_entity and
+                    hasattr(participant.assigned_entity, "assigned_person") and
+                    participant.assigned_entity.assigned_person and
+                    participant.assigned_entity.id):
+                    # Prefer NPI for ID generation
+                    npi_id = None
+                    first_id = None
+
+                    for id_elem in participant.assigned_entity.id:
+                        if id_elem.root:
+                            if not first_id:
+                                first_id = id_elem
+                            # Prefer NPI identifier
+                            if id_elem.root == "2.16.840.1.113883.4.6":
+                                npi_id = id_elem
+                                break
+
+                    # Use NPI if available, otherwise use first identifier
+                    selected_id = npi_id if npi_id else first_id
+                    if selected_id:
+                        # Generate practitioner ID using cached UUID v4
+                        practitioner_id = generate_id_from_identifiers(
+                            "Practitioner",
+                            selected_id.root,
+                            selected_id.extension
                         )
-                        part_dict["type"] = [{
-                            "coding": [{
-                                "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                                "code": mapped_code,
+
+                        # Create Practitioner resource if it doesn't already exist
+                        if not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                            pract_converter = PractitionerConverter(
+                                code_system_mapper=self.code_system_mapper
+                            )
+                            practitioner = pract_converter.convert(participant.assigned_entity)
+                            practitioner["id"] = practitioner_id
+
+                            # Register with reference registry (will be collected by calling code)
+                            self.reference_registry.register_resource(practitioner)
+
+                            # Store temporarily to add to bundle later
+                            if not hasattr(self, '_temp_header_practitioners'):
+                                self._temp_header_practitioners = []
+                            self._temp_header_practitioners.append(practitioner)
+
+                        # Only add participant reference if we have a person (practitioner)
+                        part_dict = {
+                            "individual": {
+                                "reference": f"Practitioner/{practitioner_id}"
+                            }
+                        }
+                        # Add type code - map C-CDA ParticipationFunction codes to FHIR ParticipationType codes
+                        # Reference: docs/mapping/08-encounter.md lines 217-223
+                        # Reference: docs/mapping/09-participations.md lines 217-232
+                        if participant.type_code:
+                            # Map known function codes (PCP→PPRF, ATTPHYS→ATND, ANEST→SPRF, etc.)
+                            mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(
+                                participant.type_code,
+                                participant.type_code  # Pass through if not in map
+                            )
+                            part_dict["type"] = [{
+                                "coding": [{
+                                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                                    "code": mapped_code,
+                                }]
                             }]
-                        }]
-                    else:
-                        # Default to PART (participant) if no type code specified
-                        part_dict["type"] = [{
-                            "coding": [{
-                                "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                                "code": "PART",
-                                "display": "participant",
+                        else:
+                            # Default to PART (participant) if no type code specified
+                            part_dict["type"] = [{
+                                "coding": [{
+                                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                                    "code": "PART",
+                                    "display": "participant",
+                                }]
                             }]
-                        }]
-                    participants.append(part_dict)
+                        participants.append(part_dict)
 
         if participants:
             fhir_encounter["participant"] = participants
 
         # Location: healthCareFacility -> location
+        # Create Location resource if it doesn't already exist
         if encompassing_encounter.location and encompassing_encounter.location.health_care_facility:
+            from ccda_to_fhir.converters.location import LocationConverter
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
             facility = encompassing_encounter.location.health_care_facility
             location_display = None
+            location_address = None
 
+            # Try to get name from facility.location
             if facility.location and facility.location.name:
                 location_display = facility.location.name
 
+            # Fallback: Use patient providerOrganization details if available
+            # This handles real-world C-CDA where healthCareFacility may lack name/address
+            # but the providerOrganization has the facility details
+            # IMPORTANT: Only use as fallback - body location participants with full
+            # details (name, address, type code) should be preferred if they exist
+            if not location_display and ccda_doc.record_target:
+                # Create LocationConverter instance for address conversion
+                location_converter_temp = LocationConverter(
+                    code_system_mapper=self.code_system_mapper,
+                    reference_registry=self.reference_registry,
+                )
+
+                for record_target in ccda_doc.record_target:
+                    if record_target.patient_role and record_target.patient_role.provider_organization:
+                        provider_org = record_target.patient_role.provider_organization
+                        if provider_org.name:
+                            # Extract organization name
+                            names = provider_org.name
+                            if isinstance(names, list) and len(names) > 0:
+                                name_obj = names[0]
+                                if hasattr(name_obj, 'value') and name_obj.value:
+                                    location_display = name_obj.value
+                            elif isinstance(names, str):
+                                location_display = names
+
+                        # Extract organization address for Location
+                        if provider_org.addr:
+                            addrs = provider_org.addr
+                            location_address = location_converter_temp._convert_address(addrs)
+                        break
+
             if location_display or (facility.id and len(facility.id) > 0):
-                location_dict = {}
+                location_id = None
                 if facility.id and len(facility.id) > 0:
                     first_loc_id = facility.id[0]
-                    # Generate location ID from extension or root
-                    if first_loc_id.extension:
-                        location_id = first_loc_id.extension.replace(" ", "-").replace(".", "-")
-                    elif first_loc_id.root:
-                        location_id = first_loc_id.root.replace(".", "-").replace(":", "-")
-                    else:
-                        location_id = None
+                    # Generate location ID using cached UUID v4
+                    location_id = generate_id_from_identifiers(
+                        "Location",
+                        first_loc_id.root,
+                        first_loc_id.extension
+                    )
 
-                    if location_id:
-                        location_dict["reference"] = f"Location/{location_id}"
+                    # Create Location resource if it doesn't already exist
+                    if location_id and not self.reference_registry.has_resource("Location", location_id):
+                        # Create a minimal Location resource
+                        location_resource = {
+                            "resourceType": "Location",
+                            "id": location_id,
+                            "status": "active",
+                            "mode": "instance",  # Specific location instance (not a kind of location)
+                        }
 
-                if location_display:
-                    location_dict["display"] = location_display
+                        if location_display:
+                            location_resource["name"] = location_display
 
-                if location_dict:
+                        # Add address if available (from providerOrganization fallback)
+                        if location_address:
+                            location_resource["address"] = location_address
+
+                        # Add identifiers
+                        if facility.id:
+                            # Use encounter_converter to convert identifiers (it's already instantiated)
+                            identifiers = self.encounter_converter.convert_identifiers(facility.id)
+                            if identifiers:
+                                location_resource["identifier"] = identifiers
+
+                        # Add managing organization if available
+                        if facility.service_provider_organization and facility.service_provider_organization.id:
+                            org_id_elem = facility.service_provider_organization.id[0]
+                            org_id = generate_id_from_identifiers(
+                                "Organization",
+                                org_id_elem.root,
+                                org_id_elem.extension
+                            )
+                            location_resource["managingOrganization"] = {
+                                "reference": f"Organization/{org_id}"
+                            }
+
+                        # Register with reference registry
+                        self.reference_registry.register_resource(location_resource)
+
+                        # Store temporarily to add to bundle later
+                        if not hasattr(self, '_temp_header_locations'):
+                            self._temp_header_locations = []
+                        self._temp_header_locations.append(location_resource)
+
+                if location_id:
+                    location_dict = {"reference": f"Location/{location_id}"}
+                    if location_display:
+                        location_dict["display"] = location_display
+
                     fhir_encounter["location"] = [{
                         "location": location_dict,
                         "status": "completed"  # Header encounters are completed
@@ -3176,7 +3460,8 @@ class DocumentConverter:
                     # Validate and deduplicate based on ID
                     org_id = organization.get("id")
                     if self._validate_resource(organization):
-                        if org_id and org_id not in seen_organizations:
+                        # Check global registry to avoid duplicates across different extraction paths
+                        if org_id and not self.reference_registry.has_resource("Organization", org_id):
                             resources.append(organization)
                             self.reference_registry.register_resource(organization)
                             seen_organizations.add(org_id)

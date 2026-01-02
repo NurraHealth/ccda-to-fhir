@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import re
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
@@ -94,64 +93,29 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         resource_type: str,
         fallback_context: str = "",
     ) -> str:
-        """Generate a FHIR-compliant, collision-resistant resource ID.
+        """Generate a FHIR-compliant UUID v4 resource ID.
 
-        Priority:
-        1. Use extension if available (cleaned)
-        2. Use deterministic hash of root
-        3. Use hash of fallback_context for deterministic fallback
+        Delegates to central id_generator module for consistency.
+        Within a document, same identifiers → same UUID.
 
         Args:
             root: OID or UUID root from C-CDA identifier
             extension: Extension from C-CDA identifier
-            resource_type: FHIR resource type (lowercase, e.g., "condition")
-            fallback_context: Additional context for fallback (e.g., timestamp + counter)
+            resource_type: FHIR resource type (e.g., "Encounter", "condition")
+            fallback_context: Additional context for fallback (unused but kept for API compatibility)
 
         Returns:
-            FHIR-compliant ID (validated against [A-Za-z0-9\\-\\.]{1,64})
+            UUID v4 string (cached for consistency within document)
 
         Examples:
             >>> generate_resource_id(None, "ABC-123", "condition", "")
-            'condition-abc-123'
+            'f47ac10b-58cc-4372-a567-0e02b2c3d479'
             >>> generate_resource_id("2.16.840.1.113883", None, "allergy", "ctx")
-            'allergy-a3f5e9c2d1b8'
+            'a1b2c3d4-e5f6-4789-a012-3456789abcde'
         """
-        prefix = resource_type.lower()
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        # Priority 1: Use extension (cleaned and validated)
-        if extension:
-            # Remove invalid FHIR ID characters, keep alphanumeric, dash, dot
-            clean_ext = re.sub(r'[^A-Za-z0-9\-\.]', '-', extension).lower()
-            # Truncate to fit within 64 char limit (prefix + dash + ext)
-            max_ext_len = 64 - len(prefix) - 1
-            clean_ext = clean_ext[:max_ext_len]
-            candidate_id = f"{prefix}-{clean_ext}"
-
-            if self.FHIR_ID_PATTERN.match(candidate_id):
-                return candidate_id
-
-        # Priority 2: Use deterministic hash of root
-        if root:
-            # SHA256 hash -> first 12 hex chars (deterministic, low collision)
-            root_hash = hashlib.sha256(root.encode('utf-8')).hexdigest()[:12]
-            return f"{prefix}-{root_hash}"
-
-        # Priority 3: Fallback with context hash (deterministic if context is same)
-        if fallback_context:
-            context_hash = hashlib.sha256(fallback_context.encode('utf-8')).hexdigest()[:12]
-            return f"{prefix}-{context_hash}"
-
-        # Priority 4: Last resort - log warning and use timestamp-based hash
-        from ccda_to_fhir.logging_config import get_logger
-        logger = get_logger(__name__)
-        logger.warning(
-            f"Generating fallback ID for {resource_type} with no identifiers",
-            extra={"resource_type": resource_type}
-        )
-        # Use a random but deterministic hash of current timestamp
-        import time
-        fallback = hashlib.sha256(str(time.time()).encode()).hexdigest()[:12]
-        return f"{prefix}-{fallback}"
+        return generate_id_from_identifiers(resource_type, root, extension)
 
     def map_oid_to_uri(self, oid: str | None) -> str:
         """Map a C-CDA OID to a FHIR canonical URI.

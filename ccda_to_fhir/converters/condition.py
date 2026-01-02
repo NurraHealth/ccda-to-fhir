@@ -36,7 +36,7 @@ logger = get_logger(__name__)
 def generate_id_from_observation_content(observation: Observation) -> str:
     """Generate deterministic ID from observation content when no ID exists.
 
-    Creates a reproducible UUID v5 based on observation's code, value, and time.
+    Creates a reproducible UUID v4 based on observation's code, value, and time.
     This ensures the same observation generates the same ID in both
     ConditionConverter and EncounterConverter.
 
@@ -44,9 +44,9 @@ def generate_id_from_observation_content(observation: Observation) -> str:
         observation: The observation to generate ID from
 
     Returns:
-        UUID v5 string generated from observation content
+        UUID v4 string (cached, deterministic for same content)
     """
-    import uuid
+    from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
     # Build a stable string from observation attributes
     parts = []
@@ -76,15 +76,12 @@ def generate_id_from_observation_content(observation: Observation) -> str:
             if hasattr(observation.effective_time.low, 'value'):
                 parts.append(f"time:{observation.effective_time.low.value}")
 
-    # Fallback: if no parts were found, use random UUID
-    if not parts:
-        return str(uuid.uuid4())
+    # Build content-based identifier string
+    content_string = "|".join(parts) if parts else "no-content"
 
-    # Create deterministic UUID v5 from concatenated parts
-    content_string = "|".join(parts)
-    # Use a namespace UUID specific to this use case
-    namespace = uuid.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8')  # DNS namespace UUID
-    return str(uuid.uuid5(namespace, content_string))
+    # Use content string as "root" for caching
+    # This ensures same content → same UUID v4 (via caching)
+    return generate_id_from_identifiers("Condition", content_string, None)
 
 
 class ConditionConverter(BaseConverter[Observation]):
@@ -97,18 +94,21 @@ class ConditionConverter(BaseConverter[Observation]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-problems.html
     """
 
-    def __init__(self, *args, section_code: str | None = None, concern_act: Act | None = None, section=None, **kwargs):
+    def __init__(self, *args, section_code: str | None = None, concern_act: Act | None = None, section=None, seen_observation_ids: set | None = None, **kwargs):
         """Initialize the condition converter.
 
         Args:
             section_code: The LOINC code of the section containing this problem
             concern_act: The Problem Concern Act containing this observation
             section: The C-CDA Section containing this condition (for narrative)
+            seen_observation_ids: Set to track observation IDs and detect duplicates within a document
         """
         super().__init__(*args, **kwargs)
         self.section_code = section_code
         self.concern_act = concern_act
         self.section = section
+        # Track seen observation IDs to detect invalid C-CDA documents that reuse IDs
+        self.seen_observation_ids = seen_observation_ids if seen_observation_ids is not None else set()
 
     def convert(self, observation: Observation) -> FHIRResourceDict:
         """Convert a C-CDA Problem Observation to a FHIR Condition resource.
@@ -134,9 +134,25 @@ class ConditionConverter(BaseConverter[Observation]):
         }
 
         # Generate ID from observation identifier
+        # NOTE: Some C-CDA documents incorrectly reuse the same ID for multiple observations
+        # We detect this and fall back to content-based ID generation to avoid duplicates
         if observation.id and len(observation.id) > 0:
             first_id = observation.id[0]
-            condition["id"] = self._generate_condition_id(first_id.root, first_id.extension)
+            obs_id_key = (first_id.root, first_id.extension)
+
+            # Check if we've seen this observation ID before (duplicate)
+            if obs_id_key in self.seen_observation_ids:
+                # ID reuse detected - fall back to content-based ID
+                logger.warning(
+                    f"Observation ID {first_id.root} (extension={first_id.extension}) is reused in C-CDA document. "
+                    f"Using content-based ID generation to avoid duplicate Condition resources."
+                )
+                condition["id"] = self._generate_id_from_observation_content(observation)
+            else:
+                # First time seeing this observation ID - use it
+                potential_id = self._generate_condition_id(first_id.root, first_id.extension)
+                condition["id"] = potential_id
+                self.seen_observation_ids.add(obs_id_key)
         else:
             # Fallback: Generate deterministic ID from observation content
             # This ensures the same observation gets the same ID in both
@@ -199,6 +215,24 @@ class ConditionConverter(BaseConverter[Observation]):
                 condition["verificationStatus"] = {
                     "coding": [coding]
                 }
+
+        # Default verificationStatus if not already set (US Core requirement)
+        # Per US Core, verificationStatus is required (SHALL support)
+        # Default to "confirmed" for non-negated conditions
+        if "verificationStatus" not in condition:
+            display = get_display_for_code(
+                FHIRSystems.CONDITION_VERIFICATION,
+                FHIRCodes.ConditionVerification.CONFIRMED
+            )
+            coding = {
+                "system": FHIRSystems.CONDITION_VERIFICATION,
+                "code": FHIRCodes.ConditionVerification.CONFIRMED,
+            }
+            if display:
+                coding["display"] = display
+            condition["verificationStatus"] = {
+                "coding": [coding]
+            }
 
         # Category (from section code)
         categories = self._determine_categories(observation)
@@ -821,6 +855,7 @@ def convert_problem_concern_act(
     metadata_callback=None,
     section=None,
     reference_registry=None,
+    seen_observation_ids=None,
 ) -> list[FHIRResourceDict]:
     """Convert a Problem Concern Act to a list of FHIR Condition resources.
 
@@ -845,6 +880,7 @@ def convert_problem_concern_act(
         concern_act=act,
         section=section,
         reference_registry=reference_registry,
+        seen_observation_ids=seen_observation_ids,
     )
 
     for rel in act.entry_relationship:

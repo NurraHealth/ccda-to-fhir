@@ -27,13 +27,21 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-results.html
     """
 
-    def __init__(self, *args, **kwargs):
-        """Initialize the diagnostic report converter."""
+    def __init__(self, *args, seen_observation_ids: set | None = None, seen_diagnostic_report_ids: set | None = None, **kwargs):
+        """Initialize the diagnostic report converter.
+
+        Args:
+            seen_observation_ids: Set to track observation IDs and detect duplicates within a document
+            seen_diagnostic_report_ids: Set to track diagnostic report IDs and detect duplicates within a document
+        """
         super().__init__(*args, **kwargs)
         self.observation_converter = ObservationConverter(
             code_system_mapper=self.code_system_mapper,
             reference_registry=self.reference_registry,
+            seen_observation_ids=seen_observation_ids,
         )
+        # Track seen diagnostic report IDs to detect invalid C-CDA documents that reuse IDs
+        self.seen_diagnostic_report_ids = seen_diagnostic_report_ids if seen_diagnostic_report_ids is not None else set()
 
     def convert(self, organizer: Organizer, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
         """Convert a C-CDA Result Organizer to a FHIR DiagnosticReport and Observations.
@@ -53,9 +61,27 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         }
 
         # 1. Generate ID from organizer identifier
+        # NOTE: Some C-CDA documents reuse the same ID for different DiagnosticReports
+        # We detect this and use a fallback ID generation to avoid duplicates
         if organizer.id and len(organizer.id) > 0:
             first_id = organizer.id[0]
-            report["id"] = self._generate_report_id(first_id.root, first_id.extension)
+            dr_id_key = (first_id.root, first_id.extension)
+
+            # Check if we've seen this diagnostic report ID before (duplicate)
+            if dr_id_key in self.seen_diagnostic_report_ids:
+                # ID reuse detected - fall back to generating a unique ID
+                from ccda_to_fhir.logging_config import get_logger
+                logger = get_logger(__name__)
+                logger.warning(
+                    f"DiagnosticReport ID {first_id.root} (extension={first_id.extension}) is reused in C-CDA document. "
+                    f"Generating unique ID to avoid duplicate DiagnosticReport resources."
+                )
+                from ccda_to_fhir.id_generator import generate_id
+                report["id"] = generate_id()
+            else:
+                # First time seeing this diagnostic report ID - use it
+                report["id"] = self._generate_report_id(first_id.root, first_id.extension)
+                self.seen_diagnostic_report_ids.add(dr_id_key)
 
         # 2. Identifiers
         if organizer.id:

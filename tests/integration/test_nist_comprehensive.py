@@ -818,7 +818,22 @@ class TestNISTComprehensive:
 
         assert len(locations) >= 1, "Must have Location resource"
 
-        loc = locations[0].dict() if hasattr(locations[0], 'dict') else locations[0].model_dump()
+        # Find Location with type code (from body location participant with full details)
+        # Note: Some C-CDA documents may create multiple Location resources
+        # (e.g., from header healthCareFacility and body location participants).
+        # We want the one with complete details including type code.
+        location = None
+        for loc_res in locations:
+            loc_dict = loc_res.dict() if hasattr(loc_res, 'dict') else loc_res.model_dump()
+            if "type" in loc_dict and len(loc_dict["type"]) > 0:
+                location = loc_res
+                break
+
+        # Fallback: if no Location has type, use the first one
+        if location is None:
+            location = locations[0]
+
+        loc = location.dict() if hasattr(location, 'dict') else location.model_dump()
 
         # Exact status
         assert loc["status"] == "active"

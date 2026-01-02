@@ -34,9 +34,15 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
     Reference: https://www.hl7.org/fhir/R4/medicationstatement.html
     """
 
-    def __init__(self, *args, **kwargs):
-        """Initialize the medication statement converter."""
+    def __init__(self, *args, seen_medication_ids: set | None = None, **kwargs):
+        """Initialize the medication statement converter.
+
+        Args:
+            seen_medication_ids: Set to track medication IDs and detect duplicates within a document
+        """
         super().__init__(*args, **kwargs)
+        # Track seen medication IDs to detect invalid C-CDA documents that reuse IDs
+        self.seen_medication_ids = seen_medication_ids if seen_medication_ids is not None else set()
 
     def convert(self, substance_admin: SubstanceAdministration, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Medication Activity to a FHIR MedicationStatement.
@@ -60,11 +66,27 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         }
 
         # 1. Generate ID from substance administration identifier
+        # NOTE: Some C-CDA documents incorrectly reuse the same ID for multiple medications
+        # We detect this and use a fallback ID generation to avoid duplicates
         if substance_admin.id and len(substance_admin.id) > 0:
             first_id = substance_admin.id[0]
-            med_statement["id"] = self._generate_medication_statement_id(
-                first_id.root, first_id.extension
-            )
+            med_id_key = (first_id.root, first_id.extension)
+
+            # Check if we've seen this medication ID before (duplicate)
+            if med_id_key in self.seen_medication_ids:
+                # ID reuse detected - fall back to generating a unique ID
+                logger.warning(
+                    f"Medication ID {first_id.root} (extension={first_id.extension}) is reused in C-CDA document. "
+                    f"Generating unique ID to avoid duplicate MedicationStatement resources."
+                )
+                from ccda_to_fhir.id_generator import generate_id
+                med_statement["id"] = generate_id()
+            else:
+                # First time seeing this medication ID - use it
+                med_statement["id"] = self._generate_medication_statement_id(
+                    first_id.root, first_id.extension
+                )
+                self.seen_medication_ids.add(med_id_key)
 
         # 2. Identifiers
         if substance_admin.id:
@@ -736,6 +758,7 @@ def convert_medication_statement(
     metadata_callback=None,
     section=None,
     reference_registry=None,
+    seen_medication_ids=None,
 ) -> FHIRResourceDict:
     """Convert a Medication Activity to a FHIR MedicationStatement resource.
 
@@ -753,6 +776,7 @@ def convert_medication_statement(
     converter = MedicationStatementConverter(
         code_system_mapper=code_system_mapper,
         reference_registry=reference_registry,
+        seen_medication_ids=seen_medication_ids,
     )
 
     try:

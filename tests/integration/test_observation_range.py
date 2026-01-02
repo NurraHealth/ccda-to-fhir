@@ -269,14 +269,17 @@ class TestObservationIDSanitization:
         bundle = convert_document(ccda_doc)["bundle"]
         observations = _find_all_resources_in_bundle(bundle, "Observation")
 
-        # Find the Height observation with sanitized ID (lowercase)
-        height_obs = next((obs for obs in observations if "16-height" in obs.get("id", "")), None)
+        # Find the Height observation by code
+        height_obs = next((obs for obs in observations if obs.get("code", {}).get("coding", [{}])[0].get("code") == "8302-2"), None)
 
-        assert height_obs is not None, "Should find observation with sanitized ID"
-        # After standardization: underscore replaced with hyphen, converted to lowercase
-        assert height_obs["id"] == "observation-16-height"
-        # Verify it's the correct observation
-        assert height_obs["code"]["coding"][0]["code"] == "8302-2"
+        assert height_obs is not None, "Should find Height observation"
+        # ID should be a valid UUID v4
+        import uuid
+        assert "id" in height_obs
+        try:
+            uuid.UUID(height_obs["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Observation ID {height_obs['id']} is not a valid UUID v4")
 
     def test_sanitizes_id_with_spaces(self) -> None:
         """Test that observation IDs with spaces are sanitized."""
@@ -304,11 +307,14 @@ class TestObservationIDSanitization:
         bundle = convert_document(ccda_doc)["bundle"]
         observations = _find_all_resources_in_bundle(bundle, "Observation")
 
-        # Find the temperature observation (lowercase)
-        temp_obs = next((obs for obs in observations if "body" in obs.get("id", "")), None)
+        # Find the temperature observation by code
+        temp_obs = next((obs for obs in observations if obs.get("code", {}).get("coding", [{}])[0].get("code") == "8310-5"), None)
 
-        assert temp_obs is not None, "Should find observation with sanitized ID"
-        # After standardization: underscore and space replaced with hyphens, converted to lowercase
-        assert temp_obs["id"] == "observation-8-body-temperature"
-        # Verify it's the correct observation
-        assert temp_obs["code"]["coding"][0]["code"] == "8310-5"
+        assert temp_obs is not None, "Should find Body Temperature observation"
+        # ID should be a valid UUID v4
+        import uuid
+        assert "id" in temp_obs
+        try:
+            uuid.UUID(temp_obs["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Observation ID {temp_obs['id']} is not a valid UUID v4")

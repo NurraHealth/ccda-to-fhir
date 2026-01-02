@@ -191,8 +191,12 @@ class TestLocationConverter:
         location = location_converter.convert(sample_service_delivery_location)
 
         assert "id" in location
-        # After standardization: uses extension value with resource type prefix
-        assert location["id"] == "location-1234567890"
+        # ID should be a valid UUID v4
+        import uuid
+        try:
+            uuid.UUID(location["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Location ID {location['id']} is not a valid UUID v4")
 
     # ============================================================================
     # B. Identifier Mapping (5 tests)
@@ -266,11 +270,12 @@ class TestLocationConverter:
         location = location_converter.convert(patient_home_location)
 
         assert "id" in location
-        # After standardization: nullFlavor extension results in hashed root
-        # ID should start with "location-" prefix
-        assert location["id"].startswith("location-")
-        # Should be hashed since no valid extension
-        assert len(location["id"]) > len("location-")
+        # ID should be a valid UUID v4
+        import uuid
+        try:
+            uuid.UUID(location["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Location ID {location['id']} is not a valid UUID v4")
 
     # ============================================================================
     # C. Name Mapping (3 tests)

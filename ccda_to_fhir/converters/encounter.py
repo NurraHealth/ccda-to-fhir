@@ -35,6 +35,18 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
     Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-EncounterActivity.html
     """
 
+    def __init__(self, code_system_mapper=None, reference_registry=None):
+        """Initialize the encounter converter.
+
+        Args:
+            code_system_mapper: Optional code system mapper
+            reference_registry: Optional reference registry for tracking converted resources
+        """
+        super().__init__(code_system_mapper, reference_registry)
+        # Track resources created during conversion that need to be added to bundle
+        self._pending_practitioners: list[FHIRResourceDict] = []
+        self._pending_locations: list[FHIRResourceDict] = []
+
     def convert(self, encounter: CCDAEncounter, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Encounter Activity to a FHIR Encounter resource.
 
@@ -394,7 +406,10 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         return period if period else None
 
     def _extract_participants(self, encounter: CCDAEncounter) -> list[JSONObject]:
-        """Extract FHIR participants from C-CDA performers.
+        """Extract FHIR participants from C-CDA performers and create related resources.
+
+        Creates Practitioner resources inline for participants that don't already exist
+        in the reference registry. Follows the pattern used for Device creation.
 
         Args:
             encounter: The C-CDA encounter
@@ -402,6 +417,8 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         Returns:
             List of FHIR participant objects
         """
+        from ccda_to_fhir.converters.practitioner import PractitionerConverter
+
         participants = []
 
         if not encounter.performer:
@@ -440,18 +457,55 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                 }]
 
             # Extract individual reference from assignedEntity
-            if hasattr(performer, "assigned_entity") and performer.assigned_entity:
+            # Create Practitioner resource if it doesn't already exist
+            # Prefer NPI (2.16.840.1.113883.4.6) over other identifiers for consistency
+            # Only process if participant represents a person (has assigned_person)
+            # Per C-CDA: assignedEntity can be just an organization without a person
+            if (hasattr(performer, "assigned_entity") and performer.assigned_entity and
+                hasattr(performer.assigned_entity, "assigned_person") and
+                performer.assigned_entity.assigned_person):
                 assigned_entity = performer.assigned_entity
 
                 # Generate practitioner ID from NPI or other identifiers
+                # Prefer NPI for consistency
                 if hasattr(assigned_entity, "id") and assigned_entity.id:
+                    npi_id = None
+                    first_id = None
+
                     for id_elem in assigned_entity.id:
                         if id_elem.root:
-                            practitioner_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                            participant["individual"] = {
-                                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{practitioner_id}"
-                            }
-                            break
+                            if not first_id:
+                                first_id = id_elem
+                            # Prefer NPI identifier
+                            if id_elem.root == "2.16.840.1.113883.4.6":
+                                npi_id = id_elem
+                                break
+
+                    # Use NPI if available, otherwise use first identifier
+                    selected_id = npi_id if npi_id else first_id
+                    if selected_id:
+                        practitioner_id = self._generate_practitioner_id(selected_id.root, selected_id.extension)
+
+                        # Check if resource already exists in reference registry
+                        if self.reference_registry and not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                            # Create Practitioner resource
+                            pract_converter = PractitionerConverter(
+                                code_system_mapper=self.code_system_mapper
+                            )
+                            practitioner = pract_converter.convert(assigned_entity)
+                            practitioner["id"] = practitioner_id
+
+                            # Store for later addition to bundle
+                            self._pending_practitioners.append(practitioner)
+
+                            # Register with reference registry
+                            if self.reference_registry:
+                                self.reference_registry.register_resource(practitioner)
+
+                        # Add reference to participant
+                        participant["individual"] = {
+                            "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{practitioner_id}"
+                        }
 
             if participant:
                 participants.append(participant)
@@ -459,7 +513,10 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         return participants
 
     def _extract_locations(self, encounter: CCDAEncounter) -> list[JSONObject]:
-        """Extract FHIR locations from C-CDA location participants.
+        """Extract FHIR locations from C-CDA location participants and create related resources.
+
+        Creates Location resources inline for locations that don't already exist
+        in the reference registry. Follows the pattern used for Device creation.
 
         Args:
             encounter: The C-CDA encounter
@@ -467,6 +524,8 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         Returns:
             List of FHIR location objects
         """
+        from ccda_to_fhir.converters.location import LocationConverter
+
         locations = []
 
         if not encounter.participant:
@@ -524,6 +583,23 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
                     # Create location reference if we have a valid ID
                     if location_id:
+                        # Check if resource already exists in reference registry
+                        if self.reference_registry and not self.reference_registry.has_resource("Location", location_id):
+                            # Create Location resource
+                            loc_converter = LocationConverter(
+                                code_system_mapper=self.code_system_mapper
+                            )
+                            location_resource = loc_converter.convert(role)
+                            location_resource["id"] = location_id
+
+                            # Store for later addition to bundle
+                            self._pending_locations.append(location_resource)
+
+                            # Register with reference registry
+                            if self.reference_registry:
+                                self.reference_registry.register_resource(location_resource)
+
+                        # Add reference to encounter location
                         location["location"] = {
                             "reference": f"Location/{location_id}"
                         }
@@ -1014,16 +1090,16 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         """Generate synthetic FHIR Location ID from name and address.
 
         Used when C-CDA location participant has no explicit ID element.
-        Creates a deterministic ID based on location characteristics.
+        Creates a deterministic UUID v4 based on location characteristics.
 
         Args:
             name: Location name
             address: FHIR address object (if available)
 
         Returns:
-            Generated synthetic Location ID
+            Generated synthetic Location ID (UUID v4)
         """
-        import hashlib
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
         # Build a unique string from available identifying information
         id_parts = [name]
@@ -1037,11 +1113,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                 # Use first line
                 id_parts.append(address["line"][0])
 
-        # Create deterministic hash
+        # Create deterministic UUID v4 from combined location info
         combined = "|".join(id_parts)
-        hash_value = hashlib.sha256(combined.encode()).hexdigest()[:16]
-
-        return f"location-{hash_value}"
+        return generate_id_from_identifiers("Location", combined, None)
 
     def _generate_condition_id_from_observation(self, observation) -> str:
         """Generate a Condition resource ID from a Problem Observation.
@@ -1111,3 +1185,23 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                         break
 
         return observations
+
+    def get_pending_resources(self) -> list[FHIRResourceDict]:
+        """Get resources created during conversion that need to be added to bundle.
+
+        Returns Practitioner and Location resources that were created inline
+        during participant/location extraction, then clears the pending lists
+        for the next conversion.
+
+        Returns:
+            List of FHIR resources (Practitioner and Location) to add to bundle
+        """
+        resources = []
+        resources.extend(self._pending_practitioners)
+        resources.extend(self._pending_locations)
+
+        # Clear for next conversion
+        self._pending_practitioners = []
+        self._pending_locations = []
+
+        return resources

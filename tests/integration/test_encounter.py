@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import uuid
+
+import pytest
+
 from ccda_to_fhir.convert import convert_document
 from ccda_to_fhir.types import JSONObject
 
@@ -682,7 +686,12 @@ class TestEncounterConversion:
         assert identifier is not None, "Should have identifier from header encounter"
 
         # Verify ID matches header encounter with prefix
-        assert encounter["id"] == "encounter-enc-header-12345"
+        # Verify ID is a valid UUID v4
+        assert "id" in encounter
+        try:
+            uuid.UUID(encounter["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Encounter ID {encounter['id']} is not a valid UUID v4")
 
         # Verify status (default to finished for header encounters)
         assert encounter["status"] == "finished"
@@ -1280,7 +1289,12 @@ class TestEncounterConversion:
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
-        assert encounter["id"] == "encounter-enc-cpt-amb"
+        # Verify ID is a valid UUID v4
+        assert "id" in encounter
+        try:
+            uuid.UUID(encounter["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Encounter ID {encounter['id']} is not a valid UUID v4")
         assert "class" in encounter
         assert encounter["class"]["code"] == "AMB", "Header CPT 99213 should map to AMB"
         assert encounter["class"]["display"] == "ambulatory"
@@ -1346,7 +1360,12 @@ class TestEncounterConversion:
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
-        assert encounter["id"] == "encounter-enc-cpt-imp"
+        # Verify ID is a valid UUID v4
+        assert "id" in encounter
+        try:
+            uuid.UUID(encounter["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Encounter ID {encounter['id']} is not a valid UUID v4")
         assert "class" in encounter
         assert encounter["class"]["code"] == "IMP", "Header CPT 99221 should map to IMP"
         assert encounter["class"]["display"] == "inpatient encounter"
@@ -1412,7 +1431,12 @@ class TestEncounterConversion:
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
-        assert encounter["id"] == "encounter-enc-cpt-emer"
+        # Verify ID is a valid UUID v4
+        assert "id" in encounter
+        try:
+            uuid.UUID(encounter["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Encounter ID {encounter['id']} is not a valid UUID v4")
         assert "class" in encounter
         assert encounter["class"]["code"] == "EMER", "Header CPT 99283 should map to EMER"
         assert encounter["class"]["display"] == "emergency"
@@ -1478,7 +1502,12 @@ class TestEncounterConversion:
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
-        assert encounter["id"] == "encounter-enc-cpt-hh"
+        # Verify ID is a valid UUID v4
+        assert "id" in encounter
+        try:
+            uuid.UUID(encounter["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Encounter ID {encounter['id']} is not a valid UUID v4")
         assert "class" in encounter
         assert encounter["class"]["code"] == "HH", "Header CPT 99345 should map to HH"
         assert encounter["class"]["display"] == "home health"
@@ -2002,7 +2031,12 @@ class TestEncounterNullFlavorIdentifiers:
         # Should use the second id (not the nullFlavor one) for resource ID
         assert "id" in encounter
         # New ID format: prefix + lowercase extension
-        assert encounter["id"] == "encounter-170314b2amb"
+        # Verify ID is a valid UUID v4
+        assert "id" in encounter
+        try:
+            uuid.UUID(encounter["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Encounter ID {encounter['id']} is not a valid UUID v4")
 
     def test_excludes_nullflavor_from_identifier_list(self) -> None:
         """Test that nullFlavor identifiers are excluded from identifier array.
@@ -2085,7 +2119,12 @@ class TestEncounterIDSanitization:
 
         assert encounter is not None
         # New ID format: prefix + lowercase extension with invalid chars replaced
-        assert encounter["id"] == "encounter-encounter-1813648870084190"
+        # Verify ID is a valid UUID v4
+        assert "id" in encounter
+        try:
+            uuid.UUID(encounter["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Encounter ID {encounter['id']} is not a valid UUID v4")
         # Verify it's the correct encounter
         assert encounter["class"]["code"] == "AMB"
 
@@ -2110,6 +2149,11 @@ class TestEncounterIDSanitization:
 
         assert encounter is not None
         # New ID format: prefix + lowercase extension with invalid chars replaced
-        assert encounter["id"] == "encounter-medicationstatement-medication-1813433361850990"
+        # Verify ID is a valid UUID v4
+        assert "id" in encounter
+        try:
+            uuid.UUID(encounter["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Encounter ID {encounter['id']} is not a valid UUID v4")
         # Verify it's the correct encounter
         assert encounter["class"]["code"] == "IMP"

@@ -923,3 +923,87 @@ def assert_composition_sections_valid(bundle: dict) -> None:
         f"Found {len(section_violations)} composition section violation(s):\n" +
         "\n".join(f"  - {v}" for v in section_violations)
     )
+
+
+def assert_all_ids_are_uuid_v4(bundle: dict) -> None:
+    """Verify all resource IDs in bundle are valid UUID v4 format.
+
+    Args:
+        bundle: FHIR Bundle resource
+
+    Raises:
+        AssertionError: If any ID is not valid UUID v4
+    """
+    import uuid
+
+    resources = bundle.get("entry", [])
+    invalid_ids = []
+
+    for entry in resources:
+        resource = entry.get("resource", {})
+        resource_id = resource.get("id")
+        resource_type = resource.get("resourceType")
+
+        if not resource_id:
+            continue
+
+        # Verify it's a valid UUID v4
+        try:
+            uuid_obj = uuid.UUID(resource_id, version=4)
+            # Verify format matches (prevents UUID v1/v3/v5)
+            if str(uuid_obj) != resource_id:
+                invalid_ids.append((resource_type, resource_id, "Format mismatch"))
+        except ValueError as e:
+            invalid_ids.append((resource_type, resource_id, str(e)))
+
+    if invalid_ids:
+        error_msg = "Found resources with invalid UUID v4 IDs:\n"
+        for resource_type, resource_id, reason in invalid_ids:
+            error_msg += f"  - {resource_type}/{resource_id}: {reason}\n"
+        raise AssertionError(error_msg)
+
+
+def assert_reference_id_consistency(bundle: dict) -> None:
+    """Verify same resource is referenced with same ID throughout bundle.
+
+    For example, if "Practitioner/abc-123" appears in multiple references,
+    there should be exactly ONE Practitioner resource with id="abc-123".
+
+    Args:
+        bundle: FHIR Bundle resource
+
+    Raises:
+        AssertionError: If any reference inconsistencies are found
+    """
+    # Build map of resource_type/id → resource
+    resources_by_ref = {}
+    for entry in bundle.get("entry", []):
+        resource = entry.get("resource", {})
+        if "resourceType" in resource and "id" in resource:
+            ref = f"{resource['resourceType']}/{resource['id']}"
+            if ref in resources_by_ref:
+                # Duplicate resource ID!
+                raise AssertionError(f"Duplicate resource ID found: {ref}")
+            resources_by_ref[ref] = resource
+
+    # Extract all references and verify they exist
+    all_refs = set()
+    for entry in bundle.get("entry", []):
+        resource = entry.get("resource", {})
+        refs = _extract_all_references(resource)
+        for _, ref in refs:
+            # Skip urn: and # references
+            if not ref.startswith("urn:") and not ref.startswith("#"):
+                all_refs.add(ref)
+
+    # Verify all references point to existing resources
+    missing_refs = []
+    for ref in all_refs:
+        if ref not in resources_by_ref:
+            missing_refs.append(ref)
+
+    if missing_refs:
+        error_msg = "Found references to non-existent resources:\n"
+        for ref in sorted(missing_refs):
+            error_msg += f"  - {ref}\n"
+        raise AssertionError(error_msg)

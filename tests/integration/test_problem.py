@@ -304,8 +304,11 @@ class TestProblemConversion:
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
 
-        # Should NOT have verificationStatus=refuted
-        assert "verificationStatus" not in condition
+        # Should have verificationStatus=confirmed (US Core requirement)
+        # For "No known problems", verification status is "confirmed" (confirming absence)
+        # NOT "refuted" (which would be for refuting a specific problem)
+        assert "verificationStatus" in condition
+        assert condition["verificationStatus"]["coding"][0]["code"] == "confirmed"
 
         # Should have negated concept code
         assert "code" in condition

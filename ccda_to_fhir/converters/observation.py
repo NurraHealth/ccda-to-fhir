@@ -46,9 +46,15 @@ class ObservationConverter(BaseConverter[Observation]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-observations.html
     """
 
-    def __init__(self, *args, **kwargs):
-        """Initialize the observation converter."""
+    def __init__(self, *args, seen_observation_ids: set | None = None, **kwargs):
+        """Initialize the observation converter.
+
+        Args:
+            seen_observation_ids: Set to track observation IDs and detect duplicates within a document
+        """
         super().__init__(*args, **kwargs)
+        # Track seen observation IDs to detect invalid C-CDA documents that reuse IDs
+        self.seen_observation_ids = seen_observation_ids if seen_observation_ids is not None else set()
 
     def convert(self, observation: Observation, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Observation to a FHIR Observation.
@@ -93,31 +99,53 @@ class ObservationConverter(BaseConverter[Observation]):
         # (different profiles for lab, vital signs, smoking status, etc.)
 
         # 1. Generate ID from observation identifier
+        # NOTE: Some C-CDA documents incorrectly reuse the same ID for multiple observations
+        # We detect this and use a fallback ID generation to avoid duplicates
         if observation.id and len(observation.id) > 0:
             for id_elem in observation.id:
                 if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
-                    fhir_obs["id"] = self._generate_observation_id(
-                        id_elem.root, id_elem.extension
-                    )
+                    obs_id_key = (id_elem.root, id_elem.extension)
+
+                    # Check if we've seen this observation ID before (duplicate)
+                    if obs_id_key in self.seen_observation_ids:
+                        # ID reuse detected - fall back to generating a unique ID
+                        from ccda_to_fhir.logging_config import get_logger
+                        logger = get_logger(__name__)
+                        logger.warning(
+                            f"Observation ID {id_elem.root} (extension={id_elem.extension}) is reused in C-CDA document. "
+                            f"Generating unique ID to avoid duplicate Observation resources."
+                        )
+                        from ccda_to_fhir.id_generator import generate_id
+                        fhir_obs["id"] = generate_id()
+                    else:
+                        # First time seeing this observation ID - use it
+                        fhir_obs["id"] = self._generate_observation_id(
+                            id_elem.root, id_elem.extension
+                        )
+                        self.seen_observation_ids.add(obs_id_key)
                     break
 
-        # If no valid ID from identifiers, try fallback strategies
+        # If no valid ID from identifiers, generate UUID v4 based on content
         if "id" not in fhir_obs:
-            # Fallback 1: Use code-based ID (e.g., "obs-8302-2" for body height)
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+            # Use observation characteristics as cache key for deterministic UUID v4
+            fallback_key_parts = []
+
+            # Include code if available
             if observation.code and hasattr(observation.code, "code") and observation.code.code:
-                code_value = observation.code.code.lower().replace(" ", "-")
-                fhir_obs["id"] = f"obs-{self.sanitize_id(code_value)}"
-            # Fallback 2: Use template ID if available
-            elif hasattr(observation, "template_id") and observation.template_id:
+                fallback_key_parts.append(f"code:{observation.code.code}")
+
+            # Include template ID if available
+            if hasattr(observation, "template_id") and observation.template_id:
                 for template in observation.template_id:
                     if hasattr(template, "root") and template.root:
-                        fhir_obs["id"] = f"obs-{self.sanitize_id(template.root)}"
+                        fallback_key_parts.append(f"template:{template.root}")
                         break
-            # Fallback 3: Generate synthetic UUID
-            # This handles real-world C-CDA with all id elements having nullFlavor
-            if "id" not in fhir_obs:
-                from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                fhir_obs["id"] = generate_id_from_identifiers("Observation", None, None)
+
+            # Generate UUID v4 with content-based cache key
+            fallback_key = "|".join(fallback_key_parts) if fallback_key_parts else None
+            fhir_obs["id"] = generate_id_from_identifiers("Observation", fallback_key, None)
 
         # 2. Identifiers
         if observation.id:
@@ -318,34 +346,55 @@ class ObservationConverter(BaseConverter[Observation]):
         }
 
         # 1. Generate ID from organizer identifier
+        # NOTE: Some C-CDA documents process the same organizer multiple times (e.g., in nested sections)
+        # We detect this and use a fallback ID generation to avoid duplicates
         panel_id = None
         if organizer.id and len(organizer.id) > 0:
             for id_elem in organizer.id:
                 if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
-                    panel_id = self._generate_observation_id(id_elem.root, id_elem.extension)
+                    obs_id_key = (id_elem.root, id_elem.extension)
+
+                    # Check if we've seen this organizer ID before (duplicate)
+                    if obs_id_key in self.seen_observation_ids:
+                        # ID reuse detected - fall back to generating a unique ID
+                        from ccda_to_fhir.logging_config import get_logger
+                        logger = get_logger(__name__)
+                        logger.warning(
+                            f"Vital signs organizer ID {id_elem.root} (extension={id_elem.extension}) is reused in C-CDA document. "
+                            f"Generating unique ID to avoid duplicate Observation panel resources."
+                        )
+                        from ccda_to_fhir.id_generator import generate_id
+                        panel_id = generate_id()
+                    else:
+                        # First time seeing this organizer ID - use it
+                        panel_id = self._generate_observation_id(id_elem.root, id_elem.extension)
+                        self.seen_observation_ids.add(obs_id_key)
+
                     panel["id"] = panel_id
                     break
 
-        # If no valid ID from identifiers, try fallback strategies
+        # If no valid ID from identifiers, generate UUID v4 based on content
         if panel_id is None:
-            # Fallback 1: Use code-based ID (e.g., "obs-46680005" for vital signs)
+            from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+            # Use organizer characteristics as cache key for deterministic UUID v4
+            fallback_key_parts = []
+
+            # Include code if available
             if organizer.code and hasattr(organizer.code, "code") and organizer.code.code:
-                code_value = organizer.code.code.lower().replace(" ", "-")
-                panel_id = f"obs-{self.sanitize_id(code_value)}"
-                panel["id"] = panel_id
-            # Fallback 2: Use template ID if available
-            elif hasattr(organizer, "template_id") and organizer.template_id:
+                fallback_key_parts.append(f"code:{organizer.code.code}")
+
+            # Include template ID if available
+            if hasattr(organizer, "template_id") and organizer.template_id:
                 for template in organizer.template_id:
                     if hasattr(template, "root") and template.root:
-                        panel_id = f"obs-{self.sanitize_id(template.root)}"
-                        panel["id"] = panel_id
+                        fallback_key_parts.append(f"template:{template.root}")
                         break
-            # Fallback 3: Generate synthetic UUID
-            # This handles real-world C-CDA with all id elements having nullFlavor
-            if panel_id is None:
-                from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                panel_id = generate_id_from_identifiers("Observation", None, None)
-                panel["id"] = panel_id
+
+            # Generate UUID v4 with content-based cache key
+            fallback_key = "|".join(fallback_key_parts) if fallback_key_parts else None
+            panel_id = generate_id_from_identifiers("Observation", fallback_key, None)
+            panel["id"] = panel_id
 
         # 2. Identifiers
         if organizer.id:
@@ -1385,12 +1434,10 @@ class ObservationConverter(BaseConverter[Observation]):
                 "This should not occur if observations are properly converted."
             )
 
-        bp_id = systolic_obs["id"]
-        if "-" in bp_id:
-            # If ID has a suffix, use base part
-            bp_id = bp_id.rsplit("-", 1)[0] + "-bp"
-        else:
-            bp_id = bp_id + "-bp"
+        # Generate a unique UUID v4 for the blood pressure panel observation
+        # Use the systolic observation ID as part of the cache key to ensure consistency
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        bp_id = generate_id_from_identifiers("Observation", f"bp-panel-{systolic_obs['id']}", None)
 
         bp_obs: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,

@@ -54,14 +54,27 @@ class AuthorInfo:
             assigned = self.author.assigned_author
 
             # Extract practitioner ID (from assignedPerson)
+            # Prefer NPI (2.16.840.1.113883.4.6) over other identifiers for consistency
             # Only create practitioner ID if we have an explicit ID with root
             if assigned.assigned_person and assigned.id:
+                npi_id = None
+                first_id = None
+
                 for id_elem in assigned.id:
                     if id_elem.root:
-                        self.practitioner_id = self._generate_practitioner_id(
-                            id_elem.root, id_elem.extension
-                        )
-                        break
+                        if not first_id:
+                            first_id = id_elem
+                        # Prefer NPI identifier
+                        if id_elem.root == "2.16.840.1.113883.4.6":
+                            npi_id = id_elem
+                            break
+
+                # Use NPI if available, otherwise use first identifier
+                selected_id = npi_id if npi_id else first_id
+                if selected_id:
+                    self.practitioner_id = self._generate_practitioner_id(
+                        selected_id.root, selected_id.extension
+                    )
 
             # Extract device ID (from assignedAuthoringDevice)
             elif assigned.assigned_authoring_device and assigned.id:
@@ -73,13 +86,26 @@ class AuthorInfo:
                         break
 
             # Extract organization ID
+            # Prefer NPI (2.16.840.1.113883.4.6) over other identifiers for consistency
             if assigned.represented_organization and assigned.represented_organization.id:
+                npi_id = None
+                first_id = None
+
                 for id_elem in assigned.represented_organization.id:
                     if id_elem.root:
-                        self.organization_id = self._generate_organization_id(
-                            id_elem.root, id_elem.extension
-                        )
-                        break
+                        if not first_id:
+                            first_id = id_elem
+                        # Prefer NPI identifier
+                        if id_elem.root == "2.16.840.1.113883.4.6":
+                            npi_id = id_elem
+                            break
+
+                # Use NPI if available, otherwise use first identifier
+                selected_id = npi_id if npi_id else first_id
+                if selected_id:
+                    self.organization_id = self._generate_organization_id(
+                        selected_id.root, selected_id.extension
+                    )
 
             # Extract role code from assignedAuthor.code
             if assigned.code:

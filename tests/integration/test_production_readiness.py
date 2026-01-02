@@ -29,6 +29,7 @@ import pytest
 
 from ccda_to_fhir.convert import RESOURCE_TYPE_MAPPING, convert_document
 from tests.integration.validation_helpers import (
+    assert_all_ids_are_uuid_v4,
     assert_all_references_resolve,
     assert_all_required_fields_present,
     assert_chronological_dates,
@@ -37,6 +38,7 @@ from tests.integration.validation_helpers import (
     assert_no_duplicate_section_references,
     assert_no_empty_codes,
     assert_no_placeholder_references,
+    assert_reference_id_consistency,
     assert_references_point_to_correct_types,
     assert_us_core_must_support,
     assert_valid_code_systems,
@@ -201,6 +203,22 @@ class TestLayer3_ReferenceIntegrity:
         not Practitioner.
         """
         assert_references_point_to_correct_types(real_bundle)
+
+    def test_all_ids_are_uuid_v4(self, real_bundle):
+        """Verify all resource IDs are valid UUID v4 format.
+
+        All FHIR resource IDs in the bundle should be UUID v4.
+        This ensures consistency and proper ID generation.
+        """
+        assert_all_ids_are_uuid_v4(real_bundle)
+
+    def test_reference_id_consistency(self, real_bundle):
+        """Verify reference consistency across bundle.
+
+        Each resource should have exactly one ID, and all references
+        to that resource should use the same ID. No duplicate IDs allowed.
+        """
+        assert_reference_id_consistency(real_bundle)
 
 
 class TestLayer4_ClinicalDataQuality:

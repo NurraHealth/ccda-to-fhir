@@ -35,9 +35,15 @@ class GoalConverter(BaseConverter[Observation]):
     - Mapping Specification: docs/mapping/13-goal.md
     """
 
-    def __init__(self, *args, **kwargs):
-        """Initialize the goal converter."""
+    def __init__(self, *args, seen_goal_ids: set | None = None, **kwargs):
+        """Initialize the goal converter.
+
+        Args:
+            seen_goal_ids: Set to track goal IDs and detect duplicates within a document
+        """
         super().__init__(*args, **kwargs)
+        # Track seen goal IDs to detect invalid C-CDA documents that reuse IDs
+        self.seen_goal_ids = seen_goal_ids if seen_goal_ids is not None else set()
 
     def convert(self, observation: Observation, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Goal Observation to a FHIR Goal.
@@ -70,12 +76,28 @@ class GoalConverter(BaseConverter[Observation]):
         }
 
         # 1. Generate ID from observation identifier
+        # NOTE: Some C-CDA documents incorrectly reuse the same ID for multiple goals
+        # We detect this and use a fallback ID generation to avoid duplicates
         if observation.id and len(observation.id) > 0:
-            from ccda_to_fhir.id_generator import generate_id_from_identifiers
             first_id = observation.id[0]
-            fhir_goal["id"] = generate_id_from_identifiers(
-                "Goal", first_id.root, first_id.extension
-            )
+            goal_id_key = (first_id.root, first_id.extension)
+
+            # Check if we've seen this goal ID before (duplicate)
+            if goal_id_key in self.seen_goal_ids:
+                # ID reuse detected - fall back to generating a unique ID
+                logger.warning(
+                    f"Goal ID {first_id.root} (extension={first_id.extension}) is reused in C-CDA document. "
+                    f"Generating unique ID to avoid duplicate Goal resources."
+                )
+                from ccda_to_fhir.id_generator import generate_id
+                fhir_goal["id"] = generate_id()
+            else:
+                # First time seeing this goal ID - use it
+                from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                fhir_goal["id"] = generate_id_from_identifiers(
+                    "Goal", first_id.root, first_id.extension
+                )
+                self.seen_goal_ids.add(goal_id_key)
 
         # 2. Identifiers
         if observation.id:

@@ -29,9 +29,15 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-immunizations.html
     """
 
-    def __init__(self, *args, **kwargs):
-        """Initialize the immunization converter."""
+    def __init__(self, *args, seen_immunization_ids: set | None = None, **kwargs):
+        """Initialize the immunization converter.
+
+        Args:
+            seen_immunization_ids: Set to track immunization IDs and detect duplicates within a document
+        """
         super().__init__(*args, **kwargs)
+        # Track seen immunization IDs to detect invalid C-CDA documents that reuse IDs
+        self.seen_immunization_ids = seen_immunization_ids if seen_immunization_ids is not None else set()
 
     def convert(self, substance_admin: SubstanceAdministration, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
         """Convert a C-CDA Immunization Activity to FHIR resources.
@@ -57,12 +63,31 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         }
 
         # 1. Generate ID from substance administration identifier
+        # NOTE: Some C-CDA documents incorrectly reuse the same ID for multiple immunizations
+        # We detect this and use a fallback ID generation to avoid duplicates
         immunization_id = None
         if substance_admin.id and len(substance_admin.id) > 0:
             first_id = substance_admin.id[0]
-            immunization_id = self._generate_immunization_id(
-                first_id.root, first_id.extension
-            )
+            imm_id_key = (first_id.root, first_id.extension)
+
+            # Check if we've seen this immunization ID before (duplicate)
+            if imm_id_key in self.seen_immunization_ids:
+                # ID reuse detected - fall back to generating a unique ID
+                from ccda_to_fhir.logging_config import get_logger
+                logger = get_logger(__name__)
+                logger.warning(
+                    f"Immunization ID {first_id.root} (extension={first_id.extension}) is reused in C-CDA document. "
+                    f"Generating unique ID to avoid duplicate Immunization resources."
+                )
+                from ccda_to_fhir.id_generator import generate_id
+                immunization_id = generate_id()
+            else:
+                # First time seeing this immunization ID - use it
+                immunization_id = self._generate_immunization_id(
+                    first_id.root, first_id.extension
+                )
+                self.seen_immunization_ids.add(imm_id_key)
+
             immunization["id"] = immunization_id
 
         # Default ID if not available
@@ -606,8 +631,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if not code:
             return None
 
-        # Generate unique ID for the reaction observation
-        observation_id = f"{immunization_id}-reaction-{idx}"
+        # Generate unique UUID v4 for the reaction observation
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        observation_id = generate_id_from_identifiers("Observation", f"imm-reaction-{immunization_id}-{idx}", None)
 
         observation_resource: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
@@ -710,8 +736,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if not code:
             return None
 
-        # Generate unique ID for the supporting observation
-        observation_id = f"{immunization_id}-supporting-{idx}"
+        # Generate unique UUID v4 for the supporting observation
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        observation_id = generate_id_from_identifiers("Observation", f"imm-supporting-{immunization_id}-{idx}", None)
 
         observation_resource: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
@@ -848,8 +875,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if not value_code:
             return None
 
-        # Generate unique ID for the component observation
-        observation_id = f"{immunization_id}-complication-{idx}"
+        # Generate unique UUID v4 for the complication observation
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        observation_id = generate_id_from_identifiers("Observation", f"imm-complication-{immunization_id}-{idx}", None)
 
         observation_resource: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
@@ -1103,6 +1131,7 @@ def convert_immunization_activity(
     metadata_callback=None,
     section=None,
     reference_registry=None,
+    seen_immunization_ids=None,
 ) -> list[FHIRResourceDict]:
     """Convert a C-CDA Immunization Activity to FHIR resources.
 
@@ -1116,6 +1145,7 @@ def convert_immunization_activity(
         code_system_mapper: Optional CodeSystemMapper instance
         metadata_callback: Optional callback for storing author metadata
         section: The C-CDA Section containing this immunization (for narrative)
+        seen_immunization_ids: Set to track immunization IDs and detect duplicates within a document
 
     Returns:
         List of FHIR resources:
@@ -1152,6 +1182,7 @@ def convert_immunization_activity(
         converter = ImmunizationConverter(
             code_system_mapper=code_system_mapper,
             reference_registry=reference_registry,
+            seen_immunization_ids=seen_immunization_ids,
         )
         immunization, reaction_observations = converter.convert(substance_admin, section=section)
 

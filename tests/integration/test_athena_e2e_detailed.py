@@ -16,6 +16,11 @@ import pytest
 from ccda_to_fhir.convert import convert_document
 from fhir.resources.bundle import Bundle
 from tests.integration.helpers.temporal_validators import assert_datetime_format
+from tests.integration.validation_helpers import (
+    assert_all_ids_are_uuid_v4,
+    assert_all_references_resolve,
+    assert_reference_id_consistency,
+)
 
 ATHENA_CCD = Path(__file__).parent / "fixtures" / "documents" / "athena_ccd.xml"
 
@@ -395,6 +400,30 @@ class TestAthenaDetailedValidation:
         for med in med_statements:
             assert med.subject.reference == expected_patient_ref, \
                 f"MedicationStatement must reference {expected_patient_ref}"
+
+    def test_all_references_resolve(self, athena_bundle):
+        """Validate all references in bundle resolve to actual resources.
+
+        Comprehensive check that every reference (Patient/123, Practitioner/456, etc.)
+        points to a resource that actually exists in the bundle. No dangling references.
+        """
+        assert_all_references_resolve(athena_bundle.dict())
+
+    def test_all_ids_are_uuid_v4(self, athena_bundle):
+        """Validate all resource IDs are valid UUID v4 format.
+
+        All FHIR resource IDs must be UUID v4 (random UUIDs), not hash-based
+        or other formats. This ensures proper ID generation consistency.
+        """
+        assert_all_ids_are_uuid_v4(athena_bundle.dict())
+
+    def test_reference_id_consistency(self, athena_bundle):
+        """Validate no duplicate resource IDs and all references use correct IDs.
+
+        Each resource should have exactly one unique ID, and all references
+        to that resource must use the same ID. Detects deduplication issues.
+        """
+        assert_reference_id_consistency(athena_bundle.dict())
 
     def test_bundle_has_exactly_expected_sections(self, athena_bundle):
         """Validate Composition has expected sections from C-CDA."""
@@ -2460,27 +2489,24 @@ class TestAthenaDetailedValidation:
                 f"VerificationStatus code must be valid, got '{coding.code}'"
 
     def test_condition_verification_status_exact(self, athena_bundle):
-        """PHASE 2.4: Validate Condition.verificationStatus exact CodeableConcept."""
+        """PHASE 2.4: Validate Condition.verificationStatus exact CodeableConcept.
+
+        Per US Core, verificationStatus is required (SHALL support).
+        All conditions must have verificationStatus.
+        """
         conditions = [
             e.resource for e in athena_bundle.entry
             if e.resource.get_resource_type() == "Condition"
         ]
 
-        if len(conditions) == 0:
-            import pytest
-            pytest.skip("No Condition resources in this document")
+        assert len(conditions) > 0, "Must have Condition resources"
 
-        # Find conditions with verificationStatus
-        conditions_with_vs = [
-            c for c in conditions
-            if hasattr(c, 'verificationStatus') and c.verificationStatus is not None
-        ]
+        # US Core requires verificationStatus on all conditions
+        for condition in conditions:
+            assert hasattr(condition, 'verificationStatus') and condition.verificationStatus is not None, \
+                f"Condition {condition.id} missing verificationStatus (US Core requirement)"
 
-        if len(conditions_with_vs) == 0:
-            import pytest
-            pytest.skip("No conditions with verificationStatus in this document")
-
-        for condition in conditions_with_vs:
+        for condition in conditions:
             vs = condition.verificationStatus
 
             # Validate coding structure

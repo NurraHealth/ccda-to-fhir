@@ -98,7 +98,12 @@ class TestProcedureActivityAct:
     def test_converts_procedure_activity_act_performer(
         self, ccda_procedure_activity_act: str
     ) -> None:
-        """Test that performer is correctly converted."""
+        """Test that performer is correctly converted.
+
+        Per FHIR spec, performer.actor can reference either Practitioner or Organization.
+        When C-CDA assignedEntity has assignedPerson, actor references Practitioner.
+        When C-CDA assignedEntity has only representedOrganization (no person), actor references Organization.
+        """
         ccda_doc = wrap_in_ccda_document(ccda_procedure_activity_act, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -107,8 +112,9 @@ class TestProcedureActivityAct:
         assert "performer" in procedure
         assert len(procedure["performer"]) > 0
 
-        # Check performer has actor reference
+        # Check performer has actor reference (Practitioner OR Organization)
         performer = procedure["performer"][0]
         assert "actor" in performer
         assert "reference" in performer["actor"]
-        assert performer["actor"]["reference"].startswith("Practitioner/")
+        assert (performer["actor"]["reference"].startswith("Practitioner/") or
+                performer["actor"]["reference"].startswith("Organization/"))

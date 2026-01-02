@@ -31,6 +31,18 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
     Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-ProcedureActivityProcedure.html
     """
 
+    def __init__(self, code_system_mapper=None, reference_registry=None):
+        """Initialize the procedure converter.
+
+        Args:
+            code_system_mapper: Optional code system mapper
+            reference_registry: Optional reference registry for tracking converted resources
+        """
+        super().__init__(code_system_mapper, reference_registry)
+        # Track resources created during conversion that need to be added to bundle
+        self._pending_practitioners: list[FHIRResourceDict] = []
+        self._pending_organizations: list[FHIRResourceDict] = []
+
     def convert(self, procedure: CCDAProcedure | CCDAObservation | CCDAAct, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Procedure Activity to a FHIR Procedure resource.
 
@@ -361,7 +373,11 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         return period if period else None
 
     def _extract_performers(self, performers: list) -> list[JSONObject]:
-        """Extract FHIR performers from C-CDA performers.
+        """Extract FHIR performers from C-CDA performers and create related resources.
+
+        Creates Practitioner and Organization resources inline for performers that
+        don't already exist in the reference registry. Follows the pattern used for
+        Device creation in _extract_devices().
 
         Args:
             performers: List of C-CDA performer elements
@@ -370,6 +386,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             List of FHIR performer objects
         """
         from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP
+        from ccda_to_fhir.converters.practitioner import PractitionerConverter
+        from ccda_to_fhir.converters.organization import OrganizationConverter
 
         fhir_performers = []
 
@@ -405,26 +423,99 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                         performer_obj["function"] = {"coding": [function_coding]}
 
             # Extract practitioner reference from assigned entity
-            if hasattr(assigned_entity, "id") and assigned_entity.id:
-                for id_elem in assigned_entity.id:
-                    if id_elem.root:
-                        pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+            # Create Practitioner resource if it doesn't already exist
+            # Prefer NPI (2.16.840.1.113883.4.6) over other identifiers for consistency
+            pract_id = None
+            if hasattr(assigned_entity, "assigned_person") and assigned_entity.assigned_person:
+                if hasattr(assigned_entity, "id") and assigned_entity.id:
+                    npi_id = None
+                    first_id = None
+
+                    for id_elem in assigned_entity.id:
+                        if id_elem.root:
+                            if not first_id:
+                                first_id = id_elem
+                            # Prefer NPI identifier
+                            if id_elem.root == "2.16.840.1.113883.4.6":
+                                npi_id = id_elem
+                                break
+
+                    # Use NPI if available, otherwise use first identifier
+                    selected_id = npi_id if npi_id else first_id
+                    if selected_id:
+                        pract_id = self._generate_practitioner_id(selected_id.root, selected_id.extension)
+
+                        # Check if resource already exists in reference registry
+                        if self.reference_registry and not self.reference_registry.has_resource("Practitioner", pract_id):
+                            # Create Practitioner resource
+                            pract_converter = PractitionerConverter(
+                                code_system_mapper=self.code_system_mapper
+                            )
+                            practitioner = pract_converter.convert(assigned_entity)
+                            practitioner["id"] = pract_id
+
+                            # Store for later addition to bundle
+                            self._pending_practitioners.append(practitioner)
+
+                            # Register with reference registry
+                            if self.reference_registry:
+                                self.reference_registry.register_resource(practitioner)
+
+                        # Add reference to performer
                         performer_obj["actor"] = {
                             "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
                         }
-                        break
 
             # Extract organization reference if present
+            # Create Organization resource if it doesn't already exist
+            # Prefer NPI (2.16.840.1.113883.4.6) over other identifiers for consistency
+            org_id = None
             if hasattr(assigned_entity, "represented_organization") and assigned_entity.represented_organization:
                 org = assigned_entity.represented_organization
                 if hasattr(org, "id") and org.id:
+                    npi_id = None
+                    first_id = None
+
                     for id_elem in org.id:
                         if id_elem.root:
-                            org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
+                            if not first_id:
+                                first_id = id_elem
+                            # Prefer NPI identifier
+                            if id_elem.root == "2.16.840.1.113883.4.6":
+                                npi_id = id_elem
+                                break
+
+                    # Use NPI if available, otherwise use first identifier
+                    selected_id = npi_id if npi_id else first_id
+                    if selected_id:
+                        org_id = self._generate_organization_id(selected_id.root, selected_id.extension)
+
+                        # Check if resource already exists in reference registry
+                        if self.reference_registry and not self.reference_registry.has_resource("Organization", org_id):
+                            # Create Organization resource
+                            org_converter = OrganizationConverter(
+                                code_system_mapper=self.code_system_mapper
+                            )
+                            organization = org_converter.convert(org)
+                            organization["id"] = org_id
+
+                            # Store for later addition to bundle
+                            self._pending_organizations.append(organization)
+
+                            # Register with reference registry
+                            if self.reference_registry:
+                                self.reference_registry.register_resource(organization)
+
+                        # Add onBehalfOf reference if we have both practitioner and organization
+                        if pract_id:
                             performer_obj["onBehalfOf"] = {
                                 "reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{org_id}"
                             }
-                            break
+                        # If no practitioner, organization is the actor
+                        elif not pract_id:
+                            performer_obj["actor"] = {
+                                "reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{org_id}"
+                            }
 
             if performer_obj:
                 fhir_performers.append(performer_obj)
@@ -1023,3 +1114,22 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 codeable_concept["text"] = f"{laterality_value.display_name} {codeable_concept['text']}"
 
         return codeable_concept
+
+    def get_pending_resources(self) -> list[FHIRResourceDict]:
+        """Get resources created during conversion that need to be added to bundle.
+
+        Returns Practitioner and Organization resources that were created inline
+        during performer extraction, then clears the pending lists for the next conversion.
+
+        Returns:
+            List of FHIR resources (Practitioner and Organization) to add to bundle
+        """
+        resources = []
+        resources.extend(self._pending_practitioners)
+        resources.extend(self._pending_organizations)
+
+        # Clear for next conversion
+        self._pending_practitioners = []
+        self._pending_organizations = []
+
+        return resources

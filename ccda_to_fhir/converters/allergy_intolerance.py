@@ -37,16 +37,19 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-allergies.html
     """
 
-    def __init__(self, *args, concern_act: Act | None = None, section=None, **kwargs):
+    def __init__(self, *args, concern_act: Act | None = None, section=None, seen_allergy_ids: set | None = None, **kwargs):
         """Initialize the allergy intolerance converter.
 
         Args:
             concern_act: The Allergy Concern Act containing this observation
             section: The C-CDA Section containing this allergy (for narrative)
+            seen_allergy_ids: Set to track allergy IDs and detect duplicates within a document
         """
         super().__init__(*args, **kwargs)
         self.concern_act = concern_act
         self.section = section
+        # Track seen allergy IDs to detect invalid C-CDA documents that reuse IDs
+        self.seen_allergy_ids = seen_allergy_ids if seen_allergy_ids is not None else set()
 
     def convert(self, observation: Observation) -> FHIRResourceDict:
         """Convert a C-CDA Allergy Intolerance Observation to a FHIR AllergyIntolerance resource.
@@ -79,9 +82,25 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         }
 
         # Generate ID from observation identifier
+        # NOTE: Some C-CDA documents incorrectly reuse the same ID for multiple allergies
+        # We detect this and use a fallback ID generation to avoid duplicates
         if observation.id and len(observation.id) > 0:
             first_id = observation.id[0]
-            allergy["id"] = self._generate_allergy_id(first_id.root, first_id.extension)
+            allergy_id_key = (first_id.root, first_id.extension)
+
+            # Check if we've seen this allergy ID before (duplicate)
+            if allergy_id_key in self.seen_allergy_ids:
+                # ID reuse detected - fall back to generating a unique ID
+                logger.warning(
+                    f"Allergy ID {first_id.root} (extension={first_id.extension}) is reused in C-CDA document. "
+                    f"Generating unique ID to avoid duplicate AllergyIntolerance resources."
+                )
+                from ccda_to_fhir.id_generator import generate_id
+                allergy["id"] = generate_id()
+            else:
+                # First time seeing this allergy ID - use it
+                allergy["id"] = self._generate_allergy_id(first_id.root, first_id.extension)
+                self.seen_allergy_ids.add(allergy_id_key)
 
         # Identifiers
         if observation.id:
@@ -770,7 +789,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
 
 
 def convert_allergy_concern_act(
-    act: Act, code_system_mapper=None, metadata_callback=None, section=None, reference_registry=None
+    act: Act, code_system_mapper=None, metadata_callback=None, section=None, reference_registry=None, seen_allergy_ids=None
 ) -> list[FHIRResourceDict]:
     """Convert an Allergy Concern Act to a list of FHIR AllergyIntolerance resources.
 
@@ -793,6 +812,7 @@ def convert_allergy_concern_act(
         concern_act=act,
         section=section,
         reference_registry=reference_registry,
+        seen_allergy_ids=seen_allergy_ids,
     )
 
     for rel in act.entry_relationship:

@@ -16,6 +16,11 @@ import pytest
 from ccda_to_fhir.convert import convert_document
 from fhir.resources.bundle import Bundle
 from tests.integration.helpers.temporal_validators import assert_datetime_format
+from tests.integration.validation_helpers import (
+    assert_all_ids_are_uuid_v4,
+    assert_all_references_resolve,
+    assert_reference_id_consistency,
+)
 
 NIST_AMBULATORY = Path(__file__).parent / "fixtures" / "documents" / "nist_ambulatory.xml"
 
@@ -399,6 +404,30 @@ class TestNISTDetailedValidation:
         for med in med_statements:
             assert med.subject.reference == expected_patient_ref, \
                 f"MedicationStatement must reference {expected_patient_ref}"
+
+    def test_all_references_resolve(self, nist_bundle):
+        """Validate all references in bundle resolve to actual resources.
+
+        Comprehensive check that every reference (Patient/123, Practitioner/456, etc.)
+        points to a resource that actually exists in the bundle. No dangling references.
+        """
+        assert_all_references_resolve(nist_bundle.dict())
+
+    def test_all_ids_are_uuid_v4(self, nist_bundle):
+        """Validate all resource IDs are valid UUID v4 format.
+
+        All FHIR resource IDs must be UUID v4 (random UUIDs), not hash-based
+        or other formats. This ensures proper ID generation consistency.
+        """
+        assert_all_ids_are_uuid_v4(nist_bundle.dict())
+
+    def test_reference_id_consistency(self, nist_bundle):
+        """Validate no duplicate resource IDs and all references use correct IDs.
+
+        Each resource should have exactly one unique ID, and all references
+        to that resource must use the same ID. Detects deduplication issues.
+        """
+        assert_reference_id_consistency(nist_bundle.dict())
 
     def test_bundle_has_expected_sections(self, nist_bundle):
         """Validate Composition has expected sections from C-CDA."""
@@ -1900,11 +1929,27 @@ class TestNISTDetailedValidation:
         location = None
         location_reference = location_ref.location.reference
 
-        # Find the Location resource in the bundle
-        for entry in nist_bundle.entry:
-            if entry.resource.get_resource_type() == "Location":
-                location = entry.resource
+        # Find the Location resource with full details (name, address, type)
+        # Note: Some C-CDA documents may create multiple Location resources
+        # (e.g., from header healthCareFacility and body location participants).
+        # We want the one with complete details including type code.
+        all_locations = [
+            entry.resource for entry in nist_bundle.entry
+            if entry.resource.get_resource_type() == "Location"
+        ]
+
+        assert len(all_locations) > 0, "Bundle must contain at least one Location resource"
+
+        # Find Location with type code (from body location participant with full details)
+        location = None
+        for loc in all_locations:
+            if loc.type is not None and len(loc.type) > 0:
+                location = loc
                 break
+
+        # Fallback: if no Location has type, use the first one
+        if location is None:
+            location = all_locations[0]
 
         assert location is not None, "Encounter must reference a Location resource"
 
@@ -2846,27 +2891,24 @@ class TestNISTDetailedValidation:
                 f"VerificationStatus code must be valid, got '{coding.code}'"
 
     def test_condition_verification_status_exact(self, nist_bundle):
-        """PHASE 2.4: Validate Condition.verificationStatus exact CodeableConcept."""
+        """PHASE 2.4: Validate Condition.verificationStatus exact CodeableConcept.
+
+        Per US Core, verificationStatus is required (SHALL support).
+        All conditions must have verificationStatus.
+        """
         conditions = [
             e.resource for e in nist_bundle.entry
             if e.resource.get_resource_type() == "Condition"
         ]
 
-        if len(conditions) == 0:
-            import pytest
-            pytest.skip("No Condition resources in this document")
+        assert len(conditions) > 0, "Must have Condition resources"
 
-        # Find conditions with verificationStatus
-        conditions_with_vs = [
-            c for c in conditions
-            if hasattr(c, 'verificationStatus') and c.verificationStatus is not None
-        ]
+        # US Core requires verificationStatus on all conditions
+        for condition in conditions:
+            assert hasattr(condition, 'verificationStatus') and condition.verificationStatus is not None, \
+                f"Condition {condition.id} missing verificationStatus (US Core requirement)"
 
-        if len(conditions_with_vs) == 0:
-            import pytest
-            pytest.skip("No conditions with verificationStatus in this document")
-
-        for condition in conditions_with_vs:
+        for condition in conditions:
             vs = condition.verificationStatus
 
             # Validate coding structure

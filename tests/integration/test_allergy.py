@@ -918,8 +918,13 @@ class TestAllergyIntoleranceIDSanitization:
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 
         assert allergy is not None
-        # After standardization: pipe characters replaced with hyphens in extension
-        assert allergy["id"] == "allergyintolerance-130--alg-001"
+        # ID should be a valid UUID v4
+        import uuid
+        assert "id" in allergy
+        try:
+            uuid.UUID(allergy["id"], version=4)
+        except ValueError:
+            pytest.fail(f"AllergyIntolerance ID {allergy['id']} is not a valid UUID v4")
         # Verify it's the correct allergy
         assert allergy["code"]["coding"][0]["code"] == "1191"
 
@@ -964,7 +969,12 @@ class TestAllergyIntoleranceIDSanitization:
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 
         assert allergy is not None
-        # After standardization: slash characters replaced with hyphens in extension
-        assert allergy["id"] == "allergyintolerance-allergy-patient-123"
+        # ID should be a valid UUID v4
+        import uuid
+        assert "id" in allergy
+        try:
+            uuid.UUID(allergy["id"], version=4)
+        except ValueError:
+            pytest.fail(f"AllergyIntolerance ID {allergy['id']} is not a valid UUID v4")
         # Verify it's the correct allergy
         assert allergy["code"]["coding"][0]["code"] == "1191"

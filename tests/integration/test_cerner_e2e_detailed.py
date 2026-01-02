@@ -22,6 +22,11 @@ import pytest
 
 from ccda_to_fhir.convert import convert_document
 from fhir.resources.bundle import Bundle
+from tests.integration.validation_helpers import (
+    assert_all_ids_are_uuid_v4,
+    assert_all_references_resolve,
+    assert_reference_id_consistency,
+)
 
 CERNER_TOC = Path(__file__).parent / "fixtures" / "documents" / "cerner_toc.xml"
 
@@ -365,6 +370,30 @@ class TestCernerDetailedValidation:
         for allergy in allergies:
             assert allergy.patient.reference == expected_patient_ref, \
                 f"AllergyIntolerance must reference {expected_patient_ref}"
+
+    def test_all_references_resolve(self, cerner_bundle):
+        """Validate all references in bundle resolve to actual resources.
+
+        Comprehensive check that every reference (Patient/123, Practitioner/456, etc.)
+        points to a resource that actually exists in the bundle. No dangling references.
+        """
+        assert_all_references_resolve(cerner_bundle.dict())
+
+    def test_all_ids_are_uuid_v4(self, cerner_bundle):
+        """Validate all resource IDs are valid UUID v4 format.
+
+        All FHIR resource IDs must be UUID v4 (random UUIDs), not hash-based
+        or other formats. This ensures proper ID generation consistency.
+        """
+        assert_all_ids_are_uuid_v4(cerner_bundle.dict())
+
+    def test_reference_id_consistency(self, cerner_bundle):
+        """Validate no duplicate resource IDs and all references use correct IDs.
+
+        Each resource should have exactly one unique ID, and all references
+        to that resource must use the same ID. Detects deduplication issues.
+        """
+        assert_reference_id_consistency(cerner_bundle.dict())
 
     def test_encounter_ambulatory(self, cerner_bundle):
         """Validate Encounter: Ambulatory encounter."""

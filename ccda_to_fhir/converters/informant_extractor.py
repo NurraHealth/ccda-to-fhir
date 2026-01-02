@@ -82,20 +82,27 @@ class InformantInfo:
         return generate_id_from_identifiers("Practitioner", root, extension)
 
     def _generate_related_person_id(self, related_entity) -> str:
-        """Generate a FHIR RelatedPerson ID from C-CDA RelatedEntity.
+        """Generate a FHIR RelatedPerson ID using UUID v4.
+
+        Builds a cache key from available identifiers to ensure same
+        RelatedEntity generates same UUID within a document.
 
         Args:
             related_entity: The RelatedEntity element
 
         Returns:
-            A related person resource ID string
+            UUID v4 string (cached for consistency)
         """
-        # Try to use relationship code
-        if related_entity.code and related_entity.code.code:
-            code = related_entity.code.code.lower().replace(" ", "-")
-            return f"relatedperson-{code}"
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        # Try to use name
+        # Build cache key from available identifiers
+        cache_key_parts = []
+
+        # Add relationship code
+        if related_entity.code and related_entity.code.code:
+            cache_key_parts.append(f"code:{related_entity.code.code}")
+
+        # Add name if available
         if related_entity.related_person and related_entity.related_person.name:
             names = related_entity.related_person.name
             if names and len(names) > 0:
@@ -106,16 +113,16 @@ class InformantInfo:
                         if hasattr(name.family, "value")
                         else str(name.family)
                     )
-                    return f"relatedperson-{family.lower().replace(' ', '-')}"
+                    cache_key_parts.append(f"family:{family}")
 
-        # Fallback: use classCode if available (e.g., PAT, NOK, PRS)
+        # Add classCode if available
         if hasattr(related_entity, "class_code") and related_entity.class_code:
-            return f"relatedperson-{related_entity.class_code.lower()}"
+            cache_key_parts.append(f"class:{related_entity.class_code}")
 
-        # Last resort: generate synthetic UUID
-        # This handles real-world C-CDA with all fields having nullFlavor
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-        return generate_id_from_identifiers("RelatedPerson", None, None)
+        # Build final cache key (or None for fully synthetic)
+        cache_key = "|".join(cache_key_parts) if cache_key_parts else None
+
+        return generate_id_from_identifiers("RelatedPerson", cache_key, None)
 
 
 class InformantExtractor:

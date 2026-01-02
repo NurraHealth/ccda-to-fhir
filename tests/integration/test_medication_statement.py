@@ -447,8 +447,13 @@ class TestMedicationStatementIDSanitization:
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
 
         assert med_statement is not None
-        # Slash character should be replaced with hyphen
-        assert med_statement["id"] == "medicationstatement-medication-1813433361850990"
+        # ID should be a valid UUID v4
+        import uuid
+        assert "id" in med_statement
+        try:
+            uuid.UUID(med_statement["id"], version=4)
+        except ValueError:
+            pytest.fail(f"MedicationStatement ID {med_statement['id']} is not a valid UUID v4")
         # Verify it's the correct medication
         assert med_statement["medicationCodeableConcept"]["coding"][0]["code"] == "197361"
 
@@ -479,7 +484,12 @@ class TestMedicationStatementIDSanitization:
         med_statement = _find_resource_in_bundle(bundle, "MedicationStatement")
 
         assert med_statement is not None
-        # Pipe characters should be replaced with hyphens
-        assert med_statement["id"] == "medicationstatement-med-15--rx-003"
+        # ID should be a valid UUID v4
+        import uuid
+        assert "id" in med_statement
+        try:
+            uuid.UUID(med_statement["id"], version=4)
+        except ValueError:
+            pytest.fail(f"MedicationStatement ID {med_statement['id']} is not a valid UUID v4")
         # Verify it's the correct medication
         assert med_statement["medicationCodeableConcept"]["coding"][0]["code"] == "308136"

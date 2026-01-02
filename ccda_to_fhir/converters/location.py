@@ -180,7 +180,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         Returns:
             Generated synthetic Location ID
         """
-        import hashlib
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
         # Build a unique string from available identifying information
         id_parts = [name]
@@ -194,11 +194,9 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 # Use first line
                 id_parts.append(address["line"][0])
 
-        # Create deterministic hash
+        # Create deterministic UUID v4 from combined location info
         combined = "|".join(id_parts)
-        hash_value = hashlib.sha256(combined.encode()).hexdigest()[:16]
-
-        return f"location-{hash_value}"
+        return generate_id_from_identifiers("Location", combined, None)
 
     def _convert_identifiers(self, identifiers: list[II] | None) -> list[JSONObject]:
         """Convert C-CDA identifiers to FHIR identifiers with special handling.

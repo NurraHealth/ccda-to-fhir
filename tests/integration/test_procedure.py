@@ -1121,7 +1121,12 @@ class TestProcedureActivityObservation:
     def test_converts_observation_with_performer(
         self, ccda_procedure_observation_with_details: str
     ) -> None:
-        """Test that observation performer is correctly converted."""
+        """Test that observation performer is correctly converted.
+
+        Per FHIR spec, performer.actor can reference either Practitioner or Organization.
+        When C-CDA assignedEntity has assignedPerson, actor references Practitioner.
+        When C-CDA assignedEntity has only representedOrganization (no person), actor references Organization.
+        """
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -1131,7 +1136,9 @@ class TestProcedureActivityObservation:
         assert len(procedure["performer"]) >= 1
         performer = procedure["performer"][0]
         assert "actor" in performer
-        assert "Practitioner/" in performer["actor"]["reference"]
+        # Actor can be Practitioner OR Organization
+        assert ("Practitioner/" in performer["actor"]["reference"] or
+                "Organization/" in performer["actor"]["reference"])
 
     def test_converts_observation_with_location(
         self, ccda_procedure_observation_with_details: str
@@ -1303,7 +1310,12 @@ class TestProcedureIDSanitization:
         procedure = _find_resource_in_bundle(bundle, "Procedure")
 
         assert procedure is not None
-        # Pipe characters should be replaced with hyphens
-        assert procedure["id"] == "procedure-15--63725-003"
+        # ID should be a valid UUID v4
+        import uuid
+        assert "id" in procedure
+        try:
+            uuid.UUID(procedure["id"], version=4)
+        except ValueError:
+            pytest.fail(f"Procedure ID {procedure['id']} is not a valid UUID v4")
         # Verify it's the correct procedure
         assert procedure["code"]["coding"][0]["code"] == "80146002"
