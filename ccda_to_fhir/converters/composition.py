@@ -162,16 +162,19 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             composition["extension"] = extensions
 
         # Type - REQUIRED (document type code)
+        doc_type = None
         if clinical_document.code:
             doc_type = self.create_codeable_concept(
                 code=clinical_document.code.code,
                 code_system=clinical_document.code.code_system,
                 display_name=clinical_document.code.display_name,
             )
-            if doc_type:
-                composition["type"] = doc_type
+
+        # REQUIRED field - use fallback if None
+        if doc_type:
+            composition["type"] = doc_type
         else:
-            # Provide a default if no code is present (shouldn't happen in valid C-CDA)
+            # Provide a default if no code is present or create_codeable_concept returned None
             composition["type"] = {
                 "coding": [
                     {

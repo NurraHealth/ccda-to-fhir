@@ -549,15 +549,18 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     elif code.original_text:
                         original_text = self.extract_original_text(code.original_text, section=None)
 
-                    return self.create_codeable_concept(
+                    allergen_code = self.create_codeable_concept(
                         code=code.code,
                         code_system=code.code_system,
                         display_name=code.display_name,
                         original_text=original_text,
                         translations=translations,
                     )
+                    # REQUIRED field - use fallback if None
+                    if allergen_code:
+                        return allergen_code
 
-        # Fallback if no participant found
+        # Fallback if no participant found or create_codeable_concept returned None
         return {"text": "Unknown allergen"}
 
     def _extract_allergy_level_severity(self, observation: Observation) -> str | None:

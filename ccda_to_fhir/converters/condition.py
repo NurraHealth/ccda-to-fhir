@@ -579,16 +579,19 @@ class ConditionConverter(BaseConverter[Observation]):
                 # Try to resolve reference to narrative (section context may not be available here)
                 original_text = self.extract_original_text(value.original_text, section=None)
 
-            return self.create_codeable_concept(
+            diagnosis_code = self.create_codeable_concept(
                 code=value.code,
                 code_system=value.code_system,
                 display_name=value.display_name,
                 original_text=original_text,
                 translations=translations,
             )
-        else:
-            # Fallback for unexpected types
-            return {"text": str(value)}
+            # REQUIRED field - use fallback if None
+            if diagnosis_code:
+                return diagnosis_code
+
+        # Fallback for unexpected types or when create_codeable_concept returns None
+        return {"text": str(value) if value else "Unknown condition"}
 
     def _convert_effective_time(
         self, observation: Observation
