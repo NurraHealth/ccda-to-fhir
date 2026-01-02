@@ -165,15 +165,17 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         # Religion extension
         if patient_data.religious_affiliation_code:
-            religion_ext = {
-                "url": FHIRSystems.PATIENT_RELIGION,
-                "valueCodeableConcept": self.create_codeable_concept(
-                    code=patient_data.religious_affiliation_code.code,
-                    code_system=patient_data.religious_affiliation_code.code_system,
-                    display_name=patient_data.religious_affiliation_code.display_name,
-                ),
-            }
-            extensions.append(religion_ext)
+            religion_codeable = self.create_codeable_concept(
+                code=patient_data.religious_affiliation_code.code,
+                code_system=patient_data.religious_affiliation_code.code_system,
+                display_name=patient_data.religious_affiliation_code.display_name,
+            )
+            if religion_codeable:
+                religion_ext = {
+                    "url": FHIRSystems.PATIENT_RELIGION,
+                    "valueCodeableConcept": religion_codeable,
+                }
+                extensions.append(religion_ext)
 
         if extensions:
             patient["extension"] = extensions

@@ -1795,15 +1795,17 @@ class DocumentConverter:
                         ):
                             # Gender Identity Extension
                             if obs.value:
-                                gender_identity_ext = {
-                                    "url": FHIRSystems.US_CORE_GENDER_IDENTITY,
-                                    "valueCodeableConcept": self.observation_converter.create_codeable_concept(
-                                        code=getattr(obs.value, "code", None),
-                                        code_system=getattr(obs.value, "code_system", None),
-                                        display_name=getattr(obs.value, "display_name", None),
-                                    ),
-                                }
-                                extensions.append(gender_identity_ext)
+                                gender_identity_codeable = self.observation_converter.create_codeable_concept(
+                                    code=getattr(obs.value, "code", None),
+                                    code_system=getattr(obs.value, "code_system", None),
+                                    display_name=getattr(obs.value, "display_name", None),
+                                )
+                                if gender_identity_codeable:
+                                    gender_identity_ext = {
+                                        "url": FHIRSystems.US_CORE_GENDER_IDENTITY,
+                                        "valueCodeableConcept": gender_identity_codeable,
+                                    }
+                                    extensions.append(gender_identity_ext)
                             processed = True
 
                         # Sex observation identified by LOINC 46098-0
@@ -1931,20 +1933,22 @@ class DocumentConverter:
                             # - tribalAffiliation (1..1, CodeableConcept, Must-Support)
                             # - isEnrolled (0..1, boolean, optional - not available in C-CDA)
                             if obs.value:
-                                tribal_affiliation_ext = {
-                                    "url": FHIRSystems.US_CORE_TRIBAL_AFFILIATION,
-                                    "extension": [
-                                        {
-                                            "url": "tribalAffiliation",
-                                            "valueCodeableConcept": self.observation_converter.create_codeable_concept(
-                                                code=getattr(obs.value, "code", None),
-                                                code_system=getattr(obs.value, "code_system", None),
-                                                display_name=getattr(obs.value, "display_name", None),
-                                            ),
-                                        }
-                                    ]
-                                }
-                                extensions.append(tribal_affiliation_ext)
+                                tribal_affiliation_codeable = self.observation_converter.create_codeable_concept(
+                                    code=getattr(obs.value, "code", None),
+                                    code_system=getattr(obs.value, "code_system", None),
+                                    display_name=getattr(obs.value, "display_name", None),
+                                )
+                                if tribal_affiliation_codeable:
+                                    tribal_affiliation_ext = {
+                                        "url": FHIRSystems.US_CORE_TRIBAL_AFFILIATION,
+                                        "extension": [
+                                            {
+                                                "url": "tribalAffiliation",
+                                                "valueCodeableConcept": tribal_affiliation_codeable,
+                                            }
+                                        ]
+                                    }
+                                    extensions.append(tribal_affiliation_ext)
                             processed = True
 
                     # Check template ID for special observations
@@ -1954,20 +1958,22 @@ class DocumentConverter:
                             if template.root == TemplateIds.TRIBAL_AFFILIATION_OBSERVATION:
                                 # Tribal Affiliation Extension (US Core)
                                 if obs.value:
-                                    tribal_affiliation_ext = {
-                                        "url": FHIRSystems.US_CORE_TRIBAL_AFFILIATION,
-                                        "extension": [
-                                            {
-                                                "url": "tribalAffiliation",
-                                                "valueCodeableConcept": self.observation_converter.create_codeable_concept(
-                                                    code=getattr(obs.value, "code", None),
-                                                    code_system=getattr(obs.value, "code_system", None),
-                                                    display_name=getattr(obs.value, "display_name", None),
-                                                ),
-                                            }
-                                        ]
-                                    }
-                                    extensions.append(tribal_affiliation_ext)
+                                    tribal_affiliation_codeable = self.observation_converter.create_codeable_concept(
+                                        code=getattr(obs.value, "code", None),
+                                        code_system=getattr(obs.value, "code_system", None),
+                                        display_name=getattr(obs.value, "display_name", None),
+                                    )
+                                    if tribal_affiliation_codeable:
+                                        tribal_affiliation_ext = {
+                                            "url": FHIRSystems.US_CORE_TRIBAL_AFFILIATION,
+                                            "extension": [
+                                                {
+                                                    "url": "tribalAffiliation",
+                                                    "valueCodeableConcept": tribal_affiliation_codeable,
+                                                }
+                                            ]
+                                        }
+                                        extensions.append(tribal_affiliation_ext)
                                 processed = True
                                 break
 

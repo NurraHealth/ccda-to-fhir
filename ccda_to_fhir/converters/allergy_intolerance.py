@@ -632,7 +632,16 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                         display_name=value.display_name,
                         original_text=original_text,
                     )
-                    reaction["manifestation"] = [manifestation]
+
+                    # Only add manifestation if it's valid (not None)
+                    # Per FHIR R4: manifestation is required (1..*) for reaction
+                    if manifestation:
+                        reaction["manifestation"] = [manifestation]
+                    else:
+                        logger.warning(
+                            f"Skipping reaction manifestation due to missing code_system or content. "
+                            f"code={value.code}, original_text={original_text}"
+                        )
 
                 # Description (from Reaction Observation text element)
                 if rel.observation.text:
@@ -675,8 +684,15 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                 if reaction_notes:
                     reaction["note"] = reaction_notes
 
-                if reaction:
+                # Per FHIR R4: manifestation is required (1..*) for reaction
+                # Only add reaction if it has manifestation
+                if reaction and "manifestation" in reaction:
                     reactions.append(reaction)
+                elif reaction:
+                    logger.warning(
+                        f"Skipping reaction without manifestation. Reaction had: "
+                        f"{', '.join(reaction.keys())}"
+                    )
 
         return reactions
 

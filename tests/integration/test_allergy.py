@@ -978,3 +978,158 @@ class TestAllergyIntoleranceIDSanitization:
             pytest.fail(f"AllergyIntolerance ID {allergy['id']} is not a valid UUID v4")
         # Verify it's the correct allergy
         assert allergy["code"]["coding"][0]["code"] == "1191"
+
+
+
+class TestAllergyCodeableConceptEdgeCases:
+    """Tests for CodeableConcept edge cases with missing/invalid code_system.
+    
+    These tests verify that the library handles malformed C-CDA data gracefully.
+    
+    Key behaviors:
+    1. When code_system is missing but displayName exists → creates text-only CodeableConcept (valid FHIR)
+    2. When both code_system AND displayName are missing → returns None, reaction skipped
+    """
+
+    def test_reaction_with_missing_code_system_creates_text_only_manifestation(self) -> None:
+        """Test that reaction with missing code_system but valid displayName creates text-only manifestation.
+        
+        This is valid FHIR R4 behavior - CodeableConcept can have just text field
+        when standardized coding is unavailable but descriptive text exists.
+        """
+        ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
+        
+        ccda_doc = wrap_in_ccda_document(
+            """<act classCode="ACT" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
+                <id root="1.2.3.4.5" extension="act-123"/>
+                <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
+                <statusCode code="active"/>
+                <effectiveTime>
+                    <low value="20080501"/>
+                </effectiveTime>
+                <entryRelationship typeCode="SUBJ">
+                    <observation classCode="OBS" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.7"/>
+                        <id root="1.2.3.4.5" extension="allergy-1"/>
+                        <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+                        <statusCode code="completed"/>
+                        <effectiveTime>
+                            <low value="20080501"/>
+                        </effectiveTime>
+                        <value xsi:type="CD" code="419199007"
+                               displayName="Allergy to substance"
+                               codeSystem="2.16.840.1.113883.6.96"/>
+                        <participant typeCode="CSM">
+                            <participantRole classCode="MANU">
+                                <playingEntity classCode="MMAT">
+                                    <code code="70618" displayName="Penicillin"
+                                          codeSystem="2.16.840.1.113883.6.88"/>
+                                </playingEntity>
+                            </participantRole>
+                        </participant>
+                        <!-- Reaction with MISSING codeSystem but HAS displayName -->
+                        <entryRelationship typeCode="MFST" inversionInd="true">
+                            <observation classCode="OBS" moodCode="EVN">
+                                <templateId root="2.16.840.1.113883.10.20.22.4.9"/>
+                                <id root="1.2.3.4.5" extension="reaction-1"/>
+                                <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+                                <statusCode code="completed"/>
+                                <!-- Missing codeSystem but displayName present -->
+                                <value xsi:type="CD" code="247472004" displayName="Hives"/>
+                            </observation>
+                        </entryRelationship>
+                    </observation>
+                </entryRelationship>
+            </act>""",
+            ALLERGIES_TEMPLATE_ID
+        )
+
+        bundle = convert_document(ccda_doc)["bundle"]
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+        assert allergy is not None
+        
+        # Reaction SHOULD exist with text-only manifestation (valid FHIR)
+        assert "reaction" in allergy
+        assert len(allergy["reaction"]) == 1
+        
+        reaction = allergy["reaction"][0]
+        assert "manifestation" in reaction
+        assert len(reaction["manifestation"]) == 1
+        
+        manifestation = reaction["manifestation"][0]
+        # Should have text but no coding (text-only CodeableConcept)
+        assert "text" in manifestation
+        assert manifestation["text"] == "Hives"
+        # No coding when code_system is missing
+        assert "coding" not in manifestation or len(manifestation.get("coding", [])) == 0
+
+    def test_reaction_with_no_code_system_and_no_display_name_skips_reaction(self, caplog) -> None:
+        """Test that reaction without code_system AND without displayName is skipped with warning.
+        
+        When neither standardized coding nor descriptive text is available,
+        create_codeable_concept() returns None and the reaction should be skipped.
+        """
+        ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
+        
+        ccda_doc = wrap_in_ccda_document(
+            """<act classCode="ACT" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
+                <id root="1.2.3.4.5" extension="act-123"/>
+                <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
+                <statusCode code="active"/>
+                <effectiveTime>
+                    <low value="20080501"/>
+                </effectiveTime>
+                <entryRelationship typeCode="SUBJ">
+                    <observation classCode="OBS" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.7"/>
+                        <id root="1.2.3.4.5" extension="allergy-1"/>
+                        <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+                        <statusCode code="completed"/>
+                        <effectiveTime>
+                            <low value="20080501"/>
+                        </effectiveTime>
+                        <value xsi:type="CD" code="419199007"
+                               displayName="Allergy to substance"
+                               codeSystem="2.16.840.1.113883.6.96"/>
+                        <participant typeCode="CSM">
+                            <participantRole classCode="MANU">
+                                <playingEntity classCode="MMAT">
+                                    <code code="70618" displayName="Penicillin"
+                                          codeSystem="2.16.840.1.113883.6.88"/>
+                                </playingEntity>
+                            </participantRole>
+                        </participant>
+                        <!-- Reaction with BOTH missing: codeSystem AND displayName -->
+                        <entryRelationship typeCode="MFST" inversionInd="true">
+                            <observation classCode="OBS" moodCode="EVN">
+                                <templateId root="2.16.840.1.113883.10.20.22.4.9"/>
+                                <id root="1.2.3.4.5" extension="reaction-1"/>
+                                <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+                                <statusCode code="completed"/>
+                                <!-- Missing BOTH codeSystem and displayName -->
+                                <value xsi:type="CD" code="247472004"/>
+                            </observation>
+                        </entryRelationship>
+                    </observation>
+                </entryRelationship>
+            </act>""",
+            ALLERGIES_TEMPLATE_ID
+        )
+
+        import logging
+        with caplog.at_level(logging.WARNING):
+            bundle = convert_document(ccda_doc)["bundle"]
+        
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+        assert allergy is not None
+        
+        # Reaction should be skipped (no manifestation possible = invalid FHIR)
+        assert "reaction" not in allergy or len(allergy.get("reaction", [])) == 0
+        
+        # Warning should be logged
+        assert any(
+            "Skipping reaction manifestation due to missing code_system or content" in record.message
+            for record in caplog.records
+        ), "Expected warning about missing code_system not found in logs"

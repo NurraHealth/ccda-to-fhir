@@ -1020,3 +1020,133 @@ class TestPatientConversion:
                 None
             )
             assert tribal_ext is None, "Tribal affiliation extension should not be present when observation is absent"
+
+
+
+
+class TestPatientExtensionCodeableConceptEdgeCases:
+    """Tests for Patient extension edge cases with missing/invalid code_system.
+    
+    These tests verify that extensions with CodeableConcept values handle
+    malformed C-CDA data gracefully.
+    
+    Key behaviors (matching AllergyIntolerance):
+    1. code_system missing + displayName present → text-only CodeableConcept (valid)
+    2. code_system missing + NO displayName → extension not added
+    3. nullFlavor value → extension not added (per US Core guidance)
+    """
+
+    def test_gender_identity_with_missing_code_system_creates_text_only(self) -> None:
+        """Test that gender identity with missing code_system but displayName creates text-only extension.
+        
+        This matches AllergyIntolerance behavior - valid FHIR allows text-only CodeableConcept.
+        """
+        gender_identity_obs = """
+            <observation classCode="OBS" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.15.1" extension="2023-05-01"/>
+                <code code="76691-5" codeSystem="2.16.840.1.113883.6.1"
+                      displayName="Gender identity"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <!-- Missing codeSystem but has displayName -->
+                <value xsi:type="CD" code="446151000124109"
+                       displayName="Identifies as male gender"/>
+            </observation>
+        """
+        
+        ccda_doc = wrap_in_ccda_document(
+            gender_identity_obs,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)["bundle"]
+        
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+        
+        # Extension SHOULD be present with text-only CodeableConcept (valid FHIR)
+        assert "extension" in patient
+        gender_identity_ext = next(
+            (e for e in patient["extension"]
+             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
+            None
+        )
+        assert gender_identity_ext is not None
+        assert "valueCodeableConcept" in gender_identity_ext
+        
+        codeable = gender_identity_ext["valueCodeableConcept"]
+        # Should have text but no coding
+        assert "text" in codeable
+        assert codeable["text"] == "Identifies as male gender"
+        assert "coding" not in codeable or len(codeable.get("coding", [])) == 0
+
+    def test_gender_identity_with_no_code_system_and_no_display_not_added(self) -> None:
+        """Test that gender identity without code_system AND without displayName is not added."""
+        gender_identity_obs = """
+            <observation classCode="OBS" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.15.1" extension="2023-05-01"/>
+                <code code="76691-5" codeSystem="2.16.840.1.113883.6.1"
+                      displayName="Gender identity"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <!-- Missing BOTH codeSystem and displayName -->
+                <value xsi:type="CD" code="446151000124109"/>
+            </observation>
+        """
+        
+        ccda_doc = wrap_in_ccda_document(
+            gender_identity_obs,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)["bundle"]
+        
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+        
+        # Extension should NOT be present (no content for CodeableConcept)
+        if "extension" in patient:
+            gender_identity_ext = next(
+                (e for e in patient["extension"]
+                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
+                None
+            )
+            assert gender_identity_ext is None
+
+    def test_tribal_affiliation_with_null_flavor_not_added(self) -> None:
+        """Test that tribal affiliation extension is not added with nullFlavor value.
+        
+        Per FHIR guidance on optional elements: when data is truly absent (nullFlavor),
+        omit the element entirely rather than using data-absent-reason extension.
+        """
+        tribal_affiliation_obs = """
+            <observation classCode="OBS" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.15.1" extension="2023-05-01"/>
+                <code code="87292-6" codeSystem="2.16.840.1.113883.6.1"
+                      displayName="Tribal affiliation"/>
+                <statusCode code="completed"/>
+                <effectiveTime value="20230101"/>
+                <!-- NullFlavor indicating unknown -->
+                <value xsi:type="CD" nullFlavor="UNK"/>
+            </observation>
+        """
+        
+        ccda_doc = wrap_in_ccda_document(
+            tribal_affiliation_obs,
+            section_template_id="2.16.840.1.113883.10.20.22.2.17",
+            section_code="29762-2"
+        )
+        bundle = convert_document(ccda_doc)["bundle"]
+        
+        patient = _find_resource_in_bundle(bundle, "Patient")
+        assert patient is not None
+        
+        # Tribal affiliation extension should NOT be present
+        if "extension" in patient:
+            tribal_ext = next(
+                (e for e in patient["extension"]
+                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"),
+                None
+            )
+            assert tribal_ext is None, \
+                "Tribal affiliation extension should not be added when value has nullFlavor"
