@@ -511,11 +511,13 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # routeCode can be CE (with code_system) or CS (without code_system)
         if substance_admin.route_code:
             code_system = getattr(substance_admin.route_code, 'code_system', None)
-            dosage["route"] = self.create_codeable_concept(
+            route = self.create_codeable_concept(
                 code=substance_admin.route_code.code,
                 code_system=code_system,
                 display_name=substance_admin.route_code.display_name,
             )
+            if route:
+                dosage["route"] = route
 
         # 7. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)

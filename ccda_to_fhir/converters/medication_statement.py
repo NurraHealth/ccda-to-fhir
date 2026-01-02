@@ -432,11 +432,13 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
 
         # 4. Route (from routeCode)
         if substance_admin.route_code:
-            dosage["route"] = self.create_codeable_concept(
+            route = self.create_codeable_concept(
                 code=substance_admin.route_code.code,
                 code_system=substance_admin.route_code.code_system,
                 display_name=substance_admin.route_code.display_name,
             )
+            if route:
+                dosage["route"] = route
 
         # 5. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)
