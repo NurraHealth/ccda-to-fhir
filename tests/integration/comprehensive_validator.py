@@ -108,9 +108,13 @@ class FieldValidator:
                 if not value:
                     self.errors.append(f"{path}: code must not be empty")
             elif isinstance(value, dict):
-                # code as CodeableConcept - validate it has coding
-                if "coding" not in value or not value["coding"]:
-                    self.errors.append(f"{path}: CodeableConcept must have coding array")
+                # code as CodeableConcept - validate it has coding OR text
+                # Per FHIR R4: "A free text only representation of the concept
+                # without any coding elements is permitted if there is no appropriate code"
+                has_coding = "coding" in value and value["coding"]
+                has_text = "text" in value and value["text"]
+                if not has_coding and not has_text:
+                    self.errors.append(f"{path}: CodeableConcept must have coding array or text")
 
         # Identifiers
         elif key == "identifier":

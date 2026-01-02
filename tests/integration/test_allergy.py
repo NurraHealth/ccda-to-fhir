@@ -1133,3 +1133,64 @@ class TestAllergyCodeableConceptEdgeCases:
             "Skipping reaction manifestation due to missing code_system or content" in record.message
             for record in caplog.records
         ), "Expected warning about missing code_system not found in logs"
+
+    def test_allergen_code_fallback_to_unknown_when_completely_missing(self) -> None:
+        """Test that allergen code falls back to 'Unknown allergen' when code data is completely missing.
+
+        This test verifies US Core compliance for AllergyIntolerance.code (mandatory 1..1).
+        When the allergen participant has no usable code data (missing both code_system
+        and displayName), the converter should provide a fallback text-only CodeableConcept
+        to satisfy the US Core requirement.
+        """
+        ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
+
+        ccda_doc = wrap_in_ccda_document(
+            """<act classCode="ACT" moodCode="EVN">
+                <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
+                <id root="1.2.3.4.5" extension="act-123"/>
+                <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
+                <statusCode code="active"/>
+                <effectiveTime>
+                    <low value="20080501"/>
+                </effectiveTime>
+                <entryRelationship typeCode="SUBJ">
+                    <observation classCode="OBS" moodCode="EVN">
+                        <templateId root="2.16.840.1.113883.10.20.22.4.7"/>
+                        <id root="1.2.3.4.5" extension="allergy-1"/>
+                        <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+                        <statusCode code="completed"/>
+                        <effectiveTime>
+                            <low value="20080501"/>
+                        </effectiveTime>
+                        <value xsi:type="CD" code="419199007"
+                               displayName="Allergy to substance"
+                               codeSystem="2.16.840.1.113883.6.96"/>
+                        <!-- Participant with COMPLETELY missing code data -->
+                        <participant typeCode="CSM">
+                            <participantRole classCode="MANU">
+                                <playingEntity classCode="MMAT">
+                                    <!-- Missing BOTH codeSystem and displayName -->
+                                    <code code="12345"/>
+                                </playingEntity>
+                            </participantRole>
+                        </participant>
+                    </observation>
+                </entryRelationship>
+            </act>""",
+            ALLERGIES_TEMPLATE_ID
+        )
+
+        bundle = convert_document(ccda_doc)["bundle"]
+        allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+        assert allergy is not None
+
+        # AllergyIntolerance.code MUST be present (US Core 1..1 requirement)
+        assert "code" in allergy, "AllergyIntolerance.code is mandatory in US Core"
+
+        # Should fall back to "Unknown allergen" text-only CodeableConcept
+        assert "text" in allergy["code"]
+        assert allergy["code"]["text"] == "Unknown allergen"
+
+        # Should not have coding array when falling back
+        # (or coding array should be empty/absent)
+        assert "coding" not in allergy["code"] or len(allergy["code"].get("coding", [])) == 0
