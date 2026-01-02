@@ -108,11 +108,13 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         # Marital status
         if patient_data.marital_status_code:
-            patient["maritalStatus"] = self.create_codeable_concept(
+            marital_status = self.create_codeable_concept(
                 code=patient_data.marital_status_code.code,
                 code_system=patient_data.marital_status_code.code_system,
                 display_name=patient_data.marital_status_code.display_name,
             )
+            if marital_status:
+                patient["maritalStatus"] = marital_status
 
         # Multiple birth
         if patient_data.sdtc_multiple_birth_ind or patient_data.sdtc_multiple_birth_order_number:

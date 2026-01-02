@@ -76,7 +76,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
                             "display_name": trans.display_name,
                         })
 
-            medication["code"] = self.create_codeable_concept(
+            med_code = self.create_codeable_concept(
                 code=code_elem.code,
                 code_system=code_elem.code_system,
                 display_name=code_elem.display_name,
@@ -87,6 +87,8 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
                 ),
                 translations=translations,
             )
+            if med_code:
+                medication["code"] = med_code
 
         # 3. Manufacturer (from manufacturerOrganization)
         if manufactured_product.manufacturer_organization:
@@ -111,11 +113,13 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
         # 4. Form (from administrationUnitCode in SubstanceAdministration)
         if substance_admin and substance_admin.administration_unit_code:
             form_code = substance_admin.administration_unit_code
-            medication["form"] = self.create_codeable_concept(
+            form = self.create_codeable_concept(
                 code=form_code.code,
                 code_system=form_code.code_system,
                 display_name=form_code.display_name,
             )
+            if form:
+                medication["form"] = form
 
         # 5. Ingredients (from participant with typeCode="CSM" - drug vehicle)
         if substance_admin and substance_admin.participant:

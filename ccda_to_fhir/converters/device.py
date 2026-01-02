@@ -269,12 +269,14 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             original_text = None
             if hasattr(code, "original_text") and code.original_text:
                 original_text = self.extract_original_text(code.original_text)
-            device["type"] = self.create_codeable_concept(
+            device_type = self.create_codeable_concept(
                 code=code.code if hasattr(code, "code") else None,
                 code_system=code.code_system if hasattr(code, "code_system") else None,
                 display_name=code.display_name if hasattr(code, "display_name") else None,
                 original_text=original_text
             )
+            if device_type:
+                device["type"] = device_type
 
         # Map device names
         if participant_role.playing_device:
