@@ -18,6 +18,33 @@ Encounters can appear in two places in C-CDA:
 
 Duplicate encounters referenced in both header and body should consolidate into a single FHIR Encounter resource.
 
+### Encounter Deduplication Strategy
+
+When both header `encompassingEncounter` and body Encounter Activity exist for the same clinical encounter, they must be merged into a single FHIR Encounter resource.
+
+**Detection Criteria** (encounters are considered duplicates if ANY of these match):
+
+1. **Exact ID Match**: C-CDA encounter IDs match (case-insensitive)
+2. **Same-Day Match**: `effectiveTime` dates overlap or fall within same calendar day
+3. **Identifier Match**: Any identifier in the header matches any identifier in the body
+
+**Merge Strategy** (when duplicates detected):
+
+1. **Use body encounter as base** - Body Encounter Activity typically has richer clinical detail (type codes, precise times, location, diagnoses)
+2. **Preserve unique header data** - Add participants, discharge disposition, or other data from header not present in body
+3. **Prefer body values for conflicts** - When both have the same field, prefer body value (more detailed)
+4. **Merge identifiers** - Include identifiers from both header and body
+
+**Fallback Behavior**:
+- If no body encounter exists → create Encounter from header
+- If no header encounter exists → create Encounter from body
+- If clearly different encounters (different dates, no ID overlap) → create both
+
+**Example Scenario**:
+- Header: `effectiveTime value="20250822"` (just date), no type code
+- Body: `effectiveTime low="20250822120239" high="20250822131347"` (precise times), CPT 99213
+- **Result**: ONE Encounter with body's precise times and type code, plus any unique header participants
+
 ## C-CDA to FHIR Mapping
 
 ### Core Element Mappings

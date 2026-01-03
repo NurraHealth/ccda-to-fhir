@@ -457,7 +457,8 @@ class TestAthenaDetailedValidation:
             if e.resource.get_resource_type() == "Encounter"
         ]
 
-        assert len(encounters) > 0, "Bundle must contain Encounters"
+        # Athena CCD has 1 EVN encounter + 1 header encounter (same day) -> 1 merged encounter
+        assert len(encounters) == 1, "Bundle must contain exactly 1 Encounter (header+body merged)"
 
         # Find encounter with CPT code 99213 (office visit)
         office_visit = None
@@ -568,7 +569,7 @@ class TestAthenaDetailedValidation:
             if e.resource.get_resource_type() == "Encounter"
         ]
 
-        assert len(encounters) > 0, "Bundle must contain Encounters"
+        assert len(encounters) == 1, "Bundle must contain exactly 1 Encounter"
 
         # Find encounter with period containing both start and end times
         # C-CDA has encounter with effectiveTime low="20240122120239-0500" high="20240122131347-0500"
@@ -605,7 +606,7 @@ class TestAthenaDetailedValidation:
             if e.resource.get_resource_type() == "Encounter"
         ]
 
-        assert len(encounters) > 0, "Bundle must contain Encounters"
+        assert len(encounters) == 1, "Bundle must contain exactly 1 Encounter"
 
         # Find the Office Visit encounter (CPT 99213) with exact timestamps
         office_visit = None
@@ -659,7 +660,7 @@ class TestAthenaDetailedValidation:
             if e.resource.get_resource_type() == "Encounter"
         ]
 
-        assert len(encounters) > 0, "Bundle must contain Encounters"
+        assert len(encounters) == 1, "Bundle must contain exactly 1 Encounter"
 
         # Find the Office Visit encounter (CPT 99213)
         office_visit = None
@@ -1067,7 +1068,7 @@ class TestAthenaDetailedValidation:
         encounters = [e.resource for e in athena_bundle.entry
                      if e.resource.get_resource_type() == "Encounter"]
 
-        assert len(encounters) > 0, "Must have Encounter resources"
+        assert len(encounters) == 1, "Must have exactly 1 Encounter resource"
 
         for encounter in encounters:
             assert encounter.identifier is not None, \
@@ -1730,7 +1731,7 @@ class TestAthenaDetailedValidation:
             if e.resource.get_resource_type() == "Encounter"
         ]
 
-        assert len(encounters) > 0, "Must have Encounter resources"
+        assert len(encounters) == 1, "Must have exactly 1 Encounter resource"
 
         for encounter in encounters:
             assert encounter.status is not None, \
@@ -2266,7 +2267,7 @@ class TestAthenaDetailedValidation:
             if e.resource.get_resource_type() == "Encounter"
         ]
 
-        assert len(encounters) > 0, "Must have Encounter resources"
+        assert len(encounters) == 1, "Must have exactly 1 Encounter resource"
 
         # Check if any encounters have participants
         encounters_with_participants = [
@@ -2292,7 +2293,7 @@ class TestAthenaDetailedValidation:
             if e.resource.get_resource_type() == "Encounter"
         ]
 
-        assert len(encounters) > 0, "Must have Encounter resources"
+        assert len(encounters) == 1, "Must have exactly 1 Encounter resource"
 
         # Find encounters with type populated
         encounters_with_type = [

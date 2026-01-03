@@ -1046,7 +1046,7 @@ class DocumentConverter:
             encounters = self._extract_encounters(ccda_doc.component.structured_body)
 
             # Also extract header encounter if present (componentOf.encompassingEncounter)
-            # Deduplication: Only add if not already in body encounters
+            # Deduplication: Merge with body encounter if duplicate, otherwise add separately
             header_encounter = self._extract_header_encounter(ccda_doc)
             if header_encounter:
                 # Collect participant and location resources created during header encounter conversion
@@ -1058,25 +1058,25 @@ class DocumentConverter:
                     resources.extend(self._temp_header_locations)
                     self._temp_header_locations = []  # Clear for next conversion
 
-                # Check if this encounter already exists in body encounters (by ID)
-                header_id = header_encounter.get("id")
+                # Check if header encounter duplicates any body encounter
+                # Per mapping docs: check by ID, same-day match, or identifier overlap
                 duplicate_found = False
+                header_id = header_encounter.get("id")
 
-                if header_id:
-                    for existing_enc in encounters:
-                        # Case-insensitive comparison (body converter doesn't lowercase, but header does)
-                        existing_id = existing_enc.get("id", "")
-                        if existing_id.lower() == header_id.lower():
-                            duplicate_found = True
-                            logger.debug(
-                                f"Header encounter {header_id} already exists in body - using body version"
-                            )
-                            break
+                for body_enc in encounters:
+                    if self._encounters_are_duplicates(header_encounter, body_enc):
+                        # Merge unique header data into body encounter
+                        self._merge_header_into_body_encounter(header_encounter, body_enc)
+                        duplicate_found = True
+                        logger.debug(
+                            f"Header encounter {header_id} merged into body encounter {body_enc.get('id')}"
+                        )
+                        break
 
                 # Only add header encounter if it's not a duplicate
                 if not duplicate_found:
                     encounters.append(header_encounter)
-                    logger.debug(f"Added header encounter {header_id} to bundle")
+                    logger.debug(f"Added header encounter {header_id} to bundle (no body duplicate)")
 
                     # Store author metadata for header encounter
                     # Header encounters use document-level authors from the encompassingEncounter
@@ -2832,6 +2832,143 @@ class DocumentConverter:
         # Priority 3: Use Location ID as fallback
         return f"id:{location.get('id', 'unknown')}"
 
+    def _encounters_are_duplicates(
+        self, header_encounter: FHIRResourceDict, body_encounter: FHIRResourceDict
+    ) -> bool:
+        """Check if header and body encounters represent the same clinical encounter.
+
+        Per mapping docs, encounters are duplicates if ANY of these match:
+        1. Exact ID match (case-insensitive)
+        2. Same-day match (effectiveTime dates overlap or same calendar day)
+        3. Identifier match (any identifier overlaps)
+
+        Args:
+            header_encounter: Encounter from header encompassingEncounter
+            body_encounter: Encounter from body Encounter Activity
+
+        Returns:
+            True if encounters should be deduplicated, False otherwise
+        """
+        # Criterion 1: Exact ID match (case-insensitive)
+        header_id = header_encounter.get("id", "").lower()
+        body_id = body_encounter.get("id", "").lower()
+        if header_id and body_id and header_id == body_id:
+            return True
+
+        # Criterion 2: Same-day match
+        # Extract dates from period.start or period.end (format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
+        header_dates = set()
+        body_dates = set()
+
+        # Extract all dates from header encounter
+        if header_encounter.get("period", {}).get("start"):
+            header_dates.add(header_encounter["period"]["start"][:10])  # Extract YYYY-MM-DD
+        if header_encounter.get("period", {}).get("end"):
+            header_dates.add(header_encounter["period"]["end"][:10])
+
+        # Extract all dates from body encounter
+        if body_encounter.get("period", {}).get("start"):
+            body_dates.add(body_encounter["period"]["start"][:10])
+        if body_encounter.get("period", {}).get("end"):
+            body_dates.add(body_encounter["period"]["end"][:10])
+
+        # Check if any dates overlap
+        if header_dates & body_dates:  # Set intersection
+            logger.debug(
+                f"Encounters match by date: header={header_dates}, body={body_dates}, overlap={header_dates & body_dates}"
+            )
+            return True
+
+        # Criterion 3: Identifier match
+        header_identifiers = {
+            id.get("value") for id in header_encounter.get("identifier", [])
+        }
+        body_identifiers = {id.get("value") for id in body_encounter.get("identifier", [])}
+
+        if header_identifiers & body_identifiers:  # Set intersection
+            logger.debug(
+                f"Encounters match by identifier: {header_identifiers & body_identifiers}"
+            )
+            return True
+
+        return False
+
+    def _merge_header_into_body_encounter(
+        self, header_encounter: FHIRResourceDict, body_encounter: FHIRResourceDict
+    ) -> None:
+        """Merge unique header encounter data into body encounter.
+
+        Per mapping docs merge strategy:
+        1. Use body encounter as base (has richer clinical detail)
+        2. Add unique header data not present in body (participants, etc.)
+        3. Prefer body values for conflicts, EXCEPT when header has more complete data
+        4. Merge identifiers from both
+
+        Args:
+            header_encounter: Encounter from header (source of additional data)
+            body_encounter: Encounter from body (target, modified in place)
+        """
+        # Preserve most complete period (prefer range over single date)
+        # Header sometimes has fuller date range than body
+        header_period = header_encounter.get('period', {})
+        body_period = body_encounter.get('period', {})
+
+        # If header has end date but body doesn't, use header's complete period
+        if header_period.get('end') and not body_period.get('end'):
+            body_encounter['period'] = header_period
+            logger.debug(f"Using header period (has end date): {header_period}")
+        # If header has full range but body only has partial, prefer header
+        elif header_period.get('start') and header_period.get('end'):
+            if not (body_period.get('start') and body_period.get('end')):
+                body_encounter['period'] = header_period
+                logger.debug(f"Using header period (full range): {header_period}")
+
+        # Merge identifiers - include both header and body identifiers
+        header_ids = header_encounter.get("identifier", [])
+        body_ids = body_encounter.get("identifier", [])
+
+        # Deduplicate identifiers by value
+        # Skip identifiers without system (invalid per US Core)
+        id_values_seen = {id.get("value") for id in body_ids if id.get("system")}
+        for header_id in header_ids:
+            # Skip identifiers without system (US Core requirement)
+            if not header_id.get("system"):
+                logger.warning(
+                    f"Skipping header identifier without system: {header_id.get('value')}"
+                )
+                continue
+            if header_id.get("value") not in id_values_seen:
+                body_ids.append(header_id)
+                id_values_seen.add(header_id.get("value"))
+
+        if body_ids:
+            body_encounter["identifier"] = body_ids
+
+        # Merge participants - add header participants not in body
+        header_participants = header_encounter.get("participant", [])
+        body_participants = body_encounter.get("participant", [])
+
+        # Track participant individual references to avoid duplicates
+        body_participant_refs = {
+            p.get("individual", {}).get("reference")
+            for p in body_participants
+            if p.get("individual", {}).get("reference")
+        }
+
+        for header_participant in header_participants:
+            ref = header_participant.get("individual", {}).get("reference")
+            if ref and ref not in body_participant_refs:
+                body_participants.append(header_participant)
+                body_participant_refs.add(ref)
+
+        if body_participants:
+            body_encounter["participant"] = body_participants
+
+        # Log the merge
+        logger.info(
+            f"Merged header encounter data into body encounter {body_encounter.get('id')}"
+        )
+
     def _extract_header_encounter(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict | None:
         """Extract and convert encompassingEncounter from document header.
 
@@ -2943,19 +3080,29 @@ class DocumentConverter:
         # Period: Map from effectiveTime
         if encompassing_encounter.effective_time:
             period = {}
-            if encompassing_encounter.effective_time.low:
-                low_value = encompassing_encounter.effective_time.low.value if hasattr(encompassing_encounter.effective_time.low, "value") else str(encompassing_encounter.effective_time.low)
-                if low_value:
-                    converted = self.encounter_converter.convert_date(str(low_value))
-                    if converted:
-                        period["start"] = converted
 
-            if encompassing_encounter.effective_time.high:
-                high_value = encompassing_encounter.effective_time.high.value if hasattr(encompassing_encounter.effective_time.high, "value") else str(encompassing_encounter.effective_time.high)
-                if high_value:
-                    converted = self.encounter_converter.convert_date(str(high_value))
-                    if converted:
-                        period["end"] = converted
+            # Handle single value (not a range)
+            if hasattr(encompassing_encounter.effective_time, "value") and encompassing_encounter.effective_time.value:
+                converted = self.encounter_converter.convert_date(str(encompassing_encounter.effective_time.value))
+                if converted:
+                    period["start"] = converted
+                    # For single-value timestamps, use same value for both start and end
+                    period["end"] = converted
+            # Handle range with low/high
+            elif encompassing_encounter.effective_time.low or encompassing_encounter.effective_time.high:
+                if encompassing_encounter.effective_time.low:
+                    low_value = encompassing_encounter.effective_time.low.value if hasattr(encompassing_encounter.effective_time.low, "value") else str(encompassing_encounter.effective_time.low)
+                    if low_value:
+                        converted = self.encounter_converter.convert_date(str(low_value))
+                        if converted:
+                            period["start"] = converted
+
+                if encompassing_encounter.effective_time.high:
+                    high_value = encompassing_encounter.effective_time.high.value if hasattr(encompassing_encounter.effective_time.high, "value") else str(encompassing_encounter.effective_time.high)
+                    if high_value:
+                        converted = self.encounter_converter.convert_date(str(high_value))
+                        if converted:
+                            period["end"] = converted
 
             if period:
                 fhir_encounter["period"] = period
