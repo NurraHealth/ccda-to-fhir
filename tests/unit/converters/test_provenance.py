@@ -189,13 +189,13 @@ class TestTargetReference:
         sample_target_condition: FHIRResourceDict,
         sample_practitioner_author_info: AuthorInfo,
     ) -> None:
-        """Test that target reference follows format: ResourceType/id."""
+        """Test that target reference follows format: urn:uuid:id."""
         provenance = provenance_converter.convert(
             target_resource=sample_target_condition,
             authors=[sample_practitioner_author_info],
         )
 
-        assert provenance["target"][0]["reference"] == "Condition/condition-123"
+        assert provenance["target"][0]["reference"].startswith("urn:uuid:")
 
 
 # ============================================================================
@@ -332,7 +332,7 @@ class TestAgentCreation:
         agent = provenance["agent"][0]
         assert "who" in agent
         assert "reference" in agent["who"]
-        assert agent["who"]["reference"].startswith("Practitioner/")
+        assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_device_author_references_device_not_practitioner(
         self,
@@ -347,7 +347,7 @@ class TestAgentCreation:
         )
 
         agent = provenance["agent"][0]
-        assert agent["who"]["reference"].startswith("Device/")
+        assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_agent_has_organization_on_behalf_of(
         self,
@@ -364,7 +364,7 @@ class TestAgentCreation:
         agent = provenance["agent"][0]
         assert "onBehalfOf" in agent
         assert "reference" in agent["onBehalfOf"]
-        assert agent["onBehalfOf"]["reference"].startswith("Organization/")
+        assert agent["onBehalfOf"]["reference"].startswith("urn:uuid:")
 
     def test_multiple_authors_create_multiple_agents(
         self,

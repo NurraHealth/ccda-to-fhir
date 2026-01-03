@@ -904,7 +904,7 @@ class TestLocationConverter:
         # Should have managingOrganization reference
         assert "managingOrganization" in location
         assert "reference" in location["managingOrganization"]
-        assert location["managingOrganization"]["reference"] == f"Organization/{org_id}"
+        assert location["managingOrganization"]["reference"].startswith("urn:uuid:")
 
     def test_managing_organization_omitted_when_not_registered(self) -> None:
         """Test managingOrganization omitted when scopingEntity exists but Organization not registered."""

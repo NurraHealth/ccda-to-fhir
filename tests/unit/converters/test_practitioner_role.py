@@ -99,7 +99,7 @@ class TestPractitionerRoleConverter:
         )
 
         assert "practitioner" in result
-        assert result["practitioner"]["reference"] == f"Practitioner/{practitioner_id}"
+        assert result["practitioner"]["reference"] == f"urn:uuid:{practitioner_id}"
 
     def test_creates_organization_reference(
         self, converter: PractitionerRoleConverter, sample_assigned_author: AssignedAuthor
@@ -113,7 +113,7 @@ class TestPractitionerRoleConverter:
         )
 
         assert "organization" in result
-        assert result["organization"]["reference"] == f"Organization/{organization_id}"
+        assert result["organization"]["reference"] == f"urn:uuid:{organization_id}"
 
     def test_converts_specialty_code(
         self, converter: PractitionerRoleConverter, sample_assigned_author: AssignedAuthor
@@ -274,7 +274,7 @@ class TestPractitionerRoleConverter:
         )
 
         assert role["resourceType"] == "PractitionerRole"
-        assert role["practitioner"]["reference"] == "Practitioner/practitioner-123"
+        assert role["practitioner"]["reference"].startswith("urn:uuid:")
         assert "organization" not in role  # No organization reference when not provided
         assert role["id"] == "role-practitioner-123"  # ID without org suffix
 

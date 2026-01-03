@@ -741,7 +741,7 @@ class TestCareTeamConverter:
         careteam = care_team_converter.convert(sample_care_team_organizer)
 
         member_ref = careteam["participant"][0]["member"]["reference"]
-        assert member_ref.startswith("PractitionerRole/")
+        assert member_ref.startswith("urn:uuid:")
 
     def test_handles_multiple_participants(
         self, care_team_converter: CareTeamConverter, care_team_with_multiple_members: Organizer
@@ -961,7 +961,7 @@ class TestCareTeamConverter:
         assert "managingOrganization" in careteam
         assert len(careteam["managingOrganization"]) == 1
         assert "reference" in careteam["managingOrganization"][0]
-        assert careteam["managingOrganization"][0]["reference"].startswith("Organization/")
+        assert careteam["managingOrganization"][0]["reference"].startswith("urn:uuid:")
 
     def test_generates_narrative_text(
         self, care_team_converter: CareTeamConverter, minimal_care_team_member: Act

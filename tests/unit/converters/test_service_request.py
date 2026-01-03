@@ -88,7 +88,7 @@ def mock_reference_registry() -> ReferenceRegistry:
     """Create a mock reference registry."""
     registry = Mock(spec=ReferenceRegistry)
     registry.get_patient_reference = Mock(
-        return_value={"reference": "Patient/test-patient"}
+        return_value={"reference": "urn:uuid:a1b2c3d4-e5f6-7890-abcd-ef1234567890"}
     )
     registry.has_resource = Mock(return_value=True)
     return registry
@@ -460,7 +460,7 @@ class TestUSCoreProfile:
 
         assert "subject" in service_request
         assert "reference" in service_request["subject"]
-        assert service_request["subject"]["reference"].startswith("Patient/")
+        assert service_request["subject"]["reference"].startswith("urn:uuid:")
 
 
 # ============================================================================

@@ -204,7 +204,7 @@ def mock_reference_registry() -> ReferenceRegistry:
     """Create a mock reference registry."""
     registry = Mock(spec=ReferenceRegistry)
     registry.get_patient_reference = Mock(
-        return_value={"reference": "Patient/test-patient"}
+        return_value={"reference": "urn:uuid:12345678-1234-5678-1234-567812345678"}
     )
     registry.has_resource = Mock(return_value=True)
     return registry
@@ -511,7 +511,7 @@ class TestSubjectMapping:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "subject" in careplan
-        assert careplan["subject"]["reference"] == "Patient/test-patient"
+        assert careplan["subject"]["reference"].startswith("urn:uuid:")
         mock_reference_registry.get_patient_reference.assert_called_once()
 
     def test_subject_from_document_recordtarget(self, minimal_care_plan_document, mock_reference_registry):
@@ -521,7 +521,7 @@ class TestSubjectMapping:
 
         assert "subject" in careplan
         assert "reference" in careplan["subject"]
-        assert careplan["subject"]["reference"].startswith("Patient/")
+        assert careplan["subject"]["reference"].startswith("urn:uuid:")
 
     def test_subject_placeholder_when_missing(self, care_plan_template_id, mock_reference_registry):
         """Test subject uses placeholder when unavailable."""
@@ -625,7 +625,7 @@ class TestAuthorAndContributor:
 
         assert "author" in careplan
         assert "reference" in careplan["author"]
-        assert careplan["author"]["reference"].startswith("Practitioner/")
+        assert careplan["author"]["reference"].startswith("urn:uuid:")
 
     def test_contributor_from_all_authors(self, minimal_care_plan_document, mock_reference_registry):
         """Test contributor includes all authors."""

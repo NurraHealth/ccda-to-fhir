@@ -80,9 +80,9 @@ class TestAllergyRecorder:
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
-        assert allergy["recorder"]["reference"].startswith("Practitioner/")
+        assert allergy["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = allergy["recorder"]["reference"].split("/")[1]
+        practitioner_id = allergy["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -103,9 +103,9 @@ class TestAllergyRecorder:
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
-        assert allergy["recorder"]["reference"].startswith("Practitioner/")
+        assert allergy["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = allergy["recorder"]["reference"].split("/")[1]
+        practitioner_id = allergy["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -125,9 +125,9 @@ class TestAllergyRecorder:
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
-        assert allergy["recorder"]["reference"].startswith("Practitioner/")
+        assert allergy["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = allergy["recorder"]["reference"].split("/")[1]
+        practitioner_id = allergy["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -162,9 +162,9 @@ class TestAllergyRecorder:
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
-        assert allergy["recorder"]["reference"].startswith("Device/")
+        assert allergy["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        device_id = allergy["recorder"]["reference"].split("/")[1]
+        device_id = allergy["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(device_id, version=4)
         except ValueError:
@@ -192,9 +192,9 @@ class TestAllergyRecorder:
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
-        assert allergy["recorder"]["reference"].startswith("Practitioner/")
+        assert allergy["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = allergy["recorder"]["reference"].split("/")[1]
+        practitioner_id = allergy["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -222,9 +222,9 @@ class TestAllergyRecorder:
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
-        assert allergy["recorder"]["reference"].startswith("Practitioner/")
+        assert allergy["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = allergy["recorder"]["reference"].split("/")[1]
+        practitioner_id = allergy["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -246,8 +246,8 @@ class TestAllergyRecorder:
         # recordedDate should still use earliest
         assert allergy.get("recordedDate") == "2024-01-01"
         # recorder should use latest (validated as UUID v4)
-        assert allergy["recorder"]["reference"].startswith("Practitioner/")
-        practitioner_id = allergy["recorder"]["reference"].split("/")[1]
+        assert allergy["recorder"]["reference"].startswith("urn:uuid:")
+        practitioner_id = allergy["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:

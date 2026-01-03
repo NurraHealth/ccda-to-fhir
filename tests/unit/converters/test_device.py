@@ -315,7 +315,7 @@ class TestDeviceConverter:
         device = device_converter.convert(assigned_author)
 
         assert "owner" in device
-        assert device["owner"]["reference"] == f"Organization/{org_id}"
+        assert device["owner"]["reference"] == f"urn:uuid:{org_id}"
 
     def test_owner_omitted_when_no_represented_organization(
         self, device_converter: DeviceConverter, sample_device: AssignedAuthoringDevice
@@ -1008,7 +1008,7 @@ class TestProductInstanceConverter:
         device = device_converter.convert_product_instance(participant_role)
 
         assert "owner" in device
-        assert device["owner"]["reference"] == f"Organization/{org_id}"
+        assert device["owner"]["reference"] == f"urn:uuid:{org_id}"
 
     def test_device_owner_omitted_when_no_scoping_entity(
         self, device_converter: DeviceConverter

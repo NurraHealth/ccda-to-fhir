@@ -16,12 +16,12 @@ def mock_reference_registry():
 
     # Default patient reference
     registry.get_patient_reference.return_value = {
-        "reference": "Patient/test-patient-123"
+        "reference": "urn:uuid:12345678-1234-5678-1234-567812345678"
     }
 
     # Default encounter reference
     registry.get_encounter_reference.return_value = {
-        "reference": "Encounter/test-encounter-123"
+        "reference": "urn:uuid:87654321-4321-8765-4321-876543218765"
     }
 
     # Make register_resource a no-op

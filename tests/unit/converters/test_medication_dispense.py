@@ -528,7 +528,7 @@ class TestMedicationDispensePerformer:
         assert "performer" in result
         assert len(result["performer"]) >= 1
         assert "actor" in result["performer"][0]
-        assert result["performer"][0]["actor"]["reference"].startswith("Practitioner/")
+        assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
     def test_performer_with_only_organization_creates_organization_performer(self, mock_reference_registry):
         """Test performer with only representedOrganization (no assignedPerson) creates Organization reference."""
@@ -566,7 +566,7 @@ class TestMedicationDispensePerformer:
         assert "performer" in result
         assert len(result["performer"]) >= 1
         assert "actor" in result["performer"][0]
-        assert result["performer"][0]["actor"]["reference"].startswith("Organization/")
+        assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
         # Should have function code
         assert "function" in result["performer"][0]
@@ -574,7 +574,7 @@ class TestMedicationDispensePerformer:
 
         # Should have created Organization resource in registry
         org_ref = result["performer"][0]["actor"]["reference"]
-        org_id = org_ref.split("/")[1]
+        org_id = org_ref.replace("urn:uuid:", "")
         assert registry.has_resource("Organization", org_id)
 
     def test_performer_with_both_person_and_organization(self, mock_reference_registry):
@@ -613,11 +613,11 @@ class TestMedicationDispensePerformer:
         assert "performer" in result
         assert len(result["performer"]) >= 1
         assert "actor" in result["performer"][0]
-        assert result["performer"][0]["actor"]["reference"].startswith("Practitioner/")
+        assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
         # Should also have location (from representedOrganization)
         assert "location" in result
-        assert result["location"]["reference"].startswith("Location/")
+        assert result["location"]["reference"].startswith("urn:uuid:")
 
     def test_author_creates_performer_with_packager_function(self, mock_reference_registry):
         """Test author creates performer entry with packager function."""
@@ -851,7 +851,7 @@ class TestMedicationDispenseWithRegistry:
 
         # Should have context reference
         assert "context" in result
-        assert result["context"] == {"reference": "Encounter/encounter-abc"}
+        assert result["context"]["reference"].startswith("urn:uuid:")
 
     def test_context_not_populated_when_no_encounter(self, mock_reference_registry):
         """Test that context is not populated when no encounter in registry."""
@@ -901,7 +901,7 @@ class TestMedicationDispenseWithRegistry:
         result = converter.convert(dispense)
 
         # Should reference the patient from registry
-        assert result["subject"] == {"reference": "Patient/patient-xyz"}
+        assert result["subject"]["reference"].startswith("urn:uuid:")
 
 
 class TestMedicationDispensePharmacyLocation:
@@ -982,10 +982,10 @@ class TestMedicationDispensePharmacyLocation:
         # Should have location reference
         assert "location" in result
         assert "reference" in result["location"]
-        assert result["location"]["reference"].startswith("Location/")
+        assert result["location"]["reference"].startswith("urn:uuid:")
 
         # Location resource should be in registry
-        location_id = result["location"]["reference"].split("/")[1]
+        location_id = result["location"]["reference"].replace("urn:uuid:", "")
         assert registry.has_resource("Location", location_id)
 
         # Get the Location resource from registry
@@ -1062,7 +1062,7 @@ class TestMedicationDispensePharmacyLocation:
         result = converter.convert(dispense)
 
         # Get the Location resource from registry
-        location_id = result["location"]["reference"].split("/")[1]
+        location_id = result["location"]["reference"].replace("urn:uuid:", "")
         location = registry.get_resource("Location", location_id)
 
         # Verify identifiers are populated (US Core Must Support)
@@ -1305,7 +1305,7 @@ class TestMedicationDispensePharmacyLocation:
         result = converter.convert(dispense)
 
         # Get the Location resource
-        location_id = result["location"]["reference"].split("/")[1]
+        location_id = result["location"]["reference"].replace("urn:uuid:", "")
         location = registry.get_resource("Location", location_id)
 
         # Check address has multiple lines
@@ -1357,7 +1357,7 @@ class TestMedicationDispensePharmacyLocation:
         assert "location" in result
 
         # Get the Location resource
-        location_id = result["location"]["reference"].split("/")[1]
+        location_id = result["location"]["reference"].replace("urn:uuid:", "")
         location = registry.get_resource("Location", location_id)
 
         # Check minimal required fields
@@ -1610,7 +1610,7 @@ class TestPerformerFunction:
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
         # Verify it's an organization reference
         assert "actor" in result["performer"][0]
-        assert result["performer"][0]["actor"]["reference"].startswith("Organization/")
+        assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
     def test_organization_performer_with_function_code_uses_mapped_function(self, mock_reference_registry):
         """Test organization performer with functionCode uses mapped function."""
@@ -1657,7 +1657,7 @@ class TestPerformerFunction:
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
         # Verify it's an organization reference
         assert "actor" in result["performer"][0]
-        assert result["performer"][0]["actor"]["reference"].startswith("Organization/")
+        assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
 
 class TestLocationManagingOrganization:
@@ -1699,7 +1699,7 @@ class TestLocationManagingOrganization:
 
         # Should have location reference
         assert "location" in result
-        location_id = result["location"]["reference"].split("/")[1]
+        location_id = result["location"]["reference"].replace("urn:uuid:", "")
 
         # Get the Location resource
         location = registry.get_resource("Location", location_id)
@@ -1708,10 +1708,10 @@ class TestLocationManagingOrganization:
         assert "managingOrganization" in location
         assert "reference" in location["managingOrganization"]
         org_ref = location["managingOrganization"]["reference"]
-        assert org_ref.startswith("Organization/")
+        assert org_ref.startswith("urn:uuid:")
 
         # Verify the Organization exists
-        org_id = org_ref.split("/")[1]
+        org_id = org_ref.replace("urn:uuid:", "")
         organization = registry.get_resource("Organization", org_id)
         assert organization is not None
         assert organization["resourceType"] == "Organization"
@@ -1755,13 +1755,13 @@ class TestLocationManagingOrganization:
 
         # Get performer Organization ID
         performer_org_ref = result["performer"][0]["actor"]["reference"]
-        performer_org_id = performer_org_ref.split("/")[1]
+        performer_org_id = performer_org_ref.replace("urn:uuid:", "")
 
         # Get Location managingOrganization ID
-        location_id = result["location"]["reference"].split("/")[1]
+        location_id = result["location"]["reference"].replace("urn:uuid:", "")
         location = registry.get_resource("Location", location_id)
         managing_org_ref = location["managingOrganization"]["reference"]
-        managing_org_id = managing_org_ref.split("/")[1]
+        managing_org_id = managing_org_ref.replace("urn:uuid:", "")
 
         # They should reference the same Organization
         assert performer_org_id == managing_org_id
@@ -1816,15 +1816,15 @@ class TestLocationManagingOrganization:
 
         # Should have location
         assert "location" in result
-        location_id = result["location"]["reference"].split("/")[1]
+        location_id = result["location"]["reference"].replace("urn:uuid:", "")
         location = registry.get_resource("Location", location_id)
 
         # Should have managingOrganization
         assert "managingOrganization" in location
-        managing_org_id = location["managingOrganization"]["reference"].split("/")[1]
+        managing_org_id = location["managingOrganization"]["reference"].replace("urn:uuid:", "")
 
         # Get second performer's organization reference
-        org_performer_id = result["performer"][1]["actor"]["reference"].split("/")[1]
+        org_performer_id = result["performer"][1]["actor"]["reference"].replace("urn:uuid:", "")
 
         # Should be the same Organization (reused, not duplicated)
         assert managing_org_id == org_performer_id

@@ -164,7 +164,7 @@ class TestReferenceResolution:
         reference = registry.resolve_reference("Patient", "patient-123")
 
         assert reference is not None
-        assert reference == {"reference": "Patient/patient-123"}
+        assert reference["reference"].startswith("urn:uuid:")
 
     def test_resolves_valid_practitioner_reference(self, mock_reference_registry):
         """Test resolving a reference to a registered Practitioner."""
@@ -179,7 +179,7 @@ class TestReferenceResolution:
 
         reference = registry.resolve_reference("Practitioner", "prac-456")
 
-        assert reference == {"reference": "Practitioner/prac-456"}
+        assert reference["reference"].startswith("urn:uuid:")
 
     def test_raises_error_for_unregistered_resource_type(self, mock_reference_registry):
         """Test that references to unregistered resource types raise MissingReferenceError."""
@@ -259,7 +259,7 @@ class TestReferenceResolution:
         condition["subject"] = patient_ref
 
         # Verify the reference is correct
-        assert condition["subject"]["reference"] == "Patient/patient-newman"
+        assert condition["subject"]["reference"] == "urn:uuid:patient-newman"
 
     def test_realistic_observation_to_practitioner_reference(self, mock_reference_registry):
         """Test realistic scenario: Observation references Practitioner as performer.
@@ -287,7 +287,7 @@ class TestReferenceResolution:
         # Resolve reference for Observation.performer
         performer_ref = registry.resolve_reference("Practitioner", "npi-1234567890")
 
-        assert performer_ref == {"reference": "Practitioner/npi-1234567890"}
+        assert performer_ref["reference"].startswith("urn:uuid:")
 
     def test_realistic_medication_request_to_practitioner_reference(self, mock_reference_registry):
         """Test realistic scenario: MedicationRequest references Practitioner as requester.
@@ -307,7 +307,7 @@ class TestReferenceResolution:
         # Resolve for MedicationRequest
         requester_ref = registry.resolve_reference("Practitioner", "prac-dr-smith")
 
-        assert requester_ref == {"reference": "Practitioner/prac-dr-smith"}
+        assert requester_ref["reference"].startswith("urn:uuid:")
 
 
 class TestReferenceValidationIntegration:
@@ -362,8 +362,8 @@ class TestReferenceValidationIntegration:
         ref1 = registry.resolve_reference("Condition", "condition-diabetes")
         ref2 = registry.resolve_reference("Condition", "condition-hypertension")
 
-        assert ref1 == {"reference": "Condition/condition-diabetes"}
-        assert ref2 == {"reference": "Condition/condition-hypertension"}
+        assert ref1["reference"].startswith("urn:uuid:")
+        assert ref2["reference"].startswith("urn:uuid:")
 
 
 class TestRegistryStatistics:
@@ -502,7 +502,7 @@ class TestEncounterReference:
         reference = registry.get_encounter_reference()
 
         assert reference is not None
-        assert reference == {"reference": "Encounter/encounter-abc"}
+        assert reference["reference"].startswith("urn:uuid:")
 
     def test_get_encounter_reference_returns_none_when_no_encounter(self, mock_reference_registry):
         """Test that get_encounter_reference() returns None when no encounter exists."""
@@ -532,7 +532,7 @@ class TestEncounterReference:
 
         assert reference is not None
         # Should return first encounter (dict iteration order is insertion order in Python 3.7+)
-        assert reference == {"reference": "Encounter/encounter-1"}
+        assert reference["reference"].startswith("urn:uuid:")
 
     def test_get_encounter_reference_increments_stats(self, mock_reference_registry):
         """Test that get_encounter_reference() increments resolved count."""

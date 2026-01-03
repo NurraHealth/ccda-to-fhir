@@ -64,9 +64,9 @@ class TestProcedureRecorderFix:
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
-        assert procedure["recorder"]["reference"].startswith("Practitioner/")
+        assert procedure["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = procedure["recorder"]["reference"].split("/")[1]
+        practitioner_id = procedure["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -87,9 +87,9 @@ class TestProcedureRecorderFix:
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
-        assert procedure["recorder"]["reference"].startswith("Practitioner/")
+        assert procedure["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = procedure["recorder"]["reference"].split("/")[1]
+        practitioner_id = procedure["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -110,9 +110,9 @@ class TestProcedureRecorderFix:
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
-        assert procedure["recorder"]["reference"].startswith("Practitioner/")
+        assert procedure["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = procedure["recorder"]["reference"].split("/")[1]
+        practitioner_id = procedure["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -132,9 +132,9 @@ class TestProcedureRecorderFix:
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
-        assert procedure["recorder"]["reference"].startswith("Practitioner/")
+        assert procedure["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = procedure["recorder"]["reference"].split("/")[1]
+        practitioner_id = procedure["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -169,9 +169,9 @@ class TestProcedureRecorderFix:
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
-        assert procedure["recorder"]["reference"].startswith("Device/")
+        assert procedure["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        device_id = procedure["recorder"]["reference"].split("/")[1]
+        device_id = procedure["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(device_id, version=4)
         except ValueError:
@@ -191,10 +191,120 @@ class TestProcedureRecorderFix:
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
-        assert procedure["recorder"]["reference"].startswith("Device/")
+        assert procedure["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        device_id = procedure["recorder"]["reference"].split("/")[1]
+        device_id = procedure["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(device_id, version=4)
         except ValueError:
             pytest.fail(f"ID {device_id} is not a valid UUID v4")
+
+
+class TestProcedureMoodCodeStatusMapping:
+    """Test Procedure status mapping based on moodCode (per C-CDA on FHIR IG)."""
+
+    def test_planned_procedure_active_maps_to_preparation(self, mock_reference_registry):
+        """Test moodCode=INT with statusCode=active maps to preparation."""
+        import uuid as uuid_module
+
+        proc = CCDAProcedure()
+        proc.mood_code = "INT"  # Intent/planned procedure
+        proc.code = CE(
+            code="80146002",
+            code_system="2.16.840.1.113883.6.96",
+            display_name="Appendectomy"
+        )
+        proc.id = [II(root="1.2.3.4", extension="proc-1")]
+        proc.status_code = CS(code="active")
+
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        procedure = converter.convert(proc)
+
+        assert procedure["status"] == "preparation"  # Not "in-progress"
+
+    def test_planned_procedure_new_maps_to_preparation(self, mock_reference_registry):
+        """Test moodCode=INT with statusCode=new maps to preparation."""
+        proc = CCDAProcedure()
+        proc.mood_code = "INT"
+        proc.code = CE(
+            code="80146002",
+            code_system="2.16.840.1.113883.6.96",
+            display_name="Appendectomy"
+        )
+        proc.id = [II(root="1.2.3.4", extension="proc-1")]
+        proc.status_code = CS(code="new")
+
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        procedure = converter.convert(proc)
+
+        assert procedure["status"] == "preparation"
+
+    def test_event_procedure_active_maps_to_in_progress(self, mock_reference_registry):
+        """Test moodCode=EVN with statusCode=active maps to in-progress."""
+        proc = CCDAProcedure()
+        proc.mood_code = "EVN"  # Event/actual procedure
+        proc.code = CE(
+            code="80146002",
+            code_system="2.16.840.1.113883.6.96",
+            display_name="Appendectomy"
+        )
+        proc.id = [II(root="1.2.3.4", extension="proc-1")]
+        proc.status_code = CS(code="active")
+
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        procedure = converter.convert(proc)
+
+        assert procedure["status"] == "in-progress"  # Not "preparation"
+
+    def test_event_procedure_completed_maps_to_completed(self, mock_reference_registry):
+        """Test moodCode=EVN with statusCode=completed maps to completed."""
+        proc = CCDAProcedure()
+        proc.mood_code = "EVN"
+        proc.code = CE(
+            code="80146002",
+            code_system="2.16.840.1.113883.6.96",
+            display_name="Appendectomy"
+        )
+        proc.id = [II(root="1.2.3.4", extension="proc-1")]
+        proc.status_code = CS(code="completed")
+
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        procedure = converter.convert(proc)
+
+        assert procedure["status"] == "completed"
+
+    def test_planned_procedure_completed_maps_to_completed(self, mock_reference_registry):
+        """Test moodCode=INT with statusCode=completed maps to completed (order fulfilled)."""
+        proc = CCDAProcedure()
+        proc.mood_code = "INT"
+        proc.code = CE(
+            code="80146002",
+            code_system="2.16.840.1.113883.6.96",
+            display_name="Appendectomy"
+        )
+        proc.id = [II(root="1.2.3.4", extension="proc-1")]
+        proc.status_code = CS(code="completed")
+
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        procedure = converter.convert(proc)
+
+        # Completed orders map to completed, not preparation
+        assert procedure["status"] == "completed"
+
+    def test_missing_mood_code_defaults_to_event_behavior(self, mock_reference_registry):
+        """Test procedure without moodCode defaults to EVN behavior (per C-CDA spec)."""
+        proc = CCDAProcedure()
+        # mood_code will default to "EVN" per Pydantic model
+        proc.code = CE(
+            code="80146002",
+            code_system="2.16.840.1.113883.6.96",
+            display_name="Appendectomy"
+        )
+        proc.id = [II(root="1.2.3.4", extension="proc-1")]
+        proc.status_code = CS(code="active")
+
+        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        procedure = converter.convert(proc)
+
+        # Should behave like EVN (event), not INT (intent)
+        assert procedure["status"] == "in-progress"

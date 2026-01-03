@@ -75,9 +75,9 @@ class TestMedicationRequester:
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
-        assert med_request["requester"]["reference"].startswith("Practitioner/")
+        assert med_request["requester"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = med_request["requester"]["reference"].split("/")[1]
+        practitioner_id = med_request["requester"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -98,9 +98,9 @@ class TestMedicationRequester:
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
-        assert med_request["requester"]["reference"].startswith("Practitioner/")
+        assert med_request["requester"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = med_request["requester"]["reference"].split("/")[1]
+        practitioner_id = med_request["requester"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -120,9 +120,9 @@ class TestMedicationRequester:
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
-        assert med_request["requester"]["reference"].startswith("Practitioner/")
+        assert med_request["requester"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = med_request["requester"]["reference"].split("/")[1]
+        practitioner_id = med_request["requester"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -157,9 +157,9 @@ class TestMedicationRequester:
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
-        assert med_request["requester"]["reference"].startswith("Device/")
+        assert med_request["requester"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        device_id = med_request["requester"]["reference"].split("/")[1]
+        device_id = med_request["requester"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(device_id, version=4)
         except ValueError:
@@ -181,8 +181,8 @@ class TestMedicationRequester:
         # authoredOn should still use earliest
         assert med_request.get("authoredOn") == "2024-01-01"
         # requester should use latest (validated as UUID v4)
-        assert med_request["requester"]["reference"].startswith("Practitioner/")
-        practitioner_id = med_request["requester"]["reference"].split("/")[1]
+        assert med_request["requester"]["reference"].startswith("urn:uuid:")
+        practitioner_id = med_request["requester"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:

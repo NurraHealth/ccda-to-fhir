@@ -67,9 +67,9 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -90,9 +90,9 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -113,9 +113,9 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -135,9 +135,9 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -182,9 +182,9 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"].startswith("Device/")
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        device_id = condition["recorder"]["reference"].split("/")[1]
+        device_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(device_id, version=4)
         except ValueError:
@@ -205,9 +205,9 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"].startswith("Device/")
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        device_id = condition["recorder"]["reference"].split("/")[1]
+        device_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(device_id, version=4)
         except ValueError:
@@ -254,9 +254,9 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -285,9 +285,9 @@ class TestConditionRecorder:
         condition = converter.convert(obs)
 
         assert "recorder" in condition
-        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Extract and validate UUID v4
-        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -309,8 +309,8 @@ class TestConditionRecorder:
         # recordedDate should still use earliest
         assert condition.get("recordedDate") == "2024-01-01"
         # recorder should use latest (validated as UUID v4)
-        assert condition["recorder"]["reference"].startswith("Practitioner/")
-        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
+        practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:

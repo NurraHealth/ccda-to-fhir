@@ -339,7 +339,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         Returns:
             Tuple of (performer list, location reference string)
             - performer list: List of FHIR performer objects or None
-            - location reference: Location reference (e.g., "Location/pharmacy-123") or None
+            - location reference: Location reference (e.g., "urn:uuid:12345678-abcd-1234-abcd-123456789abc") or None
         """
         performers = []
         location_ref = None
@@ -565,7 +565,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             organization: The representedOrganization element from performer
 
         Returns:
-            Location reference (e.g., "Location/pharmacy-123") or None if creation fails
+            Location reference (e.g., "urn:uuid:12345678-abcd-1234-abcd-123456789abc") or None if creation fails
 
         Examples:
             >>> org = RepresentedOrganization(name=["Community Pharmacy"])
@@ -584,7 +584,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         # Check if already created
         if self.reference_registry.has_resource("Location", location_id):
-            return f"Location/{location_id}"
+            return f"urn:uuid:{location_id}"
 
         # Create Location resource
         location: JSONObject = {
@@ -646,7 +646,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         # Register Location resource
         self.reference_registry.register_resource(location)
 
-        return f"Location/{location_id}"
+        return f"urn:uuid:{location_id}"
 
     def _create_pharmacy_organization(
         self,

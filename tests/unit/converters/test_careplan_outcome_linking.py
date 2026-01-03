@@ -34,7 +34,7 @@ class TestCarePlanOutcomeLinking:
         """Create a mock reference registry."""
         registry = Mock(spec=ReferenceRegistry)
         registry.has_resource = Mock(return_value=True)
-        registry.get_patient_reference = Mock(return_value={"reference": "Patient/test-patient"})
+        registry.get_patient_reference = Mock(return_value={"reference": "urn:uuid:12345678-1234-5678-1234-567812345678"})
         return registry
 
     @pytest.fixture
@@ -63,7 +63,7 @@ class TestCarePlanOutcomeLinking:
         assert "reference" in activities[0]
         assert "outcomeReference" in activities[0]
         assert len(activities[0]["outcomeReference"]) == 1
-        assert activities[0]["outcomeReference"][0]["reference"].startswith("Observation/")
+        assert activities[0]["outcomeReference"][0]["reference"].startswith("urn:uuid:")
 
     def test_activity_with_multiple_outcomes(self, converter, mock_reference_registry):
         """Test activity with multiple outcomes linked via GEVL relationships."""
@@ -90,9 +90,9 @@ class TestCarePlanOutcomeLinking:
         assert len(activities) == 1
         assert "outcomeReference" in activities[0]
         assert len(activities[0]["outcomeReference"]) == 2
-        # Verify both references start with Observation/
+        # Verify both references start with urn:uuid:
         outcome_refs = [ref["reference"] for ref in activities[0]["outcomeReference"]]
-        assert all(ref.startswith("Observation/") for ref in outcome_refs)
+        assert all(ref.startswith("urn:uuid:") for ref in outcome_refs)
 
     def test_activity_with_no_outcomes(self, converter, mock_reference_registry):
         """Test activity with no GEVL relationships (no outcomes)."""
@@ -138,12 +138,12 @@ class TestCarePlanOutcomeLinking:
         # First activity should have an outcome
         assert "outcomeReference" in activities[0]
         assert len(activities[0]["outcomeReference"]) == 1
-        assert activities[0]["outcomeReference"][0]["reference"].startswith("Observation/")
+        assert activities[0]["outcomeReference"][0]["reference"].startswith("urn:uuid:")
 
         # Second activity should have a different outcome
         assert "outcomeReference" in activities[1]
         assert len(activities[1]["outcomeReference"]) == 1
-        assert activities[1]["outcomeReference"][0]["reference"].startswith("Observation/")
+        assert activities[1]["outcomeReference"][0]["reference"].startswith("urn:uuid:")
 
         # Verify the outcomes are different
         assert activities[0]["outcomeReference"][0]["reference"] != activities[1]["outcomeReference"][0]["reference"]
@@ -246,7 +246,7 @@ class TestCarePlanOutcomeLinking:
         )
 
         ref = converter._create_intervention_reference(intervention)
-        assert ref.startswith("ServiceRequest/")
+        assert ref.startswith("urn:uuid:")
 
     def test_create_intervention_reference_as_procedure(self, converter, mock_reference_registry):
         """Test intervention reference created as Procedure when ServiceRequest not in registry."""
@@ -259,7 +259,7 @@ class TestCarePlanOutcomeLinking:
         converter.reference_registry.has_resource = Mock(side_effect=has_resource_mock)
 
         ref = converter._create_intervention_reference(intervention)
-        assert ref.startswith("Procedure/")
+        assert ref.startswith("urn:uuid:")
 
     def test_create_intervention_reference_not_found(self, converter, mock_reference_registry):
         """Test intervention reference returns None when not in registry."""
@@ -278,7 +278,7 @@ class TestCarePlanOutcomeLinking:
         ref = converter._create_outcome_reference(outcome)
         assert isinstance(ref, dict)
         assert "reference" in ref
-        assert ref["reference"].startswith("Observation/")
+        assert ref["reference"].startswith("urn:uuid:")
 
     def test_create_outcome_reference_not_found(self, converter, mock_reference_registry):
         """Test outcome reference returns None when not in registry."""

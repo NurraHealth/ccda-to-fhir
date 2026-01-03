@@ -118,7 +118,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             ]
 
         # Status (required)
-        status = self._map_status(procedure.status_code)
+        status = self._map_status(procedure.status_code, procedure.mood_code)
         # Override status if negationInd is true
         if procedure.negation_ind:
             status = FHIRCodes.ProcedureStatus.NOT_DONE
@@ -277,11 +277,19 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             fallback_context=fallback_context,
         )
 
-    def _map_status(self, status_code) -> str:
+    def _map_status(self, status_code, mood_code: str | None = None) -> str:
         """Map C-CDA status code to FHIR Procedure status.
+
+        Per C-CDA on FHIR standards:
+        - moodCode="EVN" (event): actual procedure that occurred
+        - moodCode="INT" (intent): planned/ordered procedure
+
+        Planned procedures (INT) with statusCode="active" should map to "preparation"
+        not "in-progress", as they have not yet been performed.
 
         Args:
             status_code: The C-CDA status code
+            mood_code: The C-CDA mood code (EVN, INT, etc.)
 
         Returns:
             FHIR Procedure status code
@@ -290,6 +298,15 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             return FHIRCodes.ProcedureStatus.UNKNOWN
 
         ccda_status = status_code.code.lower()
+
+        # Special handling for planned procedures (moodCode="INT")
+        # Per C-CDA on FHIR IG: INT = intent/planned, should map to "preparation"
+        if mood_code and mood_code.upper() == "INT":
+            if ccda_status == "active":
+                return FHIRCodes.ProcedureStatus.PREPARATION
+            elif ccda_status == "new":
+                return FHIRCodes.ProcedureStatus.PREPARATION
+
         return PROCEDURE_STATUS_TO_FHIR.get(ccda_status, FHIRCodes.ProcedureStatus.UNKNOWN)
 
     def _convert_code(self, code: CD) -> JSONObject:
