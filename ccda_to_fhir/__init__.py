@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .convert import DocumentConverter, convert_document
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 __all__ = [
     "convert_document",
