@@ -260,11 +260,11 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             latest_author = max(authors_with_time, key=lambda a: a.time)
             if latest_author.practitioner_id:
                 allergy["recorder"] = {
-                    "reference": f"Practitioner/{latest_author.practitioner_id}"
+                    "reference": f"urn:uuid:{latest_author.practitioner_id}"
                 }
             elif latest_author.device_id:
                 allergy["recorder"] = {
-                    "reference": f"Device/{latest_author.device_id}"
+                    "reference": f"urn:uuid:{latest_author.device_id}"
                 }
 
         # Extract allergy-level severity (if present)

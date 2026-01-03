@@ -352,7 +352,7 @@ def test_full_ccd_with_planned_procedures():
         resources_by_type[resource_type].append(resource)
 
         if "id" in resource:
-            resource_id = f"{resource_type}/{resource['id']}"
+            resource_id = f"urn:uuid:{resource['id']}"
             resources_by_id[resource_id] = resource
 
     # Verify ServiceRequest resources were created
@@ -457,7 +457,7 @@ def test_full_ccd_with_planned_procedures():
     # Should have reason reference to diabetes condition
     assert "reasonReference" in hba1c_sr
     reason_ref = hba1c_sr["reasonReference"][0]["reference"]
-    assert "Condition" in reason_ref
+    assert reason_ref.startswith("urn:uuid:")
     assert reason_ref in resources_by_id, f"Reason reference {reason_ref} should exist in bundle"
 
     # Find chest X-ray ServiceRequest

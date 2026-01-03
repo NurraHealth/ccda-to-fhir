@@ -210,4 +210,4 @@ class TestResultConversion:
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         assert len(report["result"]) == len(observations)
         for ref in report["result"]:
-            assert ref["reference"].startswith("Observation/")
+            assert ref["reference"].startswith("urn:uuid:")

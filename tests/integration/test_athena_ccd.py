@@ -51,7 +51,7 @@ def test_athena_ccd_comprehensive() -> None:
         resources_by_type[resource_type].append(resource)
 
         if "id" in resource:
-            resource_id = f"{resource_type}/{resource['id']}"
+            resource_id = f"urn:uuid:{resource['id']}"
             resources_by_id[resource_id] = resource
 
     # === COMPOSITION MUST BE FIRST ===
@@ -154,7 +154,7 @@ def test_athena_ccd_comprehensive() -> None:
             for reason_ref in procedure["reasonReference"]:
                 ref = reason_ref["reference"]
                 assert ref in resources_by_id, f"Procedure reasonReference {ref} not found"
-                assert ref.startswith("Condition/"), f"Procedure reasonReference should point to Condition, got {ref}"
+                assert ref.startswith("urn:uuid:"), f"Procedure reasonReference should point to Condition, got {ref}"
 
                 # Verify the Condition exists and has expected fields
                 condition = resources_by_id[ref]

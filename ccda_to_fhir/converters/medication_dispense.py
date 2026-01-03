@@ -150,7 +150,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         # 8. AuthorizingPrescription (reference to parent MedicationRequest)
         if parent_medication_request_id:
             med_dispense["authorizingPrescription"] = [
-                {"reference": f"MedicationRequest/{parent_medication_request_id}"}
+                {"reference": f"urn:uuid:{parent_medication_request_id}"}
             ]
 
         # 9. Type (inferred from repeatNumber)
@@ -366,7 +366,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                                     id_elem.extension,
                                 )
                                 performer_obj["actor"] = {
-                                    "reference": f"Practitioner/{pract_id}"
+                                    "reference": f"urn:uuid:{pract_id}"
                                 }
                                 break
 
@@ -381,7 +381,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     org = assigned.represented_organization
                     org_id = self._create_pharmacy_organization(org)
                     if org_id:
-                        performer_obj["actor"] = {"reference": f"Organization/{org_id}"}
+                        performer_obj["actor"] = {"reference": f"urn:uuid:{org_id}"}
                         # Determine function from C-CDA functionCode or use context-based default
                         performer_obj["function"] = self._determine_performer_function(perf, context="performer")
                         performers.append(performer_obj)
@@ -410,7 +410,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                                 )
                                 performer_obj = {
                                     "function": self._determine_performer_function(author, context="author"),
-                                    "actor": {"reference": f"Practitioner/{pract_id}"},
+                                    "actor": {"reference": f"urn:uuid:{pract_id}"},
                                 }
                                 performers.append(performer_obj)
                                 break
@@ -641,7 +641,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         # Per US Core: "Must be supported if the data is present in the sending system"
         org_id = self._create_pharmacy_organization(organization)
         if org_id:
-            location["managingOrganization"] = {"reference": f"Organization/{org_id}"}
+            location["managingOrganization"] = {"reference": f"urn:uuid:{org_id}"}
 
         # Register Location resource
         self.reference_registry.register_resource(location)

@@ -104,7 +104,7 @@ class TestGoalConversion:
         assert goal is not None
         assert "expressedBy" in goal
         assert "reference" in goal["expressedBy"]
-        assert goal["expressedBy"]["reference"].startswith("Patient/")
+        assert goal["expressedBy"]["reference"].startswith("urn:uuid:")
 
     def test_converts_priority(self, ccda_goal_with_priority: str) -> None:
         """Test that priority preference is correctly converted."""
@@ -141,7 +141,7 @@ class TestGoalConversion:
         assert len(goal["addresses"]) >= 1
         # The reference should point to a Condition resource
         assert "reference" in goal["addresses"][0]
-        assert goal["addresses"][0]["reference"].startswith("Condition/")
+        assert goal["addresses"][0]["reference"].startswith("urn:uuid:")
 
     def test_converts_target_range(self, ccda_goal_blood_pressure: str) -> None:
         """Test that target with range is correctly converted."""
@@ -196,7 +196,7 @@ class TestGoalConversion:
         assert goal is not None
         assert "subject" in goal
         assert "reference" in goal["subject"]
-        assert goal["subject"]["reference"].startswith("Patient/")
+        assert goal["subject"]["reference"].startswith("urn:uuid:")
 
     def test_has_identifier(self, ccda_goal_weight_loss: str) -> None:
         """Test that goal identifier is correctly converted."""

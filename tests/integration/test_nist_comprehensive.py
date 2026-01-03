@@ -158,7 +158,7 @@ class TestNISTComprehensive:
         )
 
         # Has subject reference to Patient
-        assert pneumonia["subject"]["reference"].startswith("Patient/")
+        assert pneumonia["subject"]["reference"].startswith("urn:uuid:")
 
     def test_condition_asthma_exact_values(self, nist_bundle):
         """Validate Asthma condition (195967001) has EXACT values - Active."""
@@ -292,7 +292,7 @@ class TestNISTComprehensive:
             f"Albuterol status must be 'completed' or 'active', got '{albuterol['status']}'"
 
         # Has subject reference to Patient
-        assert albuterol["subject"]["reference"].startswith("Patient/")
+        assert albuterol["subject"]["reference"].startswith("urn:uuid:")
 
         # Check if medication reference points to Medication resource with RxNorm 573621
         if "medicationReference" in albuterol:
@@ -360,7 +360,7 @@ class TestNISTComprehensive:
                 f"Observation category should be valid, got {category_codes}"
 
         # Has subject reference to Patient
-        assert obs["subject"]["reference"].startswith("Patient/")
+        assert obs["subject"]["reference"].startswith("urn:uuid:")
 
         # Has effective date/time
         assert "effectiveDateTime" in obs or "effectivePeriod" in obs, \
@@ -420,7 +420,7 @@ class TestNISTComprehensive:
                 assert has_code, "Immunization must have at least one vaccine code"
 
             # Has patient reference
-            assert imm["patient"]["reference"].startswith("Patient/")
+            assert imm["patient"]["reference"].startswith("urn:uuid:")
 
             # Has occurrence date/time
             assert "occurrenceDateTime" in imm or "occurrenceString" in imm, \
@@ -450,7 +450,7 @@ class TestNISTComprehensive:
             f"Encounter class must be valid v3 ActCode, got '{enc['class']['code']}'"
 
         # Has subject reference to Patient
-        assert enc["subject"]["reference"].startswith("Patient/")
+        assert enc["subject"]["reference"].startswith("urn:uuid:")
 
         # Exact period
         if "period" in enc:
@@ -580,7 +580,7 @@ class TestNISTComprehensive:
         assert "2012-09-12" in str(comp["date"])
 
         # Has subject reference to Patient
-        assert comp["subject"]["reference"].startswith("Patient/")
+        assert comp["subject"]["reference"].startswith("urn:uuid:")
 
         # Has sections
         assert "section" in comp and len(comp["section"]) > 0
@@ -631,7 +631,7 @@ class TestNISTComprehensive:
             assert len(report["code"]["coding"]) >= 1
 
             # Has subject reference to Patient
-            assert report["subject"]["reference"].startswith("Patient/")
+            assert report["subject"]["reference"].startswith("urn:uuid:")
 
             # Has category - typically LAB for laboratory reports
             if "category" in report and len(report["category"]) > 0:
@@ -651,7 +651,7 @@ class TestNISTComprehensive:
             # Has result references to Observations
             if "result" in report:
                 for result in report["result"]:
-                    assert result["reference"].startswith("Observation/")
+                    assert result["reference"].startswith("urn:uuid:")
 
     def test_organization_exact_values(self, nist_bundle):
         """Validate Organization has EXACT values (author organization)."""
@@ -751,7 +751,7 @@ class TestNISTComprehensive:
         # Exact patient reference
         assert "patient" in rp
         assert "reference" in rp["patient"]
-        assert rp["patient"]["reference"].startswith("Patient/")
+        assert rp["patient"]["reference"].startswith("urn:uuid:")
 
         # Exact relationship - SPOUSE (SPS)
         assert "relationship" in rp
@@ -809,7 +809,7 @@ class TestNISTComprehensive:
         # Exact subject reference
         assert "subject" in sr
         assert "reference" in sr["subject"]
-        assert sr["subject"]["reference"].startswith("Patient/")
+        assert sr["subject"]["reference"].startswith("urn:uuid:")
 
     def test_location_exact_values(self, nist_bundle):
         """Validate Location has EXACT values."""

@@ -493,7 +493,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
                     party_ref = {
-                        "reference": f"Practitioner/{practitioner_id}"
+                        "reference": f"urn:uuid:{practitioner_id}"
                     }
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
@@ -551,7 +551,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
                     party_ref = {
-                        "reference": f"Practitioner/{practitioner_id}"
+                        "reference": f"urn:uuid:{practitioner_id}"
                     }
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
@@ -596,7 +596,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 extension: JSONObject = {
                     "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension",
                     "valueReference": {
-                        "reference": f"Practitioner/{practitioner_id}"
+                        "reference": f"urn:uuid:{practitioner_id}"
                     }
                 }
                 return extension
@@ -630,7 +630,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             practitioner_id = self._generate_practitioner_id(informant.assigned_entity.id)
             if practitioner_id:
                 extension["valueReference"] = {
-                    "reference": f"Practitioner/{practitioner_id}"
+                    "reference": f"urn:uuid:{practitioner_id}"
                 }
                 return extension
 
@@ -682,7 +682,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             practitioner_id = self._generate_practitioner_id(intended.id)
             if practitioner_id:
                 extension["valueReference"] = {
-                    "reference": f"Practitioner/{practitioner_id}"
+                    "reference": f"urn:uuid:{practitioner_id}"
                 }
                 return extension
 
@@ -726,7 +726,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             practitioner_id = self._generate_practitioner_id(associated.id)
             if practitioner_id:
                 extension["valueReference"] = {
-                    "reference": f"Practitioner/{practitioner_id}"
+                    "reference": f"urn:uuid:{practitioner_id}"
                 }
                 return extension
 
@@ -756,7 +756,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             extension: JSONObject = {
                 "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/PerformerExtension",
                 "valueReference": {
-                    "reference": f"Practitioner/{practitioner_id}"
+                    "reference": f"urn:uuid:{practitioner_id}"
                 }
             }
             return extension
@@ -792,7 +792,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             extension: JSONObject = {
                 "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/AuthorizationExtension",
                 "valueReference": {
-                    "reference": f"Consent/{consent_id}"
+                    "reference": f"urn:uuid:{consent_id}"
                 }
             }
             return extension
@@ -828,7 +828,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             extension: JSONObject = {
                 "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/OrderExtension",
                 "valueReference": {
-                    "reference": f"ServiceRequest/{service_request_id}"
+                    "reference": f"urn:uuid:{service_request_id}"
                 }
             }
             return extension
@@ -1104,7 +1104,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                     if resource.get("resourceType") and resource.get("id"):
                         resource_type = resource["resourceType"]
                         resource_id = resource["id"]
-                        reference = f"{resource_type}/{resource_id}"
+                        reference = f"urn:uuid:{resource_id}"
 
                         # Only add if not already added (deduplicate)
                         if reference not in seen_references:

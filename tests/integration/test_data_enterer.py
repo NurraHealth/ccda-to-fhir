@@ -151,7 +151,7 @@ class TestDataEntererConversion:
         # Verify valueReference structure
         assert "valueReference" in data_enterer_ext
         assert "reference" in data_enterer_ext["valueReference"]
-        assert data_enterer_ext["valueReference"]["reference"].startswith("Practitioner/")
+        assert data_enterer_ext["valueReference"]["reference"].startswith("urn:uuid:")
 
     def test_data_enterer_practitioner_created(self) -> None:
         """Test that dataEnterer creates Practitioner resource."""
@@ -282,7 +282,7 @@ class TestDataEntererConversion:
         assert data_enterer_practitioner is not None
 
         # Verify reference matches
-        expected_reference = f"Practitioner/{data_enterer_practitioner['id']}"
+        expected_reference = f"urn:uuid:{data_enterer_practitioner['id']}"
         assert reference == expected_reference
 
     def test_data_enterer_with_address_and_telecom(self) -> None:

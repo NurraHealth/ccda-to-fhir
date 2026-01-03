@@ -271,7 +271,7 @@ class TestNoteConversion:
         agent = note_provenance["agent"][0]
         assert "who" in agent
         assert "reference" in agent["who"]
-        assert agent["who"]["reference"].startswith("Practitioner/")
+        assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_provenance_has_recorded_date_from_author(
         self, ccda_note: str

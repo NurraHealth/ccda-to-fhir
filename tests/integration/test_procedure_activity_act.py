@@ -116,5 +116,5 @@ class TestProcedureActivityAct:
         performer = procedure["performer"][0]
         assert "actor" in performer
         assert "reference" in performer["actor"]
-        assert (performer["actor"]["reference"].startswith("Practitioner/") or
-                performer["actor"]["reference"].startswith("Organization/"))
+        assert (performer["actor"]["reference"].startswith("urn:uuid:") or
+                performer["actor"]["reference"].startswith("urn:uuid:"))

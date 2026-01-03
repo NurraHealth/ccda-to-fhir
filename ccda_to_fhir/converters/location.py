@@ -725,7 +725,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Check if Organization resource exists in registry
         # Only create reference if the Organization has been registered
         if self.reference_registry and self.reference_registry.has_resource("Organization", org_id):
-            return {"reference": f"Organization/{org_id}"}
+            return {"reference": f"urn:uuid:{org_id}"}
 
         # If no Organization resource exists in registry, don't create dangling reference
         # The organization may be created later or may not be relevant

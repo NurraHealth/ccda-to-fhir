@@ -160,7 +160,7 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
                                 id_elem.root, id_elem.extension
                             )
                             interpreters.append({
-                                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{practitioner_id}"
+                                "reference": f"urn:uuid:{practitioner_id}"
                             })
                             break  # Use first valid ID
             if interpreters:
@@ -185,7 +185,7 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
                     # Add reference to this observation
                     if "id" in observation:
                         result_refs.append({
-                            "reference": f"{FHIRCodes.ResourceTypes.OBSERVATION}/{observation['id']}"
+                            "reference": f"urn:uuid:{observation['id']}"
                         })
 
         if result_refs:

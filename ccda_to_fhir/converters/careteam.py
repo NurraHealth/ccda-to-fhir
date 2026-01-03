@@ -206,7 +206,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         # Extract managing organization from first member's organization
         managing_org_id = self._extract_managing_organization(organizer)
         if managing_org_id:
-            careteam["managingOrganization"] = [{"reference": f"Organization/{managing_org_id}"}]
+            careteam["managingOrganization"] = [{"reference": f"urn:uuid:{managing_org_id}"}]
 
         # Extract narrative text from code originalText or generate from data
         narrative = self._generate_narrative(organizer, categories, participants)
@@ -815,9 +815,9 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 self.created_practitioner_roles[role_id] = practitioner_role
             except Exception:
                 # PractitionerRole conversion failed, fallback to Practitioner
-                return {"reference": f"Practitioner/{practitioner_id}"}
+                return {"reference": f"urn:uuid:{practitioner_id}"}
 
-        return {"reference": f"PractitionerRole/{role_id}"}
+        return {"reference": f"urn:uuid:{role_id}"}
 
     def _generate_name(self, organizer: Organizer, categories: list[JSONObject]) -> str:
         """Generate human-readable name for the care team.

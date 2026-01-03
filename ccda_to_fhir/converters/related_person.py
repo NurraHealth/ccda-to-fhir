@@ -65,7 +65,7 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         related_person["id"] = self._generate_related_person_id(related_entity)
 
         # Patient reference (required)
-        related_person["patient"] = {"reference": f"Patient/{self.patient_id}"}
+        related_person["patient"] = {"reference": f"urn:uuid:{self.patient_id}"}
 
         # Map relationship code
         if related_entity.code:

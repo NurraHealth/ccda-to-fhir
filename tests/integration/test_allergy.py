@@ -233,7 +233,7 @@ class TestAllergyConversion:
         assert allergy is not None
         assert "recorder" in allergy
         assert "reference" in allergy["recorder"]
-        assert allergy["recorder"]["reference"].startswith("Practitioner/")
+        assert allergy["recorder"]["reference"].startswith("urn:uuid:")
 
     def test_recorder_and_provenance_reference_same_practitioner(
         self, ccda_allergy_with_recorded_date: str
@@ -371,7 +371,7 @@ class TestAllergyConversion:
         for agent in allergy_provenance["agent"]:
             assert "who" in agent
             assert "reference" in agent["who"]
-            assert agent["who"]["reference"].startswith("Practitioner/")
+            assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_multiple_authors_selects_latest_for_recorder(
         self, ccda_allergy_multiple_authors: str
@@ -385,8 +385,8 @@ class TestAllergyConversion:
         assert "recorder" in allergy
 
         # Recorder should reference a Practitioner (UUID v4 format)
-        assert allergy["recorder"]["reference"].startswith("Practitioner/")
-        recorder_id = allergy["recorder"]["reference"].split("/")[1]
+        assert allergy["recorder"]["reference"].startswith("urn:uuid:")
+        recorder_id = allergy["recorder"]["reference"].replace("urn:uuid:", "")
 
         # Verify the referenced Practitioner exists in bundle
         # Latest author is LATEST-ALLERGY-DOC (time: 20231120), not EARLY-ALLERGY-DOC (time: 20230301)

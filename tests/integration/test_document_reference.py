@@ -82,7 +82,7 @@ class TestDocumentReferenceConversion:
         assert "subject" in doc_ref
         assert "reference" in doc_ref["subject"]
         # Should reference the Patient resource
-        assert "Patient/" in doc_ref["subject"]["reference"]
+        assert doc_ref["subject"]["reference"].startswith("urn:uuid:")
 
     def test_converts_date_from_effective_time(self) -> None:
         """Test that document effectiveTime is converted to date."""
@@ -107,7 +107,7 @@ class TestDocumentReferenceConversion:
         assert "author" in doc_ref
         assert len(doc_ref["author"]) >= 1
         # Should reference a Practitioner resource
-        assert "Practitioner/" in doc_ref["author"][0]["reference"]
+        assert doc_ref["author"][0]["reference"].startswith("urn:uuid:")
 
     def test_converts_custodian_reference(self) -> None:
         """Test that custodian is converted to organization reference."""
@@ -119,7 +119,7 @@ class TestDocumentReferenceConversion:
         assert "custodian" in doc_ref
         assert "reference" in doc_ref["custodian"]
         # Should reference an Organization resource
-        assert "Organization/" in doc_ref["custodian"]["reference"]
+        assert doc_ref["custodian"]["reference"].startswith("urn:uuid:")
 
     def test_converts_security_label_from_confidentiality(self) -> None:
         """Test that confidentialityCode is converted to securityLabel."""
@@ -438,7 +438,7 @@ class TestDocumentReferenceNewFeatures:
         assert doc_ref["relatesTo"][0]["code"] == "replaces"
         assert "target" in doc_ref["relatesTo"][0]
         assert "reference" in doc_ref["relatesTo"][0]["target"]
-        assert "DocumentReference/" in doc_ref["relatesTo"][0]["target"]["reference"]
+        assert doc_ref["relatesTo"][0]["target"]["reference"].startswith("urn:uuid:")
 
     def test_converts_related_document_appends(self) -> None:
         """Test that relatedDocument with APND is converted to relatesTo."""

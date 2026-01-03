@@ -154,7 +154,7 @@ class TestAthenaComprehensive:
         assert category_code in ["problem-list-item", "encounter-diagnosis"]
 
         # Has subject reference to Patient
-        assert low_back_pain["subject"]["reference"].startswith("Patient/")
+        assert low_back_pain["subject"]["reference"].startswith("urn:uuid:")
 
         # Exact onset date
         assert "onsetDateTime" in low_back_pain or "onsetPeriod" in low_back_pain
@@ -188,9 +188,9 @@ class TestAthenaComprehensive:
         # Exact recorder (medium-priority untested field)
         assert "recorder" in dementia
         assert "reference" in dementia["recorder"]
-        assert dementia["recorder"]["reference"].startswith("Practitioner/")
+        assert dementia["recorder"]["reference"].startswith("urn:uuid:")
         # Verify it's a valid UUID-based reference
-        recorder_id = dementia["recorder"]["reference"].split("/")[1]
+        recorder_id = dementia["recorder"]["reference"].replace("urn:uuid:", "")
         assert len(recorder_id) == 36  # UUID format: 8-4-4-4-12
 
     def test_allergy_strawberry_exact_values(self, athena_bundle):
@@ -223,7 +223,7 @@ class TestAthenaComprehensive:
             assert strawberry["clinicalStatus"]["coding"][0]["code"] == "active"
 
         # Has patient reference
-        assert strawberry["patient"]["reference"].startswith("Patient/")
+        assert strawberry["patient"]["reference"].startswith("urn:uuid:")
 
     def test_medication_donepezil_exact_values(self, athena_bundle):
         """Validate donepezil medication has EXACT values."""
@@ -248,7 +248,7 @@ class TestAthenaComprehensive:
         assert "donepezil" in donepezil["medicationCodeableConcept"]["text"].lower()
 
         # Has subject reference
-        assert donepezil["subject"]["reference"].startswith("Patient/")
+        assert donepezil["subject"]["reference"].startswith("urn:uuid:")
 
         # Exact dosage.text (high-priority untested field)
         assert "dosage" in donepezil
@@ -308,7 +308,7 @@ class TestAthenaComprehensive:
         assert vq["system"] == "http://unitsofmeasure.org"
 
         # Has subject reference
-        assert obs_with_value["subject"]["reference"].startswith("Patient/")
+        assert obs_with_value["subject"]["reference"].startswith("urn:uuid:")
 
         # Has effectiveDateTime
         assert "effectiveDateTime" in obs_with_value
@@ -337,7 +337,7 @@ class TestAthenaComprehensive:
                 assert cvx_coding["code"] is not None
 
             # Has patient reference
-            assert imm["patient"]["reference"].startswith("Patient/")
+            assert imm["patient"]["reference"].startswith("urn:uuid:")
 
             # Has occurrenceDateTime
             assert "occurrenceDateTime" in imm
@@ -366,7 +366,7 @@ class TestAthenaComprehensive:
         assert "2024-01-22" in str(enc["period"]["start"])
 
         # Has subject reference to Patient
-        assert enc["subject"]["reference"].startswith("Patient/")
+        assert enc["subject"]["reference"].startswith("urn:uuid:")
 
         # Period end (if present)
         if "end" in enc["period"]:
@@ -451,7 +451,7 @@ class TestAthenaComprehensive:
         assert "2024-03-01" in str(comp["date"])
 
         # Has subject reference
-        assert comp["subject"]["reference"].startswith("Patient/")
+        assert comp["subject"]["reference"].startswith("urn:uuid:")
 
         # Has sections
         assert "section" in comp and len(comp["section"]) > 0
@@ -478,12 +478,12 @@ class TestAthenaComprehensive:
             assert len(report["code"]["coding"]) >= 1
 
             # Has subject reference
-            assert report["subject"]["reference"].startswith("Patient/")
+            assert report["subject"]["reference"].startswith("urn:uuid:")
 
             # Has result references (if present)
             if "result" in report:
                 for result in report["result"]:
-                    assert result["reference"].startswith("Observation/")
+                    assert result["reference"].startswith("urn:uuid:")
 
     def test_procedure_exact_values(self, athena_bundle):
         """Validate Procedure has EXACT values."""
@@ -511,7 +511,7 @@ class TestAthenaComprehensive:
             assert "start" in proc["performedPeriod"]
 
         # Has subject reference to Patient
-        assert proc["subject"]["reference"].startswith("Patient/")
+        assert proc["subject"]["reference"].startswith("urn:uuid:")
 
         # Has code structure
         if "code" in proc:
@@ -660,7 +660,7 @@ class TestAthenaComprehensive:
         assert "target" in prov
         assert len(prov["target"]) >= 1
         assert "reference" in prov["target"][0]
-        assert "/" in prov["target"][0]["reference"]  # ResourceType/id format
+        assert prov["target"][0]["reference"].startswith("urn:uuid:")  # urn:uuid format
 
         # Exact agent - author
         assert "agent" in prov
@@ -677,12 +677,12 @@ class TestAthenaComprehensive:
         # Agent must have who (Practitioner)
         assert "who" in agent
         assert "reference" in agent["who"]
-        assert agent["who"]["reference"].startswith("Practitioner/")
+        assert agent["who"]["reference"].startswith("urn:uuid:")
 
         # Agent must have onBehalfOf (Organization)
         assert "onBehalfOf" in agent
         assert "reference" in agent["onBehalfOf"]
-        assert agent["onBehalfOf"]["reference"].startswith("Organization/")
+        assert agent["onBehalfOf"]["reference"].startswith("urn:uuid:")
 
     def test_location_exact_values(self, athena_bundle):
         """Validate Location has EXACT values."""

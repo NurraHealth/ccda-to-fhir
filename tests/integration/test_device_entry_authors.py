@@ -331,7 +331,7 @@ class TestDeviceEntryAuthors:
         assert procedure is not None, "Procedure should exist"
 
         # Find Provenance by target reference (using new ID generation)
-        provenance = _find_provenance_by_target(bundle, f"Procedure/{procedure['id']}")
+        provenance = _find_provenance_by_target(bundle, f"urn:uuid:{procedure['id']}")
 
         assert device is not None, "Device should exist"
         assert provenance is not None, "Provenance should exist"
@@ -347,8 +347,8 @@ class TestDeviceEntryAuthors:
         assert "agent" in provenance
         assert len(provenance["agent"]) > 0
 
-        device_agent = [a for a in provenance["agent"] if "Device" in a.get("who", {}).get("reference", "")][0]
-        expected_reference = f"Device/{device['id']}"
+        expected_reference = f"urn:uuid:{device['id']}"
+        device_agent = [a for a in provenance["agent"] if a.get("who", {}).get("reference") == expected_reference][0]
         assert device_agent["who"]["reference"] == expected_reference
 
     def test_multiple_entry_device_authors_deduplicated(self) -> None:

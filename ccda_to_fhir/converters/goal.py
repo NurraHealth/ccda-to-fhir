@@ -366,7 +366,7 @@ class GoalConverter(BaseConverter[Observation]):
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner", first_id.root, first_id.extension
                 )
-                return {"reference": f"Practitioner/{practitioner_id}"}
+                return {"reference": f"urn:uuid:{practitioner_id}"}
             else:
                 # Assume it's the patient
                 if not self.reference_registry:
@@ -463,7 +463,7 @@ class GoalConverter(BaseConverter[Observation]):
                 "Condition", first_id.root, first_id.extension
             )
 
-            reference: JSONObject = {"reference": f"Condition/{condition_id}"}
+            reference: JSONObject = {"reference": f"urn:uuid:{condition_id}"}
 
             # Add display if we have the value
             if entry_ref_obs.value:

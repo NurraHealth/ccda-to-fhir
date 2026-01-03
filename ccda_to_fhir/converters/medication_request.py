@@ -178,7 +178,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                                     med_request["requester"] = {
-                                        "reference": f"Practitioner/{pract_id}"
+                                        "reference": f"urn:uuid:{pract_id}"
                                     }
                                     break
                     # Check for device
@@ -188,7 +188,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     device_id = self._generate_device_id(id_elem.root, id_elem.extension)
                                     med_request["requester"] = {
-                                        "reference": f"Device/{device_id}"
+                                        "reference": f"urn:uuid:{device_id}"
                                     }
                                     break
 
@@ -351,7 +351,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             medication_id = medication["id"]
             _medication_registry[medication_id] = medication
 
-            return {"medicationReference": {"reference": f"Medication/{medication_id}"}}
+            return {"medicationReference": {"reference": f"urn:uuid:{medication_id}"}}
         else:
             # Simple case - use medicationCodeableConcept
             med_code = manufactured_material.code

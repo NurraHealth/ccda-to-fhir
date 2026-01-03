@@ -68,7 +68,7 @@ class ProvenanceConverter(BaseConverter[None]):
         )
 
         # Target - reference to the resource(s) this Provenance is about
-        provenance["target"] = [{"reference": f"{resource_type}/{resource_id}"}]
+        provenance["target"] = [{"reference": f"urn:uuid:{resource_id}"}]
 
         # Recorded - when the provenance was recorded (use earliest author time)
         recorded_date = self._get_earliest_author_time(authors)
@@ -137,17 +137,17 @@ class ProvenanceConverter(BaseConverter[None]):
         # Who - reference to Practitioner or Device
         if author_info.practitioner_id:
             agent["who"] = {
-                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{author_info.practitioner_id}"
+                "reference": f"urn:uuid:{author_info.practitioner_id}"
             }
         elif author_info.device_id:
             agent["who"] = {
-                "reference": f"{FHIRCodes.ResourceTypes.DEVICE}/{author_info.device_id}"
+                "reference": f"urn:uuid:{author_info.device_id}"
             }
 
         # OnBehalfOf - reference to Organization (optional)
         if author_info.organization_id:
             agent["onBehalfOf"] = {
-                "reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{author_info.organization_id}"
+                "reference": f"urn:uuid:{author_info.organization_id}"
             }
 
         return agent

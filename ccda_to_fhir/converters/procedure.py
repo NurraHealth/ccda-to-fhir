@@ -463,7 +463,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
                         # Add reference to performer
                         performer_obj["actor"] = {
-                            "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
+                            "reference": f"urn:uuid:{pract_id}"
                         }
 
             # Extract organization reference if present
@@ -509,12 +509,12 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                         # Add onBehalfOf reference if we have both practitioner and organization
                         if pract_id:
                             performer_obj["onBehalfOf"] = {
-                                "reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{org_id}"
+                                "reference": f"urn:uuid:{org_id}"
                             }
                         # If no practitioner, organization is the actor
                         elif not pract_id:
                             performer_obj["actor"] = {
-                                "reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{org_id}"
+                                "reference": f"urn:uuid:{org_id}"
                             }
 
             if performer_obj:
@@ -560,7 +560,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
                     # Create location reference (or would have raised error above)
                     location_ref: JSONObject = {
-                        "reference": f"{FHIRCodes.ResourceTypes.LOCATION}/{location_id}"
+                        "reference": f"urn:uuid:{location_id}"
                     }
                     if display:
                         location_ref["display"] = display
@@ -636,7 +636,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                         # Create focalDevice entry for Procedure
                         focal_device: JSONObject = {
                             "manipulated": {
-                                "reference": f"{FHIRCodes.ResourceTypes.DEVICE}/{device['id']}"
+                                "reference": f"urn:uuid:{device['id']}"
                             }
                         }
 
@@ -699,7 +699,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                         if id_elem.root:
                             pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                             return {
-                                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
+                                "reference": f"urn:uuid:{pract_id}"
                             }
 
             # Check for device (assigned_authoring_device)
@@ -709,7 +709,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                         if id_elem.root:
                             device_id = self._generate_device_id(id_elem.root, id_elem.extension)
                             return {
-                                "reference": f"{FHIRCodes.ResourceTypes.DEVICE}/{device_id}"
+                                "reference": f"urn:uuid:{device_id}"
                             }
 
         return None
@@ -759,7 +759,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                         ):
                             # Condition exists - use reasonReference
                             reason_refs.append({
-                                "reference": f"{FHIRCodes.ResourceTypes.CONDITION}/{condition_id}"
+                                "reference": f"urn:uuid:{condition_id}"
                             })
                         else:
                             # Inline Problem Observation not converted - use reasonCode

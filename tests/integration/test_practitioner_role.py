@@ -63,7 +63,7 @@ class TestPractitionerRoleConversion:
         assert "reference" in practitioner_role["practitioner"]
 
         # Reference should point to the practitioner in the bundle
-        expected_ref = f"Practitioner/{practitioner['id']}"
+        expected_ref = f"urn:uuid:{practitioner['id']}"
         assert practitioner_role["practitioner"]["reference"] == expected_ref
 
     def test_practitioner_role_links_to_organization(
@@ -82,7 +82,7 @@ class TestPractitionerRoleConversion:
         assert "reference" in practitioner_role["organization"]
 
         # Reference should point to the organization in the bundle
-        expected_ref = f"Organization/{organization['id']}"
+        expected_ref = f"urn:uuid:{organization['id']}"
         assert practitioner_role["organization"]["reference"] == expected_ref
 
     def test_specialty_in_practitioner_role_not_practitioner(
@@ -165,7 +165,7 @@ class TestPractitionerRoleConversion:
 
         # Verify practitioner reference uses consistent ID
         assert "practitioner" in role
-        practitioner_id = role["practitioner"]["reference"].split("/")[1]
+        practitioner_id = role["practitioner"]["reference"].replace("urn:uuid:", "")
 
         # Extract practitioner UUID from composite role ID and verify it matches
         # Format: role-{practitioner_uuid}-{organization_uuid}

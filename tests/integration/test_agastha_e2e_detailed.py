@@ -1020,8 +1020,8 @@ class TestAgasthaE2E:
             "Patient must have managingOrganization"
         assert patient.managingOrganization.reference is not None, \
             "managingOrganization must have reference"
-        assert "Organization/" in patient.managingOrganization.reference, \
-            f"managingOrganization reference must point to Organization, got '{patient.managingOrganization.reference}'"
+        assert patient.managingOrganization.reference.startswith("urn:uuid:"), \
+            f"managingOrganization reference must use urn:uuid format, got '{patient.managingOrganization.reference}'"
         assert patient.managingOrganization.display == "Agastha Medical Center", \
             f"managingOrganization display must be 'Agastha Medical Center', got '{patient.managingOrganization.display}'"
 
@@ -1238,8 +1238,8 @@ class TestAgasthaE2E:
                 "Encounter diagnosis must have condition reference"
             assert diag.condition.reference is not None, \
                 "Diagnosis condition reference must not be null"
-            assert "Condition/" in diag.condition.reference, \
-                f"Diagnosis must reference Condition, got '{diag.condition.reference}'"
+            assert diag.condition.reference.startswith("urn:uuid:"), \
+                f"Diagnosis must reference Condition with urn:uuid format, got '{diag.condition.reference}'"
 
             # Verify use (role) - Agastha is outpatient, should be "billing"
             assert diag.use is not None, "Diagnosis must have use/role"

@@ -162,7 +162,7 @@ class TestPregnancyObservation:
         assert observation is not None
         assert "subject" in observation
         assert "reference" in observation["subject"]
-        assert observation["subject"]["reference"].startswith("Patient/")
+        assert observation["subject"]["reference"].startswith("urn:uuid:")
 
 
 class TestPregnancyWithoutEDD:

@@ -142,7 +142,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
             FHIR Reference object
         """
         return {
-            "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{practitioner_id}"
+            "reference": f"urn:uuid:{practitioner_id}"
         }
 
     def _create_organization_reference(self, organization_id: str) -> JSONObject:
@@ -155,7 +155,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
             FHIR Reference object
         """
         return {
-            "reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{organization_id}"
+            "reference": f"urn:uuid:{organization_id}"
         }
 
     def _convert_specialty(self, code: CE) -> list[JSONObject]:

@@ -216,9 +216,9 @@ class TestVitalSignsConversion:
 
         # Verify hasMember references point to Observation resources (not contained)
         for member in panel["hasMember"]:
-            assert member["reference"].startswith("Observation/")
+            assert member["reference"].startswith("urn:uuid:")
             # Verify the referenced observation exists in the bundle
-            obs_id = member["reference"].split("/")[1]
+            obs_id = member["reference"].replace("urn:uuid:", "")
             assert any(obs.get("id") == obs_id for obs in individual_obs)
 
     def test_component_narrative_propagates_from_text_reference(self) -> None:

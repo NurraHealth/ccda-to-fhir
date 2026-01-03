@@ -144,7 +144,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                         patient_id.root,
                         patient_id.extension,
                     )
-                    careplan["subject"] = {"reference": f"Patient/{patient_ref_id}"}
+                    careplan["subject"] = {"reference": f"urn:uuid:{patient_ref_id}"}
                 else:
                     raise ValueError(
                         "Cannot create CarePlan: patient identifier has no root"
@@ -195,7 +195,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                                 performer_id.root,
                                 performer_id.extension,
                             )
-                            performer_ref = {"reference": f"Practitioner/{practitioner_id}"}
+                            performer_ref = {"reference": f"urn:uuid:{practitioner_id}"}
                             if performer_ref not in contributors:
                                 contributors.append(performer_ref)
 
@@ -416,7 +416,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                     first_id.root,
                     first_id.extension,
                 )
-                return {"reference": f"Practitioner/{practitioner_id}"}
+                return {"reference": f"urn:uuid:{practitioner_id}"}
             else:
                 # Could be patient as author
                 if not self.reference_registry:
@@ -567,11 +567,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                         if resource_id:
                             # Try as Procedure
                             if self.reference_registry.has_resource("Procedure", resource_id):
-                                return f"Procedure/{resource_id}"
+                                return f"urn:uuid:{resource_id}"
 
                             # Try as ServiceRequest
                             if self.reference_registry.has_resource("ServiceRequest", resource_id):
-                                return f"ServiceRequest/{resource_id}"
+                                return f"urn:uuid:{resource_id}"
 
                     # Look for nested act
                     elif hasattr(rel, 'act') and rel.act:
@@ -579,18 +579,18 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                         if resource_id:
                             # Try as Procedure
                             if self.reference_registry.has_resource("Procedure", resource_id):
-                                return f"Procedure/{resource_id}"
+                                return f"urn:uuid:{resource_id}"
 
         # Fallback: Try the intervention entry itself
         resource_id = self._generate_resource_id_from_entry(intervention_entry, "servicerequest")
         if resource_id:
             # Try ServiceRequest first (for planned interventions)
             if self.reference_registry.has_resource("ServiceRequest", resource_id):
-                return f"ServiceRequest/{resource_id}"
+                return f"urn:uuid:{resource_id}"
 
             # Try Procedure (for completed interventions)
             if self.reference_registry.has_resource("Procedure", resource_id):
-                return f"Procedure/{resource_id}"
+                return f"urn:uuid:{resource_id}"
 
         return None
 
@@ -613,7 +613,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # Check if observation resource exists with generated ID
         if self.reference_registry.has_resource("Observation", resource_id):
-            return {"reference": f"Observation/{resource_id}"}
+            return {"reference": f"urn:uuid:{resource_id}"}
 
         return None
 

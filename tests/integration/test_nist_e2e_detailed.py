@@ -382,7 +382,7 @@ class TestNISTDetailedValidation:
             None
         )
 
-        expected_patient_ref = f"Patient/{patient.id}"
+        expected_patient_ref = f"urn:uuid:{patient.id}"
 
         # Check Conditions
         conditions = [e.resource for e in nist_bundle.entry
@@ -1359,7 +1359,7 @@ class TestNISTDetailedValidation:
 
                 # If reference is set, verify it points to the right organization
                 if has_reference:
-                    expected_ref = f"Organization/{org.id}"
+                    expected_ref = f"urn:uuid:{org.id}"
                     assert patient.managingOrganization.reference == expected_ref, \
                         f"Patient.managingOrganization must reference {expected_ref}"
 
@@ -1383,11 +1383,11 @@ class TestNISTDetailedValidation:
                         "Encounter.diagnosis must have condition reference"
                     assert diagnosis.condition.reference is not None, \
                         "Encounter.diagnosis.condition must have reference"
-                    assert diagnosis.condition.reference.startswith("Condition/"), \
+                    assert diagnosis.condition.reference.startswith("urn:uuid:"), \
                         f"Encounter.diagnosis must reference Condition, got '{diagnosis.condition.reference}'"
 
                     # Verify the referenced Condition exists in bundle
-                    condition_id = diagnosis.condition.reference.split("/")[1]
+                    condition_id = diagnosis.condition.reference.replace("urn:uuid:", "")
                     condition_exists = any(
                         e.resource.get_resource_type() == "Condition" and e.resource.id == condition_id
                         for e in nist_bundle.entry
@@ -1450,7 +1450,7 @@ class TestNISTDetailedValidation:
         for entry in nist_bundle.entry:
             if entry.resource and hasattr(entry.resource, 'id'):
                 resource_type = entry.resource.get_resource_type()
-                bundle_resource_ids.add(f"{resource_type}/{entry.resource.id}")
+                bundle_resource_ids.add(f"urn:uuid:{entry.resource.id}")
 
         # Check all section entries
         for section in composition.section or []:
@@ -1524,8 +1524,8 @@ class TestNISTDetailedValidation:
         for condition in conditions:
             assert condition.subject is not None, "Condition.subject is required"
             assert condition.subject.reference is not None, "Condition.subject must have reference"
-            assert condition.subject.reference == f"Patient/{patient.id}", \
-                f"Condition.subject must reference Patient/{patient.id}"
+            assert condition.subject.reference == f"urn:uuid:{patient.id}", \
+                f"Condition.subject must reference urn:uuid:{patient.id}"
 
     def test_diagnostic_reports_reference_patient(self, nist_bundle):
         """Validate all DiagnosticReport resources have subject reference to Patient."""
@@ -1544,8 +1544,8 @@ class TestNISTDetailedValidation:
         for report in reports:
             assert report.subject is not None, "DiagnosticReport.subject is required"
             assert report.subject.reference is not None, "DiagnosticReport.subject must have reference"
-            assert report.subject.reference == f"Patient/{patient.id}", \
-                f"DiagnosticReport.subject must reference Patient/{patient.id}"
+            assert report.subject.reference == f"urn:uuid:{patient.id}", \
+                f"DiagnosticReport.subject must reference urn:uuid:{patient.id}"
 
     def test_encounters_reference_patient(self, nist_bundle):
         """Validate all Encounter resources have subject reference to Patient."""
@@ -1564,8 +1564,8 @@ class TestNISTDetailedValidation:
         for encounter in encounters:
             assert encounter.subject is not None, "Encounter.subject is required"
             assert encounter.subject.reference is not None, "Encounter.subject must have reference"
-            assert encounter.subject.reference == f"Patient/{patient.id}", \
-                f"Encounter.subject must reference Patient/{patient.id}"
+            assert encounter.subject.reference == f"urn:uuid:{patient.id}", \
+                f"Encounter.subject must reference urn:uuid:{patient.id}"
 
     def test_procedures_reference_patient(self, nist_bundle):
         """Validate all Procedure resources have subject reference to Patient."""
@@ -1586,8 +1586,8 @@ class TestNISTDetailedValidation:
             for procedure in procedures:
                 assert procedure.subject is not None, "Procedure.subject is required"
                 assert procedure.subject.reference is not None, "Procedure.subject must have reference"
-                assert procedure.subject.reference == f"Patient/{patient.id}", \
-                    f"Procedure.subject must reference Patient/{patient.id}"
+                assert procedure.subject.reference == f"urn:uuid:{patient.id}", \
+                    f"Procedure.subject must reference urn:uuid:{patient.id}"
 
     def test_observations_reference_patient(self, nist_bundle):
         """Validate all Observation resources have subject reference to Patient."""
@@ -1606,8 +1606,8 @@ class TestNISTDetailedValidation:
         for observation in observations:
             assert observation.subject is not None, "Observation.subject is required"
             assert observation.subject.reference is not None, "Observation.subject must have reference"
-            assert observation.subject.reference == f"Patient/{patient.id}", \
-                f"Observation.subject must reference Patient/{patient.id}"
+            assert observation.subject.reference == f"urn:uuid:{patient.id}", \
+                f"Observation.subject must reference urn:uuid:{patient.id}"
 
     def test_medication_requests_reference_patient(self, nist_bundle):
         """Validate all MedicationRequest/MedicationStatement resources have subject reference to Patient."""
@@ -1627,8 +1627,8 @@ class TestNISTDetailedValidation:
         for med_statement in med_statements:
             assert med_statement.subject is not None, "MedicationStatement.subject is required"
             assert med_statement.subject.reference is not None, "MedicationStatement.subject must have reference"
-            assert med_statement.subject.reference == f"Patient/{patient.id}", \
-                f"MedicationStatement.subject must reference Patient/{patient.id}"
+            assert med_statement.subject.reference == f"urn:uuid:{patient.id}", \
+                f"MedicationStatement.subject must reference urn:uuid:{patient.id}"
 
     def test_allergy_intolerances_reference_patient(self, nist_bundle):
         """Validate all AllergyIntolerance resources have patient reference to Patient."""
@@ -1647,8 +1647,8 @@ class TestNISTDetailedValidation:
         for allergy in allergies:
             assert allergy.patient is not None, "AllergyIntolerance.patient is required"
             assert allergy.patient.reference is not None, "AllergyIntolerance.patient must have reference"
-            assert allergy.patient.reference == f"Patient/{patient.id}", \
-                f"AllergyIntolerance.patient must reference Patient/{patient.id}"
+            assert allergy.patient.reference == f"urn:uuid:{patient.id}", \
+                f"AllergyIntolerance.patient must reference urn:uuid:{patient.id}"
 
     def test_immunizations_reference_patient(self, nist_bundle):
         """Validate all Immunization resources have patient reference to Patient."""
@@ -1667,8 +1667,8 @@ class TestNISTDetailedValidation:
         for immunization in immunizations:
             assert immunization.patient is not None, "Immunization.patient is required"
             assert immunization.patient.reference is not None, "Immunization.patient must have reference"
-            assert immunization.patient.reference == f"Patient/{patient.id}", \
-                f"Immunization.patient must reference Patient/{patient.id}"
+            assert immunization.patient.reference == f"urn:uuid:{patient.id}", \
+                f"Immunization.patient must reference urn:uuid:{patient.id}"
 
     # ====================================================================================
     # Medium Priority Tests - MedicationStatement.intent (NIST uses MedicationStatement)
@@ -1714,11 +1714,11 @@ class TestNISTDetailedValidation:
             for member in panel.hasMember:
                 assert member.reference is not None, \
                     "hasMember entry must have reference"
-                assert member.reference.startswith("Observation/"), \
+                assert member.reference.startswith("urn:uuid:"), \
                     f"hasMember must reference Observation, got '{member.reference}'"
 
                 # Verify the referenced Observation exists in bundle
-                obs_id = member.reference.split("/")[1]
+                obs_id = member.reference.replace("urn:uuid:", "")
                 obs_exists = any(
                     e.resource.get_resource_type() == "Observation" and e.resource.id == obs_id
                     for e in nist_bundle.entry

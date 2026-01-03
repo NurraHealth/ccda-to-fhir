@@ -745,7 +745,7 @@ class DocumentConverter:
 
                                         # Create reference with display
                                         patient["managingOrganization"] = {
-                                            "reference": f"Organization/{organization['id']}"
+                                            "reference": f"urn:uuid:{organization['id']}"
                                         }
                                         if org_display:
                                             patient["managingOrganization"]["display"] = org_display
@@ -1231,13 +1231,13 @@ class DocumentConverter:
                 if TemplateIds.GOALS_SECTION in section_resource_map:
                     for goal in section_resource_map[TemplateIds.GOALS_SECTION]:
                         if goal.get("id"):
-                            goal_refs.append({"reference": f"Goal/{goal['id']}"})
+                            goal_refs.append({"reference": f"urn:uuid:{goal['id']}"})
 
                 health_concern_refs = []
                 if TemplateIds.HEALTH_CONCERNS_SECTION in section_resource_map:
                     for condition in section_resource_map[TemplateIds.HEALTH_CONCERNS_SECTION]:
                         if condition.get("id"):
-                            health_concern_refs.append({"reference": f"Condition/{condition['id']}"})
+                            health_concern_refs.append({"reference": f"urn:uuid:{condition['id']}"})
 
                 # Extract intervention and outcome entries from sections for CarePlan linking
                 # NOTE: Intervention/outcome resources have already been processed and registered
@@ -1916,7 +1916,7 @@ class DocumentConverter:
                                                     spcu_ext["extension"].append({
                                                         "url": "supportingInfo",
                                                         "valueReference": {
-                                                            "reference": f"Observation/{ref_id}"
+                                                            "reference": f"urn:uuid:{ref_id}"
                                                         }
                                                     })
 
@@ -2062,7 +2062,7 @@ class DocumentConverter:
                                                         spcu_ext["extension"].append({
                                                             "url": "supportingInfo",
                                                             "valueReference": {
-                                                                "reference": f"Observation/{ref_id}"
+                                                                "reference": f"urn:uuid:{ref_id}"
                                                             }
                                                         })
 
@@ -3085,7 +3085,7 @@ class DocumentConverter:
                         }]
                     }],
                     "individual": {
-                        "reference": f"Practitioner/{practitioner_id}"
+                        "reference": f"urn:uuid:{practitioner_id}"
                     }
                 })
 
@@ -3144,7 +3144,7 @@ class DocumentConverter:
                         # Only add participant reference if we have a person (practitioner)
                         part_dict = {
                             "individual": {
-                                "reference": f"Practitioner/{practitioner_id}"
+                                "reference": f"urn:uuid:{practitioner_id}"
                             }
                         }
                         # Add type code - map C-CDA ParticipationFunction codes to FHIR ParticipationType codes
@@ -3265,7 +3265,7 @@ class DocumentConverter:
                                 org_id_elem.extension
                             )
                             location_resource["managingOrganization"] = {
-                                "reference": f"Organization/{org_id}"
+                                "reference": f"urn:uuid:{org_id}"
                             }
 
                         # Register with reference registry
@@ -3277,7 +3277,7 @@ class DocumentConverter:
                         self._temp_header_locations.append(location_resource)
 
                 if location_id:
-                    location_dict = {"reference": f"Location/{location_id}"}
+                    location_dict = {"reference": f"urn:uuid:{location_id}"}
                     if location_display:
                         location_dict["display"] = location_display
 

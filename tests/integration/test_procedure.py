@@ -196,7 +196,7 @@ class TestProcedureConversion:
         performer = procedure["performer"][0]
         assert "actor" in performer
         assert "reference" in performer["actor"]
-        assert "Practitioner/" in performer["actor"]["reference"]
+        assert performer["actor"]["reference"].startswith("urn:uuid:")
 
     def test_maps_prisurg_function_code(self) -> None:
         """Test that PRISURG function code maps to PPRF (primary performer).
@@ -331,7 +331,7 @@ class TestProcedureConversion:
         assert "function" not in performer, "Encounter-only codes like ADM should not appear in Procedure.performer.function"
         # But actor should still be present
         assert "actor" in performer
-        assert "Practitioner/" in performer["actor"]["reference"]
+        assert performer["actor"]["reference"].startswith("urn:uuid:")
 
     def test_converts_location(self, ccda_procedure_with_location: str) -> None:
         """Test that LOC participant is converted to location."""
@@ -342,7 +342,7 @@ class TestProcedureConversion:
         assert procedure is not None
         assert "location" in procedure
         assert "reference" in procedure["location"]
-        assert "Location/" in procedure["location"]["reference"]
+        assert procedure["location"]["reference"].startswith("urn:uuid:")
         # Display is optional but should include location name if present
         if "display" in procedure["location"]:
             assert procedure["location"]["display"] == "Operating Room 1"
@@ -406,11 +406,11 @@ class TestProcedureConversion:
         assert len(procedure["reasonReference"]) >= 1
         reason_ref = procedure["reasonReference"][0]
         assert "reference" in reason_ref
-        assert "Condition/" in reason_ref["reference"]
+        assert reason_ref["reference"].startswith("urn:uuid:")
 
         # Capture the generated Condition ID and verify it's a valid UUID v4
         import uuid as uuid_module
-        condition_id = reason_ref["reference"].split("/")[1]
+        condition_id = reason_ref["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(condition_id, version=4)
         except ValueError:
@@ -446,7 +446,7 @@ class TestProcedureConversion:
         reason_ref = procedure["reasonReference"][0]
         # ID should be a valid UUID v4 (matches Condition generation logic)
         import uuid as uuid_module
-        condition_id = reason_ref["reference"].split("/")[1]
+        condition_id = reason_ref["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(condition_id, version=4)
         except ValueError:
@@ -461,7 +461,7 @@ class TestProcedureConversion:
         assert procedure is not None
         assert "recorder" in procedure
         assert "reference" in procedure["recorder"]
-        assert "Practitioner/" in procedure["recorder"]["reference"]
+        assert procedure["recorder"]["reference"].startswith("urn:uuid:")
 
     def test_converts_outcome(self, ccda_procedure_with_outcome: str) -> None:
         """Test that OUTC entryRelationship is converted to outcome."""
@@ -550,8 +550,8 @@ class TestProcedureConversion:
 
         # Recorder should reference a Practitioner with UUID v4
         import uuid as uuid_module
-        assert "Practitioner/" in procedure["recorder"]["reference"]
-        practitioner_id = procedure["recorder"]["reference"].split("/")[1]
+        assert procedure["recorder"]["reference"].startswith("urn:uuid:")
+        practitioner_id = procedure["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -693,7 +693,7 @@ class TestProcedureConversion:
         for agent in procedure_provenance["agent"]:
             assert "who" in agent
             assert "reference" in agent["who"]
-            assert agent["who"]["reference"].startswith("Practitioner/")
+            assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_narrative_propagates_from_text_reference(self) -> None:
         """Test that Procedure.text narrative is generated from text/reference."""
@@ -914,7 +914,7 @@ class TestRepresentedOrganization:
         agent = procedure_provenance["agent"][0]
         assert "onBehalfOf" in agent, "Provenance.agent should have onBehalfOf field"
         assert "reference" in agent["onBehalfOf"]
-        assert agent["onBehalfOf"]["reference"].startswith("Organization/")
+        assert agent["onBehalfOf"]["reference"].startswith("urn:uuid:")
 
     def test_on_behalf_of_references_correct_organization(
         self, ccda_procedure_with_author_and_organization: str
@@ -952,7 +952,7 @@ class TestRepresentedOrganization:
         # Verify onBehalfOf references the same organization
         agent = procedure_provenance["agent"][0]
         on_behalf_of_ref = agent["onBehalfOf"]["reference"]
-        assert on_behalf_of_ref == f"Organization/{org_id}"
+        assert on_behalf_of_ref == f"urn:uuid:{org_id}"
 
     def test_entry_level_author_does_not_create_practitioner_role(
         self, ccda_procedure_with_author_and_organization: str
@@ -1136,9 +1136,8 @@ class TestProcedureActivityObservation:
         assert len(procedure["performer"]) >= 1
         performer = procedure["performer"][0]
         assert "actor" in performer
-        # Actor can be Practitioner OR Organization
-        assert ("Practitioner/" in performer["actor"]["reference"] or
-                "Organization/" in performer["actor"]["reference"])
+        # Actor reference should be in urn:uuid format
+        assert performer["actor"]["reference"].startswith("urn:uuid:")
 
     def test_converts_observation_with_location(
         self, ccda_procedure_observation_with_details: str
@@ -1150,7 +1149,7 @@ class TestProcedureActivityObservation:
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
         assert "location" in procedure
-        assert "Location/" in procedure["location"]["reference"]
+        assert procedure["location"]["reference"].startswith("urn:uuid:")
         # Display is optional, only check if present
         if "display" in procedure["location"]:
             assert procedure["location"]["display"] == "Endoscopy Suite 1"
@@ -1165,7 +1164,7 @@ class TestProcedureActivityObservation:
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
         assert "recorder" in procedure
-        assert "Practitioner/" in procedure["recorder"]["reference"]
+        assert procedure["recorder"]["reference"].startswith("urn:uuid:")
 
     def test_converts_observation_with_reason(
         self, ccda_procedure_observation_with_details: str

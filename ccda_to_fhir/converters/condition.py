@@ -310,11 +310,11 @@ class ConditionConverter(BaseConverter[Observation]):
             latest_author = max(authors_with_time, key=lambda a: a.time)
             if latest_author.practitioner_id:
                 condition["recorder"] = {
-                    "reference": f"Practitioner/{latest_author.practitioner_id}"
+                    "reference": f"urn:uuid:{latest_author.practitioner_id}"
                 }
             elif latest_author.device_id:
                 condition["recorder"] = {
-                    "reference": f"Device/{latest_author.device_id}"
+                    "reference": f"urn:uuid:{latest_author.device_id}"
                 }
 
         # Evidence (from related observations)
@@ -844,7 +844,7 @@ class ConditionConverter(BaseConverter[Observation]):
                     # Add evidence detail reference
                     evidence_list.append({
                         "detail": [{
-                            "reference": f"Observation/{obs_id}"
+                            "reference": f"urn:uuid:{obs_id}"
                         }]
                     })
 

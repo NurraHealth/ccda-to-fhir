@@ -181,7 +181,15 @@ class ObservationConverter(BaseConverter[Observation]):
                 "reference_registry is required. "
                 "Cannot create Observation without patient reference."
             )
-        fhir_obs["subject"] = self.reference_registry.get_patient_reference()
+        patient_ref = self.reference_registry.get_patient_reference()
+        fhir_obs["subject"] = patient_ref
+
+        # Diagnostic logging
+        from ccda_to_fhir.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.debug(
+            f"Observation {fhir_obs.get('id', 'unknown')} assigned patient reference: {patient_ref['reference']}"
+        )
 
         # 7. Effective time (effectiveDateTime or effectivePeriod)
         effective_time = self._extract_effective_time(observation)
@@ -268,7 +276,7 @@ class ObservationConverter(BaseConverter[Observation]):
                                 id_elem.root, id_elem.extension
                             )
                             performers.append({
-                                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{practitioner_id}"
+                                "reference": f"urn:uuid:{practitioner_id}"
                             })
                             break  # Use first valid ID
             if performers:
@@ -537,7 +545,7 @@ class ObservationConverter(BaseConverter[Observation]):
         for obs in all_observations:
             if "id" in obs:
                 has_member_refs.append({
-                    "reference": f"{FHIRCodes.ResourceTypes.OBSERVATION}/{obs['id']}"
+                    "reference": f"urn:uuid:{obs['id']}"
                 })
 
         if has_member_refs:

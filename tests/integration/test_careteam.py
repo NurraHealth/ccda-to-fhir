@@ -48,7 +48,7 @@ class TestCareTeamExtraction:
 
         assert "subject" in careteam, "CareTeam must have subject"
         assert "reference" in careteam["subject"]
-        assert careteam["subject"]["reference"].startswith("Patient/")
+        assert careteam["subject"]["reference"].startswith("urn:uuid:")
 
         assert "participant" in careteam, "CareTeam must have participants"
         assert len(careteam["participant"]) >= 1, "CareTeam must have at least one participant"
@@ -121,7 +121,7 @@ class TestCareTeamExtraction:
         for role in practitioner_roles:
             assert "practitioner" in role, "PractitionerRole must reference Practitioner"
             assert "reference" in role["practitioner"]
-            assert role["practitioner"]["reference"].startswith("Practitioner/")
+            assert role["practitioner"]["reference"].startswith("urn:uuid:")
 
     def test_careteam_participant_references_practitioner_role(self, careteam_document):
         """Test that CareTeam participants reference PractitionerRole (US Core recommendation)."""
@@ -138,7 +138,7 @@ class TestCareTeamExtraction:
         # Participants should reference PractitionerRole
         for participant in careteam["participant"]:
             member_ref = participant["member"]["reference"]
-            assert member_ref.startswith("PractitionerRole/"), \
+            assert member_ref.startswith("urn:uuid:"), \
                 f"Participant should reference PractitionerRole, got {member_ref}"
 
     def test_careteam_has_managing_organization(self, careteam_document):
@@ -158,7 +158,7 @@ class TestCareTeamExtraction:
         assert len(careteam["managingOrganization"]) > 0
 
         org_ref = careteam["managingOrganization"][0]["reference"]
-        assert org_ref.startswith("Organization/"), f"Should reference Organization, got {org_ref}"
+        assert org_ref.startswith("urn:uuid:"), f"Should reference Organization, got {org_ref}"
 
         # Verify Organization resource exists
         organizations = [
@@ -167,7 +167,7 @@ class TestCareTeamExtraction:
             if entry.get("resource", {}).get("resourceType") == "Organization"
         ]
 
-        org_id = org_ref.split("/")[1]
+        org_id = org_ref.replace("urn:uuid:", "")
         assert any(org.get("id") == org_id for org in organizations), \
             "Referenced Organization should exist in bundle"
 

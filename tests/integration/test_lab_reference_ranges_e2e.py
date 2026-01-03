@@ -227,12 +227,12 @@ class TestLabReferenceRangesE2E:
 
         # Exact subject reference
         assert "subject" in report
-        assert report["subject"]["reference"].startswith("Patient/")
+        assert report["subject"]["reference"].startswith("urn:uuid:")
 
         # Exact result references
         assert "result" in report
         assert len(report["result"]) >= 1
-        assert report["result"][0]["reference"].startswith("Observation/")
+        assert report["result"][0]["reference"].startswith("urn:uuid:")
 
     def test_observation_nuclear_antibody_exact_values(self, lab_reference_ranges_bundle):
         """Validate Nuclear Antibody Observation with EXACT values including referenceRange.text.
@@ -279,7 +279,7 @@ class TestLabReferenceRangesE2E:
 
         # Exact subject reference
         assert "subject" in nuclear_ab_obs
-        assert nuclear_ab_obs["subject"]["reference"].startswith("Patient/")
+        assert nuclear_ab_obs["subject"]["reference"].startswith("urn:uuid:")
 
         # Exact effectiveDateTime
         assert "effectiveDateTime" in nuclear_ab_obs
@@ -329,7 +329,7 @@ class TestLabReferenceRangesE2E:
         if "performer" in nuclear_ab_obs:
             assert len(nuclear_ab_obs["performer"]) >= 1
             performer_ref = nuclear_ab_obs["performer"][0]["reference"]
-            assert performer_ref.startswith("Practitioner/")
+            assert performer_ref.startswith("urn:uuid:")
 
     def test_composition_exact_values(self, lab_reference_ranges_bundle):
         """Validate Composition (document metadata) with exact values."""
@@ -359,7 +359,7 @@ class TestLabReferenceRangesE2E:
 
         # Exact subject reference
         assert "subject" in comp
-        assert comp["subject"]["reference"].startswith("Patient/")
+        assert comp["subject"]["reference"].startswith("urn:uuid:")
 
         # Exact author reference
         assert "author" in comp
@@ -370,14 +370,14 @@ class TestLabReferenceRangesE2E:
             has_ref_or_display = "reference" in comp["author"][0] or "display" in comp["author"][0]
             assert has_ref_or_display
             if "reference" in comp["author"][0]:
-                assert comp["author"][0]["reference"].startswith("Practitioner/")
+                assert comp["author"][0]["reference"].startswith("urn:uuid:")
             if "display" in comp["author"][0]:
                 assert comp["author"][0]["display"] == "Henry Seven"
 
         # Exact custodian reference
         if "custodian" in comp:
             if "reference" in comp["custodian"]:
-                assert comp["custodian"]["reference"].startswith("Organization/")
+                assert comp["custodian"]["reference"].startswith("urn:uuid:")
             elif "display" in comp["custodian"]:
                 assert "Community Health" in comp["custodian"]["display"]
 
@@ -399,7 +399,7 @@ class TestLabReferenceRangesE2E:
             rtype = resource.get_resource_type()
             r = resource.dict() if hasattr(resource, 'dict') else resource.model_dump()
             if "id" in r:
-                resource_map[f"{rtype}/{r['id']}"] = resource
+                resource_map[f"urn:uuid:{r['id']}"] = resource
 
         # Check all references
         references_to_check = []

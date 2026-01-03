@@ -206,11 +206,11 @@ def test_careplan_with_interventions_and_outcomes_full_integration():
     # Verify activity has reference to Procedure
     activity = careplan.activity[0]
     assert activity.reference is not None, "Activity should have reference to intervention"
-    assert str(activity.reference.reference).startswith("Procedure/"), \
+    assert str(activity.reference.reference).startswith("urn:uuid:"), \
         f"Activity should reference Procedure, got: {activity.reference.reference}"
 
     # Verify the referenced Procedure exists in bundle
-    procedure_ids = [f"Procedure/{e.resource.id}" for e in procedure_entries]
+    procedure_ids = [f"urn:uuid:{e.resource.id}" for e in procedure_entries]
     assert str(activity.reference.reference) in procedure_ids, \
         f"Referenced procedure {activity.reference.reference} should exist in bundle"
 
@@ -220,11 +220,11 @@ def test_careplan_with_interventions_and_outcomes_full_integration():
 
     # Verify outcomeReference points to Observation
     outcome_ref = str(activity.outcomeReference[0].reference)
-    assert outcome_ref.startswith("Observation/"), \
+    assert outcome_ref.startswith("urn:uuid:"), \
         f"Outcome reference should point to Observation, got: {outcome_ref}"
 
     # Verify the referenced Observation exists in bundle
-    observation_ids = [f"Observation/{e.resource.id}" for e in observation_entries]
+    observation_ids = [f"urn:uuid:{e.resource.id}" for e in observation_entries]
     assert outcome_ref in observation_ids, \
         f"Referenced observation {outcome_ref} should exist in bundle"
 

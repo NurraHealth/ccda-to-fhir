@@ -342,7 +342,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
                     first_id = assigned_author.id[0]
                     prac_id = self._generate_practitioner_id(first_id)
                     author_refs.append(
-                        {"reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{prac_id}"}
+                        {"reference": f"urn:uuid:{prac_id}"}
                     )
 
             # Create reference to organization if present
@@ -353,7 +353,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
                     first_id = assigned_author.represented_organization.id[0]
                     org_id = self._generate_organization_id(first_id)
                     author_refs.append(
-                        {"reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{org_id}"}
+                        {"reference": f"urn:uuid:{org_id}"}
                     )
 
         return author_refs
@@ -408,7 +408,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         if assigned_entity.id and len(assigned_entity.id) > 0:
             first_id = assigned_entity.id[0]
             prac_id = self._generate_practitioner_id(first_id)
-            return {"reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{prac_id}"}
+            return {"reference": f"urn:uuid:{prac_id}"}
 
         return None
 
@@ -433,7 +433,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         if custodian_org.id and len(custodian_org.id) > 0:
             first_id = custodian_org.id[0]
             org_id = self._generate_organization_id(first_id)
-            return {"reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{org_id}"}
+            return {"reference": f"urn:uuid:{org_id}"}
 
         return None
 
@@ -497,7 +497,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
                     # Generate DocumentReference ID from parent document identifier
                     parent_doc_id = self._generate_document_reference_id(first_id)
                     relates_to["target"] = {
-                        "reference": f"{FHIRCodes.ResourceTypes.DOCUMENT_REFERENCE}/{parent_doc_id}"
+                        "reference": f"urn:uuid:{parent_doc_id}"
                     }
 
             if "target" in relates_to:
@@ -555,7 +555,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
                     first_id = encounter.id[0]
                     encounter_id = self._generate_encounter_id(first_id)
                     context["encounter"] = [
-                        {"reference": f"{FHIRCodes.ResourceTypes.ENCOUNTER}/{encounter_id}"}
+                        {"reference": f"urn:uuid:{encounter_id}"}
                     ]
 
                 # Period (encounter time)

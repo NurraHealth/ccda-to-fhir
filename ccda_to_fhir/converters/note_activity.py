@@ -301,7 +301,7 @@ class NoteActivityConverter(BaseConverter[Act]):
                     first_id = assigned_author.id[0]
                     prac_id = self._generate_practitioner_id(first_id)
                     author_refs.append(
-                        {"reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{prac_id}"}
+                        {"reference": f"urn:uuid:{prac_id}"}
                     )
 
         return author_refs
@@ -628,7 +628,7 @@ class NoteActivityConverter(BaseConverter[Act]):
                         if "encounter" not in context:
                             context["encounter"] = []
                         context["encounter"].append(
-                            {"reference": f"{FHIRCodes.ResourceTypes.ENCOUNTER}/{encounter_id}"}
+                            {"reference": f"urn:uuid:{encounter_id}"}
                         )
 
         return context if context else None
@@ -671,7 +671,7 @@ class NoteActivityConverter(BaseConverter[Act]):
                         {
                             "code": "appends",  # This note appends to the referenced document
                             "target": {
-                                "reference": f"DocumentReference/{first_id.root}"
+                                "reference": f"urn:uuid:{first_id.root}"
                             },
                         }
                     )

@@ -274,7 +274,7 @@ class TestImmunizationConversion:
         for agent in immun_provenance["agent"]:
             assert "who" in agent
             assert "reference" in agent["who"]
-            assert agent["who"]["reference"].startswith("Practitioner/")
+            assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_primary_source_omitted_when_not_available(
         self, ccda_immunization: str
@@ -318,7 +318,7 @@ class TestImmunizationConversion:
 
         # Detail should be a reference
         assert "reference" in reaction["detail"]
-        assert reaction["detail"]["reference"].startswith("Observation/")
+        assert reaction["detail"]["reference"].startswith("urn:uuid:")
 
     def test_reaction_observation_created_in_bundle(
         self, ccda_immunization: str
@@ -333,7 +333,7 @@ class TestImmunizationConversion:
         # Get reaction reference
         reaction = immunization["reaction"][0]
         observation_ref = reaction["detail"]["reference"]
-        observation_id = observation_ref.replace("Observation/", "")
+        observation_id = observation_ref.replace("urn:uuid:", "")
 
         # Find the Observation in the bundle
         observations = [
@@ -365,7 +365,7 @@ class TestImmunizationConversion:
 
         # Get reaction observation ID
         reaction = immunization["reaction"][0]
-        observation_id = reaction["detail"]["reference"].replace("Observation/", "")
+        observation_id = reaction["detail"]["reference"].replace("urn:uuid:", "")
 
         # Find the observation
         observations = [
@@ -396,7 +396,7 @@ class TestImmunizationConversion:
 
         # Get reaction observation
         reaction = immunization["reaction"][0]
-        observation_id = reaction["detail"]["reference"].replace("Observation/", "")
+        observation_id = reaction["detail"]["reference"].replace("urn:uuid:", "")
 
         observations = [
             entry["resource"]
@@ -438,7 +438,7 @@ class TestImmunizationConversion:
 
         # Get reaction observation
         reaction = immunization["reaction"][0]
-        observation_id = reaction["detail"]["reference"].replace("Observation/", "")
+        observation_id = reaction["detail"]["reference"].replace("urn:uuid:", "")
 
         observations = [
             entry["resource"]
@@ -687,7 +687,7 @@ class TestImmunizationConversion:
         # Verify actor is a proper Reference, not just display
         assert "actor" in performer
         assert "reference" in performer["actor"]
-        assert performer["actor"]["reference"].startswith("Practitioner/")
+        assert performer["actor"]["reference"].startswith("urn:uuid:")
 
         # Verify function is set to Administering Provider
         assert "function" in performer

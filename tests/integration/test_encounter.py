@@ -122,7 +122,7 @@ class TestEncounterConversion:
         assert len(encounter["diagnosis"]) == 1
         assert "condition" in encounter["diagnosis"][0]
         assert "reference" in encounter["diagnosis"][0]["condition"]
-        assert encounter["diagnosis"][0]["condition"]["reference"].startswith("Condition/")
+        assert encounter["diagnosis"][0]["condition"]["reference"].startswith("urn:uuid:")
         # Should have diagnosis use/role
         assert "use" in encounter["diagnosis"][0]
 
@@ -216,8 +216,8 @@ class TestEncounterConversion:
 
         # Validate location reference has UUID v4 format
         location_ref = location["location"]["reference"]
-        assert location_ref.startswith("Location/")
-        location_id = location_ref.split("/")[1]
+        assert location_ref.startswith("urn:uuid:")
+        location_id = location_ref.replace("urn:uuid:", "")
         try:
             uuid_module.UUID(location_id, version=4)
         except ValueError:
@@ -742,7 +742,7 @@ class TestEncounterConversion:
         assert "context" in doc_ref
         assert "encounter" in doc_ref["context"]
         assert len(doc_ref["context"]["encounter"]) >= 1
-        assert doc_ref["context"]["encounter"][0]["reference"] == f"Encounter/{encounter['id']}"
+        assert doc_ref["context"]["encounter"][0]["reference"] == f"urn:uuid:{encounter['id']}"
 
     def test_deduplication_prefers_body_over_header(
         self, ccda_header_and_body_encounter: str
@@ -795,7 +795,7 @@ class TestEncounterConversion:
         assert "location" in encounter
         # Location should be from body - verify by checking we have a location reference
         location_ref = encounter["location"][0]["location"]["reference"]
-        assert location_ref.startswith("Location/"), "Should use body encounter location"
+        assert location_ref.startswith("urn:uuid:"), "Should use body encounter location"
         # The test confirms deduplication prefers body values - location reference exists
 
     def test_provenance_created_for_encounter_with_author(
@@ -860,7 +860,7 @@ class TestEncounterConversion:
         agent = encounter_provenance["agent"][0]
         assert "who" in agent
         assert "reference" in agent["who"]
-        assert agent["who"]["reference"].startswith("Practitioner/")
+        assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_provenance_agent_has_author_type(
         self, ccda_encounter_with_author: str
@@ -926,7 +926,7 @@ class TestEncounterConversion:
         for agent in encounter_provenance["agent"]:
             assert "who" in agent
             assert "reference" in agent["who"]
-            assert agent["who"]["reference"].startswith("Practitioner/")
+            assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_converts_inline_problem_to_reason_code(self, ccda_encounter_with_reason_reference: str) -> None:
         """Test that inline Problem Observation (not in Problems section) creates reasonCode."""
@@ -971,10 +971,10 @@ class TestEncounterConversion:
         assert len(encounter["reasonReference"]) >= 1
         reason_ref = encounter["reasonReference"][0]
         assert "reference" in reason_ref
-        assert "Condition/" in reason_ref["reference"]
+        assert reason_ref["reference"].startswith("urn:uuid:")
 
         # Validate the Condition ID is UUID v4
-        condition_id = reason_ref["reference"].split("/")[1]
+        condition_id = reason_ref["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(condition_id, version=4)
         except ValueError:
@@ -1011,8 +1011,8 @@ class TestEncounterConversion:
 
         reason_ref = encounter["reasonReference"][0]
         # ID should be UUID v4 format
-        assert reason_ref["reference"].startswith("Condition/")
-        condition_id = reason_ref["reference"].split("/")[1]
+        assert reason_ref["reference"].startswith("urn:uuid:")
+        condition_id = reason_ref["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(condition_id, version=4)
         except ValueError:

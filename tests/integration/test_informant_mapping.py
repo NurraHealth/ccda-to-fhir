@@ -73,10 +73,10 @@ class TestInformantRelatedPersonMapping:
         # Verify patient reference exists and has correct format
         assert "patient" in related_person
         assert "reference" in related_person["patient"]
-        assert related_person["patient"]["reference"].startswith("Patient/")
+        assert related_person["patient"]["reference"].startswith("urn:uuid:")
 
         # Verify referenced patient exists in bundle
-        patient_id = related_person["patient"]["reference"].split("/")[1]
+        patient_id = related_person["patient"]["reference"].replace("urn:uuid:", "")
         patients = [r for r in bundle["entry"]
                    if r["resource"]["resourceType"] == "Patient"
                    and r["resource"]["id"] == patient_id]

@@ -152,7 +152,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                                     med_statement["informationSource"] = {
-                                        "reference": f"Practitioner/{pract_id}"
+                                        "reference": f"urn:uuid:{pract_id}"
                                     }
                                     break
                     # Check for device
@@ -162,7 +162,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     device_id = self._generate_device_id(id_elem.root, id_elem.extension)
                                     med_statement["informationSource"] = {
-                                        "reference": f"Device/{device_id}"
+                                        "reference": f"urn:uuid:{device_id}"
                                     }
                                     break
 

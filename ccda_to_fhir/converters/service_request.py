@@ -552,7 +552,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                                 id_elem.root, id_elem.extension
                             )
                             return {
-                                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
+                                "reference": f"urn:uuid:{pract_id}"
                             }
 
         return None
@@ -582,7 +582,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                         )
                         fhir_performers.append(
                             {
-                                "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
+                                "reference": f"urn:uuid:{pract_id}"
                             }
                         )
                         break
@@ -645,7 +645,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                         ):
                             reason_refs.append(
                                 {
-                                    "reference": f"{FHIRCodes.ResourceTypes.CONDITION}/{condition_id}"
+                                    "reference": f"urn:uuid:{condition_id}"
                                 }
                             )
                         else:

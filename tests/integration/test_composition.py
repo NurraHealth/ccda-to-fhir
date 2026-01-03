@@ -96,7 +96,7 @@ class TestCompositionConversion:
         assert "subject" in composition
         assert "reference" in composition["subject"]
         # Should reference the Patient resource
-        assert "Patient/" in composition["subject"]["reference"]
+        assert composition["subject"]["reference"].startswith("urn:uuid:")
 
     def test_converts_date_from_effective_time(self) -> None:
         """Test that document effectiveTime is converted to date."""
@@ -205,11 +205,11 @@ class TestCompositionConversion:
 
         # Should reference practitioner
         assert "party" in attester
-        assert attester["party"]["reference"].startswith("Practitioner/")
+        assert attester["party"]["reference"].startswith("urn:uuid:")
 
         # Capture the generated UUID and verify it's consistent
         import uuid as uuid_module
-        practitioner_id = attester["party"]["reference"].split("/")[1]
+        practitioner_id = attester["party"]["reference"].replace("urn:uuid:", "")
 
         # Validate UUID v4 format
         try:
@@ -341,7 +341,7 @@ class TestCompositionConversion:
 
         # Should reference practitioner
         assert "party" in attester
-        assert attester["party"]["reference"].startswith("Practitioner/")
+        assert attester["party"]["reference"].startswith("urn:uuid:")
 
     def test_converts_multiple_authenticators_to_professional_attesters(self) -> None:
         """Test that multiple authenticators create multiple professional attesters."""
@@ -643,7 +643,7 @@ class TestCompositionConversion:
 
         # Should reference the actual Patient resource
         assert "reference" in composition["subject"]
-        assert composition["subject"]["reference"].startswith("Patient/")
+        assert composition["subject"]["reference"].startswith("urn:uuid:")
 
         # Verify the actual Patient resource exists in the bundle
         patient = _find_resource_in_bundle(bundle, "Patient")
@@ -1530,7 +1530,7 @@ class TestParticipantExtensions:
         )
         assert data_enterer_ext is not None
         assert "valueReference" in data_enterer_ext
-        assert data_enterer_ext["valueReference"]["reference"].startswith("Practitioner/")
+        assert data_enterer_ext["valueReference"]["reference"].startswith("urn:uuid:")
 
     def test_informant_extension_with_assigned_entity(self) -> None:
         """Test that informant with assignedEntity maps to Informant extension."""
@@ -1563,7 +1563,7 @@ class TestParticipantExtensions:
         )
         assert informant_ext is not None
         assert "valueReference" in informant_ext
-        assert informant_ext["valueReference"]["reference"].startswith("Practitioner/")
+        assert informant_ext["valueReference"]["reference"].startswith("urn:uuid:")
 
     def test_informant_extension_with_related_entity(self) -> None:
         """Test that informant with relatedEntity maps to Informant extension."""
@@ -1711,7 +1711,7 @@ class TestParticipantExtensions:
         )
         assert performer_ext is not None
         assert "valueReference" in performer_ext
-        assert performer_ext["valueReference"]["reference"].startswith("Practitioner/")
+        assert performer_ext["valueReference"]["reference"].startswith("urn:uuid:")
 
     def test_authorization_extension(self) -> None:
         """Test that authorization maps to Authorization extension."""
@@ -1740,7 +1740,7 @@ class TestParticipantExtensions:
         )
         assert auth_ext is not None
         assert "valueReference" in auth_ext
-        assert auth_ext["valueReference"]["reference"].startswith("Consent/")
+        assert auth_ext["valueReference"]["reference"].startswith("urn:uuid:")
 
     def test_order_extension(self) -> None:
         """Test that inFulfillmentOf maps to Order extension."""
@@ -1769,7 +1769,7 @@ class TestParticipantExtensions:
         )
         assert order_ext is not None
         assert "valueReference" in order_ext
-        assert order_ext["valueReference"]["reference"].startswith("ServiceRequest/")
+        assert order_ext["valueReference"]["reference"].startswith("urn:uuid:")
 
     def test_multiple_extensions_in_same_document(self) -> None:
         """Test that multiple participant extensions can coexist in the same document."""

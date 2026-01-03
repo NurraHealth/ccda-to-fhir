@@ -245,7 +245,7 @@ class TestMedicationConversion:
         assert med_request is not None
         assert "requester" in med_request
         assert "reference" in med_request["requester"]
-        assert med_request["requester"]["reference"].startswith("Practitioner/")
+        assert med_request["requester"]["reference"].startswith("urn:uuid:")
 
     def test_requester_and_provenance_reference_same_practitioner(
         self, ccda_medication: str
@@ -383,7 +383,7 @@ class TestMedicationConversion:
         for agent in med_provenance["agent"]:
             assert "who" in agent
             assert "reference" in agent["who"]
-            assert agent["who"]["reference"].startswith("Practitioner/")
+            assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_multiple_authors_selects_latest_for_requester(
         self, ccda_medication_multiple_authors: str
@@ -399,8 +399,8 @@ class TestMedicationConversion:
         assert "requester" in med_request
 
         # Requester should reference a Practitioner with UUID v4 ID
-        assert "Practitioner/" in med_request["requester"]["reference"]
-        practitioner_id = med_request["requester"]["reference"].split("/")[1]
+        assert med_request["requester"]["reference"].startswith("urn:uuid:")
+        practitioner_id = med_request["requester"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -784,10 +784,10 @@ class TestDosageInstructionText:
         # Reference should point to a Medication resource
         assert "reference" in med_request["medicationReference"]
         med_ref = med_request["medicationReference"]["reference"]
-        assert med_ref.startswith("Medication/")
+        assert med_ref.startswith("urn:uuid:")
 
         # The referenced Medication should exist in the bundle
-        medication_id = med_ref.split("/")[1]
+        medication_id = med_ref.replace("urn:uuid:", "")
         medication = _find_resource_in_bundle(bundle, "Medication")
         assert medication is not None
         assert medication["id"] == medication_id

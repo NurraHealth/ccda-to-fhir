@@ -218,7 +218,7 @@ class TestSmokingStatusConversion:
         for agent in obs_provenance["agent"]:
             assert "who" in agent
             assert "reference" in agent["who"]
-            assert agent["who"]["reference"].startswith("Practitioner/")
+            assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_narrative_propagates_from_text_reference(self) -> None:
         """Test that Observation.text narrative is generated from text/reference."""

@@ -299,7 +299,7 @@ class TestDiagnosticReportConversion:
         assert "result" in dr
         assert len(dr["result"]) == 2
         # References should point to standalone resources (not #contained-id)
-        assert all(ref["reference"].startswith("Observation/") for ref in dr["result"])
+        assert all(ref["reference"].startswith("urn:uuid:") for ref in dr["result"])
         assert not any(ref["reference"].startswith("#") for ref in dr["result"])
 
     def test_diagnostic_report_observation_values(self) -> None:
@@ -390,7 +390,7 @@ class TestDiagnosticReportConversion:
         assert dr is not None
         assert "subject" in dr
         assert "reference" in dr["subject"]
-        assert dr["subject"]["reference"].startswith("Patient/")
+        assert dr["subject"]["reference"].startswith("urn:uuid:")
 
     def test_multiple_result_organizers_create_multiple_diagnostic_reports(self) -> None:
         """Test that multiple Result Organizers create multiple DiagnosticReports."""
@@ -554,7 +554,7 @@ class TestDiagnosticReportConversion:
         agent = report_provenance["agent"][0]
         assert "who" in agent
         assert "reference" in agent["who"]
-        assert agent["who"]["reference"].startswith("Practitioner/")
+        assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_provenance_has_recorded_date_from_author(
         self, ccda_result_with_author: str

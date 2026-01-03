@@ -504,7 +504,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
                         # Add reference to participant
                         participant["individual"] = {
-                            "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{practitioner_id}"
+                            "reference": f"urn:uuid:{practitioner_id}"
                         }
 
             if participant:
@@ -601,7 +601,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
                         # Add reference to encounter location
                         location["location"] = {
-                            "reference": f"Location/{location_id}"
+                            "reference": f"urn:uuid:{location_id}"
                         }
                         if display:
                             location["location"]["display"] = display
@@ -844,7 +844,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
                                     diagnosis: JSONObject = {
                                         "condition": {
-                                            "reference": f"{FHIRCodes.ResourceTypes.CONDITION}/{condition_id}"
+                                            "reference": f"urn:uuid:{condition_id}"
                                         }
                                     }
 
@@ -1009,7 +1009,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                     ):
                         # Condition exists - use reasonReference
                         reason_refs.append({
-                            "reference": f"{FHIRCodes.ResourceTypes.CONDITION}/{condition_id}"
+                            "reference": f"urn:uuid:{condition_id}"
                         })
                     else:
                         # Inline Problem Observation not converted - use reasonCode

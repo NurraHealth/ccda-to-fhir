@@ -120,7 +120,7 @@ def test_basic_service_request_conversion():
 
     # Check subject reference
     assert "subject" in service_request
-    assert "Patient" in service_request["subject"]["reference"]
+    assert service_request["subject"]["reference"].startswith("urn:uuid:")
 
     # Check occurrence
     assert "occurrenceDateTime" in service_request

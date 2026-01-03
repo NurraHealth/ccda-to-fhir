@@ -153,7 +153,7 @@ class TestEpicComprehensive:
         )
 
         # Has subject reference to Patient
-        assert pneumonia["subject"]["reference"].startswith("Patient/")
+        assert pneumonia["subject"]["reference"].startswith("urn:uuid:")
 
     def test_condition_asthma_exact_values(self, epic_bundle):
         """Validate Asthma condition has EXACT values."""
@@ -314,7 +314,7 @@ class TestEpicComprehensive:
         # Has location reference (optional)
         if "location" in enc and enc["location"]:
             assert len(enc["location"]) >= 1
-            assert enc["location"][0]["location"]["reference"].startswith("Location/")
+            assert enc["location"][0]["location"]["reference"].startswith("urn:uuid:")
 
         # Exact participant (high-priority untested field)
         assert "participant" in enc
@@ -395,7 +395,7 @@ class TestEpicComprehensive:
 
         # Has encounter reference
         if "encounter" in comp:
-            assert comp["encounter"]["reference"].startswith("Encounter/")
+            assert comp["encounter"]["reference"].startswith("urn:uuid:")
 
         # Has sections
         assert "section" in comp and len(comp["section"]) > 0
@@ -443,7 +443,7 @@ class TestEpicComprehensive:
             # Has result references
             if "result" in wbc_report:
                 for result in wbc_report["result"]:
-                    assert result["reference"].startswith("Observation/")
+                    assert result["reference"].startswith("urn:uuid:")
 
     def test_immunization_exact_values(self, epic_bundle):
         """Validate Immunization resources if available."""
@@ -492,7 +492,7 @@ class TestEpicComprehensive:
 
             # Every condition must reference patient
             assert "subject" in c
-            assert c["subject"]["reference"].startswith("Patient/")
+            assert c["subject"]["reference"].startswith("urn:uuid:")
 
     def test_all_allergies_have_exact_structure(self, epic_bundle):
         """Validate ALL allergies have complete structure."""
@@ -519,7 +519,7 @@ class TestEpicComprehensive:
 
             # Every allergy must reference patient
             assert "patient" in a
-            assert a["patient"]["reference"].startswith("Patient/")
+            assert a["patient"]["reference"].startswith("urn:uuid:")
 
     def test_all_observations_have_exact_structure(self, epic_bundle):
         """Validate ALL observations have complete structure."""
@@ -546,7 +546,7 @@ class TestEpicComprehensive:
 
             # Every observation must reference patient
             assert "subject" in o
-            assert o["subject"]["reference"].startswith("Patient/")
+            assert o["subject"]["reference"].startswith("urn:uuid:")
 
     def test_vital_signs_blood_pressure_exact_values(self, epic_bundle):
         """Validate Blood Pressure vital sign has EXACT values."""

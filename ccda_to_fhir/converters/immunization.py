@@ -596,7 +596,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                     # Create reaction object with reference to the Observation
                     reaction: JSONObject = {
                         "detail": {
-                            "reference": f"Observation/{observation_resource['id']}"
+                            "reference": f"urn:uuid:{observation_resource['id']}"
                         }
                     }
 
@@ -943,7 +943,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                     if id_elem.root and not id_elem.null_flavor:
                         pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                         performer_obj["actor"] = {
-                            "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
+                            "reference": f"urn:uuid:{pract_id}"
                         }
                         break
 
@@ -953,7 +953,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                     if id_elem.root:
                         pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                         performer_obj["actor"] = {
-                            "reference": f"{FHIRCodes.ResourceTypes.PRACTITIONER}/{pract_id}"
+                            "reference": f"urn:uuid:{pract_id}"
                         }
 
             # If no ID found, try to use represented organization
@@ -964,7 +964,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                         if id_elem.root:
                             org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
                             performer_obj["actor"] = {
-                                "reference": f"{FHIRCodes.ResourceTypes.ORGANIZATION}/{org_id}"
+                                "reference": f"urn:uuid:{org_id}"
                             }
                             break
 

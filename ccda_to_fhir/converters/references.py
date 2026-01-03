@@ -88,13 +88,24 @@ class ReferenceRegistry:
         self._resources[resource_type][resource_id] = resource
         self._stats["registered"] += 1
 
-        logger.debug(
-            f"Registered {resource_type}/{resource_id}",
-            extra={
-                "resource_type": resource_type,
-                "resource_id": resource_id,
-            }
-        )
+        # Enhanced logging for Patient resources to help debug reference issues
+        if resource_type == "Patient":
+            logger.info(
+                f"Registered Patient resource with ID: {resource_id}",
+                extra={
+                    "resource_type": resource_type,
+                    "resource_id": resource_id,
+                    "total_patients": len(self._resources["Patient"]),
+                }
+            )
+        else:
+            logger.debug(
+                f"Registered {resource_type}/{resource_id}",
+                extra={
+                    "resource_type": resource_type,
+                    "resource_id": resource_id,
+                }
+            )
 
     def resolve_reference(
         self,
@@ -132,9 +143,9 @@ class ReferenceRegistry:
                 context=f"Resource ID not found. Available IDs: {available_ids}"
             )
 
-        # Resource exists - return reference
+        # Resource exists - return reference using urn:uuid format for transaction bundles
         self._stats["resolved"] += 1
-        return {"reference": f"{resource_type}/{resource_id}"}
+        return {"reference": f"urn:uuid:{resource_id}"}
 
     def has_resource(self, resource_type: str, resource_id: str) -> bool:
         """Check if a resource exists in the registry.
@@ -235,8 +246,23 @@ class ReferenceRegistry:
 
         # Get first patient (for most C-CDA documents, there's only one)
         patient_id = next(iter(self._resources["Patient"].keys()))
+
+        # Diagnostic: Log if there are multiple patients registered
+        patient_count = len(self._resources["Patient"])
+        if patient_count > 1:
+            all_patient_ids = list(self._resources["Patient"].keys())
+            logger.warning(
+                f"Multiple patients registered ({patient_count}). Using first: {patient_id}. "
+                f"All patient IDs: {all_patient_ids}",
+                extra={
+                    "patient_count": patient_count,
+                    "selected_patient_id": patient_id,
+                    "all_patient_ids": all_patient_ids
+                }
+            )
+
         self._stats["resolved"] += 1
-        return {"reference": f"Patient/{patient_id}"}
+        return {"reference": f"urn:uuid:{patient_id}"}
 
     def has_encounter(self) -> bool:
         """Check if an encounter has been registered.
@@ -271,7 +297,7 @@ class ReferenceRegistry:
         # Get first encounter
         encounter_id = next(iter(self._resources["Encounter"].keys()))
         self._stats["resolved"] += 1
-        return {"reference": f"Encounter/{encounter_id}"}
+        return {"reference": f"urn:uuid:{encounter_id}"}
 
     def clear(self) -> None:
         """Clear all registered resources and reset stats."""

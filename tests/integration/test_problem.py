@@ -367,7 +367,7 @@ class TestProblemConversion:
         assert len(condition["evidence"][0]["detail"]) == 1
         # Verify the reference points to an Observation resource
         reference = condition["evidence"][0]["detail"][0]["reference"]
-        assert reference.startswith("Observation/")
+        assert reference.startswith("urn:uuid:")
         assert "lab-result-tsh-001" in reference
 
     def test_converts_assessment_scale_observations_to_evidence(
@@ -394,7 +394,7 @@ class TestProblemConversion:
 
         # Verify the reference points to an Observation resource
         reference = condition["evidence"][0]["detail"][0]["reference"]
-        assert reference.startswith("Observation/")
+        assert reference.startswith("urn:uuid:")
         assert "assessment-phq9-001" in reference, "Should reference the PHQ-9 assessment observation"
 
     def test_converts_recorder_from_latest_author(
@@ -408,10 +408,10 @@ class TestProblemConversion:
         assert condition is not None
         assert "recorder" in condition
         assert "reference" in condition["recorder"]
-        assert condition["recorder"]["reference"].startswith("Practitioner/")
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Verify the practitioner ID is a valid UUID v4
         import uuid as uuid_module
-        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:
@@ -553,7 +553,7 @@ class TestProblemConversion:
         for agent in condition_provenance["agent"]:
             assert "who" in agent
             assert "reference" in agent["who"]
-            assert agent["who"]["reference"].startswith("Practitioner/")
+            assert agent["who"]["reference"].startswith("urn:uuid:")
 
     def test_multiple_authors_selects_latest_for_recorder(
         self, ccda_problem_multiple_authors: str
@@ -568,8 +568,8 @@ class TestProblemConversion:
 
         # Recorder should reference a Practitioner with UUID v4 ID
         import uuid as uuid_module
-        assert "Practitioner/" in condition["recorder"]["reference"]
-        practitioner_id = condition["recorder"]["reference"].split("/")[1]
+        assert condition["recorder"]["reference"].startswith("urn:uuid:")
+        practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
         except ValueError:

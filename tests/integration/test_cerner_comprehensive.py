@@ -133,7 +133,7 @@ class TestCernerComprehensive:
         )
 
         # Has subject reference to Patient
-        assert angina["subject"]["reference"].startswith("Patient/")
+        assert angina["subject"]["reference"].startswith("urn:uuid:")
 
         # Has onset date
         assert "onsetDateTime" in angina
@@ -348,7 +348,7 @@ class TestCernerComprehensive:
         # Has location reference
         if "location" in enc:
             assert len(enc["location"]) >= 1
-            assert enc["location"][0]["location"]["reference"].startswith("Location/")
+            assert enc["location"][0]["location"]["reference"].startswith("urn:uuid:")
 
         # Exact participant (high-priority untested field)
         assert "participant" in enc
@@ -410,7 +410,7 @@ class TestCernerComprehensive:
 
         # Has encounter reference
         if "encounter" in comp:
-            assert comp["encounter"]["reference"].startswith("Encounter/")
+            assert comp["encounter"]["reference"].startswith("urn:uuid:")
 
         # Has sections
         assert "section" in comp and len(comp["section"]) > 0
@@ -444,7 +444,7 @@ class TestCernerComprehensive:
             # Has result references
             if "result" in report:
                 for result in report["result"]:
-                    assert result["reference"].startswith("Observation/")
+                    assert result["reference"].startswith("urn:uuid:")
 
     def test_procedure_ecg_exact_values(self, cerner_bundle):
         """Validate Electrocardiographic procedure has EXACT values."""
@@ -478,7 +478,7 @@ class TestCernerComprehensive:
         assert isinstance(ecg["performedDateTime"], datetime)
 
         # Has subject reference to Patient
-        assert ecg["subject"]["reference"].startswith("Patient/")
+        assert ecg["subject"]["reference"].startswith("urn:uuid:")
 
     def test_organization_exact_values(self, cerner_bundle):
         """Validate Organization has EXACT values."""
