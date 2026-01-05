@@ -312,16 +312,4 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
 
         return None
 
-    def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
-        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Practitioner", root, extension)
+    # Note: _generate_practitioner_id is inherited from BaseConverter

@@ -744,41 +744,7 @@ class ConditionConverter(BaseConverter[Observation]):
         Returns:
             List of FHIR Annotation objects (as dicts with 'text' field)
         """
-        notes = []
-
-        # Extract from text element
-        if observation.text:
-            text_content = None
-            if isinstance(observation.text, str):
-                text_content = observation.text
-            elif hasattr(observation.text, "value") and observation.text.value:
-                text_content = observation.text.value
-
-            if text_content:
-                notes.append({"text": text_content})
-
-        # Extract from Comment Activity entries
-        if observation.entry_relationship:
-            for entry_rel in observation.entry_relationship:
-                if hasattr(entry_rel, "act") and entry_rel.act:
-                    act = entry_rel.act
-                    # Check if it's a Comment Activity
-                    if hasattr(act, "template_id") and act.template_id:
-                        for template in act.template_id:
-                            if template.root == TemplateIds.COMMENT_ACTIVITY:
-                                # This is a Comment Activity
-                                if hasattr(act, "text") and act.text:
-                                    comment_text = None
-                                    if isinstance(act.text, str):
-                                        comment_text = act.text
-                                    elif hasattr(act.text, "value") and act.text.value:
-                                        comment_text = act.text.value
-
-                                    if comment_text:
-                                        notes.append({"text": comment_text})
-                                break
-
-        return notes
+        return self.extract_notes_from_element(observation)
 
     def _generate_observation_id(self, root: str | None, extension: str | None) -> str:
         """Generate a FHIR Observation ID from C-CDA identifiers.

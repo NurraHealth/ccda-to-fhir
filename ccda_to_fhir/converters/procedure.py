@@ -935,101 +935,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         Returns:
             List of FHIR Annotation objects
         """
-        notes = []
+        return self.extract_notes_from_element(procedure)
 
-        # Extract from text element
-        if hasattr(procedure, "text") and procedure.text:
-            text_content = None
-            if isinstance(procedure.text, str):
-                text_content = procedure.text
-            elif hasattr(procedure.text, "value"):
-                text_content = procedure.text.value
-            elif hasattr(procedure.text, "reference"):
-                # Could resolve reference here if needed
-                pass
-
-            if text_content:
-                notes.append({"text": text_content})
-
-        # Extract from Comment Activity entries
-        if hasattr(procedure, "entry_relationship") and procedure.entry_relationship:
-            for entry_rel in procedure.entry_relationship:
-                # Look for Comment Activity (template 2.16.840.1.113883.10.20.22.4.64)
-                if hasattr(entry_rel, "act") and entry_rel.act:
-                    act = entry_rel.act
-                    # Check if it's a Comment Activity
-                    if hasattr(act, "template_id") and act.template_id:
-                        for template in act.template_id:
-                            if template.root == "2.16.840.1.113883.10.20.22.4.64":
-                                # This is a Comment Activity
-                                if hasattr(act, "text") and act.text:
-                                    comment_text = None
-                                    if isinstance(act.text, str):
-                                        comment_text = act.text
-                                    elif hasattr(act.text, "value"):
-                                        comment_text = act.text.value
-
-                                    if comment_text:
-                                        notes.append({"text": comment_text})
-                                break
-
-        return notes
-
-    def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
-        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Practitioner", root, extension)
-
-    def _generate_organization_id(self, root: str | None, extension: str | None) -> str:
-        """Generate FHIR Organization ID using cached UUID v4 from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Organization", root, extension)
-
-    def _generate_location_id(self, root: str | None, extension: str | None) -> str:
-        """Generate FHIR Location ID using cached UUID v4 from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Location", root, extension)
-
-    def _generate_device_id(self, root: str | None, extension: str | None) -> str:
-        """Generate FHIR Device ID using cached UUID v4 from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Device", root, extension)
+    # Note: _generate_practitioner_id, _generate_organization_id, _generate_device_id,
+    # and _generate_location_id methods are inherited from BaseConverter
 
     def _convert_body_site_with_qualifiers(
         self, code: CD

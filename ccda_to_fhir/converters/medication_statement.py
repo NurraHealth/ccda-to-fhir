@@ -9,7 +9,6 @@ from ccda_to_fhir.constants import (
     MEDICATION_STATUS_TO_FHIR_STATEMENT,
     UCUM_TO_FHIR_UNITS_OF_TIME,
     FHIRCodes,
-    TemplateIds,
     TypeCodes,
 )
 from ccda_to_fhir.logging_config import get_logger
@@ -698,60 +697,14 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
 
     def _extract_notes(self, substance_admin: SubstanceAdministration) -> list[FHIRResourceDict]:
         """Extract notes from Comment Activity entry relationships."""
-        notes = []
+        # MedicationStatement notes come from comment activities only, with author time
+        return self.extract_notes_from_element(
+            substance_admin,
+            include_text=False,
+            include_author_time=True
+        )
 
-        if not substance_admin.entry_relationship:
-            return notes
-
-        for rel in substance_admin.entry_relationship:
-            # Check for Comment Activity template
-            if rel.act and rel.act.template_id:
-                for template in rel.act.template_id:
-                    if template.root == TemplateIds.COMMENT_ACTIVITY:
-                        # Extract comment text
-                        if rel.act.text and rel.act.text.value:
-                            note: JSONObject = {
-                                "text": rel.act.text.value
-                            }
-                            # Add author time if available
-                            if rel.act.author and len(rel.act.author) > 0:
-                                author = rel.act.author[0]
-                                if author.time and author.time.value:
-                                    time_str = self.convert_date(author.time.value)
-                                    if time_str:
-                                        note["time"] = time_str
-                            notes.append(note)
-                        break
-
-        return notes
-
-    def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
-        """Generate consistent Practitioner ID using cached UUID v4 from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Practitioner", root, extension)
-
-    def _generate_device_id(self, root: str | None, extension: str | None) -> str:
-        """Generate consistent Device ID using cached UUID v4 from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Device", root, extension)
+    # Note: _generate_practitioner_id and _generate_device_id are inherited from BaseConverter
 
 
 def convert_medication_statement(

@@ -776,32 +776,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         Returns:
             List of FHIR Annotation objects
         """
-        notes = []
+        # ServiceRequest only extracts from text, not from comment activities
+        return self.extract_notes_from_element(procedure, include_comments=False)
 
-        if hasattr(procedure, "text") and procedure.text:
-            text_content = None
-            if isinstance(procedure.text, str):
-                text_content = procedure.text
-            elif hasattr(procedure.text, "value"):
-                text_content = procedure.text.value
-
-            if text_content:
-                notes.append({"text": text_content})
-
-        return notes
-
-    def _generate_practitioner_id(
-        self, root: str | None, extension: str | None
-    ) -> str:
-        """Generate FHIR Practitioner ID from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID string
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Practitioner", root, extension)
+    # Note: _generate_practitioner_id is inherited from BaseConverter

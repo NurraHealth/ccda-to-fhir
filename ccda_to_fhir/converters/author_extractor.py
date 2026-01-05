@@ -6,13 +6,8 @@ element types and convert it into a standardized format for Provenance generatio
 
 from __future__ import annotations
 
-from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.author import Author
-from ccda_to_fhir.ccda.models.encounter import Encounter
-from ccda_to_fhir.ccda.models.observation import Observation
-from ccda_to_fhir.ccda.models.organizer import Organizer
-from ccda_to_fhir.ccda.models.procedure import Procedure
-from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
+from ccda_to_fhir.converters.base_extractor import BaseParticipantExtractor
 
 
 class AuthorInfo:
@@ -158,145 +153,37 @@ class AuthorInfo:
         return generate_id_from_identifiers("Organization", root, extension)
 
 
-class AuthorExtractor:
+class AuthorExtractor(BaseParticipantExtractor[AuthorInfo]):
     """Extract author information from C-CDA elements.
 
     This class provides methods to extract author metadata from various
     C-CDA element types (Act, Observation, SubstanceAdministration, Procedure)
     and combine/deduplicate authors from multiple sources.
+
+    Inherits extraction methods from BaseParticipantExtractor:
+    - extract_from_concern_act
+    - extract_from_observation
+    - extract_from_substance_administration
+    - extract_from_procedure
+    - extract_from_encounter
+    - extract_from_organizer
+    - extract_combined
     """
 
-    def extract_from_concern_act(self, act: Act) -> list[AuthorInfo]:
-        """Extract authors from Concern Act (Problem, Allergy).
+    def _get_attribute_name(self) -> str:
+        """Return 'author' as the attribute to access on C-CDA elements."""
+        return "author"
 
-        Args:
-            act: The C-CDA Act (concern act) element
+    def _create_info(self, element: Author, context: str) -> AuthorInfo:
+        """Create an AuthorInfo from an Author element."""
+        return AuthorInfo(element, context=context)
 
-        Returns:
-            List of AuthorInfo objects
+    def _get_info_id(self, info: AuthorInfo) -> tuple:
+        """Get unique identifier for author deduplication.
+
+        Uses (practitioner_id or device_id, organization_id) as the key.
         """
-        authors = []
-        if act.author:
-            for author in act.author:
-                authors.append(AuthorInfo(author, context="concern_act"))
-        return authors
-
-    def extract_from_observation(self, observation: Observation) -> list[AuthorInfo]:
-        """Extract authors from Observation.
-
-        Args:
-            observation: The C-CDA Observation element
-
-        Returns:
-            List of AuthorInfo objects
-        """
-        authors = []
-        if observation.author:
-            for author in observation.author:
-                authors.append(AuthorInfo(author, context="observation"))
-        return authors
-
-    def extract_from_substance_administration(
-        self, sa: SubstanceAdministration
-    ) -> list[AuthorInfo]:
-        """Extract authors from SubstanceAdministration (Medication, Immunization).
-
-        Args:
-            sa: The C-CDA SubstanceAdministration element
-
-        Returns:
-            List of AuthorInfo objects
-        """
-        authors = []
-        if sa.author:
-            for author in sa.author:
-                authors.append(AuthorInfo(author, context="substance_administration"))
-        return authors
-
-    def extract_from_procedure(self, procedure: Procedure) -> list[AuthorInfo]:
-        """Extract authors from Procedure.
-
-        Args:
-            procedure: The C-CDA Procedure element
-
-        Returns:
-            List of AuthorInfo objects
-        """
-        authors = []
-        if procedure.author:
-            for author in procedure.author:
-                authors.append(AuthorInfo(author, context="procedure"))
-        return authors
-
-    def extract_from_encounter(self, encounter: Encounter) -> list[AuthorInfo]:
-        """Extract authors from Encounter.
-
-        Args:
-            encounter: The C-CDA Encounter element
-
-        Returns:
-            List of AuthorInfo objects
-        """
-        authors = []
-        if encounter.author:
-            for author in encounter.author:
-                authors.append(AuthorInfo(author, context="encounter"))
-        return authors
-
-    def extract_from_organizer(self, organizer: Organizer) -> list[AuthorInfo]:
-        """Extract authors from Organizer (Result Organizer, Vital Signs Organizer).
-
-        Args:
-            organizer: The C-CDA Organizer element
-
-        Returns:
-            List of AuthorInfo objects
-        """
-        authors = []
-        if organizer.author:
-            for author in organizer.author:
-                authors.append(AuthorInfo(author, context="organizer"))
-        return authors
-
-    def extract_combined(
-        self,
-        concern_act: Act | None,
-        entry_element: Observation | SubstanceAdministration | Procedure | Act,
-    ) -> list[AuthorInfo]:
-        """Extract authors from both concern act and entry element, combining and deduplicating.
-
-        Used for resources like Condition (from Problem Concern Act + Problem Observation)
-        where authors may appear at multiple levels.
-
-        Args:
-            concern_act: The concern act (Act) element, or None
-            entry_element: The entry element (Observation, etc.)
-
-        Returns:
-            List of unique AuthorInfo objects
-        """
-        all_authors = []
-
-        # Extract from concern act
-        if concern_act and concern_act.author:
-            for author in concern_act.author:
-                all_authors.append(AuthorInfo(author, context="concern_act"))
-
-        # Extract from entry element
-        if hasattr(entry_element, "author") and entry_element.author:
-            for author in entry_element.author:
-                all_authors.append(AuthorInfo(author, context="entry_element"))
-
-        # Deduplicate by (practitioner_id or device_id, organization_id)
-        seen = set()
-        unique_authors = []
-        for author_info in all_authors:
-            key = (
-                author_info.practitioner_id or author_info.device_id,
-                author_info.organization_id,
-            )
-            if key not in seen:
-                unique_authors.append(author_info)
-                seen.add(key)
-
-        return unique_authors
+        return (
+            info.practitioner_id or info.device_id,
+            info.organization_id,
+        )
