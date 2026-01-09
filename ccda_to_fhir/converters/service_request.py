@@ -779,4 +779,3 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         # ServiceRequest only extracts from text, not from comment activities
         return self.extract_notes_from_element(procedure, include_comments=False)
 
-    # Note: _generate_practitioner_id is inherited from BaseConverter

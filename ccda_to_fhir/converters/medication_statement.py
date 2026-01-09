@@ -704,7 +704,6 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             include_author_time=True
         )
 
-    # Note: _generate_practitioner_id and _generate_device_id are inherited from BaseConverter
 
 
 def convert_medication_statement(

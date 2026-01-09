@@ -1058,7 +1058,6 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             display_name=code.display_name if hasattr(code, "display_name") else None,
         )
 
-    # Note: _generate_practitioner_id and _generate_location_id are inherited from BaseConverter
 
     def _generate_synthetic_location_id(self, name: str, address: JSONObject | None) -> str:
         """Generate synthetic FHIR Location ID from name and address.

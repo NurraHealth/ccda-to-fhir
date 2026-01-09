@@ -191,13 +191,12 @@ class BaseParticipantExtractor(ABC, Generic[InfoType]):
                 for item in attr_value:
                     all_items.append(self._create_info(item, "entry_element"))
 
-        # Deduplicate by ID
+        # Deduplicate by ID (skip if key is all None - handles both 1 and 2-element tuples)
         seen: set[tuple] = set()
         unique_items: list[InfoType] = []
         for info in all_items:
             key = self._get_info_id(info)
-            # Only add if key has meaningful content and hasn't been seen
-            if key != (None,) and key not in seen:
+            if any(k is not None for k in key) and key not in seen:
                 unique_items.append(info)
                 seen.add(key)
 

@@ -923,7 +923,6 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         return dispense_request if dispense_request else None
 
-    # Note: _generate_practitioner_id and _generate_device_id are inherited from BaseConverter
 
 
 def convert_medication_activity(

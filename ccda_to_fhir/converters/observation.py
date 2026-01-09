@@ -1637,4 +1637,3 @@ class ObservationConverter(BaseConverter[Observation]):
 
         return pulse_ox_obs
 
-    # Note: _generate_practitioner_id is inherited from BaseConverter

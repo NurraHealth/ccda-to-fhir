@@ -984,7 +984,6 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         return performers
 
-    # Note: _generate_practitioner_id and _generate_organization_id are inherited from BaseConverter
 
     def _extract_notes(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
         """Extract FHIR notes from C-CDA substance administration.

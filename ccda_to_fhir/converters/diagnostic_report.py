@@ -312,4 +312,3 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
 
         return None
 
-    # Note: _generate_practitioner_id is inherited from BaseConverter
