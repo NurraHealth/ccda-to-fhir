@@ -981,3 +981,271 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
         return generate_id_from_identifiers("Location", root, extension)
+
+    def convert_addresses(self, addresses, include_type: bool = False) -> list[JSONObject]:
+        """Convert C-CDA AD elements to FHIR Address objects.
+
+        Handles both single AD and list of AD inputs. Converts all address
+        components including use, line, city, state, postalCode,
+        country, and period.
+
+        Args:
+            addresses: C-CDA AD element(s) - single or list
+            include_type: If True, adds type="physical" to each address.
+                         Default False to match original converter behavior.
+                         Only PatientConverter historically added type.
+
+        Returns:
+            List of FHIR Address objects
+        """
+        from ccda_to_fhir.constants import ADDRESS_USE_MAP, FHIRCodes
+
+        if addresses is None:
+            return []
+
+        fhir_addresses: list[JSONObject] = []
+
+        # Normalize to list
+        addr_list = addresses if isinstance(addresses, list) else [addresses]
+
+        for addr in addr_list:
+            if addr is None:
+                continue
+
+            fhir_address: JSONObject = {}
+
+            # Use
+            if hasattr(addr, "use") and addr.use:
+                fhir_use = ADDRESS_USE_MAP.get(addr.use)
+                if fhir_use:
+                    fhir_address["use"] = fhir_use
+
+            # Type - only add if explicitly requested (matches original PatientConverter behavior)
+            if include_type:
+                fhir_address["type"] = FHIRCodes.AddressType.PHYSICAL
+
+            # Street address lines
+            if hasattr(addr, "street_address_line") and addr.street_address_line:
+                fhir_address["line"] = addr.street_address_line
+
+            # City - handle potential list type
+            if hasattr(addr, "city") and addr.city:
+                if isinstance(addr.city, list):
+                    fhir_address["city"] = addr.city[0]
+                else:
+                    fhir_address["city"] = addr.city
+
+            # State - handle potential list type
+            if hasattr(addr, "state") and addr.state:
+                if isinstance(addr.state, list):
+                    fhir_address["state"] = addr.state[0]
+                else:
+                    fhir_address["state"] = addr.state
+
+            # Postal code - handle potential list type
+            if hasattr(addr, "postal_code") and addr.postal_code:
+                if isinstance(addr.postal_code, list):
+                    fhir_address["postalCode"] = addr.postal_code[0]
+                else:
+                    fhir_address["postalCode"] = addr.postal_code
+
+            # Country - handle potential list type
+            if hasattr(addr, "country") and addr.country:
+                if isinstance(addr.country, list):
+                    fhir_address["country"] = addr.country[0]
+                else:
+                    fhir_address["country"] = addr.country
+
+            # Period from useable_period
+            if hasattr(addr, "useable_period") and addr.useable_period:
+                period: JSONObject = {}
+                if hasattr(addr.useable_period, "low") and addr.useable_period.low:
+                    start = self.convert_date(addr.useable_period.low.value)
+                    if start:
+                        period["start"] = start
+                if hasattr(addr.useable_period, "high") and addr.useable_period.high:
+                    end = self.convert_date(addr.useable_period.high.value)
+                    if end:
+                        period["end"] = end
+                if period:
+                    fhir_address["period"] = period
+
+            # Only add if we have meaningful content
+            if fhir_address:
+                fhir_addresses.append(fhir_address)
+
+        return fhir_addresses
+
+    def convert_address_single(self, addresses) -> JSONObject:
+        """Convert C-CDA AD element(s) to a single FHIR Address.
+
+        For resources like Location where address is 0..1, not an array.
+        Returns the first address if multiple provided.
+
+        Args:
+            addresses: C-CDA AD element(s) - single or list
+
+        Returns:
+            Single FHIR Address object or empty dict
+        """
+        result = self.convert_addresses(addresses)
+        return result[0] if result else {}
+
+    def convert_telecom(self, telecoms) -> list[JSONObject]:
+        """Convert C-CDA TEL elements to FHIR ContactPoint objects.
+
+        Handles both single TEL and list of TEL inputs. Parses URI schemes
+        (tel:, mailto:, fax:, http:) and maps to FHIR system codes.
+
+        Args:
+            telecoms: C-CDA TEL element(s) - single or list
+
+        Returns:
+            List of FHIR ContactPoint objects
+        """
+        from ccda_to_fhir.constants import TELECOM_USE_MAP, FHIRCodes
+
+        if telecoms is None:
+            return []
+
+        contact_points: list[JSONObject] = []
+
+        # Normalize to list
+        telecom_list = telecoms if isinstance(telecoms, list) else [telecoms]
+
+        for telecom in telecom_list:
+            if telecom is None:
+                continue
+
+            if not hasattr(telecom, "value") or not telecom.value:
+                continue
+
+            contact_point: JSONObject = {}
+            value = telecom.value
+
+            # Parse system and value from URI scheme prefix
+            if value.startswith("tel:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
+                contact_point["value"] = value[4:]  # Remove "tel:" prefix
+            elif value.startswith("mailto:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.EMAIL
+                contact_point["value"] = value[7:]  # Remove "mailto:" prefix
+            elif value.startswith("fax:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.FAX
+                contact_point["value"] = value[4:]  # Remove "fax:" prefix
+            elif value.startswith("http://") or value.startswith("https://"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.URL
+                contact_point["value"] = value
+            else:
+                # Unknown format - assume phone if no recognized prefix
+                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
+                contact_point["value"] = value
+
+            # Use
+            if hasattr(telecom, "use") and telecom.use:
+                fhir_use = TELECOM_USE_MAP.get(telecom.use)
+                if fhir_use:
+                    contact_point["use"] = fhir_use
+
+            # Period from use_period
+            if hasattr(telecom, "use_period") and telecom.use_period:
+                period: JSONObject = {}
+                if hasattr(telecom.use_period, "low") and telecom.use_period.low:
+                    start = self.convert_date(telecom.use_period.low.value)
+                    if start:
+                        period["start"] = start
+                if hasattr(telecom.use_period, "high") and telecom.use_period.high:
+                    end = self.convert_date(telecom.use_period.high.value)
+                    if end:
+                        period["end"] = end
+                if period:
+                    contact_point["period"] = period
+
+            if contact_point:
+                contact_points.append(contact_point)
+
+        return contact_points
+
+    def extract_code_translations(self, code) -> list[JSONObject]:
+        """Extract translation codes from a C-CDA coded element.
+
+        C-CDA codes often include translations to other code systems (e.g., SNOMED
+        to ICD-10). This method extracts all translations into a normalized format.
+
+        Args:
+            code: C-CDA coded element (CD, CE, etc.) with optional translation attribute
+
+        Returns:
+            List of translation dicts with keys: code, code_system, display_name
+        """
+        translations: list[JSONObject] = []
+
+        if not hasattr(code, "translation") or not code.translation:
+            return translations
+
+        for trans in code.translation:
+            # Handle both object and dict representations
+            if hasattr(trans, "code"):
+                trans_code = trans.code
+                trans_system = getattr(trans, "code_system", None)
+                trans_display = getattr(trans, "display_name", None)
+            elif isinstance(trans, dict):
+                trans_code = trans.get("code")
+                trans_system = trans.get("code_system")
+                trans_display = trans.get("display_name")
+            else:
+                continue
+
+            if trans_code and trans_system:
+                translations.append({
+                    "code": trans_code,
+                    "code_system": trans_system,
+                    "display_name": trans_display,
+                })
+
+        return translations
+
+    def convert_code_to_codeable_concept(
+        self,
+        code,
+        section=None,
+        include_original_text: bool = True,
+    ) -> JSONObject | None:
+        """Convert a C-CDA coded element to FHIR CodeableConcept with translations.
+
+        This is a higher-level method that combines translation extraction with
+        CodeableConcept creation. It handles:
+        - Primary code extraction
+        - Translation extraction
+        - Original text extraction (with optional narrative reference resolution)
+
+        Args:
+            code: C-CDA coded element (CD, CE, etc.)
+            section: Optional section element for resolving narrative references
+            include_original_text: Whether to include original_text in the result
+
+        Returns:
+            FHIR CodeableConcept dict or None if code is invalid
+        """
+        if not code or not hasattr(code, "code") or not code.code:
+            return None
+
+        # Extract translations
+        translations = self.extract_code_translations(code)
+
+        # Get original text if present
+        original_text = None
+        if include_original_text:
+            if hasattr(code, "original_text") and code.original_text:
+                original_text = self.extract_original_text(code.original_text, section=section)
+            # Fallback to display_name if no original_text
+            if not original_text and hasattr(code, "display_name") and code.display_name:
+                original_text = code.display_name
+
+        return self.create_codeable_concept(
+            code=code.code,
+            code_system=getattr(code, "code_system", None),
+            display_name=getattr(code, "display_name", None),
+            original_text=original_text,
+            translations=translations,
+        )

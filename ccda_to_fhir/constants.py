@@ -233,6 +233,7 @@ class V3TelecomUseCodes:
     HOME = "H"
     WORK = "WP"
     MOBILE = "MC"
+    PAGER = "PG"
     TEMP = "TMP"
     BAD = "BAD"
 
@@ -909,6 +910,7 @@ TELECOM_USE_MAP = {
     V3TelecomUseCodes.HOME: FHIRCodes.ContactPointUse.HOME,
     V3TelecomUseCodes.WORK: FHIRCodes.ContactPointUse.WORK,
     V3TelecomUseCodes.MOBILE: FHIRCodes.ContactPointUse.MOBILE,
+    V3TelecomUseCodes.PAGER: FHIRCodes.ContactPointUse.MOBILE,  # Pager treated as mobile device
     V3TelecomUseCodes.TEMP: FHIRCodes.ContactPointUse.TEMP,
     V3TelecomUseCodes.BAD: FHIRCodes.ContactPointUse.OLD,
 }

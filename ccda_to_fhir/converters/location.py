@@ -14,13 +14,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ccda_to_fhir.constants import ADDRESS_USE_MAP, TELECOM_USE_MAP, FHIRCodes
+from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
 if TYPE_CHECKING:
-    from ccda_to_fhir.ccda.models.datatypes import AD, CE, II, TEL
+    from ccda_to_fhir.ccda.models.datatypes import CE, II
     from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
 
@@ -73,7 +73,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Map address early (needed for synthetic ID generation)
         address = None
         if participant_role.addr:
-            address = self._convert_address(participant_role.addr)
+            address = self.convert_address_single(participant_role.addr)
 
         # Generate ID from identifiers, or create synthetic ID if missing
         if participant_role.id:
@@ -115,7 +115,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         # Map telecom (phone, fax, email)
         if participant_role.telecom:
-            telecom_list = self._convert_telecom(participant_role.telecom)
+            telecom_list = self.convert_telecom(participant_role.telecom)
             if telecom_list:
                 location["telecom"] = telecom_list
 
@@ -413,110 +413,6 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             coding["display"] = code.display_name
 
         return coding
-
-    def _convert_telecom(self, telecoms: list[TEL] | TEL) -> list[JSONObject]:
-        """Convert C-CDA telecom to FHIR ContactPoint.
-
-        Parses URI schemes (tel:, fax:, mailto:, http:) and maps to FHIR system codes.
-
-        Args:
-            telecoms: List of C-CDA TEL or single TEL
-
-        Returns:
-            List of FHIR ContactPoint objects
-        """
-        fhir_telecom: list[JSONObject] = []
-
-        # Normalize to list
-        telecom_list = telecoms if isinstance(telecoms, list) else [telecoms]
-
-        for telecom in telecom_list:
-            if not telecom.value:
-                continue
-
-            contact_point: JSONObject = {}
-
-            # Parse value (tel:+1..., mailto:..., fax:..., http://...)
-            value = telecom.value
-            if value.startswith("tel:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
-                contact_point["value"] = value[4:]  # Remove "tel:" prefix
-            elif value.startswith("mailto:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.EMAIL
-                contact_point["value"] = value[7:]  # Remove "mailto:" prefix
-            elif value.startswith("fax:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.FAX
-                contact_point["value"] = value[4:]  # Remove "fax:" prefix
-            elif value.startswith("http:") or value.startswith("https:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.URL
-                contact_point["value"] = value
-            else:
-                # Unknown format, store as-is (assume phone if no prefix)
-                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
-                contact_point["value"] = value
-
-            # Map use code (HP = home, WP = work, etc.)
-            if telecom.use:
-                fhir_use = TELECOM_USE_MAP.get(telecom.use)
-                if fhir_use:
-                    contact_point["use"] = fhir_use
-
-            if contact_point:
-                fhir_telecom.append(contact_point)
-
-        return fhir_telecom
-
-    def _convert_address(self, addresses: list[AD] | AD) -> JSONObject:
-        """Convert C-CDA address to FHIR Address.
-
-        Note: Location.address is 0..1 (single address), not array.
-        If multiple addresses provided, uses the first one.
-
-        Args:
-            addresses: List of C-CDA AD or single AD
-
-        Returns:
-            FHIR Address object (or empty dict if no valid address)
-        """
-        # Normalize to list
-        addr_list = addresses if isinstance(addresses, list) else [addresses]
-
-        if not addr_list:
-            return {}
-
-        # Use first address
-        addr = addr_list[0]
-        fhir_address: JSONObject = {}
-
-        # Street address lines
-        if addr.street_address_line:
-            fhir_address["line"] = addr.street_address_line
-
-        # City
-        if addr.city:
-            fhir_address["city"] = addr.city if isinstance(addr.city, str) else addr.city[0]
-
-        # State
-        if addr.state:
-            fhir_address["state"] = addr.state if isinstance(addr.state, str) else addr.state[0]
-
-        # Postal code
-        if addr.postal_code:
-            fhir_address["postalCode"] = (
-                addr.postal_code if isinstance(addr.postal_code, str) else addr.postal_code[0]
-            )
-
-        # Country
-        if addr.country:
-            fhir_address["country"] = addr.country if isinstance(addr.country, str) else addr.country[0]
-
-        # Map use code (HP = home, WP = work, TMP = temp, etc.)
-        if addr.use:
-            fhir_use = ADDRESS_USE_MAP.get(addr.use)
-            if fhir_use:
-                fhir_address["use"] = fhir_use
-
-        return fhir_address if fhir_address else {}
 
     def _infer_physical_type(self, location_code: CE) -> JSONObject | None:
         """Infer physical type from location type code.
