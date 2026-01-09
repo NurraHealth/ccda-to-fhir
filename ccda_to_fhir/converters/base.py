@@ -1161,3 +1161,87 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 contact_points.append(contact_point)
 
         return contact_points
+
+    def extract_code_translations(self, code) -> list[JSONObject]:
+        """Extract translation codes from a C-CDA coded element.
+
+        C-CDA codes often include translations to other code systems (e.g., SNOMED
+        to ICD-10). This method extracts all translations into a normalized format.
+
+        Args:
+            code: C-CDA coded element (CD, CE, etc.) with optional translation attribute
+
+        Returns:
+            List of translation dicts with keys: code, code_system, display_name
+        """
+        translations: list[JSONObject] = []
+
+        if not hasattr(code, "translation") or not code.translation:
+            return translations
+
+        for trans in code.translation:
+            # Handle both object and dict representations
+            if hasattr(trans, "code"):
+                trans_code = trans.code
+                trans_system = getattr(trans, "code_system", None)
+                trans_display = getattr(trans, "display_name", None)
+            elif isinstance(trans, dict):
+                trans_code = trans.get("code")
+                trans_system = trans.get("code_system")
+                trans_display = trans.get("display_name")
+            else:
+                continue
+
+            if trans_code and trans_system:
+                translations.append({
+                    "code": trans_code,
+                    "code_system": trans_system,
+                    "display_name": trans_display,
+                })
+
+        return translations
+
+    def convert_code_to_codeable_concept(
+        self,
+        code,
+        section=None,
+        include_original_text: bool = True,
+    ) -> JSONObject | None:
+        """Convert a C-CDA coded element to FHIR CodeableConcept with translations.
+
+        This is a higher-level method that combines translation extraction with
+        CodeableConcept creation. It handles:
+        - Primary code extraction
+        - Translation extraction
+        - Original text extraction (with optional narrative reference resolution)
+
+        Args:
+            code: C-CDA coded element (CD, CE, etc.)
+            section: Optional section element for resolving narrative references
+            include_original_text: Whether to include original_text in the result
+
+        Returns:
+            FHIR CodeableConcept dict or None if code is invalid
+        """
+        if not code or not hasattr(code, "code") or not code.code:
+            return None
+
+        # Extract translations
+        translations = self.extract_code_translations(code)
+
+        # Get original text if present
+        original_text = None
+        if include_original_text:
+            if hasattr(code, "original_text") and code.original_text:
+                original_text = self.extract_original_text(code.original_text, section=section)
+            # Fallback to display_name if no original_text
+            if not original_text and hasattr(code, "display_name") and code.display_name:
+                original_text = code.display_name
+
+        return self.create_codeable_concept(
+            code=code.code,
+            code_system=getattr(code, "code_system", None),
+            display_name=getattr(code, "display_name", None),
+            original_text=original_text,
+            translations=translations,
+        )
