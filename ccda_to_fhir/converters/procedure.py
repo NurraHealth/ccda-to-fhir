@@ -361,8 +361,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         """Extract FHIR performers from C-CDA performers and create related resources.
 
         Creates Practitioner and Organization resources inline for performers that
-        don't already exist in the reference registry. Follows the pattern used for
-        Device creation in _extract_devices().
+        don't already exist in the reference registry. Uses base class helpers for
+        consistent identifier selection and reference creation.
 
         Args:
             performers: List of C-CDA performer elements
@@ -370,9 +370,9 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         Returns:
             List of FHIR performer objects
         """
-        from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP
-        from ccda_to_fhir.converters.practitioner import PractitionerConverter
-        from ccda_to_fhir.converters.organization import OrganizationConverter
+        # Encounter-only codes that are not valid for Procedure.performer.function
+        # Reference: https://build.fhir.org/valueset-performer-function.html
+        ENCOUNTER_ONLY_CODES = {"ADM", "DIS", "REF"}
 
         fhir_performers = []
 
@@ -383,124 +383,39 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             assigned_entity = performer.assigned_entity
             performer_obj: JSONObject = {}
 
-            # Extract function code from performer
-            # Maps C-CDA ParticipationFunction to FHIR ParticipationType
-            # Reference: docs/mapping/09-participations.md lines 211-232
+            # Extract function code using base helper (excludes encounter-only codes)
             if hasattr(performer, "function_code") and performer.function_code:
-                function_code = performer.function_code.code if hasattr(performer.function_code, "code") else None
+                function = self.extract_performer_function(
+                    performer.function_code,
+                    exclude_codes=ENCOUNTER_ONLY_CODES,
+                )
+                if function:
+                    performer_obj["function"] = function
 
-                if function_code:
-                    # Map known function codes or pass through if not in map
-                    mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(function_code, function_code)
+            # Extract practitioner reference (with resource creation)
+            pract_ref = self.create_practitioner_reference_from_entity(
+                assigned_entity,
+                create_resource=True,
+                pending_resources=self._pending_practitioners,
+            )
+            if pract_ref:
+                performer_obj["actor"] = pract_ref
 
-                    # Only include codes that are valid for Procedure.performer.function
-                    # The performer-function value set excludes encounter-specific codes like ADM, DIS
-                    # Reference: https://build.fhir.org/valueset-performer-function.html
-                    encounter_only_codes = {"ADM", "DIS", "REF"}
-                    if mapped_code not in encounter_only_codes:
-                        function_coding = {
-                            "system": FHIRSystems.V3_PARTICIPATION_TYPE,
-                            "code": mapped_code,
-                        }
-                        if hasattr(performer.function_code, "display_name") and performer.function_code.display_name:
-                            function_coding["display"] = performer.function_code.display_name
+            # Extract organization reference (with resource creation)
+            org = getattr(assigned_entity, "represented_organization", None)
+            org_ref = self.create_organization_reference_from_entity(
+                org,
+                create_resource=True,
+                pending_resources=self._pending_organizations,
+            )
 
-                        performer_obj["function"] = {"coding": [function_coding]}
-
-            # Extract practitioner reference from assigned entity
-            # Create Practitioner resource if it doesn't already exist
-            # Prefer NPI (2.16.840.1.113883.4.6) over other identifiers for consistency
-            pract_id = None
-            if hasattr(assigned_entity, "assigned_person") and assigned_entity.assigned_person:
-                if hasattr(assigned_entity, "id") and assigned_entity.id:
-                    npi_id = None
-                    first_id = None
-
-                    for id_elem in assigned_entity.id:
-                        if id_elem.root:
-                            if not first_id:
-                                first_id = id_elem
-                            # Prefer NPI identifier
-                            if id_elem.root == "2.16.840.1.113883.4.6":
-                                npi_id = id_elem
-                                break
-
-                    # Use NPI if available, otherwise use first identifier
-                    selected_id = npi_id if npi_id else first_id
-                    if selected_id:
-                        pract_id = self._generate_practitioner_id(selected_id.root, selected_id.extension)
-
-                        # Check if resource already exists in reference registry
-                        if self.reference_registry and not self.reference_registry.has_resource("Practitioner", pract_id):
-                            # Create Practitioner resource
-                            pract_converter = PractitionerConverter(
-                                code_system_mapper=self.code_system_mapper
-                            )
-                            practitioner = pract_converter.convert(assigned_entity)
-                            practitioner["id"] = pract_id
-
-                            # Store for later addition to bundle
-                            self._pending_practitioners.append(practitioner)
-
-                            # Register with reference registry
-                            if self.reference_registry:
-                                self.reference_registry.register_resource(practitioner)
-
-                        # Add reference to performer
-                        performer_obj["actor"] = {
-                            "reference": f"urn:uuid:{pract_id}"
-                        }
-
-            # Extract organization reference if present
-            # Create Organization resource if it doesn't already exist
-            # Prefer NPI (2.16.840.1.113883.4.6) over other identifiers for consistency
-            org_id = None
-            if hasattr(assigned_entity, "represented_organization") and assigned_entity.represented_organization:
-                org = assigned_entity.represented_organization
-                if hasattr(org, "id") and org.id:
-                    npi_id = None
-                    first_id = None
-
-                    for id_elem in org.id:
-                        if id_elem.root:
-                            if not first_id:
-                                first_id = id_elem
-                            # Prefer NPI identifier
-                            if id_elem.root == "2.16.840.1.113883.4.6":
-                                npi_id = id_elem
-                                break
-
-                    # Use NPI if available, otherwise use first identifier
-                    selected_id = npi_id if npi_id else first_id
-                    if selected_id:
-                        org_id = self._generate_organization_id(selected_id.root, selected_id.extension)
-
-                        # Check if resource already exists in reference registry
-                        if self.reference_registry and not self.reference_registry.has_resource("Organization", org_id):
-                            # Create Organization resource
-                            org_converter = OrganizationConverter(
-                                code_system_mapper=self.code_system_mapper
-                            )
-                            organization = org_converter.convert(org)
-                            organization["id"] = org_id
-
-                            # Store for later addition to bundle
-                            self._pending_organizations.append(organization)
-
-                            # Register with reference registry
-                            if self.reference_registry:
-                                self.reference_registry.register_resource(organization)
-
-                        # Add onBehalfOf reference if we have both practitioner and organization
-                        if pract_id:
-                            performer_obj["onBehalfOf"] = {
-                                "reference": f"urn:uuid:{org_id}"
-                            }
-                        # If no practitioner, organization is the actor
-                        elif not pract_id:
-                            performer_obj["actor"] = {
-                                "reference": f"urn:uuid:{org_id}"
-                            }
+            if org_ref:
+                if pract_ref:
+                    # Both practitioner and organization - use onBehalfOf
+                    performer_obj["onBehalfOf"] = org_ref
+                else:
+                    # No practitioner - organization is the actor
+                    performer_obj["actor"] = org_ref
 
             if performer_obj:
                 fhir_performers.append(performer_obj)
@@ -702,9 +617,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
     def _extract_reasons(self, entry_relationships: list) -> dict[str, list]:
         """Extract FHIR reason codes and references from C-CDA entry relationships.
 
-        Handles two patterns:
-        1. RSON observation with inline code value → reasonCode
-        2. RSON observation that IS a Problem Observation → reasonReference to Condition
+        Delegates to base class method for consistent handling across converters.
 
         Args:
             entry_relationships: List of C-CDA entry relationship elements
@@ -712,106 +625,13 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         Returns:
             Dict with "codes" and "references" lists
         """
-        reason_codes = []
-        reason_refs = []
-
-        for entry_rel in entry_relationships:
-            # Look for RSON (reason) relationships
-            if hasattr(entry_rel, "type_code") and entry_rel.type_code == "RSON":
-                if hasattr(entry_rel, "observation") and entry_rel.observation:
-                    obs = entry_rel.observation
-
-                    # Check if this observation IS a Problem Observation
-                    is_problem_obs = False
-                    if hasattr(obs, "template_id") and obs.template_id:
-                        for template in obs.template_id:
-                            if hasattr(template, "root") and template.root == TemplateIds.PROBLEM_OBSERVATION:
-                                is_problem_obs = True
-                                break
-
-                    if is_problem_obs:
-                        # This is a Problem Observation - check if Condition exists
-                        condition_id = self._generate_condition_id_from_observation(obs)
-
-                        # Skip if we couldn't generate a valid ID
-                        if not condition_id:
-                            continue
-
-                        # Per C-CDA on FHIR spec: only create reasonReference if the Problem
-                        # Observation was converted to a Condition resource elsewhere in the document
-                        if self.reference_registry and self.reference_registry.has_resource(
-                            FHIRCodes.ResourceTypes.CONDITION, condition_id
-                        ):
-                            # Condition exists - use reasonReference
-                            reason_refs.append({
-                                "reference": f"urn:uuid:{condition_id}"
-                            })
-                        else:
-                            # Inline Problem Observation not converted - use reasonCode
-                            if hasattr(obs, "value") and obs.value:
-                                value = obs.value
-                                if hasattr(value, "code") and value.code:
-                                    reason_code = self.create_codeable_concept(
-                                        code=value.code,
-                                        code_system=value.code_system if hasattr(value, "code_system") else None,
-                                        display_name=value.display_name if hasattr(value, "display_name") else None,
-                                    )
-                                    if reason_code:
-                                        reason_codes.append(reason_code)
-                    else:
-                        # Extract reason code from observation value (existing logic)
-                        if hasattr(obs, "value") and obs.value:
-                            value = obs.value
-                            if hasattr(value, "code") and value.code:
-                                reason_code = self.create_codeable_concept(
-                                    code=value.code,
-                                    code_system=value.code_system if hasattr(value, "code_system") else None,
-                                    display_name=value.display_name if hasattr(value, "display_name") else None,
-                                )
-                                if reason_code:
-                                    reason_codes.append(reason_code)
-
-        return {"codes": reason_codes, "references": reason_refs}
-
-    def _generate_condition_id_from_observation(self, observation) -> str | None:
-        """Generate a Condition resource ID from a Problem Observation.
-
-        Uses the same ID generation logic as ConditionConverter to ensure
-        consistent references to Condition resources.
-
-        Args:
-            observation: Problem Observation with ID
-
-        Returns:
-            Condition resource ID string, or None if no identifiers available
-        """
-        if hasattr(observation, "id") and observation.id:
-            for id_elem in observation.id:
-                if hasattr(id_elem, "root") and id_elem.root:
-                    extension = id_elem.extension if hasattr(id_elem, "extension") else None
-                    return self._generate_condition_id(id_elem.root, extension)
-
-        logger.warning(
-            "Cannot generate Condition ID from Problem Observation: no identifiers provided. "
-            "Skipping reasonReference."
+        return self.extract_reasons_from_entry_relationships(
+            entry_relationships,
+            problem_template_id=TemplateIds.PROBLEM_OBSERVATION,
         )
-        return None
 
-    def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
-        """Generate FHIR Condition ID using cached UUID v4 from C-CDA identifiers.
-
-        Matches the ID generation logic in ConditionConverter for consistency.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Condition", root, extension)
+    # Note: _generate_condition_id and _generate_condition_id_from_observation
+    # are inherited from BaseConverter
 
     def _extract_outcomes(self, entry_relationships: list) -> JSONObject | None:
         """Extract FHIR outcome from C-CDA entry relationships.

@@ -928,9 +928,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
     def _extract_reasons(self, entry_relationships: list[EntryRelationship] | None) -> dict[str, list]:
         """Extract FHIR reason codes and references from C-CDA entry relationships.
 
-        Handles two patterns:
-        1. RSON observation with inline code value → reasonCode
-        2. RSON observation that IS a Problem Observation → reasonReference to Condition
+        Delegates to base class method for consistent handling across converters.
 
         Args:
             entry_relationships: List of entry relationships
@@ -938,83 +936,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         Returns:
             Dict with "codes" and "references" lists
         """
-        reason_codes = []
-        reason_refs = []
-
-        if not entry_relationships:
-            return {"codes": reason_codes, "references": reason_refs}
-
-        for entry_rel in entry_relationships:
-            # Look for indication observations (RSON typeCode)
-            if entry_rel.type_code == TypeCodes.REASON and entry_rel.observation:
-                obs = entry_rel.observation
-
-                # Check if this observation IS a Problem Observation
-                is_problem_obs = False
-                if hasattr(obs, "template_id") and obs.template_id:
-                    for template in obs.template_id:
-                        if hasattr(template, "root") and template.root == TemplateIds.PROBLEM_OBSERVATION:
-                            is_problem_obs = True
-                            break
-
-                if is_problem_obs:
-                    # This is a Problem Observation - check if Condition exists
-                    condition_id = self._generate_condition_id_from_observation(obs)
-
-                    # Per C-CDA on FHIR spec: only create reasonReference if the Problem
-                    # Observation was converted to a Condition resource elsewhere in the document
-                    if self.reference_registry and self.reference_registry.has_resource(
-                        FHIRCodes.ResourceTypes.CONDITION, condition_id
-                    ):
-                        # Condition exists - use reasonReference
-                        reason_refs.append({
-                            "reference": f"urn:uuid:{condition_id}"
-                        })
-                    else:
-                        # Inline Problem Observation not converted - use reasonCode
-                        if obs.value:
-                            if isinstance(obs.value, list):
-                                for value in obs.value:
-                                    if hasattr(value, "code") and value.code:
-                                        codeable = self._convert_diagnosis_code(value)
-                                        if codeable:
-                                            reason_codes.append(codeable)
-                            elif hasattr(obs.value, "code"):
-                                codeable = self._convert_diagnosis_code(obs.value)
-                                if codeable:
-                                    reason_codes.append(codeable)
-                else:
-                    # Extract reason code from observation.value
-                    if obs.value:
-                        if isinstance(obs.value, list):
-                            for value in obs.value:
-                                if hasattr(value, "code") and value.code:
-                                    codeable = self._convert_diagnosis_code(value)
-                                    if codeable:
-                                        reason_codes.append(codeable)
-                        elif hasattr(obs.value, "code"):
-                            codeable = self._convert_diagnosis_code(obs.value)
-                            if codeable:
-                                reason_codes.append(codeable)
-
-        return {"codes": reason_codes, "references": reason_refs}
-
-    def _convert_diagnosis_code(self, code) -> JSONObject | None:
-        """Convert diagnosis code to FHIR CodeableConcept.
-
-        Args:
-            code: The diagnosis code
-
-        Returns:
-            FHIR CodeableConcept or None
-        """
-        if not code or not hasattr(code, "code") or not code.code:
-            return None
-
-        return self.create_codeable_concept(
-            code=code.code,
-            code_system=code.code_system if hasattr(code, "code_system") else None,
-            display_name=code.display_name if hasattr(code, "display_name") else None,
+        return self.extract_reasons_from_entry_relationships(
+            entry_relationships,
+            problem_template_id=TemplateIds.PROBLEM_OBSERVATION,
         )
 
 
@@ -1052,40 +976,27 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
     def _generate_condition_id_from_observation(self, observation) -> str:
         """Generate a Condition resource ID from a Problem Observation.
 
-        Uses the same ID generation logic as ConditionConverter to ensure
-        consistent references to Condition resources.
+        Overrides base class to provide fallback behavior: if no ID is found,
+        generates a deterministic ID from observation content instead of returning None.
+        This ensures Encounter.diagnosis references are always resolvable.
 
         Args:
             observation: Problem Observation with ID
 
         Returns:
-            Condition resource ID string
+            Condition resource ID string (never None)
         """
-        if hasattr(observation, "id") and observation.id:
-            for id_elem in observation.id:
-                if hasattr(id_elem, "root") and id_elem.root:
-                    extension = id_elem.extension if hasattr(id_elem, "extension") else None
-                    return self._generate_condition_id(id_elem.root, extension)
+        # Try the base implementation first
+        condition_id = super()._generate_condition_id_from_observation(observation)
+        if condition_id:
+            return condition_id
+
         # Fallback: Generate deterministic ID from observation content
         # Must use same method as ConditionConverter for consistency
         from ccda_to_fhir.converters.condition import generate_id_from_observation_content
         return generate_id_from_observation_content(observation)
 
-    def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
-        """Generate FHIR Condition ID using cached UUID v4 from C-CDA identifiers.
-
-        Matches the ID generation logic in ConditionConverter for consistency.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Condition", root, extension)
+    # Note: _generate_condition_id is inherited from BaseConverter
 
     def extract_diagnosis_observations(self, encounter: CCDAEncounter) -> list:
         """Extract diagnosis observations from Encounter Diagnosis Acts.
