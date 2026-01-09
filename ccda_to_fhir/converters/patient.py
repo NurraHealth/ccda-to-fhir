@@ -102,7 +102,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         # Address
         if patient_role.addr:
-            patient["address"] = self.convert_addresses(patient_role.addr)
+            patient["address"] = self.convert_addresses(patient_role.addr, include_type=True)
 
         # Marital status
         if patient_data.marital_status_code:
@@ -476,7 +476,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
             # Address
             if guardian.addr:
-                addresses = self.convert_addresses(guardian.addr)
+                addresses = self.convert_addresses(guardian.addr, include_type=True)
                 if addresses:
                     contact["address"] = addresses[0]
 
@@ -700,7 +700,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
         if not place.addr:
             return None
 
-        addresses = self.convert_addresses([place.addr])
+        addresses = self.convert_addresses([place.addr], include_type=True)
         if not addresses:
             return None
 

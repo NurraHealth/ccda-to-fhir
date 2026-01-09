@@ -982,15 +982,18 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return generate_id_from_identifiers("Location", root, extension)
 
-    def convert_addresses(self, addresses) -> list[JSONObject]:
+    def convert_addresses(self, addresses, include_type: bool = False) -> list[JSONObject]:
         """Convert C-CDA AD elements to FHIR Address objects.
 
         Handles both single AD and list of AD inputs. Converts all address
-        components including use, type, line, city, state, postalCode,
+        components including use, line, city, state, postalCode,
         country, and period.
 
         Args:
             addresses: C-CDA AD element(s) - single or list
+            include_type: If True, adds type="physical" to each address.
+                         Default False to match original converter behavior.
+                         Only PatientConverter historically added type.
 
         Returns:
             List of FHIR Address objects
@@ -1017,8 +1020,9 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 if fhir_use:
                     fhir_address["use"] = fhir_use
 
-            # Type - default to physical
-            fhir_address["type"] = FHIRCodes.AddressType.PHYSICAL
+            # Type - only add if explicitly requested (matches original PatientConverter behavior)
+            if include_type:
+                fhir_address["type"] = FHIRCodes.AddressType.PHYSICAL
 
             # Street address lines
             if hasattr(addr, "street_address_line") and addr.street_address_line:
@@ -1066,8 +1070,8 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 if period:
                     fhir_address["period"] = period
 
-            # Only add if we have meaningful content (more than just type)
-            if len(fhir_address) > 1:
+            # Only add if we have meaningful content
+            if fhir_address:
                 fhir_addresses.append(fhir_address)
 
         return fhir_addresses
