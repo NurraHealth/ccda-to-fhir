@@ -16,7 +16,6 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     FHIRSystems,
     TemplateIds,
-    TypeCodes,
     map_cpt_to_actcode,
 )
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
