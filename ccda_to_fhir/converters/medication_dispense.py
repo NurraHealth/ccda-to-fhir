@@ -17,7 +17,6 @@ from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from .base import BaseConverter
 
 if TYPE_CHECKING:
-    from ccda_to_fhir.ccda.models.datatypes import AD, TEL
     from ccda_to_fhir.ccda.models.performer import RepresentedOrganization
 
 logger = get_logger(__name__)
@@ -614,13 +613,13 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         # Add address if available
         if hasattr(organization, "addr") and organization.addr:
-            address = self._convert_address(organization.addr)
+            address = self.convert_address_single(organization.addr)
             if address:
                 location["address"] = address
 
         # Add telecom if available
         if hasattr(organization, "telecom") and organization.telecom:
-            telecom_list = self._convert_telecom(organization.telecom)
+            telecom_list = self.convert_telecom(organization.telecom)
             if telecom_list:
                 location["telecom"] = telecom_list
 
@@ -804,134 +803,6 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             return str(first_name) if first_name else None
 
         return None
-
-    def _convert_address(self, addresses: list[AD] | AD) -> JSONObject:
-        """Convert C-CDA address to FHIR Address.
-
-        Note: Location.address is 0..1 (single address), not array.
-        If multiple addresses provided, uses the first one.
-
-        Args:
-            addresses: List of C-CDA AD or single AD
-
-        Returns:
-            FHIR Address object (or empty dict if no valid address)
-
-        Examples:
-            >>> addr = AD(
-            ...     street_address_line=["123 Main St"],
-            ...     city="Boston",
-            ...     state="MA",
-            ...     postal_code="02101"
-            ... )
-            >>> fhir_addr = self._convert_address(addr)
-            >>> # Returns: {"line": ["123 Main St"], "city": "Boston", ...}
-        """
-        from ccda_to_fhir.constants import ADDRESS_USE_MAP
-
-        # Normalize to list
-        addr_list = addresses if isinstance(addresses, list) else [addresses]
-
-        if not addr_list:
-            return {}
-
-        # Use first address
-        addr = addr_list[0]
-        fhir_address: JSONObject = {}
-
-        # Use code (HP = home, WP = work, etc.)
-        if hasattr(addr, "use") and addr.use:
-            fhir_use = ADDRESS_USE_MAP.get(addr.use)
-            if fhir_use:
-                fhir_address["use"] = fhir_use
-
-        # Street address lines
-        if hasattr(addr, "street_address_line") and addr.street_address_line:
-            fhir_address["line"] = addr.street_address_line
-
-        # City
-        if hasattr(addr, "city") and addr.city:
-            fhir_address["city"] = addr.city if isinstance(addr.city, str) else addr.city[0]
-
-        # State
-        if hasattr(addr, "state") and addr.state:
-            fhir_address["state"] = addr.state if isinstance(addr.state, str) else addr.state[0]
-
-        # Postal code
-        if hasattr(addr, "postal_code") and addr.postal_code:
-            fhir_address["postalCode"] = (
-                addr.postal_code if isinstance(addr.postal_code, str) else addr.postal_code[0]
-            )
-
-        # Country
-        if hasattr(addr, "country") and addr.country:
-            fhir_address["country"] = addr.country if isinstance(addr.country, str) else addr.country[0]
-
-        return fhir_address if fhir_address else {}
-
-    def _convert_telecom(self, telecoms: list[TEL] | TEL) -> list[JSONObject]:
-        """Convert C-CDA telecom to FHIR ContactPoint.
-
-        Parses URI schemes (tel:, fax:, mailto:, http:) and maps to FHIR system codes.
-
-        Args:
-            telecoms: List of C-CDA TEL or single TEL
-
-        Returns:
-            List of FHIR ContactPoint objects
-
-        Examples:
-            >>> tel = TEL(value="tel:+1-555-1234", use="WP")
-            >>> contact_points = self._convert_telecom(tel)
-            >>> # Returns: [{"system": "phone", "value": "+1-555-1234", "use": "work"}]
-        """
-        fhir_telecom: list[JSONObject] = []
-
-        # Normalize to list
-        telecom_list = telecoms if isinstance(telecoms, list) else [telecoms]
-
-        for telecom in telecom_list:
-            if not hasattr(telecom, "value") or not telecom.value:
-                continue
-
-            contact_point: JSONObject = {}
-
-            # Parse value (tel:+1..., mailto:..., fax:..., http://...)
-            value = telecom.value
-            if value.startswith("tel:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
-                contact_point["value"] = value[4:]  # Remove "tel:" prefix
-            elif value.startswith("mailto:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.EMAIL
-                contact_point["value"] = value[7:]  # Remove "mailto:" prefix
-            elif value.startswith("fax:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.FAX
-                contact_point["value"] = value[4:]  # Remove "fax:" prefix
-            elif value.startswith("http:") or value.startswith("https:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.URL
-                contact_point["value"] = value
-            else:
-                # Unknown format, store as-is (assume phone if no prefix)
-                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
-                contact_point["value"] = value
-
-            # Map use code (HP = home, WP = work, etc.)
-            if hasattr(telecom, "use") and telecom.use:
-                # Simple mapping for common use codes
-                use_map = {
-                    "HP": "home",
-                    "WP": "work",
-                    "MC": "mobile",
-                    "PG": "mobile"
-                }
-                fhir_use = use_map.get(telecom.use)
-                if fhir_use:
-                    contact_point["use"] = fhir_use
-
-            if contact_point:
-                fhir_telecom.append(contact_point)
-
-        return fhir_telecom
 
     def _map_participation_function_to_fhir(self, function_code: CE) -> str | None:
         """Map C-CDA ParticipationFunction code to FHIR MedicationDispense performer function code.

@@ -981,3 +981,183 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
         return generate_id_from_identifiers("Location", root, extension)
+
+    def convert_addresses(self, addresses) -> list[JSONObject]:
+        """Convert C-CDA AD elements to FHIR Address objects.
+
+        Handles both single AD and list of AD inputs. Converts all address
+        components including use, type, line, city, state, postalCode,
+        country, and period.
+
+        Args:
+            addresses: C-CDA AD element(s) - single or list
+
+        Returns:
+            List of FHIR Address objects
+        """
+        from ccda_to_fhir.constants import ADDRESS_USE_MAP, FHIRCodes
+
+        if addresses is None:
+            return []
+
+        fhir_addresses: list[JSONObject] = []
+
+        # Normalize to list
+        addr_list = addresses if isinstance(addresses, list) else [addresses]
+
+        for addr in addr_list:
+            if addr is None:
+                continue
+
+            fhir_address: JSONObject = {}
+
+            # Use
+            if hasattr(addr, "use") and addr.use:
+                fhir_use = ADDRESS_USE_MAP.get(addr.use)
+                if fhir_use:
+                    fhir_address["use"] = fhir_use
+
+            # Type - default to physical
+            fhir_address["type"] = FHIRCodes.AddressType.PHYSICAL
+
+            # Street address lines
+            if hasattr(addr, "street_address_line") and addr.street_address_line:
+                fhir_address["line"] = addr.street_address_line
+
+            # City - handle potential list type
+            if hasattr(addr, "city") and addr.city:
+                if isinstance(addr.city, list):
+                    fhir_address["city"] = addr.city[0]
+                else:
+                    fhir_address["city"] = addr.city
+
+            # State - handle potential list type
+            if hasattr(addr, "state") and addr.state:
+                if isinstance(addr.state, list):
+                    fhir_address["state"] = addr.state[0]
+                else:
+                    fhir_address["state"] = addr.state
+
+            # Postal code - handle potential list type
+            if hasattr(addr, "postal_code") and addr.postal_code:
+                if isinstance(addr.postal_code, list):
+                    fhir_address["postalCode"] = addr.postal_code[0]
+                else:
+                    fhir_address["postalCode"] = addr.postal_code
+
+            # Country - handle potential list type
+            if hasattr(addr, "country") and addr.country:
+                if isinstance(addr.country, list):
+                    fhir_address["country"] = addr.country[0]
+                else:
+                    fhir_address["country"] = addr.country
+
+            # Period from useable_period
+            if hasattr(addr, "useable_period") and addr.useable_period:
+                period: JSONObject = {}
+                if hasattr(addr.useable_period, "low") and addr.useable_period.low:
+                    start = self.convert_date(addr.useable_period.low.value)
+                    if start:
+                        period["start"] = start
+                if hasattr(addr.useable_period, "high") and addr.useable_period.high:
+                    end = self.convert_date(addr.useable_period.high.value)
+                    if end:
+                        period["end"] = end
+                if period:
+                    fhir_address["period"] = period
+
+            # Only add if we have meaningful content (more than just type)
+            if len(fhir_address) > 1:
+                fhir_addresses.append(fhir_address)
+
+        return fhir_addresses
+
+    def convert_address_single(self, addresses) -> JSONObject:
+        """Convert C-CDA AD element(s) to a single FHIR Address.
+
+        For resources like Location where address is 0..1, not an array.
+        Returns the first address if multiple provided.
+
+        Args:
+            addresses: C-CDA AD element(s) - single or list
+
+        Returns:
+            Single FHIR Address object or empty dict
+        """
+        result = self.convert_addresses(addresses)
+        return result[0] if result else {}
+
+    def convert_telecom(self, telecoms) -> list[JSONObject]:
+        """Convert C-CDA TEL elements to FHIR ContactPoint objects.
+
+        Handles both single TEL and list of TEL inputs. Parses URI schemes
+        (tel:, mailto:, fax:, http:) and maps to FHIR system codes.
+
+        Args:
+            telecoms: C-CDA TEL element(s) - single or list
+
+        Returns:
+            List of FHIR ContactPoint objects
+        """
+        from ccda_to_fhir.constants import TELECOM_USE_MAP, FHIRCodes
+
+        if telecoms is None:
+            return []
+
+        contact_points: list[JSONObject] = []
+
+        # Normalize to list
+        telecom_list = telecoms if isinstance(telecoms, list) else [telecoms]
+
+        for telecom in telecom_list:
+            if telecom is None:
+                continue
+
+            if not hasattr(telecom, "value") or not telecom.value:
+                continue
+
+            contact_point: JSONObject = {}
+            value = telecom.value
+
+            # Parse system and value from URI scheme prefix
+            if value.startswith("tel:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
+                contact_point["value"] = value[4:]  # Remove "tel:" prefix
+            elif value.startswith("mailto:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.EMAIL
+                contact_point["value"] = value[7:]  # Remove "mailto:" prefix
+            elif value.startswith("fax:"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.FAX
+                contact_point["value"] = value[4:]  # Remove "fax:" prefix
+            elif value.startswith("http://") or value.startswith("https://"):
+                contact_point["system"] = FHIRCodes.ContactPointSystem.URL
+                contact_point["value"] = value
+            else:
+                # Unknown format - assume phone if no recognized prefix
+                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
+                contact_point["value"] = value
+
+            # Use
+            if hasattr(telecom, "use") and telecom.use:
+                fhir_use = TELECOM_USE_MAP.get(telecom.use)
+                if fhir_use:
+                    contact_point["use"] = fhir_use
+
+            # Period from use_period
+            if hasattr(telecom, "use_period") and telecom.use_period:
+                period: JSONObject = {}
+                if hasattr(telecom.use_period, "low") and telecom.use_period.low:
+                    start = self.convert_date(telecom.use_period.low.value)
+                    if start:
+                        period["start"] = start
+                if hasattr(telecom.use_period, "high") and telecom.use_period.high:
+                    end = self.convert_date(telecom.use_period.high.value)
+                    if end:
+                        period["end"] = end
+                if period:
+                    contact_point["period"] = period
+
+            if contact_point:
+                contact_points.append(contact_point)
+
+        return contact_points
