@@ -1091,6 +1091,162 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         result = self.convert_addresses(addresses)
         return result[0] if result else {}
 
+    def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
+        """Generate FHIR Condition ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Condition", root, extension)
+
+    def _generate_condition_id_from_observation(self, observation) -> str | None:
+        """Generate a Condition resource ID from a Problem Observation.
+
+        Uses the same ID generation logic as ConditionConverter to ensure
+        consistent references to Condition resources.
+
+        Args:
+            observation: Problem Observation with ID
+
+        Returns:
+            Condition resource ID string, or None if no identifiers available
+        """
+        if hasattr(observation, "id") and observation.id:
+            for id_elem in observation.id:
+                if hasattr(id_elem, "root") and id_elem.root:
+                    extension = id_elem.extension if hasattr(id_elem, "extension") else None
+                    return self._generate_condition_id(id_elem.root, extension)
+
+        from ccda_to_fhir.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.warning(
+            "Cannot generate Condition ID from Problem Observation: no identifiers provided. "
+            "Skipping reasonReference."
+        )
+        return None
+
+    def extract_reasons_from_entry_relationships(
+        self,
+        entry_relationships: list,
+        problem_template_id: str = "2.16.840.1.113883.10.20.22.4.4",
+    ) -> dict[str, list]:
+        """Extract reason codes and references from C-CDA entry relationships.
+
+        Looks for RSON (reason) type relationships and extracts:
+        - Problem Observations → Condition references (if Condition exists in registry)
+        - Other observations → CodeableConcepts from observation.value
+
+        This is a common pattern used across multiple converters including:
+        - ProcedureConverter
+        - ServiceRequestConverter
+        - EncounterConverter
+
+        Args:
+            entry_relationships: List of C-CDA EntryRelationship elements
+            problem_template_id: Template ID for Problem Observation
+                (default: standard C-CDA template 2.16.840.1.113883.10.20.22.4.4)
+
+        Returns:
+            Dict with "codes" (list of CodeableConcept) and "references" (list of Reference)
+        """
+        from ccda_to_fhir.constants import FHIRCodes
+
+        reason_codes: list[JSONObject] = []
+        reason_refs: list[JSONObject] = []
+
+        if not entry_relationships:
+            return {"codes": reason_codes, "references": reason_refs}
+
+        for entry_rel in entry_relationships:
+            # Look for RSON (reason) relationships
+            type_code = None
+            if hasattr(entry_rel, "type_code"):
+                type_code = entry_rel.type_code
+                # Handle TypeCodes enum if present
+                if hasattr(type_code, "value"):
+                    type_code = type_code.value
+
+            if type_code != "RSON":
+                continue
+
+            if not hasattr(entry_rel, "observation") or not entry_rel.observation:
+                continue
+
+            obs = entry_rel.observation
+
+            # Check if this observation IS a Problem Observation
+            is_problem_obs = False
+            if hasattr(obs, "template_id") and obs.template_id:
+                for template in obs.template_id:
+                    if hasattr(template, "root") and template.root == problem_template_id:
+                        is_problem_obs = True
+                        break
+
+            if is_problem_obs:
+                # This is a Problem Observation - check if Condition exists
+                condition_id = self._generate_condition_id_from_observation(obs)
+
+                # Skip if we couldn't generate a valid ID
+                if not condition_id:
+                    continue
+
+                # Per C-CDA on FHIR spec: only create reasonReference if the Problem
+                # Observation was converted to a Condition resource elsewhere in the document
+                if self.reference_registry and self.reference_registry.has_resource(
+                    FHIRCodes.ResourceTypes.CONDITION, condition_id
+                ):
+                    # Condition exists - use reasonReference
+                    reason_refs.append({
+                        "reference": f"urn:uuid:{condition_id}"
+                    })
+                else:
+                    # Inline Problem Observation not converted - use reasonCode
+                    codes = self._extract_codes_from_observation_value(obs)
+                    reason_codes.extend(codes)
+            else:
+                # Extract reason code from observation.value (non-Problem observation)
+                codes = self._extract_codes_from_observation_value(obs)
+                reason_codes.extend(codes)
+
+        return {"codes": reason_codes, "references": reason_refs}
+
+    def _extract_codes_from_observation_value(self, obs) -> list[JSONObject]:
+        """Extract CodeableConcepts from an observation's value field.
+
+        Handles both single value objects and lists of values, as C-CDA allows both.
+
+        Args:
+            obs: C-CDA Observation element
+
+        Returns:
+            List of FHIR CodeableConcept dicts
+        """
+        codes: list[JSONObject] = []
+
+        if not hasattr(obs, "value") or not obs.value:
+            return codes
+
+        # Handle both single value and list of values
+        values = obs.value if isinstance(obs.value, list) else [obs.value]
+
+        for value in values:
+            if hasattr(value, "code") and value.code:
+                codeable = self.create_codeable_concept(
+                    code=value.code,
+                    code_system=value.code_system if hasattr(value, "code_system") else None,
+                    display_name=value.display_name if hasattr(value, "display_name") else None,
+                )
+                if codeable:
+                    codes.append(codeable)
+
+        return codes
+
     def convert_telecom(self, telecoms) -> list[JSONObject]:
         """Convert C-CDA TEL elements to FHIR ContactPoint objects.
 
@@ -1165,6 +1321,209 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 contact_points.append(contact_point)
 
         return contact_points
+
+    # -------------------------------------------------------------------------
+    # Performer Extraction Helpers
+    # -------------------------------------------------------------------------
+    # These helpers support common patterns for extracting practitioner and
+    # organization references from C-CDA performer and author elements.
+
+    NPI_OID = "2.16.840.1.113883.4.6"  # National Provider Identifier
+
+    def select_preferred_identifier(
+        self,
+        identifiers: list,
+        prefer_npi: bool = True,
+    ) -> tuple[str | None, str | None]:
+        """Select the preferred identifier from a list of C-CDA identifiers.
+
+        By default prefers NPI (National Provider Identifier) when available,
+        otherwise returns the first valid identifier.
+
+        Args:
+            identifiers: List of C-CDA II (Instance Identifier) elements
+            prefer_npi: If True, prefer NPI identifier over others (default True)
+
+        Returns:
+            Tuple of (root, extension) for the selected identifier, or (None, None)
+        """
+        if not identifiers:
+            return (None, None)
+
+        npi_id = None
+        first_id = None
+
+        for id_elem in identifiers:
+            root = getattr(id_elem, "root", None)
+            if not root:
+                continue
+
+            if first_id is None:
+                first_id = id_elem
+
+            # Check for NPI
+            if prefer_npi and root == self.NPI_OID:
+                npi_id = id_elem
+                break
+
+        # Use NPI if available and preferred, otherwise use first
+        selected = npi_id if npi_id else first_id
+        if selected:
+            return (selected.root, getattr(selected, "extension", None))
+
+        return (None, None)
+
+    def create_practitioner_reference_from_entity(
+        self,
+        assigned_entity,
+        create_resource: bool = False,
+        pending_resources: list | None = None,
+    ) -> JSONObject | None:
+        """Create a Practitioner reference from a C-CDA AssignedEntity.
+
+        Optionally creates the Practitioner resource if it doesn't already exist
+        in the reference registry.
+
+        Args:
+            assigned_entity: C-CDA AssignedEntity element
+            create_resource: If True, creates Practitioner resource if not in registry
+            pending_resources: List to append created Practitioner resources to
+
+        Returns:
+            FHIR Reference dict or None if no valid identifier found
+        """
+        if not assigned_entity:
+            return None
+
+        # Check for assigned_person (indicates this is a practitioner)
+        if not (hasattr(assigned_entity, "assigned_person") and assigned_entity.assigned_person):
+            return None
+
+        # Get identifiers
+        ids = getattr(assigned_entity, "id", None)
+        if not ids:
+            return None
+
+        root, extension = self.select_preferred_identifier(ids)
+        if not root:
+            return None
+
+        pract_id = self._generate_practitioner_id(root, extension)
+
+        # Create resource if requested and not already in registry
+        if create_resource and self.reference_registry:
+            if not self.reference_registry.has_resource("Practitioner", pract_id):
+                from ccda_to_fhir.converters.practitioner import PractitionerConverter
+
+                pract_converter = PractitionerConverter(
+                    code_system_mapper=self.code_system_mapper
+                )
+                practitioner = pract_converter.convert(assigned_entity)
+                practitioner["id"] = pract_id
+
+                # Add to pending resources list
+                if pending_resources is not None:
+                    pending_resources.append(practitioner)
+
+                # Register with reference registry
+                self.reference_registry.register_resource(practitioner)
+
+        return {"reference": f"urn:uuid:{pract_id}"}
+
+    def create_organization_reference_from_entity(
+        self,
+        represented_organization,
+        create_resource: bool = False,
+        pending_resources: list | None = None,
+    ) -> JSONObject | None:
+        """Create an Organization reference from a C-CDA RepresentedOrganization.
+
+        Optionally creates the Organization resource if it doesn't already exist
+        in the reference registry.
+
+        Args:
+            represented_organization: C-CDA Organization element
+            create_resource: If True, creates Organization resource if not in registry
+            pending_resources: List to append created Organization resources to
+
+        Returns:
+            FHIR Reference dict or None if no valid identifier found
+        """
+        if not represented_organization:
+            return None
+
+        # Get identifiers
+        ids = getattr(represented_organization, "id", None)
+        if not ids:
+            return None
+
+        root, extension = self.select_preferred_identifier(ids)
+        if not root:
+            return None
+
+        org_id = self._generate_organization_id(root, extension)
+
+        # Create resource if requested and not already in registry
+        if create_resource and self.reference_registry:
+            if not self.reference_registry.has_resource("Organization", org_id):
+                from ccda_to_fhir.converters.organization import OrganizationConverter
+
+                org_converter = OrganizationConverter(
+                    code_system_mapper=self.code_system_mapper
+                )
+                organization = org_converter.convert(represented_organization)
+                organization["id"] = org_id
+
+                # Add to pending resources list
+                if pending_resources is not None:
+                    pending_resources.append(organization)
+
+                # Register with reference registry
+                self.reference_registry.register_resource(organization)
+
+        return {"reference": f"urn:uuid:{org_id}"}
+
+    def extract_performer_function(
+        self,
+        function_code,
+        exclude_codes: set[str] | None = None,
+    ) -> JSONObject | None:
+        """Extract performer function as FHIR CodeableConcept from C-CDA functionCode.
+
+        Maps C-CDA ParticipationFunction codes to FHIR ParticipationType codes
+        using the PARTICIPATION_FUNCTION_CODE_MAP.
+
+        Args:
+            function_code: C-CDA functionCode element
+            exclude_codes: Set of codes to exclude (e.g., encounter-only codes)
+
+        Returns:
+            FHIR CodeableConcept for function, or None
+        """
+        from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP, FHIRSystems
+
+        if not function_code:
+            return None
+
+        code = function_code.code if hasattr(function_code, "code") else None
+        if not code:
+            return None
+
+        # Map known function codes or pass through if not in map
+        mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(code, code)
+
+        # Check exclusion list
+        if exclude_codes and mapped_code in exclude_codes:
+            return None
+
+        function_coding: JSONObject = {
+            "system": FHIRSystems.V3_PARTICIPATION_TYPE,
+            "code": mapped_code,
+        }
+        if hasattr(function_code, "display_name") and function_code.display_name:
+            function_coding["display"] = function_code.display_name
+
+        return {"coding": [function_coding]}
 
     def extract_code_translations(self, code) -> list[JSONObject]:
         """Extract translation codes from a C-CDA coded element.

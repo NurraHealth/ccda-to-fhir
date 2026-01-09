@@ -518,6 +518,9 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
     def _extract_performers(self, performers: list) -> list[JSONObject]:
         """Extract performer references from C-CDA performers.
 
+        Uses base class helper for identifier selection. Does not create
+        Practitioner resources (reference-only).
+
         Args:
             performers: List of C-CDA performer elements
 
@@ -531,19 +534,13 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                 continue
 
             assigned_entity = performer.assigned_entity
+            ids = getattr(assigned_entity, "id", None)
 
-            if hasattr(assigned_entity, "id") and assigned_entity.id:
-                for id_elem in assigned_entity.id:
-                    if id_elem.root:
-                        pract_id = self._generate_practitioner_id(
-                            id_elem.root, id_elem.extension
-                        )
-                        fhir_performers.append(
-                            {
-                                "reference": f"urn:uuid:{pract_id}"
-                            }
-                        )
-                        break
+            # Select first valid identifier (no NPI preference for ServiceRequest)
+            root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
+            if root:
+                pract_id = self._generate_practitioner_id(root, extension)
+                fhir_performers.append({"reference": f"urn:uuid:{pract_id}"})
 
         return fhir_performers
 
@@ -565,126 +562,21 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
     def _extract_reasons(self, entry_relationships: list) -> dict[str, list]:
         """Extract reason codes and references from entryRelationships.
 
+        Delegates to base class method for consistent handling across converters.
+
         Args:
             entry_relationships: List of C-CDA entry relationship elements
 
         Returns:
             Dict with "codes" and "references" lists
         """
-        reason_codes = []
-        reason_refs = []
-
-        for entry_rel in entry_relationships:
-            if hasattr(entry_rel, "type_code") and entry_rel.type_code == "RSON":
-                if hasattr(entry_rel, "observation") and entry_rel.observation:
-                    obs = entry_rel.observation
-
-                    # Check if this is a Problem Observation
-                    is_problem_obs = False
-                    if hasattr(obs, "template_id") and obs.template_id:
-                        for template in obs.template_id:
-                            if (
-                                hasattr(template, "root")
-                                and template.root == TemplateIds.PROBLEM_OBSERVATION
-                            ):
-                                is_problem_obs = True
-                                break
-
-                    if is_problem_obs:
-                        # Check if Condition resource exists
-                        condition_id = self._generate_condition_id_from_observation(obs)
-
-                        # Skip if we couldn't generate a valid ID
-                        if not condition_id:
-                            continue
-
-                        if self.reference_registry and self.reference_registry.has_resource(
-                            FHIRCodes.ResourceTypes.CONDITION, condition_id
-                        ):
-                            reason_refs.append(
-                                {
-                                    "reference": f"urn:uuid:{condition_id}"
-                                }
-                            )
-                        else:
-                            # Use reason code instead
-                            if hasattr(obs, "value") and obs.value:
-                                value = obs.value
-                                if hasattr(value, "code") and value.code:
-                                    reason_code = self.create_codeable_concept(
-                                        code=value.code,
-                                        code_system=(
-                                            value.code_system
-                                            if hasattr(value, "code_system")
-                                            else None
-                                        ),
-                                        display_name=(
-                                            value.display_name
-                                            if hasattr(value, "display_name")
-                                            else None
-                                        ),
-                                    )
-                                    if reason_code:
-                                        reason_codes.append(reason_code)
-                    else:
-                        # Extract reason code from observation value
-                        if hasattr(obs, "value") and obs.value:
-                            value = obs.value
-                            if hasattr(value, "code") and value.code:
-                                reason_code = self.create_codeable_concept(
-                                    code=value.code,
-                                    code_system=(
-                                        value.code_system
-                                        if hasattr(value, "code_system")
-                                        else None
-                                    ),
-                                    display_name=(
-                                        value.display_name
-                                        if hasattr(value, "display_name")
-                                        else None
-                                    ),
-                                )
-                                if reason_code:
-                                    reason_codes.append(reason_code)
-
-        return {"codes": reason_codes, "references": reason_refs}
-
-    def _generate_condition_id_from_observation(self, observation) -> str | None:
-        """Generate Condition ID from Problem Observation.
-
-        Args:
-            observation: Problem Observation with ID
-
-        Returns:
-            Condition resource ID string, or None if no identifiers available
-        """
-        if hasattr(observation, "id") and observation.id:
-            for id_elem in observation.id:
-                if hasattr(id_elem, "root") and id_elem.root:
-                    extension = (
-                        id_elem.extension if hasattr(id_elem, "extension") else None
-                    )
-                    return self._generate_condition_id(id_elem.root, extension)
-
-        logger.warning(
-            "Cannot generate Condition ID from Problem Observation: no identifiers provided. "
-            "Skipping reasonReference."
+        return self.extract_reasons_from_entry_relationships(
+            entry_relationships,
+            problem_template_id=TemplateIds.PROBLEM_OBSERVATION,
         )
-        return None
 
-    def _generate_condition_id(self, root: str | None, extension: str | None) -> str:
-        """Generate FHIR Condition ID from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID string
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Condition", root, extension)
+    # Note: _generate_condition_id and _generate_condition_id_from_observation
+    # are inherited from BaseConverter
 
     def _extract_patient_instruction(self, entry_relationships: list) -> str | None:
         """Extract patient instruction from entryRelationships.

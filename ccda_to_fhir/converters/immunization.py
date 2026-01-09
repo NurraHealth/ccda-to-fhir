@@ -937,38 +937,12 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
             # Extract practitioner reference from assigned entity ID
             # Per C-CDA on FHIR IG, use assignedEntity.id to create Practitioner reference
-            if assigned_entity.id:
-                for id_elem in assigned_entity.id:
-                    # Skip nullFlavor IDs if there are other valid IDs
-                    if id_elem.root and not id_elem.null_flavor:
-                        pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                        performer_obj["actor"] = {
-                            "reference": f"urn:uuid:{pract_id}"
-                        }
-                        break
+            # Prefer non-nullFlavor IDs, but use nullFlavor ID as fallback
+            actor_ref = self._select_performer_actor(assigned_entity)
+            if actor_ref:
+                performer_obj["actor"] = actor_ref
 
-                # If all IDs have nullFlavor, use the first one anyway to create a reference
-                if "actor" not in performer_obj and assigned_entity.id:
-                    id_elem = assigned_entity.id[0]
-                    if id_elem.root:
-                        pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                        performer_obj["actor"] = {
-                            "reference": f"urn:uuid:{pract_id}"
-                        }
-
-            # If no ID found, try to use represented organization
-            if "actor" not in performer_obj:
-                if assigned_entity.represented_organization and assigned_entity.represented_organization.id:
-                    org = assigned_entity.represented_organization
-                    for id_elem in org.id:
-                        if id_elem.root:
-                            org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
-                            performer_obj["actor"] = {
-                                "reference": f"urn:uuid:{org_id}"
-                            }
-                            break
-
-            # Set function (who administered the vaccine)
+            # Set function (who administered the vaccine) - fixed for immunizations
             performer_obj["function"] = {
                 "coding": [{
                     "system": FHIRSystems.V2_PARTICIPATION_FUNCTION,
@@ -983,6 +957,45 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 performers.append(performer_obj)
 
         return performers
+
+    def _select_performer_actor(self, assigned_entity) -> JSONObject | None:
+        """Select the actor reference for a performer, handling nullFlavor and fallbacks.
+
+        Priority:
+        1. Non-nullFlavor practitioner ID
+        2. Any practitioner ID (including nullFlavor)
+        3. Organization ID as fallback
+
+        Args:
+            assigned_entity: C-CDA AssignedEntity element
+
+        Returns:
+            FHIR Reference dict or None
+        """
+        # Try to find a practitioner ID
+        if assigned_entity.id:
+            # First pass: prefer non-nullFlavor IDs
+            for id_elem in assigned_entity.id:
+                if id_elem.root and not getattr(id_elem, "null_flavor", None):
+                    pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                    return {"reference": f"urn:uuid:{pract_id}"}
+
+            # Second pass: use first ID with root (including nullFlavor)
+            for id_elem in assigned_entity.id:
+                if id_elem.root:
+                    pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                    return {"reference": f"urn:uuid:{pract_id}"}
+
+        # Fallback: try represented organization
+        org = getattr(assigned_entity, "represented_organization", None)
+        if org:
+            org_ids = getattr(org, "id", None)
+            root, extension = self.select_preferred_identifier(org_ids, prefer_npi=False)
+            if root:
+                org_id = self._generate_organization_id(root, extension)
+                return {"reference": f"urn:uuid:{org_id}"}
+
+        return None
 
 
     def _extract_notes(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:

@@ -331,6 +331,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         """Extract performers (pharmacy/pharmacist) and location (pharmacy) from supply.
 
         Also creates Location resource for pharmacy when representedOrganization is present.
+        Uses base class helpers for identifier selection.
 
         Args:
             supply: The C-CDA Supply element
@@ -354,20 +355,12 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
                 # Determine if it's a practitioner or organization
                 if hasattr(assigned, "assigned_person") and assigned.assigned_person:
-                    # Practitioner performer case
-                    if hasattr(assigned, "id") and assigned.id:
-                        for id_elem in assigned.id:
-                            if id_elem.root:
-                                from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                                pract_id = generate_id_from_identifiers(
-                                    "Practitioner",
-                                    id_elem.root,
-                                    id_elem.extension,
-                                )
-                                performer_obj["actor"] = {
-                                    "reference": f"urn:uuid:{pract_id}"
-                                }
-                                break
+                    # Practitioner performer case - use base helper for ID selection
+                    ids = getattr(assigned, "id", None)
+                    root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
+                    if root:
+                        pract_id = self._generate_practitioner_id(root, extension)
+                        performer_obj["actor"] = {"reference": f"urn:uuid:{pract_id}"}
 
                     # Determine function from C-CDA functionCode or use context-based default
                     performer_obj["function"] = self._determine_performer_function(perf, context="performer")
@@ -398,21 +391,15 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                 assigned = author.assigned_author
 
                 if hasattr(assigned, "assigned_person") and assigned.assigned_person:
-                    if hasattr(assigned, "id") and assigned.id:
-                        for id_elem in assigned.id:
-                            if id_elem.root:
-                                from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                                pract_id = generate_id_from_identifiers(
-                                    "Practitioner",
-                                    id_elem.root,
-                                    id_elem.extension,
-                                )
-                                performer_obj = {
-                                    "function": self._determine_performer_function(author, context="author"),
-                                    "actor": {"reference": f"urn:uuid:{pract_id}"},
-                                }
-                                performers.append(performer_obj)
-                                break
+                    ids = getattr(assigned, "id", None)
+                    root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
+                    if root:
+                        pract_id = self._generate_practitioner_id(root, extension)
+                        performer_obj = {
+                            "function": self._determine_performer_function(author, context="author"),
+                            "actor": {"reference": f"urn:uuid:{pract_id}"},
+                        }
+                        performers.append(performer_obj)
 
         return (performers if performers else None, location_ref)
 
