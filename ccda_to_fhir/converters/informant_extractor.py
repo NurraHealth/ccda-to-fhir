@@ -7,13 +7,8 @@ related persons (relatedEntity).
 
 from __future__ import annotations
 
-from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.clinical_document import Informant
-from ccda_to_fhir.ccda.models.encounter import Encounter
-from ccda_to_fhir.ccda.models.observation import Observation
-from ccda_to_fhir.ccda.models.organizer import Organizer
-from ccda_to_fhir.ccda.models.procedure import Procedure
-from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
+from ccda_to_fhir.converters.base_extractor import BaseParticipantExtractor
 
 
 class InformantInfo:
@@ -125,141 +120,33 @@ class InformantInfo:
         return generate_id_from_identifiers("RelatedPerson", cache_key, None)
 
 
-class InformantExtractor:
+class InformantExtractor(BaseParticipantExtractor[InformantInfo]):
     """Extract informant information from C-CDA elements.
 
     This class provides methods to extract informant metadata from various
     C-CDA element types (Act, Observation, SubstanceAdministration, Procedure, etc.)
+
+    Inherits extraction methods from BaseParticipantExtractor:
+    - extract_from_concern_act
+    - extract_from_observation
+    - extract_from_substance_administration
+    - extract_from_procedure
+    - extract_from_encounter
+    - extract_from_organizer
+    - extract_combined
     """
 
-    def extract_from_concern_act(self, act: Act) -> list[InformantInfo]:
-        """Extract informants from Concern Act (Problem, Allergy).
+    def _get_attribute_name(self) -> str:
+        """Return 'informant' as the attribute to access on C-CDA elements."""
+        return "informant"
 
-        Args:
-            act: The C-CDA Act (concern act) element
+    def _create_info(self, element: Informant, context: str) -> InformantInfo:
+        """Create an InformantInfo from an Informant element."""
+        return InformantInfo(element, context=context)
 
-        Returns:
-            List of InformantInfo objects
+    def _get_info_id(self, info: InformantInfo) -> tuple:
+        """Get unique identifier for informant deduplication.
+
+        Uses practitioner_id or related_person_id as the key.
         """
-        informants = []
-        if act.informant:
-            for informant in act.informant:
-                informants.append(InformantInfo(informant, context="concern_act"))
-        return informants
-
-    def extract_from_observation(self, observation: Observation) -> list[InformantInfo]:
-        """Extract informants from Observation.
-
-        Args:
-            observation: The C-CDA Observation element
-
-        Returns:
-            List of InformantInfo objects
-        """
-        informants = []
-        if observation.informant:
-            for informant in observation.informant:
-                informants.append(InformantInfo(informant, context="observation"))
-        return informants
-
-    def extract_from_substance_administration(
-        self, sa: SubstanceAdministration
-    ) -> list[InformantInfo]:
-        """Extract informants from SubstanceAdministration (Medication, Immunization).
-
-        Args:
-            sa: The C-CDA SubstanceAdministration element
-
-        Returns:
-            List of InformantInfo objects
-        """
-        informants = []
-        if sa.informant:
-            for informant in sa.informant:
-                informants.append(InformantInfo(informant, context="substance_administration"))
-        return informants
-
-    def extract_from_procedure(self, procedure: Procedure) -> list[InformantInfo]:
-        """Extract informants from Procedure.
-
-        Args:
-            procedure: The C-CDA Procedure element
-
-        Returns:
-            List of InformantInfo objects
-        """
-        informants = []
-        if procedure.informant:
-            for informant in procedure.informant:
-                informants.append(InformantInfo(informant, context="procedure"))
-        return informants
-
-    def extract_from_encounter(self, encounter: Encounter) -> list[InformantInfo]:
-        """Extract informants from Encounter.
-
-        Args:
-            encounter: The C-CDA Encounter element
-
-        Returns:
-            List of InformantInfo objects
-        """
-        informants = []
-        if encounter.informant:
-            for informant in encounter.informant:
-                informants.append(InformantInfo(informant, context="encounter"))
-        return informants
-
-    def extract_from_organizer(self, organizer: Organizer) -> list[InformantInfo]:
-        """Extract informants from Organizer (Result Organizer, Vital Signs Organizer).
-
-        Args:
-            organizer: The C-CDA Organizer element
-
-        Returns:
-            List of InformantInfo objects
-        """
-        informants = []
-        if organizer.informant:
-            for informant in organizer.informant:
-                informants.append(InformantInfo(informant, context="organizer"))
-        return informants
-
-    def extract_combined(
-        self,
-        concern_act: Act | None,
-        entry_element: Observation | SubstanceAdministration | Procedure | Act,
-    ) -> list[InformantInfo]:
-        """Extract informants from both concern act and entry element, combining and deduplicating.
-
-        Used for resources like Condition (from Problem Concern Act + Problem Observation)
-        where informants may appear at multiple levels.
-
-        Args:
-            concern_act: The concern act (Act) element, or None
-            entry_element: The entry element (Observation, etc.)
-
-        Returns:
-            List of unique InformantInfo objects
-        """
-        all_informants = []
-
-        # Extract from concern act
-        if concern_act and concern_act.informant:
-            for informant in concern_act.informant:
-                all_informants.append(InformantInfo(informant, context="concern_act"))
-
-        # Extract from entry element
-        if hasattr(entry_element, "informant") and entry_element.informant:
-            for informant in entry_element.informant:
-                all_informants.append(InformantInfo(informant, context="entry_element"))
-
-        # Deduplicate by ID
-        seen = set()
-        unique_informants = []
-        for informant_info in all_informants:
-            key = informant_info.practitioner_id or informant_info.related_person_id
-            if key and key not in seen:
-                unique_informants.append(informant_info)
-                seen.add(key)
-
-        return unique_informants
+        return (info.practitioner_id or info.related_person_id,)

@@ -841,3 +841,143 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             null_flavor_upper = null_flavor.upper()
             return NULL_FLAVOR_TO_DATA_ABSENT_REASON.get(null_flavor_upper, default)
         return default
+
+    def extract_notes_from_element(
+        self,
+        element,
+        include_text: bool = True,
+        include_comments: bool = True,
+        include_author_time: bool = False,
+    ) -> list[JSONObject]:
+        """Extract FHIR Annotation notes from a C-CDA element.
+
+        This method extracts notes from two sources:
+        1. The element's text field (if include_text=True)
+        2. Comment Activity entries in entry_relationship (if include_comments=True)
+
+        Args:
+            element: C-CDA element (Observation, Procedure, SubstanceAdministration, etc.)
+            include_text: Whether to extract from element.text (default True)
+            include_comments: Whether to extract from Comment Activity entries (default True)
+            include_author_time: Whether to include author time in comment notes (default False)
+
+        Returns:
+            List of FHIR Annotation objects (dicts with 'text' field, optionally 'time')
+
+        Example:
+            >>> notes = converter.extract_notes_from_element(observation)
+            >>> # Result: [{"text": "Patient reported..."}]
+        """
+        from ccda_to_fhir.constants import TemplateIds
+
+        notes: list[JSONObject] = []
+
+        # Extract from text element
+        if include_text and hasattr(element, "text") and element.text:
+            text_content = None
+            if isinstance(element.text, str):
+                text_content = element.text
+            elif hasattr(element.text, "value") and element.text.value:
+                text_content = element.text.value
+            elif hasattr(element.text, "reference"):
+                # Reference to narrative - skip (could resolve if needed)
+                pass
+
+            if text_content:
+                notes.append({"text": text_content})
+
+        # Extract from Comment Activity entries
+        if include_comments and hasattr(element, "entry_relationship") and element.entry_relationship:
+            for entry_rel in element.entry_relationship:
+                if not hasattr(entry_rel, "act") or not entry_rel.act:
+                    continue
+
+                act = entry_rel.act
+
+                # Check if it's a Comment Activity
+                if not hasattr(act, "template_id") or not act.template_id:
+                    continue
+
+                for template in act.template_id:
+                    if template.root == TemplateIds.COMMENT_ACTIVITY:
+                        # This is a Comment Activity - extract text
+                        if hasattr(act, "text") and act.text:
+                            comment_text = None
+                            if isinstance(act.text, str):
+                                comment_text = act.text
+                            elif hasattr(act.text, "value") and act.text.value:
+                                comment_text = act.text.value
+
+                            if comment_text:
+                                note: JSONObject = {"text": comment_text}
+
+                                # Optionally add author time
+                                if include_author_time:
+                                    if hasattr(act, "author") and act.author and len(act.author) > 0:
+                                        author = act.author[0]
+                                        if hasattr(author, "time") and author.time:
+                                            if hasattr(author.time, "value") and author.time.value:
+                                                time_str = self.convert_date(author.time.value)
+                                                if time_str:
+                                                    note["time"] = time_str
+
+                                notes.append(note)
+                        break
+
+        return notes
+
+    def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
+        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Practitioner", root, extension)
+
+    def _generate_organization_id(self, root: str | None, extension: str | None) -> str:
+        """Generate FHIR Organization ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Organization", root, extension)
+
+    def _generate_device_id(self, root: str | None, extension: str | None) -> str:
+        """Generate FHIR Device ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Device", root, extension)
+
+    def _generate_location_id(self, root: str | None, extension: str | None) -> str:
+        """Generate FHIR Location ID using cached UUID v4 from C-CDA identifiers.
+
+        Args:
+            root: The OID or UUID root
+            extension: The extension value
+
+        Returns:
+            Generated UUID v4 string (cached for consistency)
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        return generate_id_from_identifiers("Location", root, extension)

@@ -984,33 +984,6 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         return performers
 
-    def _generate_practitioner_id(self, root: str | None, extension: str | None) -> str:
-        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Practitioner", root, extension)
-
-    def _generate_organization_id(self, root: str | None, extension: str | None) -> str:
-        """Generate FHIR Organization ID using cached UUID v4 from C-CDA identifiers.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        return generate_id_from_identifiers("Organization", root, extension)
 
     def _extract_notes(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
         """Extract FHIR notes from C-CDA substance administration.
@@ -1023,30 +996,8 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         Returns:
             List of FHIR Annotation objects (as dicts with 'text' field)
         """
-        notes = []
-
-        # Extract from Comment Activity entries
-        if substance_admin.entry_relationship:
-            for entry_rel in substance_admin.entry_relationship:
-                if hasattr(entry_rel, "act") and entry_rel.act:
-                    act = entry_rel.act
-                    # Check if it's a Comment Activity
-                    if hasattr(act, "template_id") and act.template_id:
-                        for template in act.template_id:
-                            if template.root == TemplateIds.COMMENT_ACTIVITY:
-                                # This is a Comment Activity
-                                if hasattr(act, "text") and act.text:
-                                    comment_text = None
-                                    if isinstance(act.text, str):
-                                        comment_text = act.text
-                                    elif hasattr(act.text, "value") and act.text.value:
-                                        comment_text = act.text.value
-
-                                    if comment_text:
-                                        notes.append({"text": comment_text})
-                                break
-
-        return notes
+        # Immunization notes only come from comment activities, not from text element
+        return self.extract_notes_from_element(substance_admin, include_text=False)
 
     def _format_name_for_display(self, name) -> str | None:
         """Format a name for display.
