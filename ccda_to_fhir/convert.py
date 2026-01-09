@@ -3365,7 +3365,7 @@ class DocumentConverter:
                         # Extract organization address for Location
                         if provider_org.addr:
                             addrs = provider_org.addr
-                            location_address = location_converter_temp._convert_address(addrs)
+                            location_address = location_converter_temp.convert_address_single(addrs)
                         break
 
             if location_display or (facility.id and len(facility.id) > 0):

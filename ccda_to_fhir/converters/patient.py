@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.ccda.models.datatypes import AD, CE, ENXP, II, PN, TEL
+from ccda_to_fhir.ccda.models.datatypes import CE, ENXP, II, PN
 from ccda_to_fhir.ccda.models.record_target import (
     Guardian,
     LanguageCommunication,
@@ -11,12 +11,10 @@ from ccda_to_fhir.ccda.models.record_target import (
     RecordTarget,
 )
 from ccda_to_fhir.constants import (
-    ADDRESS_USE_MAP,
     ADMINISTRATIVE_GENDER_MAP,
     NAME_USE_MAP,
     OMB_ETHNICITY_CATEGORIES,
     OMB_RACE_CATEGORIES,
-    TELECOM_USE_MAP,
     CodeSystemOIDs,
     FHIRCodes,
     FHIRSystems,
@@ -78,7 +76,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         # Telecom
         if patient_role.telecom:
-            patient["telecom"] = self._convert_telecom(patient_role.telecom)
+            patient["telecom"] = self.convert_telecom(patient_role.telecom)
 
         # Gender
         if patient_data.administrative_gender_code:
@@ -104,7 +102,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         # Address
         if patient_role.addr:
-            patient["address"] = self._convert_addresses(patient_role.addr)
+            patient["address"] = self.convert_addresses(patient_role.addr, include_type=True)
 
         # Marital status
         if patient_data.marital_status_code:
@@ -394,63 +392,6 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         return fhir_names
 
-    def _convert_telecom(self, telecoms: list[TEL]) -> list[FHIRResourceDict]:
-        """Convert C-CDA telecom to FHIR ContactPoint.
-
-        Args:
-            telecoms: List of C-CDA TEL elements
-
-        Returns:
-            List of FHIR ContactPoint dicts
-        """
-        contact_points = []
-
-        for telecom in telecoms:
-            if not telecom.value:
-                continue
-
-            contact_point: JSONObject = {}
-
-            # Parse system and value from tel: or mailto: prefix
-            if telecom.value.startswith("tel:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
-                contact_point["value"] = telecom.value[4:]  # Remove "tel:" prefix
-            elif telecom.value.startswith("mailto:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.EMAIL
-                contact_point["value"] = telecom.value[7:]  # Remove "mailto:" prefix
-            elif telecom.value.startswith("fax:"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.FAX
-                contact_point["value"] = telecom.value[4:]  # Remove "fax:" prefix
-            elif telecom.value.startswith("http://") or telecom.value.startswith("https://"):
-                contact_point["system"] = FHIRCodes.ContactPointSystem.URL
-                contact_point["value"] = telecom.value
-            else:
-                # Unknown format, treat as phone
-                contact_point["system"] = FHIRCodes.ContactPointSystem.PHONE
-                contact_point["value"] = telecom.value
-
-            # Use
-            if telecom.use:
-                contact_point["use"] = TELECOM_USE_MAP.get(telecom.use, FHIRCodes.ContactPointUse.HOME)
-
-            # Period
-            if telecom.use_period:
-                period = {}
-                if telecom.use_period.low:
-                    start = self.convert_date(telecom.use_period.low.value)
-                    if start:
-                        period["start"] = start
-                if telecom.use_period.high:
-                    end = self.convert_date(telecom.use_period.high.value)
-                    if end:
-                        period["end"] = end
-                if period:
-                    contact_point["period"] = period
-
-            contact_points.append(contact_point)
-
-        return contact_points
-
     def _convert_gender(self, gender_code: CE) -> str | None:
         """Convert C-CDA administrative gender to FHIR gender.
 
@@ -485,66 +426,6 @@ class PatientConverter(BaseConverter[RecordTarget]):
             result["deceasedBoolean"] = patient_data.sdtc_deceased_ind
 
         return result
-
-    def _convert_addresses(self, addresses: list[AD]) -> list[FHIRResourceDict]:
-        """Convert C-CDA addresses to FHIR Address.
-
-        Args:
-            addresses: List of C-CDA AD elements
-
-        Returns:
-            List of FHIR Address dicts
-        """
-        fhir_addresses = []
-
-        for addr in addresses:
-            fhir_addr: JSONObject = {}
-
-            # Use
-            if addr.use:
-                fhir_addr["use"] = ADDRESS_USE_MAP.get(addr.use, FHIRCodes.AddressUse.HOME)
-
-            # Type
-            fhir_addr["type"] = FHIRCodes.AddressType.PHYSICAL
-
-            # Line (street address)
-            if addr.street_address_line:
-                fhir_addr["line"] = addr.street_address_line
-
-            # City
-            if addr.city:
-                fhir_addr["city"] = addr.city
-
-            # State
-            if addr.state:
-                fhir_addr["state"] = addr.state
-
-            # Postal code
-            if addr.postal_code:
-                fhir_addr["postalCode"] = addr.postal_code
-
-            # Country
-            if addr.country:
-                fhir_addr["country"] = addr.country
-
-            # Period
-            if addr.useable_period:
-                period = {}
-                if addr.useable_period.low:
-                    start = self.convert_date(addr.useable_period.low.value)
-                    if start:
-                        period["start"] = start
-                if addr.useable_period.high:
-                    end = self.convert_date(addr.useable_period.high.value)
-                    if end:
-                        period["end"] = end
-                if period:
-                    fhir_addr["period"] = period
-
-            if fhir_addr:
-                fhir_addresses.append(fhir_addr)
-
-        return fhir_addresses
 
     def _convert_guardians(self, guardians: list[Guardian]) -> list[FHIRResourceDict]:
         """Convert C-CDA guardians to FHIR Patient.contact.
@@ -591,11 +472,11 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
             # Telecom
             if guardian.telecom:
-                contact["telecom"] = self._convert_telecom(guardian.telecom)
+                contact["telecom"] = self.convert_telecom(guardian.telecom)
 
             # Address
             if guardian.addr:
-                addresses = self._convert_addresses(guardian.addr)
+                addresses = self.convert_addresses(guardian.addr, include_type=True)
                 if addresses:
                     contact["address"] = addresses[0]
 
@@ -819,7 +700,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
         if not place.addr:
             return None
 
-        addresses = self._convert_addresses([place.addr])
+        addresses = self.convert_addresses([place.addr], include_type=True)
         if not addresses:
             return None
 

@@ -401,49 +401,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         Returns:
             FHIR CodeableConcept
         """
-        # Extract translations if present
-        translations = []
-        if hasattr(code, "translation") and code.translation:
-            for trans in code.translation:
-                if isinstance(trans, (CD, dict)):
-                    trans_code = (
-                        trans.code if hasattr(trans, "code") else trans.get("code")
-                    )
-                    trans_system = (
-                        trans.code_system
-                        if hasattr(trans, "code_system")
-                        else trans.get("code_system")
-                    )
-                    trans_display = (
-                        trans.display_name
-                        if hasattr(trans, "display_name")
-                        else trans.get("display_name")
-                    )
-
-                    if trans_code and trans_system:
-                        translations.append(
-                            {
-                                "code": trans_code,
-                                "code_system": trans_system,
-                                "display_name": trans_display,
-                            }
-                        )
-
-        # Get original text
-        original_text = None
-        if hasattr(code, "original_text") and code.original_text:
-            original_text = self.extract_original_text(code.original_text, section=None)
-
-        if not original_text and code.display_name:
-            original_text = code.display_name
-
-        return self.create_codeable_concept(
-            code=code.code,
-            code_system=code.code_system,
-            display_name=code.display_name,
-            original_text=original_text,
-            translations=translations,
-        )
+        return self.convert_code_to_codeable_concept(code)
 
     def _convert_occurrence(self, effective_time: IVL_TS | str) -> JSONObject | str | None:
         """Convert C-CDA effectiveTime to FHIR occurrence[x].
