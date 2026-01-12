@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "Nurra", email = "ramin@nurra.me" }
+    { name = "Ramin Azhdari", email = "ramin@nurra.me" }
 ]
 keywords = ["fhir", "ccda", "cda", "hl7", "healthcare", "interoperability", "r4b"]
 classifiers = [
