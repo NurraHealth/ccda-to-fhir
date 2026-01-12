@@ -494,63 +494,6 @@ class NoteActivityConverter(BaseConverter[Act]):
 
         return extract_text_by_id(section.text, ref_id)
 
-    def _extract_narrative_by_id(self, narrative, target_id: str) -> str | None:
-        """Extract text content from CDA narrative by ID.
-
-        Args:
-            narrative: StrucDocText narrative object
-            target_id: ID to search for
-
-        Returns:
-            Text content as string or None
-        """
-        # Try to convert narrative to XML and search
-        try:
-            # If narrative has an XML representation, search it
-            if hasattr(narrative, "__dict__"):
-                # Search through narrative elements
-                for attr_name, attr_value in vars(narrative).items():
-                    if isinstance(attr_value, list):
-                        for item in attr_value:
-                            text = self._search_element_for_id(item, target_id)
-                            if text:
-                                return text
-            return None
-        except Exception:
-            return None
-
-    def _search_element_for_id(self, element, target_id: str) -> str | None:
-        """Recursively search an element for matching ID.
-
-        Args:
-            element: Element to search
-            target_id: ID to find
-
-        Returns:
-            Text content if found, None otherwise
-        """
-        if not hasattr(element, "__dict__"):
-            return None
-
-        # Check if this element has the target ID
-        if hasattr(element, "ID") and target_id == element.ID:
-            # Extract text content from this element
-            return self._extract_text_from_element(element)
-
-        # Recursively search child elements
-        for attr_value in vars(element).values():
-            if isinstance(attr_value, list):
-                for item in attr_value:
-                    text = self._search_element_for_id(item, target_id)
-                    if text:
-                        return text
-            elif hasattr(attr_value, "__dict__"):
-                text = self._search_element_for_id(attr_value, target_id)
-                if text:
-                    return text
-
-        return None
-
     def _extract_text_from_element(self, element) -> str:
         """Extract all text content from an element.
 

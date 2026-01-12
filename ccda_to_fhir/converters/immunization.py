@@ -1012,31 +1012,6 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Immunization notes only come from comment activities, not from text element
         return self.extract_notes_from_element(substance_admin, include_text=False)
 
-    def _format_name_for_display(self, name) -> str | None:
-        """Format a name for display.
-
-        Args:
-            name: The name element (PN)
-
-        Returns:
-            Formatted name string or None
-        """
-        parts = []
-
-        # Extract given names
-        if hasattr(name, 'given') and name.given:
-            for given in name.given:
-                parts.append(str(given))
-
-        # Extract family name
-        if hasattr(name, 'family') and name.family:
-            if isinstance(name.family, list):
-                parts.extend(str(f) for f in name.family)
-            else:
-                parts.append(str(name.family))
-
-        return " ".join(parts) if parts else None
-
     def _convert_code_to_codeable_concept(self, code_elem: CD | CE) -> JSONObject | None:
         """Convert a C-CDA CD/CE code element to a FHIR CodeableConcept.
 
