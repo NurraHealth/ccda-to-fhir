@@ -3923,54 +3923,6 @@ class DocumentConverter:
             key = f"{resource_type}/{resource_id}"
             self._author_metadata[key] = authors
 
-    def _store_informant_metadata(
-        self,
-        resource_type: str,
-        resource_id: str,
-        ccda_element,
-        concern_act=None,
-    ):
-        """Store informant metadata for later resource generation.
-
-        Args:
-            resource_type: FHIR resource type (e.g., "Condition", "AllergyIntolerance")
-            resource_id: FHIR resource ID
-            ccda_element: The C-CDA element containing informant information
-            concern_act: Optional concern act (for combined informant extraction)
-        """
-        from ccda_to_fhir.ccda.models.act import Act
-        from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
-        from ccda_to_fhir.ccda.models.observation import Observation
-        from ccda_to_fhir.ccda.models.organizer import Organizer
-        from ccda_to_fhir.ccda.models.procedure import Procedure
-        from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
-
-        informants = []
-
-        if concern_act:
-            # Extract from both concern act and entry element
-            informants = self.informant_extractor.extract_combined(concern_act, ccda_element)
-        else:
-            # Extract based on element type
-            if isinstance(ccda_element, Observation):
-                informants = self.informant_extractor.extract_from_observation(ccda_element)
-            elif isinstance(ccda_element, SubstanceAdministration):
-                informants = self.informant_extractor.extract_from_substance_administration(
-                    ccda_element
-                )
-            elif isinstance(ccda_element, Procedure):
-                informants = self.informant_extractor.extract_from_procedure(ccda_element)
-            elif isinstance(ccda_element, CCDAEncounter):
-                informants = self.informant_extractor.extract_from_encounter(ccda_element)
-            elif isinstance(ccda_element, Organizer):
-                informants = self.informant_extractor.extract_from_organizer(ccda_element)
-            elif isinstance(ccda_element, Act):
-                informants = self.informant_extractor.extract_from_concern_act(ccda_element)
-
-        if informants:
-            key = f"{resource_type}/{resource_id}"
-            self._informant_metadata[key] = informants
-
     def _generate_informant_resources(
         self
     ) -> tuple[list[FHIRResourceDict], list[FHIRResourceDict]]:
