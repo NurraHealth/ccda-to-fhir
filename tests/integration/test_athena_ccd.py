@@ -64,7 +64,11 @@ def test_athena_ccd_comprehensive() -> None:
     assert len(resources_by_type.get("Condition", [])) >= 2
     assert len(resources_by_type.get("AllergyIntolerance", [])) >= 1
     assert len(resources_by_type.get("MedicationStatement", [])) >= 1
-    assert len(resources_by_type.get("Procedure", [])) >= 1
+    # Note: Athena CCD has <section nullFlavor="NI"> for Procedures, meaning "no information"
+    # Per HL7 C-CDA spec, sections with nullFlavor="NI" should have no entries, so we
+    # correctly skip any placeholder entries in such sections.
+    # Therefore, no Procedure resources are expected from this document.
+    assert len(resources_by_type.get("Procedure", [])) == 0
     assert len(resources_by_type.get("Practitioner", [])) >= 1
 
     # === UUID VALIDATION ===

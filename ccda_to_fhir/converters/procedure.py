@@ -139,16 +139,14 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 # Create CodeableConcept with only text
                 fhir_procedure["code"] = {"text": code_text}
             else:
-                # No text available - use data-absent-reason extension
-                # Per C-CDA on FHIR IG ConceptMap CF-NullFlavorDataAbsentReason
-                # Extension goes INSIDE CodeableConcept (complex type, not primitive)
-                null_flavor = procedure.code.null_flavor if hasattr(procedure.code, "null_flavor") else None
-                fhir_procedure["code"] = {
-                    "extension": [
-                        self.create_data_absent_reason_extension(null_flavor, default_reason="unknown")
-                    ],
-                    "text": "Procedure code not specified"
-                }
+                # No text available - cannot create valid FHIR Procedure
+                # Per HL7 C-CDA Examples, sections with nullFlavor="NI" should have no entries.
+                # Entries with nullFlavor codes and no extractable text provide no clinical value.
+                # Align with ObservationConverter behavior which raises ValueError in this case.
+                raise ValueError(
+                    "Procedure code has nullFlavor with no extractable text. "
+                    "Cannot create valid FHIR Procedure without code."
+                )
 
         # Patient reference (from recordTarget in document header)
         if not self.reference_registry:

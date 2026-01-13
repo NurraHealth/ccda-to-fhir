@@ -486,36 +486,20 @@ class TestAthenaComprehensive:
                     assert result["reference"].startswith("urn:uuid:")
 
     def test_procedure_exact_values(self, athena_bundle):
-        """Validate Procedure has EXACT values."""
+        """Validate Procedure resources.
+
+        Note: Athena CCD has <section nullFlavor="NI"> for Procedures, meaning "no information".
+        Per HL7 C-CDA spec, sections with nullFlavor="NI" should have no entries, so we
+        correctly skip any placeholder entries in such sections.
+        Therefore, no Procedure resources are expected from this document.
+        """
         procedures = [e.resource for e in athena_bundle.entry
                      if e.resource.get_resource_type() == "Procedure"]
 
-        assert len(procedures) >= 1, "Must have at least one Procedure"
-
-        # Get first procedure
-        proc = procedures[0].dict() if hasattr(procedures[0], 'dict') else procedures[0].model_dump()
-
-        # Exact status
-        assert "status" in proc
-        assert proc["status"] in ["preparation", "in-progress", "not-done", "on-hold",
-                                  "stopped", "completed", "entered-in-error", "unknown"]
-
-        # Has performedDateTime
-        if "performedDateTime" in proc:
-            from datetime import date, datetime
-            # Can be datetime, date, or string (per FHIR spec)
-            assert isinstance(proc["performedDateTime"], (datetime, date, str))
-            if isinstance(proc["performedDateTime"], str):
-                assert len(proc["performedDateTime"]) >= 10  # At least YYYY-MM-DD
-        elif "performedPeriod" in proc:
-            assert "start" in proc["performedPeriod"]
-
-        # Has subject reference to Patient
-        assert proc["subject"]["reference"].startswith("urn:uuid:")
-
-        # Has code structure
-        if "code" in proc:
-            assert "coding" in proc["code"] or "text" in proc["code"]
+        # Athena CCD has nullFlavor="NI" on Procedures section - no procedures expected
+        assert len(procedures) == 0, (
+            "Athena CCD has nullFlavor='NI' on Procedures section - no procedures expected"
+        )
 
     def test_organization_exact_values(self, athena_bundle):
         """Validate Organization has EXACT values (author organization)."""

@@ -104,6 +104,17 @@ class SectionProcessor:
             section = comp.section
             section_code = section.code.code if section.code else None
 
+            # Skip entries in sections with nullFlavor="NI" (No Information)
+            # Per HL7 C-CDA Examples, sections with nullFlavor="NI" should have no entries.
+            # If entries exist in such sections, they are malformed placeholder data.
+            # See: https://github.com/HL7/C-CDA-Examples/blob/master/General/No%20Section%20Information%20Problems/
+            if section.null_flavor:
+                logger.debug(
+                    f"Skipping entries in section with nullFlavor='{section.null_flavor}' "
+                    f"(section code: {section_code})"
+                )
+                continue
+
             # Process entries in this section
             if section.entry:
                 for entry in section.entry:
