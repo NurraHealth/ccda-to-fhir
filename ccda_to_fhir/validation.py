@@ -6,12 +6,32 @@ to ensure generated resources conform to FHIR R4/R4B specifications.
 
 from __future__ import annotations
 
+from fhir.resources.R4B import get_fhir_model_class
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict
 
 logger = get_logger(__name__)
+
+
+def get_resource_class(resource_type: str) -> type[FHIRAbstractModel] | None:
+    """Get the FHIR R4B resource class for a given resource type name.
+
+    Uses the fhir.resources library's dynamic class loading to avoid
+    maintaining a manual mapping of resource types to classes.
+
+    Args:
+        resource_type: The FHIR resource type name (e.g., "Patient", "Observation")
+
+    Returns:
+        The corresponding FHIR resource class, or None if not found
+    """
+    try:
+        return get_fhir_model_class(resource_type)
+    except (KeyError, LookupError, ValueError, AttributeError):
+        logger.debug(f"No FHIR R4B class found for resource type: {resource_type}")
+        return None
 
 
 class ValidationError(Exception):
@@ -108,6 +128,36 @@ class FHIRValidator:
                 raise ValidationError(resource_type, errors) from e
 
             return None
+
+    def validate(self, resource_dict: FHIRResourceDict) -> FHIRAbstractModel | None:
+        """Validate a FHIR resource dictionary, auto-detecting the resource class.
+
+        This method automatically looks up the appropriate FHIR R4B resource class
+        based on the resourceType field in the dictionary, eliminating the need
+        for callers to maintain their own resource type mappings.
+
+        Args:
+            resource_dict: Dictionary representation of FHIR resource.
+                          Must contain a "resourceType" field.
+
+        Returns:
+            Validated FHIR resource model if successful, None if validation fails
+            and strict mode is disabled, or if resourceType is not recognized.
+
+        Raises:
+            ValidationError: If validation fails and strict mode is enabled
+        """
+        resource_type = resource_dict.get("resourceType")
+        if not resource_type or not isinstance(resource_type, str):
+            logger.warning("Resource missing resourceType field, skipping validation")
+            return None
+
+        resource_class = get_resource_class(resource_type)
+        if not resource_class:
+            logger.debug(f"No validation class for {resource_type}, skipping validation")
+            return None
+
+        return self.validate_resource(resource_dict, resource_class)
 
     def validate_bundle(self, bundle_dict: FHIRResourceDict) -> FHIRResourceDict:
         """Validate a Bundle and all its entries.

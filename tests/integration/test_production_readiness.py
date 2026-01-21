@@ -27,7 +27,8 @@ from pathlib import Path
 
 import pytest
 
-from ccda_to_fhir.convert import RESOURCE_TYPE_MAPPING, convert_document
+from ccda_to_fhir.convert import convert_document
+from ccda_to_fhir.validation import get_resource_class
 from tests.integration.validation_helpers import (
     assert_all_ids_are_uuid_v4,
     assert_all_references_resolve,
@@ -123,7 +124,8 @@ class TestLayer2_PydanticValidation:
             resource_type = resource["resourceType"]
             resource_id = resource.get("id", "unknown")
 
-            if resource_type not in RESOURCE_TYPE_MAPPING:
+            resource_class = get_resource_class(resource_type)
+            if not resource_class:
                 stats["errors"].append({
                     "type": resource_type,
                     "id": resource_id,
@@ -132,8 +134,6 @@ class TestLayer2_PydanticValidation:
                 stats["failed"] += 1
                 stats["total"] += 1
                 continue
-
-            resource_class = RESOURCE_TYPE_MAPPING[resource_type]
 
             try:
                 # Attempt to instantiate Pydantic model
@@ -376,10 +376,10 @@ class TestComprehensiveReport:
             resource = entry["resource"]
             resource_type = resource["resourceType"]
 
-            if resource_type in RESOURCE_TYPE_MAPPING:
-                resource_class = RESOURCE_TYPE_MAPPING[resource_type]
+            resource_class = get_resource_class(resource_type)
+            if resource_class:
                 try:
-                    validated = resource_class(**resource)
+                    resource_class(**resource)
                     pydantic_passed += 1
                 except Exception:
                     pydantic_errors.append(f"{resource_type}/{resource.get('id', '?')}")

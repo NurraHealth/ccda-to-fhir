@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from fhir_core.fhirabstractmodel import FHIRAbstractModel
-
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.ccda.models.datatypes import II
 from ccda_to_fhir.ccda.models.section import StructuredBody
@@ -17,32 +15,7 @@ from ccda_to_fhir.types import (
     FHIRResourceDict,
     JSONObject,
 )
-from ccda_to_fhir.validation import FHIRValidator
-from fhir.resources.R4B.allergyintolerance import AllergyIntolerance
-from fhir.resources.R4B.careplan import CarePlan
-from fhir.resources.R4B.careteam import CareTeam
-from fhir.resources.R4B.composition import Composition
-from fhir.resources.R4B.condition import Condition
-from fhir.resources.R4B.device import Device
-from fhir.resources.R4B.diagnosticreport import DiagnosticReport
-from fhir.resources.R4B.documentreference import DocumentReference
-from fhir.resources.R4B.encounter import Encounter
-from fhir.resources.R4B.goal import Goal
-from fhir.resources.R4B.immunization import Immunization
-from fhir.resources.R4B.location import Location
-from fhir.resources.R4B.medication import Medication
-from fhir.resources.R4B.medicationdispense import MedicationDispense
-from fhir.resources.R4B.medicationrequest import MedicationRequest
-from fhir.resources.R4B.medicationstatement import MedicationStatement
-from fhir.resources.R4B.observation import Observation
-from fhir.resources.R4B.organization import Organization
-from fhir.resources.R4B.patient import Patient
-from fhir.resources.R4B.practitioner import Practitioner
-from fhir.resources.R4B.practitionerrole import PractitionerRole
-from fhir.resources.R4B.procedure import Procedure
-from fhir.resources.R4B.provenance import Provenance
-from fhir.resources.R4B.relatedperson import RelatedPerson
-from fhir.resources.R4B.servicerequest import ServiceRequest
+from ccda_to_fhir.validation import FHIRValidator, get_resource_class
 
 from .converters.allergy_intolerance import convert_allergy_concern_act
 from .converters.author_extractor import AuthorExtractor, AuthorInfo
@@ -80,36 +53,6 @@ from .converters.section_processor import SectionConfig, SectionProcessor
 from .converters.service_request import ServiceRequestConverter
 
 logger = get_logger(__name__)
-
-# Mapping of FHIR resource types to their fhir.resources classes for validation
-RESOURCE_TYPE_MAPPING: dict[str, type[FHIRAbstractModel]] = {
-    "Patient": Patient,
-    "Practitioner": Practitioner,
-    "PractitionerRole": PractitionerRole,
-    "Organization": Organization,
-    "RelatedPerson": RelatedPerson,
-    "Device": Device,
-    "DocumentReference": DocumentReference,
-    "Condition": Condition,
-    "AllergyIntolerance": AllergyIntolerance,
-    "Medication": Medication,
-    "MedicationDispense": MedicationDispense,
-    "MedicationRequest": MedicationRequest,
-    "MedicationStatement": MedicationStatement,
-    "Immunization": Immunization,
-    "Location": Location,
-    "Observation": Observation,
-    "DiagnosticReport": DiagnosticReport,
-    "Procedure": Procedure,
-    "ServiceRequest": ServiceRequest,
-    "Encounter": Encounter,
-    "Composition": Composition,
-    "Provenance": Provenance,
-    "Goal": Goal,
-    "CarePlan": CarePlan,
-    "CareTeam": CareTeam,
-}
-
 
 def convert_careteam_organizer(
     organizer,
@@ -641,15 +584,15 @@ class DocumentConverter:
             return True
 
         resource_type = resource.get("resourceType")
-        if not resource_type:
+        if not resource_type or not isinstance(resource_type, str):
             logger.warning("Resource missing resourceType field, skipping validation")
             return False
 
-        # Get the corresponding FHIR resource class
-        resource_class = RESOURCE_TYPE_MAPPING.get(resource_type)
+        # Get the corresponding FHIR resource class using dynamic lookup
+        resource_class = get_resource_class(resource_type)
         if not resource_class:
             logger.debug(
-                f"No validation mapping for {resource_type}, skipping validation"
+                f"No FHIR R4B class for {resource_type}, skipping validation"
             )
             return True
 
