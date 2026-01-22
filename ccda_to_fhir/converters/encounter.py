@@ -199,16 +199,11 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         Returns:
             FHIR encounter status code
         """
-        # First try statusCode using shared mapping
+        # First try statusCode - only use if code is in mapping
         if encounter.status_code and encounter.status_code.code:
-            # Use map_status_code but return default only if unmapped
-            mapped = self.map_status_code(
-                encounter.status_code,
-                ENCOUNTER_STATUS_TO_FHIR,
-                "",  # Empty string as sentinel to check if mapped
-            )
-            if mapped:  # Only return if successfully mapped
-                return mapped
+            status_code = encounter.status_code.code.lower()
+            if status_code in ENCOUNTER_STATUS_TO_FHIR:
+                return ENCOUNTER_STATUS_TO_FHIR[status_code]
 
         # Fallback to moodCode
         if encounter.mood_code:

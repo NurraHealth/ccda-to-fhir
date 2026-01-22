@@ -297,7 +297,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         # Special handling for planned procedures (moodCode="INT")
         # Per C-CDA on FHIR IG: INT = intent/planned, should map to "preparation"
         if mood_code and mood_code.upper() == "INT" and status_code:
-            code = status_code.code if hasattr(status_code, "code") else None
+            code = getattr(status_code, "code", None) or (status_code if isinstance(status_code, str) else None)
             if code and code.lower() in ("active", "new"):
                 return FHIRCodes.ProcedureStatus.PREPARATION
 

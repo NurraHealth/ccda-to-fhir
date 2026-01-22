@@ -1050,7 +1050,7 @@ EIVL_EVENT_TO_FHIR_WHEN = {
 }
 
 # =============================================================================
-# Observation Mappings
+# Observation / DiagnosticReport / Immunization Status Mappings
 # =============================================================================
 
 # Map C-CDA observation statusCode to FHIR Observation status
@@ -1074,10 +1074,6 @@ DIAGNOSTIC_REPORT_STATUS_TO_FHIR = {
     "aborted": FHIRCodes.DiagnosticReportStatus.CANCELLED,
     "cancelled": FHIRCodes.DiagnosticReportStatus.CANCELLED,
 }
-
-# =============================================================================
-# Immunization Mappings
-# =============================================================================
 
 # Map C-CDA immunization statusCode to FHIR Immunization status
 IMMUNIZATION_STATUS_TO_FHIR = {
