@@ -1,8 +1,6 @@
 # ccda-to-fhir
 
-A Python library for converting C-CDA documents to FHIR R4B resources.
-
-Built for **reliability**: the library fails loudly on unexpected data rather than silently dropping information, ensuring you always know when something needs attention.
+A Python library for converting C-CDA documents to FHIR R4B resources. Built for precision: the library implements the HL7 C-CDA on FHIR Implementation Guide and fails loudly on unexpected data rather than silently dropping information.
 
 ## Installation
 
@@ -28,45 +26,51 @@ bundle = result["bundle"]
 print(f"Converted {len(bundle['entry'])} resources")
 ```
 
-## What Gets Converted
+## Features
 
-The library converts clinical data from C-CDA sections into their FHIR equivalents:
+- **Type Safety**: Strict typing with Pydantic models and mypy validation
+- **Extensibility**: Modular converter architecture for custom mappings
+- **Standards Compliance**: FHIR R4B with US Core profile support, HL7 C-CDA on FHIR IG v2.0.0
+
+### Supported Conversions
 
 | C-CDA Section | FHIR Resource |
 |---------------|---------------|
 | Patient (recordTarget) | Patient |
 | Problems | Condition |
 | Allergies | AllergyIntolerance |
-| Medications | MedicationRequest, MedicationStatement |
+| Medications | MedicationRequest, MedicationStatement, MedicationDispense |
 | Immunizations | Immunization |
 | Procedures | Procedure |
 | Lab Results | DiagnosticReport, Observation |
 | Vital Signs | Observation (vital-signs profile) |
 | Social History | Observation |
 | Encounters | Encounter |
+| Care Plans | CarePlan, Goal |
+| Care Teams | CareTeam |
 | Notes | DocumentReference |
+| Devices | Device |
 | Authors/Performers | Practitioner, PractitionerRole, Provenance |
 
-Each conversion follows the [HL7 C-CDA on FHIR Implementation Guide](https://build.fhir.org/ig/HL7/ccda-on-fhir/) and produces US Core-compliant resources.
+### Clinical Data Handling
 
-## Features
-
-**Standards Compliance**
-- FHIR R4B with US Core profile support
-- HL7 C-CDA on FHIR IG v2.0.0 mapping specification
-- C-CDA R2.1 conformance validation during parsing
-
-**Clinical Data Handling**
-- Complex structures: blood pressure components, pregnancy observations with EDD/gestational age
+- Complex structures: blood pressure components, pregnancy observations
 - Provenance tracking with multi-author support
 - Negation patterns: no-known-allergies, refuted conditions, not-done procedures
 - Body site qualifiers with laterality
 - Reference ranges for vital signs and lab results
-
-**Data Types**
-- All C-CDA data types (CD, CE, PQ, IVL_TS, IVL_PQ, ED, etc.)
 - NullFlavor to data-absent-reason mapping
 - US Core extensions (race, ethnicity, birth sex, tribal affiliation)
+
+## Tested EHR Integrations
+
+The library has been validated against C-CDA documents from:
+
+- Epic
+- Cerner
+- Athena
+- Practice Fusion
+- NIST reference documents
 
 ## Error Handling
 
@@ -100,18 +104,21 @@ print(f"Errors: {len(metadata['errors'])}")
 ## Development
 
 ```bash
-git clone https://github.com/nurra/ccda-to-fhir.git
+git clone https://github.com/NurraHealth/ccda-to-fhir.git
 cd ccda-to-fhir
 
 uv sync --dev
 uv run pytest
 uv run ruff check .
-uv run mypy src/
+uv run mypy ccda_to_fhir/
 ```
 
 ## Documentation
 
-See [docs/mapping/](docs/mapping/) for detailed field-level mapping documentation covering each resource type.
+See [docs/mapping/](docs/mapping/) for detailed field-level mapping documentation covering each resource type, including:
+
+- [Mapping Overview](docs/mapping/00-overview.md) - Core data type mappings and conversion rules
+- [Terminology Maps](docs/mapping/terminology-maps.md) - Value set translations between C-CDA and FHIR
 
 ## License
 
