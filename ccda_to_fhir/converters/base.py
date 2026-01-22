@@ -1322,11 +1322,25 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return contact_points
 
+    # ENXP qualifier to FHIR name use mapping
+    # HL7 v3 EntityNamePartQualifier codes that affect FHIR HumanName.use
+    _ENXP_QUALIFIER_TO_USE = {
+        "CL": "nickname",   # Callme - name used informally
+        "BR": "maiden",     # Birth name
+        "SP": "maiden",     # Spouse name (previous married name when remarried)
+    }
+
     def convert_human_names(self, names) -> list[JSONObject]:
         """Convert C-CDA PN elements to FHIR HumanName objects.
 
         Handles person names from Patient, Practitioner, RelatedPerson contexts.
-        Supports name use mapping, prefix, suffix, and period.
+        Fully supports HL7 v3 name model including:
+        - Name use codes (L, OR, P, etc.) mapped to FHIR use
+        - ENXP qualifiers (CL, BR, IN, AC, etc.)
+        - Prefix, given, family, suffix components
+        - Delimiters for text representation
+        - Valid time periods
+        - Null flavors
 
         Args:
             names: C-CDA PN element(s) - single or list
@@ -1350,28 +1364,40 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
             fhir_name: JSONObject = {}
 
-            # Name use mapping
+            # Handle null_flavor - name is explicitly unknown/masked
+            if hasattr(name, "null_flavor") and name.null_flavor:
+                fhir_name["extension"] = [{
+                    "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+                    "valueCode": self._map_null_flavor_to_data_absent_reason(name.null_flavor)
+                }]
+                fhir_names.append(fhir_name)
+                continue
+
+            # Track if any ENXP qualifier should override the name use
+            qualifier_use = None
+
+            # Name use mapping from PN.use attribute
             if hasattr(name, "use") and name.use:
                 fhir_name["use"] = NAME_USE_MAP.get(name.use, FHIRCodes.NameUse.USUAL)
 
-            # Family name - handle ENXP type
+            # Family name - handle ENXP type with qualifier
             if hasattr(name, "family") and name.family:
-                if hasattr(name.family, "value"):
-                    fhir_name["family"] = name.family.value
-                else:
-                    fhir_name["family"] = str(name.family)
+                family_value, family_qualifier = self._extract_enxp_value_and_qualifier(name.family)
+                if family_value:
+                    fhir_name["family"] = family_value
+                if family_qualifier and family_qualifier in self._ENXP_QUALIFIER_TO_USE:
+                    qualifier_use = self._ENXP_QUALIFIER_TO_USE[family_qualifier]
 
-            # Given names - handle list of ENXP
+            # Given names - handle list of ENXP with qualifiers
             if hasattr(name, "given") and name.given:
                 given_names = []
                 for given in name.given:
-                    if hasattr(given, "value"):
-                        if given.value:
-                            given_names.append(given.value)
-                    else:
-                        given_str = str(given)
-                        if given_str:
-                            given_names.append(given_str)
+                    value, qualifier = self._extract_enxp_value_and_qualifier(given)
+                    if value:
+                        given_names.append(value)
+                    # CL qualifier on given name indicates nickname
+                    if qualifier and qualifier in self._ENXP_QUALIFIER_TO_USE:
+                        qualifier_use = self._ENXP_QUALIFIER_TO_USE[qualifier]
                 if given_names:
                     fhir_name["given"] = given_names
 
@@ -1379,29 +1405,47 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if hasattr(name, "prefix") and name.prefix:
                 prefixes = []
                 for prefix in name.prefix:
-                    if hasattr(prefix, "value"):
-                        if prefix.value:
-                            prefixes.append(prefix.value)
-                    else:
-                        prefix_str = str(prefix)
-                        if prefix_str:
-                            prefixes.append(prefix_str)
+                    value, _ = self._extract_enxp_value_and_qualifier(prefix)
+                    if value:
+                        prefixes.append(value)
                 if prefixes:
                     fhir_name["prefix"] = prefixes
 
-            # Suffix - handle list of ENXP
+            # Suffix - handle list of ENXP (including academic qualifiers)
             if hasattr(name, "suffix") and name.suffix:
                 suffixes = []
                 for suffix in name.suffix:
-                    if hasattr(suffix, "value"):
-                        if suffix.value:
-                            suffixes.append(suffix.value)
-                    else:
-                        suffix_str = str(suffix)
-                        if suffix_str:
-                            suffixes.append(suffix_str)
+                    value, _ = self._extract_enxp_value_and_qualifier(suffix)
+                    if value:
+                        suffixes.append(value)
                 if suffixes:
                     fhir_name["suffix"] = suffixes
+
+            # If ENXP qualifier indicates a specific use, and no explicit use was set, apply it
+            if qualifier_use and "use" not in fhir_name:
+                fhir_name["use"] = qualifier_use
+
+            # Build text representation using delimiters if present
+            text_parts = []
+            if "prefix" in fhir_name:
+                text_parts.extend(fhir_name["prefix"])
+            if "given" in fhir_name:
+                text_parts.extend(fhir_name["given"])
+            if "family" in fhir_name:
+                text_parts.append(fhir_name["family"])
+            if "suffix" in fhir_name:
+                text_parts.extend(fhir_name["suffix"])
+
+            if text_parts:
+                # Use delimiter if provided, otherwise space
+                delimiter = " "
+                if hasattr(name, "delimiter") and name.delimiter:
+                    # delimiter is list[str], use first one
+                    if isinstance(name.delimiter, list) and len(name.delimiter) > 0:
+                        delimiter = name.delimiter[0]
+                    elif isinstance(name.delimiter, str):
+                        delimiter = name.delimiter
+                fhir_name["text"] = delimiter.join(text_parts)
 
             # Period from valid_time
             if hasattr(name, "valid_time") and name.valid_time:
@@ -1422,6 +1466,57 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 fhir_names.append(fhir_name)
 
         return fhir_names
+
+    def _extract_enxp_value_and_qualifier(self, enxp) -> tuple[str | None, str | None]:
+        """Extract value and qualifier from an ENXP element.
+
+        Args:
+            enxp: ENXP element or string
+
+        Returns:
+            Tuple of (value, qualifier)
+        """
+        if enxp is None:
+            return (None, None)
+
+        if isinstance(enxp, str):
+            return (enxp, None)
+
+        value = None
+        qualifier = None
+
+        if hasattr(enxp, "value"):
+            value = enxp.value
+        else:
+            value = str(enxp) if enxp else None
+
+        if hasattr(enxp, "qualifier"):
+            qualifier = enxp.qualifier
+
+        return (value, qualifier)
+
+    def _map_null_flavor_to_data_absent_reason(self, null_flavor: str) -> str:
+        """Map HL7 v3 NullFlavor to FHIR data-absent-reason.
+
+        Args:
+            null_flavor: HL7 v3 NullFlavor code
+
+        Returns:
+            FHIR data-absent-reason code
+        """
+        mapping = {
+            "NI": "unknown",        # No Information
+            "UNK": "unknown",       # Unknown
+            "ASKU": "asked-unknown",  # Asked but unknown
+            "NAV": "temp-unknown",  # Temporarily unavailable
+            "NASK": "not-asked",    # Not asked
+            "MSK": "masked",        # Masked
+            "NA": "not-applicable", # Not applicable
+            "OTH": "unknown",       # Other
+            "NINF": "negative-infinity",
+            "PINF": "positive-infinity",
+        }
+        return mapping.get(null_flavor, "unknown")
 
     # -------------------------------------------------------------------------
     # Performer Extraction Helpers
