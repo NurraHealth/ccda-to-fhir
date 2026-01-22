@@ -233,3 +233,77 @@ class UnsupportedFeatureError(CCDAConversionError):
             message += f" (in {context})"
 
         super().__init__(message)
+
+
+class ConversionWarning(CCDAConversionError):
+    """Warning-level issue that doesn't prevent conversion.
+
+    Use for non-critical issues that should be logged but don't block conversion.
+    The conversion will continue with fallback behavior.
+
+    Examples:
+        - Optional field has unexpected format
+        - Translation code system not recognized
+        - Duplicate ID detected (fallback ID used)
+    """
+
+    def __init__(self, message: str, field_name: str = "", context: str = ""):
+        """Initialize with warning details.
+
+        Args:
+            message: Description of the warning
+            field_name: Name of the field with the issue (optional)
+            context: Where this issue was encountered (optional)
+        """
+        self.field_name = field_name
+        self.context = context
+
+        full_message = message
+        if field_name:
+            full_message = f"{field_name}: {message}"
+        if context:
+            full_message += f" (in {context})"
+
+        super().__init__(full_message)
+
+
+class RecoverableConversionError(CCDAConversionError):
+    """Error that can be recovered from with fallback behavior.
+
+    Use when conversion can continue by using a default/fallback value
+    instead of failing completely.
+
+    Examples:
+        - Status code missing → use "unknown"
+        - Invalid date format → omit the date field
+        - Code system not mapped → use urn:oid: format
+    """
+
+    def __init__(
+        self,
+        message: str,
+        field_name: str = "",
+        fallback_value: str | None = None,
+        context: str = "",
+    ):
+        """Initialize with error details and fallback.
+
+        Args:
+            message: Description of the error
+            field_name: Name of the field with the issue
+            fallback_value: The fallback value that will be used
+            context: Where this error was encountered
+        """
+        self.field_name = field_name
+        self.fallback_value = fallback_value
+        self.context = context
+
+        full_message = message
+        if field_name:
+            full_message = f"{field_name}: {message}"
+        if fallback_value is not None:
+            full_message += f" (using fallback: {fallback_value})"
+        if context:
+            full_message += f" (in {context})"
+
+        super().__init__(full_message)

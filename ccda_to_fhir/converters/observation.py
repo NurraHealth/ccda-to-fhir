@@ -27,6 +27,7 @@ from ccda_to_fhir.constants import (
     FHIRSystems,
     TemplateIds,
 )
+from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.terminology import get_display_for_code
 
@@ -72,7 +73,11 @@ class ObservationConverter(BaseConverter[Observation]):
         # FHIR R4 Requirement: Observation.code is required (1..1)
         # Validate that we can extract a valid code before creating the resource
         if not observation.code:
-            raise ValueError("Observation must have a code element")
+            raise MissingRequiredFieldError(
+                field_name="code",
+                resource_type="Observation",
+                details="Observation must have a code element",
+            )
 
         code_cc = self._convert_code_to_codeable_concept(observation.code)
         if not code_cc:
@@ -83,9 +88,10 @@ class ObservationConverter(BaseConverter[Observation]):
                 text_from_narrative = self.extract_original_text(observation.text, section=section)
 
             if not text_from_narrative:
-                raise ValueError(
-                    "Observation code has nullFlavor with no extractable text. "
-                    "Cannot create valid FHIR Observation without code."
+                raise MissingRequiredFieldError(
+                    field_name="code",
+                    resource_type="Observation",
+                    details="Observation code has nullFlavor with no extractable text",
                 )
 
             # Create a text-only CodeableConcept from narrative
@@ -460,7 +466,7 @@ class ObservationConverter(BaseConverter[Observation]):
                     # Convert the component observation to a standalone resource
                     try:
                         individual = self.convert(component.observation, section=section)
-                    except ValueError as e:
+                    except (ValueError, MissingRequiredFieldError) as e:
                         # Skip observations that can't be converted (e.g., nullFlavor codes without text)
                         # This handles real-world C-CDA documents with incomplete vital sign data
                         from ccda_to_fhir.logging_config import get_logger

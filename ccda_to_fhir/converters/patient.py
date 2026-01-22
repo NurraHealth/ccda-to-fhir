@@ -20,6 +20,7 @@ from ccda_to_fhir.constants import (
     V2IdentifierTypes,
     V3RoleCodes,
 )
+from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
@@ -48,13 +49,21 @@ class PatientConverter(BaseConverter[RecordTarget]):
             ConversionError: If conversion fails
         """
         if not record_target.patient_role:
-            raise ValueError("RecordTarget must have a patientRole")
+            raise MissingRequiredFieldError(
+                field_name="patientRole",
+                resource_type="Patient",
+                details="RecordTarget must have a patientRole element",
+            )
 
         patient_role = record_target.patient_role
         patient_data = patient_role.patient
 
         if not patient_data:
-            raise ValueError("PatientRole must have patient demographics")
+            raise MissingRequiredFieldError(
+                field_name="patient",
+                resource_type="Patient",
+                details="PatientRole must have patient demographics",
+            )
 
         patient: JSONObject = {
             "resourceType": "Patient",
