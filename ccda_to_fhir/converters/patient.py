@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.ccda.models.datatypes import CE, II, PN
+from ccda_to_fhir.ccda.models.datatypes import CE, II
 from ccda_to_fhir.ccda.models.record_target import (
     Guardian,
     LanguageCommunication,
