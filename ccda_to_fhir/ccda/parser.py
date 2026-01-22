@@ -8,6 +8,15 @@ The parser handles:
 - Recursive nested structures
 - Attribute and element parsing
 - List aggregation for repeated elements
+
+Type Safety Note:
+    This module is the data ingestion boundary where C-CDA XML is parsed.
+    `Any` types are used in internal parsing functions because xsi:type
+    polymorphism means the actual type is determined at runtime from XML
+    attributes (e.g., <value xsi:type="PQ"> vs <value xsi:type="CD">).
+    All downstream code uses strongly typed Pydantic models - the `Any`
+    types are confined to this parser and converted to concrete types
+    before leaving this module.
 """
 
 from __future__ import annotations
@@ -58,6 +67,9 @@ from .models import (
     SubstanceAdministration,
     Supply,
 )
+# These imports appear unused but are required for Pydantic model_rebuild() to resolve
+# forward references. Models use TYPE_CHECKING imports for circular dependencies, and
+# model_rebuild() needs all referenced types in scope. See rebuild calls below.
 from .models.act import Reference  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from .models.author import AssignedAuthoringDevice
 from .models.clinical_document import HealthCareFacility, Informant, RelatedEntity  # noqa: F401  # pyright: ignore[reportUnusedImport]

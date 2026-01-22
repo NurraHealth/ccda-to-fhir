@@ -12,7 +12,7 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -51,7 +51,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         """
         procedure = ccda_model  # Alias for readability
         # Validate moodCode - CRITICAL for distinguishing ServiceRequest from Procedure/Goal
-        if not hasattr(procedure, "mood_code") or not procedure.mood_code:
+        if not procedure.mood_code:
             raise ValueError("Planned Procedure/Act must have a moodCode attribute")
 
         mood_code = procedure.mood_code.upper()
@@ -179,15 +179,15 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             if performer_type:
                 fhir_service_request["performerType"] = performer_type
 
-        # Priority - from priorityCode
-        if hasattr(procedure, "priority_code") and procedure.priority_code:
+        # Priority - from priorityCode (both CCDAProcedure and CCDAAct have this)
+        if procedure.priority_code:
             priority = self._map_priority(procedure.priority_code)
             if priority:
                 fhir_service_request["priority"] = priority
 
-        # Body site - from targetSiteCode
-        if hasattr(procedure, "target_site_code") and procedure.target_site_code:
-            body_sites = []
+        # Body site - from targetSiteCode (only CCDAProcedure has this)
+        if isinstance(procedure, CCDAProcedure) and procedure.target_site_code:
+            body_sites: list[JSONValue] = []
             for site_code in procedure.target_site_code:
                 if site_code.code:
                     body_site = self._convert_code(site_code)
