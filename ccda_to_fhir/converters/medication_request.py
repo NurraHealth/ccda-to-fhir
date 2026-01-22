@@ -54,6 +54,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         Raises:
             MissingRequiredFieldError: If the substance administration lacks required data
+            ValueError: If reference_registry is not configured
         """
         # Validation
         if not substance_admin.consumable:

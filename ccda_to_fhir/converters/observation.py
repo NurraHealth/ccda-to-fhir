@@ -72,6 +72,7 @@ class ObservationConverter(BaseConverter[Observation]):
 
         Raises:
             MissingRequiredFieldError: If the observation lacks required data
+            ValueError: If reference_registry is not configured
         """
         # FHIR R4 Requirement: Observation.code is required (1..1)
         # Validate that we can extract a valid code before creating the resource

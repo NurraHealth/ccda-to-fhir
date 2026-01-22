@@ -1916,7 +1916,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Args:
             value: The field value (may be None)
             converter: Function to convert the value
-            field_name: Name for debug logging
+            field_name: Name used in warning logs if conversion fails
             default: Value to return if field is missing or conversion fails
 
         Returns:
