@@ -1665,6 +1665,54 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return translations
 
+    def extract_performer_references(
+        self,
+        performers: list,
+        prefer_npi: bool = False,
+    ) -> list[JSONObject]:
+        """Extract FHIR performer references from C-CDA performer elements.
+
+        This is a shared utility for extracting Practitioner references from C-CDA
+        performer elements. It handles the common pattern of iterating through
+        performers, extracting assigned_entity identifiers, and creating FHIR
+        Reference objects.
+
+        For more complex scenarios (creating Practitioner resources, extracting
+        organization references, or handling performer function codes), use the
+        individual helper methods like create_practitioner_reference_from_entity().
+
+        Args:
+            performers: List of C-CDA Performer elements
+            prefer_npi: If True, prefer NPI identifier over others (default False)
+
+        Returns:
+            List of FHIR Reference dicts (e.g., [{"reference": "urn:uuid:..."}])
+        """
+        if not performers:
+            return []
+
+        references: list[JSONObject] = []
+
+        for performer in performers:
+            if not performer:
+                continue
+
+            assigned_entity = getattr(performer, "assigned_entity", None)
+            if not assigned_entity:
+                continue
+
+            ids = getattr(assigned_entity, "id", None)
+            if not ids:
+                continue
+
+            # Select preferred identifier
+            root, extension = self.select_preferred_identifier(ids, prefer_npi=prefer_npi)
+            if root:
+                practitioner_id = self._generate_practitioner_id(root, extension)
+                references.append({"reference": f"urn:uuid:{practitioner_id}"})
+
+        return references
+
     def convert_code_to_codeable_concept(
         self,
         code,
