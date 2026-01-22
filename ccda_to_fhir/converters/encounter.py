@@ -199,7 +199,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         Returns:
             FHIR encounter status code
         """
-        # First try statusCode
+        # First try statusCode - only use if code is in mapping
         if encounter.status_code and encounter.status_code.code:
             status_code = encounter.status_code.code.lower()
             if status_code in ENCOUNTER_STATUS_TO_FHIR:

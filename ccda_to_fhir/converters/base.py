@@ -12,6 +12,8 @@ from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from .code_systems import CodeSystemMapper
 
 if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.datatypes import CS
+
     from .references import ReferenceRegistry
 
 # Type variable for input C-CDA model
@@ -1807,6 +1809,47 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 references.append({"reference": f"urn:uuid:{practitioner_id}"})
 
         return references
+
+    def map_status_code(
+        self,
+        status_code: CS | str | None,
+        mapping: dict[str, str],
+        default: str,
+    ) -> str:
+        """Map C-CDA status code to FHIR status using provided mapping.
+
+        Generic utility for status code mapping used by all converters.
+        Handles null/missing status codes gracefully.
+
+        Args:
+            status_code: C-CDA CS status code element (may be None)
+            mapping: Dictionary mapping C-CDA codes (lowercase) to FHIR codes
+            default: Default FHIR status if code is missing or unmapped
+
+        Returns:
+            FHIR status code string
+
+        Example:
+            >>> status = self.map_status_code(
+            ...     observation.status_code,
+            ...     OBSERVATION_STATUS_TO_FHIR,
+            ...     FHIRCodes.ObservationStatus.FINAL
+            ... )
+        """
+        if not status_code:
+            return default
+
+        code = None
+        if hasattr(status_code, "code"):
+            code = status_code.code
+        elif isinstance(status_code, str):
+            code = status_code
+
+        if not code:
+            return default
+
+        # Case-insensitive lookup
+        return mapping.get(code.lower(), default)
 
     def convert_code_to_codeable_concept(
         self,

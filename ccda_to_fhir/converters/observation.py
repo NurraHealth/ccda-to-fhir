@@ -596,12 +596,10 @@ class ObservationConverter(BaseConverter[Observation]):
         Returns:
             FHIR Observation status code
         """
-        if not observation.status_code or not observation.status_code.code:
-            return FHIRCodes.ObservationStatus.FINAL
-
-        status_code = observation.status_code.code.lower()
-        return OBSERVATION_STATUS_TO_FHIR.get(
-            status_code, FHIRCodes.ObservationStatus.FINAL
+        return self.map_status_code(
+            observation.status_code,
+            OBSERVATION_STATUS_TO_FHIR,
+            FHIRCodes.ObservationStatus.FINAL,
         )
 
     def _determine_organizer_status(self, organizer: Organizer) -> str:
@@ -613,12 +611,10 @@ class ObservationConverter(BaseConverter[Observation]):
         Returns:
             FHIR Observation status code
         """
-        if not organizer.status_code or not organizer.status_code.code:
-            return FHIRCodes.ObservationStatus.FINAL
-
-        status_code = organizer.status_code.code.lower()
-        return OBSERVATION_STATUS_TO_FHIR.get(
-            status_code, FHIRCodes.ObservationStatus.FINAL
+        return self.map_status_code(
+            organizer.status_code,
+            OBSERVATION_STATUS_TO_FHIR,
+            FHIRCodes.ObservationStatus.FINAL,
         )
 
     def _determine_category(self, observation: Observation) -> list[JSONObject] | None:
