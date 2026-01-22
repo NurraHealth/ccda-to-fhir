@@ -1322,6 +1322,107 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return contact_points
 
+    def convert_human_names(self, names) -> list[JSONObject]:
+        """Convert C-CDA PN elements to FHIR HumanName objects.
+
+        Handles person names from Patient, Practitioner, RelatedPerson contexts.
+        Supports name use mapping, prefix, suffix, and period.
+
+        Args:
+            names: C-CDA PN element(s) - single or list
+
+        Returns:
+            List of FHIR HumanName objects
+        """
+        from ccda_to_fhir.constants import NAME_USE_MAP, FHIRCodes
+
+        if names is None:
+            return []
+
+        fhir_names: list[JSONObject] = []
+
+        # Normalize to list
+        name_list = names if isinstance(names, list) else [names]
+
+        for name in name_list:
+            if name is None:
+                continue
+
+            fhir_name: JSONObject = {}
+
+            # Name use mapping
+            if hasattr(name, "use") and name.use:
+                fhir_name["use"] = NAME_USE_MAP.get(name.use, FHIRCodes.NameUse.USUAL)
+
+            # Family name - handle ENXP type
+            if hasattr(name, "family") and name.family:
+                if hasattr(name.family, "value"):
+                    fhir_name["family"] = name.family.value
+                else:
+                    fhir_name["family"] = str(name.family)
+
+            # Given names - handle list of ENXP
+            if hasattr(name, "given") and name.given:
+                given_names = []
+                for given in name.given:
+                    if hasattr(given, "value"):
+                        if given.value:
+                            given_names.append(given.value)
+                    else:
+                        given_str = str(given)
+                        if given_str:
+                            given_names.append(given_str)
+                if given_names:
+                    fhir_name["given"] = given_names
+
+            # Prefix - handle list of ENXP
+            if hasattr(name, "prefix") and name.prefix:
+                prefixes = []
+                for prefix in name.prefix:
+                    if hasattr(prefix, "value"):
+                        if prefix.value:
+                            prefixes.append(prefix.value)
+                    else:
+                        prefix_str = str(prefix)
+                        if prefix_str:
+                            prefixes.append(prefix_str)
+                if prefixes:
+                    fhir_name["prefix"] = prefixes
+
+            # Suffix - handle list of ENXP
+            if hasattr(name, "suffix") and name.suffix:
+                suffixes = []
+                for suffix in name.suffix:
+                    if hasattr(suffix, "value"):
+                        if suffix.value:
+                            suffixes.append(suffix.value)
+                    else:
+                        suffix_str = str(suffix)
+                        if suffix_str:
+                            suffixes.append(suffix_str)
+                if suffixes:
+                    fhir_name["suffix"] = suffixes
+
+            # Period from valid_time
+            if hasattr(name, "valid_time") and name.valid_time:
+                period: JSONObject = {}
+                if hasattr(name.valid_time, "low") and name.valid_time.low:
+                    start = self.convert_date(name.valid_time.low.value)
+                    if start:
+                        period["start"] = start
+                if hasattr(name.valid_time, "high") and name.valid_time.high:
+                    end = self.convert_date(name.valid_time.high.value)
+                    if end:
+                        period["end"] = end
+                if period:
+                    fhir_name["period"] = period
+
+            # Only add if we have meaningful content
+            if fhir_name:
+                fhir_names.append(fhir_name)
+
+        return fhir_names
+
     # -------------------------------------------------------------------------
     # Performer Extraction Helpers
     # -------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.ccda.models.datatypes import CE, ENXP, II, PN
+from ccda_to_fhir.ccda.models.datatypes import CE, II, PN
 from ccda_to_fhir.ccda.models.record_target import (
     Guardian,
     LanguageCommunication,
@@ -12,7 +12,6 @@ from ccda_to_fhir.ccda.models.record_target import (
 )
 from ccda_to_fhir.constants import (
     ADMINISTRATIVE_GENDER_MAP,
-    NAME_USE_MAP,
     OMB_ETHNICITY_CATEGORIES,
     OMB_RACE_CATEGORIES,
     CodeSystemOIDs,
@@ -72,7 +71,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         # Names
         if patient_data.name:
-            patient["name"] = self._convert_names(patient_data.name)
+            patient["name"] = self.convert_human_names(patient_data.name)
 
         # Telecom
         if patient_role.telecom:
@@ -290,86 +289,6 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         return identifiers
 
-    def _convert_names(self, names: list[PN]) -> list[FHIRResourceDict]:
-        """Convert C-CDA person names to FHIR HumanName.
-
-        Args:
-            names: List of C-CDA PN (Person Name) elements
-
-        Returns:
-            List of FHIR HumanName dicts
-        """
-        fhir_names = []
-
-        for name in names:
-            fhir_name: JSONObject = {}
-
-            # Name use mapping
-            if name.use:
-                fhir_name["use"] = NAME_USE_MAP.get(name.use, FHIRCodes.NameUse.USUAL)
-
-            # Family name
-            if name.family:
-                if isinstance(name.family, ENXP):
-                    fhir_name["family"] = name.family.value
-                else:
-                    fhir_name["family"] = str(name.family)
-
-            # Given names
-            if name.given:
-                given_names = []
-                for given in name.given:
-                    if isinstance(given, ENXP):
-                        if given.value:
-                            given_names.append(given.value)
-                    else:
-                        given_names.append(str(given))
-                if given_names:
-                    fhir_name["given"] = given_names
-
-            # Prefix
-            if name.prefix:
-                prefixes = []
-                for prefix in name.prefix:
-                    if isinstance(prefix, ENXP):
-                        if prefix.value:
-                            prefixes.append(prefix.value)
-                    else:
-                        prefixes.append(str(prefix))
-                if prefixes:
-                    fhir_name["prefix"] = prefixes
-
-            # Suffix
-            if name.suffix:
-                suffixes = []
-                for suffix in name.suffix:
-                    if isinstance(suffix, ENXP):
-                        if suffix.value:
-                            suffixes.append(suffix.value)
-                    else:
-                        suffixes.append(str(suffix))
-                if suffixes:
-                    fhir_name["suffix"] = suffixes
-
-            # Period
-            if name.valid_time:
-                period = {}
-                if name.valid_time.low:
-                    start = self.convert_date(name.valid_time.low.value)
-                    if start:
-                        period["start"] = start
-                if name.valid_time.high:
-                    end = self.convert_date(name.valid_time.high.value)
-                    if end:
-                        period["end"] = end
-                if period:
-                    fhir_name["period"] = period
-
-            if fhir_name:
-                fhir_names.append(fhir_name)
-
-        return fhir_names
-
     def _convert_gender(self, gender_code: CE) -> str | None:
         """Convert C-CDA administrative gender to FHIR gender.
 
@@ -444,7 +363,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
             # Name
             if guardian.guardian_person and guardian.guardian_person.name:
-                names = self._convert_names(guardian.guardian_person.name)
+                names = self.convert_human_names(guardian.guardian_person.name)
                 if names:
                     contact["name"] = names[0]
 
