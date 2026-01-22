@@ -168,7 +168,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         # Performer - from performer/assignedEntity
         if procedure.performer:
-            performers = self._extract_performers(procedure.performer)
+            performers = self.extract_performer_references(procedure.performer)
             if performers:
                 fhir_service_request["performer"] = performers
 
@@ -514,35 +514,6 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                             }
 
         return None
-
-    def _extract_performers(self, performers: list) -> list[JSONObject]:
-        """Extract performer references from C-CDA performers.
-
-        Uses base class helper for identifier selection. Does not create
-        Practitioner resources (reference-only).
-
-        Args:
-            performers: List of C-CDA performer elements
-
-        Returns:
-            List of FHIR References
-        """
-        fhir_performers = []
-
-        for performer in performers:
-            if not hasattr(performer, "assigned_entity") or not performer.assigned_entity:
-                continue
-
-            assigned_entity = performer.assigned_entity
-            ids = getattr(assigned_entity, "id", None)
-
-            # Select first valid identifier (no NPI preference for ServiceRequest)
-            root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
-            if root:
-                pract_id = self._generate_practitioner_id(root, extension)
-                fhir_performers.append({"reference": f"urn:uuid:{pract_id}"})
-
-        return fhir_performers
 
     def _extract_performer_type(self, performers: list) -> JSONObject | None:
         """Extract performerType from C-CDA performer functionCode.

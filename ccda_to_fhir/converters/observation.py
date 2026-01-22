@@ -266,19 +266,7 @@ class ObservationConverter(BaseConverter[Observation]):
         # Per US Core: performer is Must-Support for many observation profiles
         # Maps from C-CDA performer element to FHIR Reference(Practitioner|Organization)
         if observation.performer:
-            performers = []
-            for performer in observation.performer:
-                if performer.assigned_entity and performer.assigned_entity.id:
-                    # Extract practitioner ID from assigned entity
-                    for id_elem in performer.assigned_entity.id:
-                        if id_elem.root:
-                            practitioner_id = self._generate_practitioner_id(
-                                id_elem.root, id_elem.extension
-                            )
-                            performers.append({
-                                "reference": f"urn:uuid:{practitioner_id}"
-                            })
-                            break  # Use first valid ID
+            performers = self.extract_performer_references(observation.performer)
             if performers:
                 fhir_obs["performer"] = performers
 
