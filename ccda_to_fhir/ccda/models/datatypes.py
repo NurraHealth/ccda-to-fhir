@@ -6,6 +6,8 @@ Reference: http://www.hl7.org/implement/standards/product_brief.cfm?product_id=2
 
 from __future__ import annotations
 
+from typing import TypeAlias
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -499,3 +501,27 @@ class TN(EN):
 
 CD.model_rebuild()
 ED.model_rebuild()
+
+
+# -----------------------------------------------------------------------------
+# Type Aliases for Value Types
+# -----------------------------------------------------------------------------
+
+# Coded value types (have 'code' attribute)
+CodedValueType: TypeAlias = CD | CE | CV | CS
+
+# Quantity value types (have 'value' and optionally 'unit')
+QuantityValueType: TypeAlias = PQ | MO | INT | REAL
+
+# Interval value types
+IntervalValueType: TypeAlias = IVL_PQ | IVL_INT | IVL_TS
+
+# Time-related value types
+TimeValueType: TypeAlias = TS | IVL_TS | PIVL_TS | EIVL_TS
+
+# All observation value types (union of all possible)
+ObservationValueType: TypeAlias = (
+    CD | CE | CS | ST | ED | BL | INT | REAL | PQ | MO |
+    IVL_PQ | IVL_INT | IVL_TS | TS | PIVL_TS | EIVL_TS |
+    RTO | II | TEL | AD | EN | PN | TN | ON
+)

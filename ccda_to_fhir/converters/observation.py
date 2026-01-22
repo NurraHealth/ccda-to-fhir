@@ -60,11 +60,11 @@ class ObservationConverter(BaseConverter[Observation]):
         # Track seen observation IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_observation_ids = seen_observation_ids if seen_observation_ids is not None else set()
 
-    def convert(self, observation: Observation, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: Observation, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Observation to a FHIR Observation.
 
         Args:
-            observation: The C-CDA Observation
+            ccda_model: The C-CDA Observation
             section: The C-CDA Section containing this observation (for narrative)
 
         Returns:
@@ -74,6 +74,7 @@ class ObservationConverter(BaseConverter[Observation]):
             MissingRequiredFieldError: If the observation lacks required data
             ValueError: If reference_registry is not configured
         """
+        observation = ccda_model  # Alias for readability
         # FHIR R4 Requirement: Observation.code is required (1..1)
         # Validate that we can extract a valid code before creating the resource
         if not observation.code:

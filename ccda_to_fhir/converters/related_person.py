@@ -48,15 +48,16 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         super().__init__()
         self.patient_id = patient_id
 
-    def convert(self, related_entity: RelatedEntity) -> FHIRResourceDict:
+    def convert(self, ccda_model: RelatedEntity) -> FHIRResourceDict:
         """Convert RelatedEntity to RelatedPerson resource.
 
         Args:
-            related_entity: RelatedEntity from C-CDA Informant
+            ccda_model: RelatedEntity from C-CDA Informant
 
         Returns:
             FHIR RelatedPerson resource as dictionary
         """
+        related_entity = ccda_model  # Alias for readability
         related_person: FHIRResourceDict = {
             "resourceType": FHIRCodes.ResourceTypes.RELATED_PERSON,
         }

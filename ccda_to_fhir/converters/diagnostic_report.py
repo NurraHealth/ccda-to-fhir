@@ -43,11 +43,11 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         # Track seen diagnostic report IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_diagnostic_report_ids = seen_diagnostic_report_ids if seen_diagnostic_report_ids is not None else set()
 
-    def convert(self, organizer: Organizer, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
+    def convert(self, ccda_model: Organizer, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
         """Convert a C-CDA Result Organizer to a FHIR DiagnosticReport and Observations.
 
         Args:
-            organizer: The C-CDA Result Organizer
+            ccda_model: The C-CDA Result Organizer
             section: The C-CDA Section containing this organizer (for narrative)
 
         Returns:
@@ -56,6 +56,7 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         Raises:
             ValueError: If the organizer lacks required data
         """
+        organizer = ccda_model  # Alias for readability
         report: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.DIAGNOSTIC_REPORT,
         }

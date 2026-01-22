@@ -33,11 +33,11 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         super().__init__(**kwargs)
         self.original_xml = original_xml
 
-    def convert(self, clinical_document: ClinicalDocument) -> FHIRResourceDict:
+    def convert(self, ccda_model: ClinicalDocument) -> FHIRResourceDict:
         """Convert a C-CDA ClinicalDocument to a FHIR DocumentReference resource.
 
         Args:
-            clinical_document: The C-CDA ClinicalDocument element
+            ccda_model: The C-CDA ClinicalDocument element
 
         Returns:
             FHIR DocumentReference resource as a dictionary
@@ -45,6 +45,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         Raises:
             ConversionError: If conversion fails
         """
+        clinical_document = ccda_model  # Alias for readability
         if not clinical_document:
             raise ValueError("ClinicalDocument is required")
 
@@ -699,11 +700,10 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
             sha1_hash = hashlib.sha1(xml_bytes).digest()
             attachment["hash"] = base64.b64encode(sha1_hash).decode("ascii")
 
-        # URL (if the document is stored elsewhere)
-        # Could be populated if we have an external document repository
+            # URL (if the document is stored elsewhere)
+            # Could be populated if we have an external document repository
 
-        # Size (in bytes)
-        if self.original_xml:
+            # Size (in bytes)
             attachment["size"] = len(xml_bytes)
 
         # Creation date (document effectiveTime)

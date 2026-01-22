@@ -50,11 +50,11 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         # Track seen allergy IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_allergy_ids = seen_allergy_ids if seen_allergy_ids is not None else set()
 
-    def convert(self, observation: Observation) -> FHIRResourceDict:
+    def convert(self, ccda_model: Observation) -> FHIRResourceDict:
         """Convert a C-CDA Allergy Intolerance Observation to a FHIR AllergyIntolerance resource.
 
         Args:
-            observation: The C-CDA Allergy Intolerance Observation
+            ccda_model: The C-CDA Allergy Intolerance Observation
 
         Returns:
             FHIR AllergyIntolerance resource as a dictionary
@@ -62,6 +62,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         Raises:
             MissingRequiredFieldError: If the observation lacks required data
         """
+        observation = ccda_model  # Alias for readability
         # Check if this is a "no known allergy" case
         is_no_known_allergy = self._is_no_known_allergy(observation)
 

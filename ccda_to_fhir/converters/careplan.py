@@ -59,11 +59,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         self.intervention_entries = intervention_entries or []
         self.outcome_entries = outcome_entries or []
 
-    def convert(self, clinical_document: ClinicalDocument) -> FHIRResourceDict:
+    def convert(self, ccda_model: ClinicalDocument) -> FHIRResourceDict:
         """Convert a C-CDA Care Plan Document to a FHIR CarePlan resource.
 
         Args:
-            clinical_document: The C-CDA ClinicalDocument (Care Plan Document)
+            ccda_model: The C-CDA ClinicalDocument (Care Plan Document)
 
         Returns:
             FHIR CarePlan resource as a dictionary
@@ -71,6 +71,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         Raises:
             ValueError: If required fields are missing or document is not a Care Plan
         """
+        clinical_document = ccda_model  # Alias for readability
         if not clinical_document:
             raise ValueError("ClinicalDocument is required")
 

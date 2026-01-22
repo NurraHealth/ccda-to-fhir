@@ -45,11 +45,11 @@ class GoalConverter(BaseConverter[Observation]):
         # Track seen goal IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_goal_ids = seen_goal_ids if seen_goal_ids is not None else set()
 
-    def convert(self, observation: Observation, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: Observation, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Goal Observation to a FHIR Goal.
 
         Args:
-            observation: The C-CDA Goal Observation (moodCode="GOL")
+            ccda_model: The C-CDA Goal Observation (moodCode="GOL")
             section: The C-CDA Section containing this observation (for narrative)
 
         Returns:
@@ -58,6 +58,7 @@ class GoalConverter(BaseConverter[Observation]):
         Raises:
             ValueError: If the observation lacks required data or is not a Goal
         """
+        observation = ccda_model  # Alias for readability
         # Validate this is a goal observation (moodCode="GOL")
         if observation.mood_code != "GOL":
             raise ValueError(

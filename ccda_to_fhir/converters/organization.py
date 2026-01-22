@@ -42,16 +42,17 @@ class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganiz
     """
 
     def convert(
-        self, organization: AuthorOrganization | PerformerOrganization | ProviderOrganization
+        self, ccda_model: AuthorOrganization | PerformerOrganization | ProviderOrganization
     ) -> FHIRResourceDict:
         """Convert RepresentedOrganization to Organization resource.
 
         Args:
-            organization: RepresentedOrganization from C-CDA
+            ccda_model: RepresentedOrganization from C-CDA
 
         Returns:
             FHIR Organization resource as dictionary
         """
+        organization = ccda_model  # Alias for readability
         org: FHIRResourceDict = {
             "resourceType": FHIRCodes.ResourceTypes.ORGANIZATION,
         }

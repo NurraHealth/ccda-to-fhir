@@ -15,7 +15,6 @@ JSONPrimitive: TypeAlias = str | int | float | bool | None
 JSONValue: TypeAlias = JSONPrimitive | list["JSONValue"] | dict[str, "JSONValue"]
 
 # FHIR resources are JSON objects with string keys
-# This is more specific than dict[str, Any] and accurately represents FHIR structure
 FHIRResourceDict: TypeAlias = dict[str, JSONValue]
 
 # JSON object (for nested structures within FHIR resources)

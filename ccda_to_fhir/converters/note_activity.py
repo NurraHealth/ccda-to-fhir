@@ -23,11 +23,11 @@ class NoteActivityConverter(BaseConverter[Act]):
     Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-NoteActivity.html
     """
 
-    def convert(self, note_act: Act, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: Act, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Note Activity Act to a FHIR DocumentReference resource.
 
         Args:
-            note_act: The C-CDA Note Activity Act element
+            ccda_model: The C-CDA Note Activity Act element
             section: Optional containing section (for text reference resolution)
 
         Returns:
@@ -36,6 +36,7 @@ class NoteActivityConverter(BaseConverter[Act]):
         Raises:
             ValueError: If conversion fails due to missing required fields
         """
+        note_act = ccda_model  # Alias for readability
         if not note_act:
             raise ValueError("Note Activity Act is required")
 

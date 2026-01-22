@@ -44,15 +44,16 @@ class PractitionerConverter(BaseConverter["AssignedAuthor | AssignedEntity"]):
     have the same structure for practitioner information.
     """
 
-    def convert(self, assigned: AssignedAuthor | AssignedEntity) -> FHIRResourceDict:
+    def convert(self, ccda_model: AssignedAuthor | AssignedEntity) -> FHIRResourceDict:
         """Convert AssignedAuthor or AssignedEntity to Practitioner resource.
 
         Args:
-            assigned: AssignedAuthor or AssignedEntity from C-CDA
+            ccda_model: AssignedAuthor or AssignedEntity from C-CDA
 
         Returns:
             FHIR Practitioner resource as dictionary
         """
+        assigned = ccda_model  # Alias for readability
         practitioner: FHIRResourceDict = {
             "resourceType": FHIRCodes.ResourceTypes.PRACTITIONER,
         }

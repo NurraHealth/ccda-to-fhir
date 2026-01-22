@@ -48,15 +48,16 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
     as PractitionerConverter.
     """
 
-    def convert(self, assigned: AssignedAuthor) -> FHIRResourceDict:
+    def convert(self, ccda_model: AssignedAuthor) -> FHIRResourceDict:
         """Convert AssignedAuthor with assignedAuthoringDevice to Device resource.
 
         Args:
-            assigned: AssignedAuthor from C-CDA containing assignedAuthoringDevice
+            ccda_model: AssignedAuthor from C-CDA containing assignedAuthoringDevice
 
         Returns:
             FHIR Device resource as dictionary
         """
+        assigned = ccda_model  # Alias for readability
         device: FHIRResourceDict = {
             "resourceType": FHIRCodes.ResourceTypes.DEVICE,
         }
@@ -353,12 +354,14 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         }
 
         # Add device identifier if parsed
-        if parsed.get("device_identifier"):
-            udi_carrier["deviceIdentifier"] = parsed["device_identifier"]
+        device_id = parsed.get("device_identifier")
+        if device_id:
+            udi_carrier["deviceIdentifier"] = device_id
 
         # Add issuer if detected
-        if parsed.get("issuer"):
-            udi_carrier["issuer"] = parsed["issuer"]
+        issuer = parsed.get("issuer")
+        if issuer:
+            udi_carrier["issuer"] = issuer
 
         # Set jurisdiction to FDA for US devices
         udi_carrier["jurisdiction"] = FHIRSystems.FDA_UDI
@@ -368,14 +371,18 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         }
 
         # Add parsed production identifiers
-        if parsed.get("manufacture_date"):
-            result["manufacture_date"] = parsed["manufacture_date"]
-        if parsed.get("expiration_date"):
-            result["expiration_date"] = parsed["expiration_date"]
-        if parsed.get("lot_number"):
-            result["lot_number"] = parsed["lot_number"]
-        if parsed.get("serial_number"):
-            result["serial_number"] = parsed["serial_number"]
+        manufacture_date = parsed.get("manufacture_date")
+        if manufacture_date:
+            result["manufacture_date"] = manufacture_date
+        expiration_date = parsed.get("expiration_date")
+        if expiration_date:
+            result["expiration_date"] = expiration_date
+        lot_number = parsed.get("lot_number")
+        if lot_number:
+            result["lot_number"] = lot_number
+        serial_number = parsed.get("serial_number")
+        if serial_number:
+            result["serial_number"] = serial_number
 
         return result
 

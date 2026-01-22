@@ -44,11 +44,11 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         # Track seen medication IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_medication_ids = seen_medication_ids if seen_medication_ids is not None else set()
 
-    def convert(self, substance_admin: SubstanceAdministration, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: SubstanceAdministration, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Medication Activity to a FHIR MedicationStatement.
 
         Args:
-            substance_admin: The C-CDA SubstanceAdministration (Medication Activity)
+            ccda_model: The C-CDA SubstanceAdministration (Medication Activity)
             section: The C-CDA Section containing this medication (for narrative)
 
         Returns:
@@ -57,6 +57,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         Raises:
             ValueError: If the substance administration lacks required data
         """
+        substance_admin = ccda_model  # Alias for readability
         # Validation
         if not substance_admin.consumable:
             raise MissingRequiredFieldError(

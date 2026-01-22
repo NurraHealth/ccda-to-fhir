@@ -31,13 +31,13 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
 
     def convert(
         self,
-        manufactured_product: ManufacturedProduct,
+        ccda_model: ManufacturedProduct,
         substance_admin: SubstanceAdministration | None = None,
     ) -> FHIRResourceDict:
         """Convert a C-CDA Manufactured Product to a FHIR Medication.
 
         Args:
-            manufactured_product: The C-CDA ManufacturedProduct
+            ccda_model: The C-CDA ManufacturedProduct
             substance_admin: Optional SubstanceAdministration for additional context
 
         Returns:
@@ -46,6 +46,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
         Raises:
             ValueError: If the manufactured product lacks required data
         """
+        manufactured_product = ccda_model  # Alias for readability
         # Validation
         if not manufactured_product.manufactured_material:
             raise ValueError("ManufacturedProduct must have a manufacturedMaterial")

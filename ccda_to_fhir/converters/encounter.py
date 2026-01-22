@@ -46,11 +46,11 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         self._pending_practitioners: list[FHIRResourceDict] = []
         self._pending_locations: list[FHIRResourceDict] = []
 
-    def convert(self, encounter: CCDAEncounter, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: CCDAEncounter, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Encounter Activity to a FHIR Encounter resource.
 
         Args:
-            encounter: The C-CDA Encounter Activity
+            ccda_model: The C-CDA Encounter Activity
             section: The C-CDA Section containing this encounter (for narrative)
 
         Returns:
@@ -59,6 +59,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         Raises:
             ValueError: If the encounter lacks required data
         """
+        encounter = ccda_model  # Alias for readability
         fhir_encounter: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.ENCOUNTER,
         }

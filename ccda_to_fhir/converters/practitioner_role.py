@@ -46,14 +46,14 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
 
     def convert(
         self,
-        assigned: AssignedAuthor | AssignedEntity,
+        ccda_model: AssignedAuthor | AssignedEntity,
         practitioner_id: str,
         organization_id: str | None = None,
     ) -> FHIRResourceDict:
         """Convert AssignedAuthor or AssignedEntity to PractitionerRole resource.
 
         Args:
-            assigned: AssignedAuthor or AssignedEntity from C-CDA
+            ccda_model: AssignedAuthor or AssignedEntity from C-CDA
             practitioner_id: ID of the Practitioner resource to reference
             organization_id: ID of the Organization resource to reference (optional)
 
@@ -63,6 +63,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
         Raises:
             ValueError: If practitioner_id is None
         """
+        assigned = ccda_model  # Alias for readability
         if not practitioner_id:
             raise ValueError("practitioner_id is required")
 

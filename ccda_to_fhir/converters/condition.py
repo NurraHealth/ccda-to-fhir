@@ -110,11 +110,11 @@ class ConditionConverter(BaseConverter[Observation]):
         # Track seen observation IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_observation_ids = seen_observation_ids if seen_observation_ids is not None else set()
 
-    def convert(self, observation: Observation) -> FHIRResourceDict:
+    def convert(self, ccda_model: Observation) -> FHIRResourceDict:
         """Convert a C-CDA Problem Observation to a FHIR Condition resource.
 
         Args:
-            observation: The C-CDA Problem Observation
+            ccda_model: The C-CDA Problem Observation
 
         Returns:
             FHIR Condition resource as a dictionary
@@ -122,6 +122,7 @@ class ConditionConverter(BaseConverter[Observation]):
         Raises:
             MissingRequiredFieldError: If the observation lacks required data
         """
+        observation = ccda_model  # Alias for readability
         if not observation.value:
             raise MissingRequiredFieldError(
                 field_name="value",

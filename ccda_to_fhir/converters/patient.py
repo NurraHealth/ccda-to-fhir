@@ -36,11 +36,11 @@ class PatientConverter(BaseConverter[RecordTarget]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-patient.html
     """
 
-    def convert(self, record_target: RecordTarget) -> FHIRResourceDict:
+    def convert(self, ccda_model: RecordTarget) -> FHIRResourceDict:
         """Convert a C-CDA recordTarget to a FHIR Patient resource.
 
         Args:
-            record_target: The C-CDA recordTarget element
+            ccda_model: The C-CDA recordTarget element
 
         Returns:
             FHIR Patient resource as a dictionary
@@ -48,6 +48,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
         Raises:
             ConversionError: If conversion fails
         """
+        record_target = ccda_model  # Alias for readability
         if not record_target.patient_role:
             raise MissingRequiredFieldError(
                 field_name="patientRole",

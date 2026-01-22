@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ccda_to_fhir.ccda.models.datatypes import IVL_TS
+from ccda_to_fhir.ccda.models.datatypes import CE, IVL_TS
 from ccda_to_fhir.ccda.models.supply import Supply
 from ccda_to_fhir.constants import (
     MEDICATION_DISPENSE_STATUS_TO_FHIR,
@@ -45,11 +45,11 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         """Initialize the medication dispense converter."""
         super().__init__(*args, **kwargs)
 
-    def convert(self, supply: Supply, parent_medication_request_id: str | None = None) -> FHIRResourceDict:
+    def convert(self, ccda_model: Supply, parent_medication_request_id: str | None = None) -> FHIRResourceDict:
         """Convert a C-CDA Medication Dispense to a FHIR MedicationDispense.
 
         Args:
-            supply: The C-CDA Supply (Medication Dispense)
+            ccda_model: The C-CDA Supply (Medication Dispense)
             parent_medication_request_id: Optional ID of parent MedicationRequest for authorizingPrescription
 
         Returns:
@@ -58,6 +58,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         Raises:
             ValueError: If the supply lacks required data or has invalid moodCode
         """
+        supply = ccda_model  # Alias for readability
         # Validation
         if not supply.product:
             raise ValueError("Medication Dispense must have a product (medication)")

@@ -40,11 +40,11 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Track seen immunization IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_immunization_ids = seen_immunization_ids if seen_immunization_ids is not None else set()
 
-    def convert(self, substance_admin: SubstanceAdministration, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
+    def convert(self, ccda_model: SubstanceAdministration, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
         """Convert a C-CDA Immunization Activity to FHIR resources.
 
         Args:
-            substance_admin: The C-CDA SubstanceAdministration (Immunization Activity)
+            ccda_model: The C-CDA SubstanceAdministration (Immunization Activity)
             section: The C-CDA Section containing this immunization (for narrative)
 
         Returns:
@@ -55,6 +55,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         Raises:
             ValueError: If the substance administration lacks required data
         """
+        substance_admin = ccda_model  # Alias for readability
         # Validation
         if not substance_admin.consumable:
             raise ValueError("Immunization Activity must have a consumable (vaccine)")

@@ -45,11 +45,11 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         self.section_resource_map = section_resource_map or {}
         self.reference_registry = reference_registry
 
-    def convert(self, clinical_document: ClinicalDocument) -> FHIRResourceDict:
+    def convert(self, ccda_model: ClinicalDocument) -> FHIRResourceDict:
         """Convert a C-CDA ClinicalDocument to a FHIR Composition resource.
 
         Args:
-            clinical_document: The C-CDA ClinicalDocument element
+            ccda_model: The C-CDA ClinicalDocument element
 
         Returns:
             FHIR Composition resource as a dictionary
@@ -57,6 +57,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         Raises:
             ValueError: If required fields are missing
         """
+        clinical_document = ccda_model  # Alias for readability
         if not clinical_document:
             raise ValueError("ClinicalDocument is required")
 

@@ -37,11 +37,11 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
     # US Core Location profile
     US_CORE_LOCATION_PROFILE = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location"
 
-    def convert(self, participant_role: ParticipantRole) -> FHIRResourceDict:
+    def convert(self, ccda_model: ParticipantRole) -> FHIRResourceDict:
         """Convert Service Delivery Location to Location resource.
 
         Args:
-            participant_role: C-CDA ParticipantRole with classCode='SDLOC'
+            ccda_model: C-CDA ParticipantRole with classCode='SDLOC'
 
         Returns:
             FHIR Location resource as dictionary
@@ -49,6 +49,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         Raises:
             ValueError: If required elements are missing or invalid
         """
+        participant_role = ccda_model  # Alias for readability
         # Validate classCode (fundamental requirement)
         self._validate_class_code(participant_role)
 

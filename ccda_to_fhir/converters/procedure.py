@@ -9,7 +9,6 @@ from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.constants import (
     PROCEDURE_STATUS_TO_FHIR,
     FHIRCodes,
-    FHIRSystems,
     TemplateIds,
 )
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
@@ -43,14 +42,14 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         self._pending_practitioners: list[FHIRResourceDict] = []
         self._pending_organizations: list[FHIRResourceDict] = []
 
-    def convert(self, procedure: CCDAProcedure | CCDAObservation | CCDAAct, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: CCDAProcedure | CCDAObservation | CCDAAct, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Procedure Activity to a FHIR Procedure resource.
 
         Accepts Procedure Activity Procedure, Procedure Activity Observation,
         and Procedure Activity Act templates, as all map to FHIR Procedure resource.
 
         Args:
-            procedure: The C-CDA Procedure Activity (Procedure, Observation, or Act element)
+            ccda_model: The C-CDA Procedure Activity (Procedure, Observation, or Act element)
             section: The C-CDA Section containing this procedure (for narrative)
 
         Returns:
@@ -59,6 +58,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         Raises:
             ValueError: If the procedure lacks required data
         """
+        procedure = ccda_model  # Alias for readability
         if not procedure.code:
             raise ValueError("Procedure Activity must have a code")
 

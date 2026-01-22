@@ -35,12 +35,12 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
     """
 
     def convert(
-        self, procedure: CCDAProcedure | CCDAAct, section=None
+        self, ccda_model: CCDAProcedure | CCDAAct, section=None
     ) -> FHIRResourceDict:
         """Convert a C-CDA Planned Procedure/Act to a FHIR ServiceRequest resource.
 
         Args:
-            procedure: The C-CDA Planned Procedure or Planned Act element
+            ccda_model: The C-CDA Planned Procedure or Planned Act element
             section: The C-CDA Section containing this procedure (for narrative)
 
         Returns:
@@ -49,6 +49,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         Raises:
             ValueError: If the procedure lacks required data or has invalid moodCode
         """
+        procedure = ccda_model  # Alias for readability
         # Validate moodCode - CRITICAL for distinguishing ServiceRequest from Procedure/Goal
         if not hasattr(procedure, "mood_code") or not procedure.mood_code:
             raise ValueError("Planned Procedure/Act must have a moodCode attribute")

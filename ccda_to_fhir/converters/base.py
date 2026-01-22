@@ -10,7 +10,7 @@ from ccda_to_fhir.constants import FHIRSystems
 from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
 from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .code_systems import CodeSystemMapper
 
@@ -162,7 +162,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Returns:
             List of FHIR identifier objects
         """
-        fhir_identifiers: list[JSONObject] = []
+        fhir_identifiers: list[JSONValue] = []
 
         for identifier in identifiers:
             if not identifier.root:
@@ -239,7 +239,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return None  # Return None instead of empty dict for proper truthiness checks
 
         codeable_concept: JSONObject = {}
-        codings: list[JSONObject] = []
+        codings: list[JSONValue] = []
 
         # Primary coding
         if code and code_system:
@@ -877,7 +877,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         """
         from ccda_to_fhir.constants import TemplateIds
 
-        notes: list[JSONObject] = []
+        notes: list[JSONValue] = []
 
         # Extract from text element
         if include_text and hasattr(element, "text") and element.text:
@@ -1010,7 +1010,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if addresses is None:
             return []
 
-        fhir_addresses: list[JSONObject] = []
+        fhir_addresses: list[JSONValue] = []
 
         # Normalize to list
         addr_list = addresses if isinstance(addresses, list) else [addresses]
@@ -1164,8 +1164,8 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         """
         from ccda_to_fhir.constants import FHIRCodes
 
-        reason_codes: list[JSONObject] = []
-        reason_refs: list[JSONObject] = []
+        reason_codes: list[JSONValue] = []
+        reason_refs: list[JSONValue] = []
 
         if not entry_relationships:
             return {"codes": reason_codes, "references": reason_refs}
@@ -1234,7 +1234,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Returns:
             List of FHIR CodeableConcept dicts
         """
-        codes: list[JSONObject] = []
+        codes: list[JSONValue] = []
 
         if not hasattr(obs, "value") or not obs.value:
             return codes
@@ -1271,7 +1271,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if telecoms is None:
             return []
 
-        contact_points: list[JSONObject] = []
+        contact_points: list[JSONValue] = []
 
         # Normalize to list
         telecom_list = telecoms if isinstance(telecoms, list) else [telecoms]
@@ -1360,7 +1360,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if names is None:
             return []
 
-        fhir_names: list[JSONObject] = []
+        fhir_names: list[JSONValue] = []
 
         # Normalize to list
         name_list = names if isinstance(names, list) else [names]
@@ -1740,7 +1740,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Returns:
             List of translation dicts with keys: code, code_system, display_name
         """
-        translations: list[JSONObject] = []
+        translations: list[JSONValue] = []
 
         if not hasattr(code, "translation") or not code.translation:
             return translations
@@ -1793,7 +1793,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if not performers:
             return []
 
-        references: list[JSONObject] = []
+        references: list[JSONValue] = []
 
         for performer in performers:
             if not performer:

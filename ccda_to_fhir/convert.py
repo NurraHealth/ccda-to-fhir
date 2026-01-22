@@ -5,7 +5,7 @@ from __future__ import annotations
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
-from ccda_to_fhir.ccda.models.datatypes import II
+from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II
 from ccda_to_fhir.ccda.models.section import StructuredBody
 from ccda_to_fhir.ccda.parser import parse_ccda
 from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP, TemplateIds
@@ -641,7 +641,7 @@ class DocumentConverter:
             return True
 
         resource_type = resource.get("resourceType")
-        if not resource_type:
+        if not resource_type or not isinstance(resource_type, str):
             logger.warning("Resource missing resourceType field, skipping validation")
             return False
 
@@ -712,7 +712,9 @@ class DocumentConverter:
                         if social_history_extensions:
                             if "extension" not in patient:
                                 patient["extension"] = []
-                            patient["extension"].extend(social_history_extensions)
+                            ext_list = patient["extension"]
+                            if isinstance(ext_list, list):
+                                ext_list.extend(social_history_extensions)
 
                     # Validate the patient resource
                     if self._validate_resource(patient):
@@ -732,7 +734,7 @@ class DocumentConverter:
                                 # Validate and add Organization to bundle (check for duplicates)
                                 org_id = organization.get("id")
                                 if self._validate_resource(organization):
-                                    if org_id and not self.reference_registry.has_resource("Organization", org_id):
+                                    if isinstance(org_id, str) and not self.reference_registry.has_resource("Organization", org_id):
                                         resources.append(organization)
                                         self.reference_registry.register_resource(organization)
 
@@ -740,8 +742,9 @@ class DocumentConverter:
                                     if "id" in organization:
                                         # Preserve display from PatientConverter if it exists
                                         org_display = None
-                                        if "managingOrganization" in patient:
-                                            org_display = patient["managingOrganization"].get("display")
+                                        managing_org = patient.get("managingOrganization")
+                                        if isinstance(managing_org, dict):
+                                            org_display = managing_org.get("display")
 
                                         # Create reference with display
                                         patient["managingOrganization"] = {
@@ -800,7 +803,8 @@ class DocumentConverter:
                             informant_info.informant.assigned_entity
                         )
                         # Check if practitioner already exists (deduplication)
-                        if not self.reference_registry.has_resource("Practitioner", practitioner['id']):
+                        pract_id = practitioner.get('id')
+                        if isinstance(pract_id, str) and not self.reference_registry.has_resource("Practitioner", pract_id):
                             resources.append(practitioner)
                             self.reference_registry.register_resource(practitioner)
                     except Exception as e:
@@ -808,12 +812,12 @@ class DocumentConverter:
 
                 elif informant_info.is_related_person and informant_info.informant.related_entity:
                     try:
-                        if not hasattr(self, "_patient_id"):
+                        if not hasattr(self, "_patient_id") or not isinstance(self._patient_id, str):
                             raise ValueError(
                                 "Cannot create RelatedPerson: patient_id is required. "
                                 "Patient must be processed before informants."
                             )
-                        patient_id = self._patient_id
+                        patient_id: str = self._patient_id
                         from .converters.related_person import RelatedPersonConverter
                         related_person_converter = RelatedPersonConverter(patient_id=patient_id)
                         related_person = related_person_converter.convert(
@@ -833,7 +837,7 @@ class DocumentConverter:
                 practitioner_id = practitioner.get("id")
                 if self._validate_resource(practitioner):
                     # Check for duplicates before adding
-                    if practitioner_id and not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                    if isinstance(practitioner_id, str) and not self.reference_registry.has_resource("Practitioner", practitioner_id):
                         resources.append(practitioner)
                         self.reference_registry.register_resource(practitioner)
             except Exception as e:
@@ -852,7 +856,7 @@ class DocumentConverter:
                 practitioner_id = practitioner.get("id")
                 if self._validate_resource(practitioner):
                     # Check for duplicates before adding
-                    if practitioner_id and not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                    if isinstance(practitioner_id, str) and not self.reference_registry.has_resource("Practitioner", practitioner_id):
                         resources.append(practitioner)
                         self.reference_registry.register_resource(practitioner)
             except Exception as e:
@@ -868,7 +872,7 @@ class DocumentConverter:
             if custodian_org:
                 org_id = custodian_org.get("id")
                 # Check for duplicates before adding
-                if org_id and not self.reference_registry.has_resource("Organization", org_id):
+                if isinstance(org_id, str) and not self.reference_registry.has_resource("Organization", org_id):
                     resources.append(custodian_org)
                     self.reference_registry.register_resource(custodian_org)
 
@@ -886,7 +890,7 @@ class DocumentConverter:
                                 )
                                 # Check if practitioner already exists (deduplication)
                                 practitioner_id = practitioner.get('id')
-                                if practitioner_id and not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                                if isinstance(practitioner_id, str) and not self.reference_registry.has_resource("Practitioner", practitioner_id):
                                     if self._validate_resource(practitioner):
                                         resources.append(practitioner)
                                         self.reference_registry.register_resource(practitioner)
@@ -1080,7 +1084,7 @@ class DocumentConverter:
 
                     # Store author metadata for header encounter
                     # Header encounters use document-level authors from the encompassingEncounter
-                    if header_id and ccda_doc.component_of and ccda_doc.component_of.encompassing_encounter:
+                    if isinstance(header_id, str) and ccda_doc.component_of and ccda_doc.component_of.encompassing_encounter:
                         self._store_author_metadata(
                             resource_type="Encounter",
                             resource_id=header_id,
@@ -1777,7 +1781,7 @@ class DocumentConverter:
                         for template in obs.template_id:
                             if template.root == TemplateIds.BIRTH_SEX_OBSERVATION:
                                 # Birth Sex Extension
-                                if obs.value and hasattr(obs.value, "code") and obs.value.code:
+                                if isinstance(obs.value, (CD, CE, CS)) and obs.value.code:
                                     birth_sex_ext = {
                                         "url": FHIRSystems.US_CORE_BIRTHSEX,
                                         "valueCode": obs.value.code,  # F, M, or UNK
@@ -1814,7 +1818,7 @@ class DocumentConverter:
                             and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
                         ):
                             # Sex Extension (US Core)
-                            if obs.value and hasattr(obs.value, "code") and obs.value.code:
+                            if isinstance(obs.value, (CD, CE, CS)) and obs.value.code:
                                 sex_ext = {
                                     "url": FHIRSystems.US_CORE_SEX,
                                     "valueCode": obs.value.code,
@@ -2121,9 +2125,9 @@ class DocumentConverter:
                                 continue
 
                         # Skip gender identity observations - they map to Patient.extension
+                        # Import CCDACodes here (outside conditional) for use in subsequent checks
+                        from ccda_to_fhir.constants import CCDACodes
                         if obs.code:
-                            from ccda_to_fhir.constants import CCDACodes
-
                             is_gender_identity = (
                                 obs.code.code == CCDACodes.GENDER_IDENTITY
                                 and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC

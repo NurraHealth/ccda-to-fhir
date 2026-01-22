@@ -100,11 +100,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         self.organization_converter = OrganizationConverter()
         self.practitioner_role_converter = PractitionerRoleConverter()
 
-    def convert(self, organizer: Organizer) -> FHIRResourceDict:
+    def convert(self, ccda_model: Organizer) -> FHIRResourceDict:
         """Convert Care Team Organizer to CareTeam resource.
 
         Args:
-            organizer: C-CDA Care Team Organizer
+            ccda_model: C-CDA Care Team Organizer
 
         Returns:
             FHIR CareTeam resource as dictionary
@@ -112,6 +112,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         Raises:
             ValueError: If required elements are missing or invalid
         """
+        organizer = ccda_model  # Alias for readability
         if not organizer:
             raise ValueError("Organizer is required")
 

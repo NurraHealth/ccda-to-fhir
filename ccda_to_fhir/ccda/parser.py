@@ -58,13 +58,13 @@ from .models import (
     SubstanceAdministration,
     Supply,
 )
-from .models.act import Reference
+from .models.act import Reference  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from .models.author import AssignedAuthoringDevice
-from .models.clinical_document import HealthCareFacility, Informant, RelatedEntity
+from .models.clinical_document import HealthCareFacility, Informant, RelatedEntity  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from .models.observation import EntryRelationship
 from .models.organizer import OrganizerComponent
 from .models.section import Entry, Section
-from .models.substance_administration import ManufacturedProduct, Precondition
+from .models.substance_administration import ManufacturedProduct, Precondition  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from .models.struc_doc import (
     Content,
     ListItem,
@@ -174,11 +174,6 @@ XSI_TYPE_MAP: dict[str, type[BaseModel]] = {
     "ON": ON,
     "TN": TN,
 }
-
-
-def _get_qname(tag: str, namespace: str = "hl7") -> str:
-    """Get qualified name for an XML tag."""
-    return f"{{{NAMESPACES[namespace]}}}{tag}"
 
 
 def _strip_namespace(tag: str) -> str:

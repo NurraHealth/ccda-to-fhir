@@ -42,11 +42,11 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         """Initialize the medication request converter."""
         super().__init__(*args, **kwargs)
 
-    def convert(self, substance_admin: SubstanceAdministration, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: SubstanceAdministration, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Medication Activity to a FHIR MedicationRequest.
 
         Args:
-            substance_admin: The C-CDA SubstanceAdministration (Medication Activity)
+            ccda_model: The C-CDA SubstanceAdministration (Medication Activity)
             section: The C-CDA Section containing this medication (for narrative)
 
         Returns:
@@ -56,6 +56,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             MissingRequiredFieldError: If the substance administration lacks required data
             ValueError: If reference_registry is not configured
         """
+        substance_admin = ccda_model  # Alias for readability
         # Validation
         if not substance_admin.consumable:
             raise MissingRequiredFieldError(
