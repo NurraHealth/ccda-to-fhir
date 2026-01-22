@@ -251,7 +251,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # Special handling for "completed" status per C-CDA on FHIR IG guidance
         if (
             substance_admin.status_code
-            and substance_admin.status_code.code == "completed"
+            and getattr(substance_admin.status_code, "code", "").lower() == "completed"
             and self._has_future_dates(substance_admin)
         ):
             # Completed prescription with future dates → active medication
