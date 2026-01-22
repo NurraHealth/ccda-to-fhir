@@ -1937,7 +1937,11 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             result = converter(value)
             return result if result is not None else default
         except (CCDAConversionError, ValueError, TypeError, AttributeError) as e:
-            logger.warning(f"Failed to convert optional field {field_name}: {e}")
+            logger.warning(
+                f"Failed to convert optional field {field_name} "
+                f"({type(e).__name__}): {e}",
+                exc_info=True,
+            )
             return default
 
     def map_status_code(

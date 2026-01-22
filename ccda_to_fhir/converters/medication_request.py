@@ -53,7 +53,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             FHIR MedicationRequest resource as a dictionary
 
         Raises:
-            ValueError: If the substance administration lacks required data
+            MissingRequiredFieldError: If the substance administration lacks required data
         """
         # Validation
         if not substance_admin.consumable:

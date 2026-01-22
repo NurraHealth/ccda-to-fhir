@@ -68,7 +68,7 @@ class ObservationConverter(BaseConverter[Observation]):
             FHIR Observation resource as a dictionary
 
         Raises:
-            ValueError: If the observation lacks required data
+            MissingRequiredFieldError: If the observation lacks required data
         """
         # FHIR R4 Requirement: Observation.code is required (1..1)
         # Validate that we can extract a valid code before creating the resource

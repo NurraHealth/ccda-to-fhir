@@ -236,10 +236,11 @@ class UnsupportedFeatureError(CCDAConversionError):
 
 
 class ConversionWarning(CCDAConversionError):
-    """Warning-level issue that doesn't prevent conversion.
+    """Warning-level issue that should not normally prevent conversion.
 
-    Use for non-critical issues that should be logged but don't block conversion.
-    The conversion will continue with fallback behavior.
+    This is still an exception (a subclass of CCDAConversionError) and will
+    interrupt conversion if raised and not caught. Intended for non-critical
+    issues that callers catch, log, and then continue with fallback behavior.
 
     Examples:
         - Optional field has unexpected format
