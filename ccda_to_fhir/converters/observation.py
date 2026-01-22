@@ -28,10 +28,13 @@ from ccda_to_fhir.constants import (
     TemplateIds,
 )
 from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
+from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.terminology import get_display_for_code
 
 from .base import BaseConverter
+
+logger = get_logger(__name__)
 
 
 class ObservationConverter(BaseConverter[Observation]):
@@ -115,8 +118,6 @@ class ObservationConverter(BaseConverter[Observation]):
                     # Check if we've seen this observation ID before (duplicate)
                     if obs_id_key in self.seen_observation_ids:
                         # ID reuse detected - fall back to generating a unique ID
-                        from ccda_to_fhir.logging_config import get_logger
-                        logger = get_logger(__name__)
                         logger.warning(
                             f"Observation ID {id_elem.root} (extension={id_elem.extension}) is reused in C-CDA document. "
                             f"Generating unique ID to avoid duplicate Observation resources."
@@ -191,8 +192,6 @@ class ObservationConverter(BaseConverter[Observation]):
         fhir_obs["subject"] = patient_ref
 
         # Diagnostic logging
-        from ccda_to_fhir.logging_config import get_logger
-        logger = get_logger(__name__)
         logger.debug(
             f"Observation {fhir_obs.get('id', 'unknown')} assigned patient reference: {patient_ref['reference']}"
         )
@@ -359,8 +358,6 @@ class ObservationConverter(BaseConverter[Observation]):
                     # Check if we've seen this organizer ID before (duplicate)
                     if obs_id_key in self.seen_observation_ids:
                         # ID reuse detected - fall back to generating a unique ID
-                        from ccda_to_fhir.logging_config import get_logger
-                        logger = get_logger(__name__)
                         logger.warning(
                             f"Vital signs organizer ID {id_elem.root} (extension={id_elem.extension}) is reused in C-CDA document. "
                             f"Generating unique ID to avoid duplicate Observation panel resources."
@@ -469,8 +466,6 @@ class ObservationConverter(BaseConverter[Observation]):
                     except CCDAConversionError as e:
                         # Skip observations that can't be converted (e.g., nullFlavor codes without text)
                         # This handles real-world C-CDA documents with incomplete vital sign data
-                        from ccda_to_fhir.logging_config import get_logger
-                        logger = get_logger(__name__)
                         logger.warning("Skipping vital sign component observation: %s", e)
                         continue
 
