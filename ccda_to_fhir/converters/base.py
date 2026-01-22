@@ -7,9 +7,14 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
 from ccda_to_fhir.constants import FHIRSystems
+from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
+from ccda_to_fhir.id_generator import generate_id
+from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .code_systems import CodeSystemMapper
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from .references import ReferenceRegistry
@@ -1883,8 +1888,6 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             >>> self.require_field(observation.code, "code", "Observation")
             >>> # Raises MissingRequiredFieldError if code is missing
         """
-        from ccda_to_fhir.exceptions import MissingRequiredFieldError
-
         is_empty = (
             value is None
             or value == ""
@@ -1927,16 +1930,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             ...     default=[]
             ... )
         """
-        from ccda_to_fhir.logging_config import get_logger
-
         if value is None:
             return default
 
         try:
             result = converter(value)
             return result if result is not None else default
-        except Exception as e:
-            logger = get_logger(__name__)
+        except (CCDAConversionError, ValueError, TypeError, AttributeError) as e:
             logger.warning(f"Failed to convert optional field {field_name}: {e}")
             return default
 
@@ -2009,16 +2009,12 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             ...     resource["id"] = self.generate_resource_id(...)
             ...     self.seen_ids.add(id_key)
         """
-        from ccda_to_fhir.logging_config import get_logger
-
         if id_key in seen_ids:
-            logger = get_logger(__name__)
             root, extension = id_key
             logger.warning(
                 f"{resource_type} ID {root} (extension={extension}) is reused in C-CDA document. "
                 f"Generating unique ID to avoid duplicate {resource_type} resources."
             )
-            from ccda_to_fhir.id_generator import generate_id
             return generate_id()
 
         return None

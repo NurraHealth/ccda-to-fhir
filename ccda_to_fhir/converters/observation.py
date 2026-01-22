@@ -27,7 +27,7 @@ from ccda_to_fhir.constants import (
     FHIRSystems,
     TemplateIds,
 )
-from ccda_to_fhir.exceptions import MissingRequiredFieldError
+from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.terminology import get_display_for_code
 
@@ -466,14 +466,12 @@ class ObservationConverter(BaseConverter[Observation]):
                     # Convert the component observation to a standalone resource
                     try:
                         individual = self.convert(component.observation, section=section)
-                    except (ValueError, MissingRequiredFieldError) as e:
+                    except CCDAConversionError as e:
                         # Skip observations that can't be converted (e.g., nullFlavor codes without text)
                         # This handles real-world C-CDA documents with incomplete vital sign data
                         from ccda_to_fhir.logging_config import get_logger
                         logger = get_logger(__name__)
-                        logger.warning(
-                            f"Skipping vital sign component observation: {str(e)}"
-                        )
+                        logger.warning("Skipping vital sign component observation: %s", e)
                         continue
 
                     # Ensure it has an ID for referencing

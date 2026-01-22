@@ -703,3 +703,92 @@ class TestHandleDuplicateId:
         # Should be a UUID format
         assert len(result) == 36
         assert result.count("-") == 4
+
+
+# =============================================================================
+# Exception Classes Tests
+# =============================================================================
+
+
+class TestConversionWarning:
+    """Test ConversionWarning exception class."""
+
+    def test_basic_message(self):
+        """Test ConversionWarning with just a message."""
+        from ccda_to_fhir.exceptions import ConversionWarning
+
+        warning = ConversionWarning("Unexpected format")
+        assert str(warning) == "Unexpected format"
+
+    def test_with_field_name(self):
+        """Test ConversionWarning with field name."""
+        from ccda_to_fhir.exceptions import ConversionWarning
+
+        warning = ConversionWarning("Unexpected format", field_name="telecom")
+        assert str(warning) == "telecom: Unexpected format"
+        assert warning.field_name == "telecom"
+
+    def test_with_context(self):
+        """Test ConversionWarning with context."""
+        from ccda_to_fhir.exceptions import ConversionWarning
+
+        warning = ConversionWarning(
+            "Code not recognized",
+            field_name="code",
+            context="Observation conversion",
+        )
+        assert "code: Code not recognized" in str(warning)
+        assert "(in Observation conversion)" in str(warning)
+        assert warning.context == "Observation conversion"
+
+
+class TestRecoverableConversionError:
+    """Test RecoverableConversionError exception class."""
+
+    def test_basic_message(self):
+        """Test RecoverableConversionError with just a message."""
+        from ccda_to_fhir.exceptions import RecoverableConversionError
+
+        error = RecoverableConversionError("Invalid date format")
+        assert str(error) == "Invalid date format"
+
+    def test_with_field_name(self):
+        """Test RecoverableConversionError with field name."""
+        from ccda_to_fhir.exceptions import RecoverableConversionError
+
+        error = RecoverableConversionError(
+            "Invalid format",
+            field_name="effectiveTime",
+        )
+        assert str(error) == "effectiveTime: Invalid format"
+        assert error.field_name == "effectiveTime"
+
+    def test_with_fallback_value(self):
+        """Test RecoverableConversionError with fallback value."""
+        from ccda_to_fhir.exceptions import RecoverableConversionError
+
+        error = RecoverableConversionError(
+            "Status code not mapped",
+            field_name="status",
+            fallback_value="unknown",
+        )
+        assert "status: Status code not mapped" in str(error)
+        assert "(using fallback: unknown)" in str(error)
+        assert error.fallback_value == "unknown"
+
+    def test_with_all_fields(self):
+        """Test RecoverableConversionError with all fields populated."""
+        from ccda_to_fhir.exceptions import RecoverableConversionError
+
+        error = RecoverableConversionError(
+            "Code system not recognized",
+            field_name="codeSystem",
+            fallback_value="urn:oid:2.16.840.1.113883",
+            context="CodeableConcept conversion",
+        )
+        assert error.field_name == "codeSystem"
+        assert error.fallback_value == "urn:oid:2.16.840.1.113883"
+        assert error.context == "CodeableConcept conversion"
+        assert "codeSystem: Code system not recognized" in str(error)
+        assert "(using fallback: urn:oid:2.16.840.1.113883)" in str(error)
+        assert "(in CodeableConcept conversion)" in str(error)
