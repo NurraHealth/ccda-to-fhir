@@ -294,20 +294,18 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         Returns:
             FHIR Procedure status code
         """
-        if not status_code or not status_code.code:
-            return FHIRCodes.ProcedureStatus.UNKNOWN
-
-        ccda_status = status_code.code.lower()
-
         # Special handling for planned procedures (moodCode="INT")
         # Per C-CDA on FHIR IG: INT = intent/planned, should map to "preparation"
-        if mood_code and mood_code.upper() == "INT":
-            if ccda_status == "active":
-                return FHIRCodes.ProcedureStatus.PREPARATION
-            elif ccda_status == "new":
+        if mood_code and mood_code.upper() == "INT" and status_code:
+            code = status_code.code if hasattr(status_code, "code") else None
+            if code and code.lower() in ("active", "new"):
                 return FHIRCodes.ProcedureStatus.PREPARATION
 
-        return PROCEDURE_STATUS_TO_FHIR.get(ccda_status, FHIRCodes.ProcedureStatus.UNKNOWN)
+        return self.map_status_code(
+            status_code,
+            PROCEDURE_STATUS_TO_FHIR,
+            FHIRCodes.ProcedureStatus.UNKNOWN,
+        )
 
     def _convert_code(self, code: CD) -> JSONObject:
         """Convert C-CDA procedure code to FHIR CodeableConcept.

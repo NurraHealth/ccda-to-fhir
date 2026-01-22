@@ -252,23 +252,18 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         Returns:
             FHIR ServiceRequest status code
         """
-        if not status_code:
-            return FHIRCodes.ServiceRequestStatus.ACTIVE
-
         # Check for nullFlavor - per C-CDA on FHIR IG
-        if hasattr(status_code, 'null_flavor') and status_code.null_flavor:
+        if status_code and hasattr(status_code, "null_flavor") and status_code.null_flavor:
             null_flavor_upper = status_code.null_flavor.upper()
-            if null_flavor_upper == 'UNK':
+            if null_flavor_upper == "UNK":
                 return FHIRCodes.ServiceRequestStatus.UNKNOWN
             # For planned procedures, other nullFlavors default to active
             return FHIRCodes.ServiceRequestStatus.ACTIVE
 
-        if not status_code.code:
-            return FHIRCodes.ServiceRequestStatus.ACTIVE
-
-        ccda_status = status_code.code.lower()
-        return SERVICE_REQUEST_STATUS_TO_FHIR.get(
-            ccda_status, FHIRCodes.ServiceRequestStatus.ACTIVE
+        return self.map_status_code(
+            status_code,
+            SERVICE_REQUEST_STATUS_TO_FHIR,
+            FHIRCodes.ServiceRequestStatus.ACTIVE,
         )
 
     def _map_intent(self, mood_code: str) -> str:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, IVL_TS, PQ, TS
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.constants import (
+    IMMUNIZATION_STATUS_TO_FHIR,
     NO_IMMUNIZATION_REASON_CODES,
     FHIRCodes,
     FHIRSystems,
@@ -239,26 +240,16 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         Returns:
             FHIR status code
         """
-        # Default to completed
-        status = FHIRCodes.Immunization.STATUS_COMPLETED
-
-        if substance_admin.status_code and substance_admin.status_code.code:
-            ccda_status = substance_admin.status_code.code.lower()
-
-            # Map C-CDA status to FHIR status
-            status_map = {
-                "completed": FHIRCodes.Immunization.STATUS_COMPLETED,
-                "active": FHIRCodes.Immunization.STATUS_COMPLETED,
-                "aborted": FHIRCodes.Immunization.STATUS_NOT_DONE,
-                "cancelled": FHIRCodes.Immunization.STATUS_NOT_DONE,
-            }
-            status = status_map.get(ccda_status, FHIRCodes.Immunization.STATUS_COMPLETED)
-
-        # Check negationInd
+        # Check negationInd first - overrides any status
         if substance_admin.negation_ind:
-            status = FHIRCodes.Immunization.STATUS_NOT_DONE
+            return FHIRCodes.Immunization.STATUS_NOT_DONE
 
-        return status
+        # Use standard mapping
+        return self.map_status_code(
+            substance_admin.status_code,
+            IMMUNIZATION_STATUS_TO_FHIR,
+            FHIRCodes.Immunization.STATUS_COMPLETED,
+        )
 
     def _extract_vaccine_code(self, substance_admin: SubstanceAdministration) -> JSONObject:
         """Extract vaccine code from consumable.

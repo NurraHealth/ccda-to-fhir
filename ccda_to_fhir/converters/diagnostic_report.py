@@ -225,12 +225,10 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         Returns:
             FHIR DiagnosticReport status code
         """
-        if not organizer.status_code or not organizer.status_code.code:
-            return FHIRCodes.DiagnosticReportStatus.FINAL
-
-        status_code = organizer.status_code.code.lower()
-        return DIAGNOSTIC_REPORT_STATUS_TO_FHIR.get(
-            status_code, FHIRCodes.DiagnosticReportStatus.FINAL
+        return self.map_status_code(
+            organizer.status_code,
+            DIAGNOSTIC_REPORT_STATUS_TO_FHIR,
+            FHIRCodes.DiagnosticReportStatus.FINAL,
         )
 
     def _convert_code_to_codeable_concept(self, code) -> JSONObject | None:

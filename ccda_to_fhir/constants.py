@@ -1076,6 +1076,18 @@ DIAGNOSTIC_REPORT_STATUS_TO_FHIR = {
 }
 
 # =============================================================================
+# Immunization Mappings
+# =============================================================================
+
+# Map C-CDA immunization statusCode to FHIR Immunization status
+IMMUNIZATION_STATUS_TO_FHIR = {
+    "completed": FHIRCodes.Immunization.STATUS_COMPLETED,
+    "active": FHIRCodes.Immunization.STATUS_COMPLETED,
+    "aborted": FHIRCodes.Immunization.STATUS_NOT_DONE,
+    "cancelled": FHIRCodes.Immunization.STATUS_NOT_DONE,
+}
+
+# =============================================================================
 # Procedure Mappings
 # =============================================================================
 

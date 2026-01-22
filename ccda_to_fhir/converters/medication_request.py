@@ -248,21 +248,20 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         Reference: https://build.fhir.org/ig/HL7/ccda-on-fhir/CF-medications.html
         """
-        if not substance_admin.status_code:
+        # Special handling for "completed" status per C-CDA on FHIR IG guidance
+        if (
+            substance_admin.status_code
+            and substance_admin.status_code.code == "completed"
+            and self._has_future_dates(substance_admin)
+        ):
+            # Completed prescription with future dates → active medication
             return FHIRCodes.MedicationRequestStatus.ACTIVE
 
-        status_code = substance_admin.status_code.code
-
-        # Special handling for "completed" status per C-CDA on FHIR IG guidance
-        if status_code == "completed":
-            # Check if medication has future dates in effectiveTime
-            if self._has_future_dates(substance_admin):
-                # Completed prescription with future dates → active medication
-                return FHIRCodes.MedicationRequestStatus.ACTIVE
-
         # Use standard mapping for all other cases
-        return MEDICATION_STATUS_TO_FHIR.get(
-            status_code, FHIRCodes.MedicationRequestStatus.ACTIVE
+        return self.map_status_code(
+            substance_admin.status_code,
+            MEDICATION_STATUS_TO_FHIR,
+            FHIRCodes.MedicationRequestStatus.ACTIVE,
         )
 
     def _has_future_dates(self, substance_admin: SubstanceAdministration) -> bool:

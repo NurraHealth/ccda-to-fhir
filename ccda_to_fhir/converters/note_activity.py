@@ -174,13 +174,11 @@ class NoteActivityConverter(BaseConverter[Act]):
         Returns:
             FHIR DocumentReference status code
         """
-        if note_act.status_code and note_act.status_code.code:
-            status_code = note_act.status_code.code.lower()
-            if status_code in DOCUMENT_REFERENCE_STATUS_TO_FHIR:
-                return DOCUMENT_REFERENCE_STATUS_TO_FHIR[status_code]
-
-        # Default to current
-        return FHIRCodes.DocumentReferenceStatus.CURRENT
+        return self.map_status_code(
+            note_act.status_code,
+            DOCUMENT_REFERENCE_STATUS_TO_FHIR,
+            FHIRCodes.DocumentReferenceStatus.CURRENT,
+        )
 
     def _extract_doc_status(self, note_act: Act) -> str | None:
         """Extract FHIR docStatus from C-CDA note activity statusCode.
