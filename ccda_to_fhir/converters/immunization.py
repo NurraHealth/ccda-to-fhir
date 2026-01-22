@@ -301,9 +301,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 return self.convert_date(effective_time.value)
         elif isinstance(effective_time, IVL_TS):
             # For intervals, use low (administration date) over high
-            if effective_time.low and hasattr(effective_time.low, 'value') and effective_time.low.value:
+            if effective_time.low and effective_time.low.value:
                 return self.convert_date(effective_time.low.value)
-            elif effective_time.high and hasattr(effective_time.high, 'value') and effective_time.high.value:
+            elif effective_time.high and effective_time.high.value:
                 return self.convert_date(effective_time.high.value)
 
         return None
@@ -399,7 +399,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             # Extract value from ON object or use string directly
             if isinstance(org_name, str):
                 name_str = org_name
-            elif hasattr(org_name, "value") and org_name.value:
+            elif org_name.value:
                 name_str = org_name.value
             else:
                 name_str = None
@@ -538,9 +538,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Extract dose number from repeat_number
         # IVL_PQ can have value or low.value
         dose_number = None
-        if hasattr(repeat_number, 'value') and repeat_number.value is not None:
+        if repeat_number.value is not None:
             dose_number = int(repeat_number.value)
-        elif hasattr(repeat_number, 'low') and repeat_number.low and repeat_number.low.value is not None:
+        elif repeat_number.low and repeat_number.low.value is not None:
             dose_number = int(repeat_number.low.value)
 
         if dose_number is not None:
@@ -663,11 +663,11 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             ISO date string or None
         """
         # Try to extract low value from IVL_TS
-        if hasattr(effective_time, 'low') and effective_time.low:
-            if hasattr(effective_time.low, 'value') and effective_time.low.value:
+        if isinstance(effective_time, IVL_TS):
+            if effective_time.low and effective_time.low.value:
                 return self.convert_date(effective_time.low.value)
         # Try direct value from TS
-        elif hasattr(effective_time, 'value') and effective_time.value:
+        elif isinstance(effective_time, TS) and effective_time.value:
             return self.convert_date(effective_time.value)
 
         return None
@@ -749,14 +749,14 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         # Extract effectiveDateTime if available
         if observation.effective_time:
-            # Try to get the value from effective_time
-            if hasattr(observation.effective_time, 'value') and observation.effective_time.value:
+            # Try to get the value from effective_time (TS type)
+            if isinstance(observation.effective_time, TS) and observation.effective_time.value:
                 date = self.convert_date(observation.effective_time.value)
                 if date:
                     observation_resource["effectiveDateTime"] = date
             # Try low value for IVL_TS
-            elif hasattr(observation.effective_time, 'low') and observation.effective_time.low:
-                if hasattr(observation.effective_time.low, 'value') and observation.effective_time.low.value:
+            elif isinstance(observation.effective_time, IVL_TS):
+                if observation.effective_time.low and observation.effective_time.low.value:
                     date = self.convert_date(observation.effective_time.low.value)
                     if date:
                         observation_resource["effectiveDateTime"] = date
@@ -764,7 +764,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Extract value based on type
         if observation.value:
             # Check for PQ (physical quantity)
-            if hasattr(observation.value, 'value') and hasattr(observation.value, 'unit'):
+            if isinstance(observation.value, PQ):
                 quantity: JSONObject = {}
                 if observation.value.value is not None:
                     # Ensure value is a number (float or int)
@@ -890,13 +890,13 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Extract effectiveDateTime if available (usually has low value for when complication started)
         if observation.effective_time:
             # Try low value for IVL_TS (when the complication started)
-            if hasattr(observation.effective_time, 'low') and observation.effective_time.low:
-                if hasattr(observation.effective_time.low, 'value') and observation.effective_time.low.value:
+            if isinstance(observation.effective_time, IVL_TS):
+                if observation.effective_time.low and observation.effective_time.low.value:
                     date = self.convert_date(observation.effective_time.low.value)
                     if date:
                         observation_resource["effectiveDateTime"] = date
             # Try direct value from TS
-            elif hasattr(observation.effective_time, 'value') and observation.effective_time.value:
+            elif isinstance(observation.effective_time, TS) and observation.effective_time.value:
                 date = self.convert_date(observation.effective_time.value)
                 if date:
                     observation_resource["effectiveDateTime"] = date
@@ -1034,7 +1034,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                     })
 
         # If primary code is missing (nullFlavor), promote first translation to primary
-        if (not primary_code or hasattr(code_elem, 'null_flavor') and code_elem.null_flavor) and translations:
+        if (not primary_code or code_elem.null_flavor) and translations:
             first_trans = translations[0]
             primary_code = first_trans["code"]
             primary_system = first_trans["code_system"]
@@ -1044,7 +1044,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         # Get original text if available (with reference resolution)
         original_text = None
-        if hasattr(code_elem, 'original_text') and code_elem.original_text:
+        if code_elem.original_text:
             original_text = self.extract_original_text(code_elem.original_text, section=None)
 
         return self.create_codeable_concept(

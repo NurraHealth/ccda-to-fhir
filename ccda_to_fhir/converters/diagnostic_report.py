@@ -257,7 +257,7 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
             codings.append(coding)
 
         # Translations
-        if hasattr(code, "translation") and code.translation:
+        if code.translation:
             for trans in code.translation:
                 if trans.code and trans.code_system:
                     trans_coding: JSONObject = {
@@ -274,13 +274,13 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         codeable_concept: JSONObject = {"coding": codings}
 
         # Original text
-        if hasattr(code, "original_text") and code.original_text:
+        if code.original_text:
             # original_text is ED (Encapsulated Data)
-            if hasattr(code.original_text, "reference"):
+            if code.original_text.reference:
                 # Skip reference-only original text
                 pass
-            elif hasattr(code.original_text, "text") and code.original_text.text:
-                codeable_concept["text"] = code.original_text.text
+            elif code.original_text.value:
+                codeable_concept["text"] = code.original_text.value
 
         return codeable_concept
 
@@ -296,18 +296,18 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         if not organizer.effective_time:
             return None
 
-        # Handle IVL_TS (interval) - use low if available, otherwise high
-        if hasattr(organizer.effective_time, "low") and organizer.effective_time.low:
-            if hasattr(organizer.effective_time.low, "value"):
-                return self.convert_date(organizer.effective_time.low.value)
+        eff_time = organizer.effective_time
 
-        if hasattr(organizer.effective_time, "high") and organizer.effective_time.high:
-            if hasattr(organizer.effective_time.high, "value"):
-                return self.convert_date(organizer.effective_time.high.value)
+        # Handle IVL_TS (interval) - use low if available, otherwise high
+        if eff_time.low and eff_time.low.value:
+            return self.convert_date(eff_time.low.value)
+
+        if eff_time.high and eff_time.high.value:
+            return self.convert_date(eff_time.high.value)
 
         # Handle TS (single time point)
-        if hasattr(organizer.effective_time, "value") and organizer.effective_time.value:
-            return self.convert_date(organizer.effective_time.value)
+        if eff_time.value:
+            return self.convert_date(eff_time.value)
 
         return None
 

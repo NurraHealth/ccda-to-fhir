@@ -161,8 +161,8 @@ class NoteActivityConverter(BaseConverter[Act]):
 
         # Use ID generator with caching for consistency
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
-        root = identifier.root if hasattr(identifier, 'root') and identifier.root else None
-        extension = identifier.extension if hasattr(identifier, 'extension') and identifier.extension else None
+        root = identifier.root if identifier.root else None
+        extension = identifier.extension if identifier.extension else None
 
         return generate_id_from_identifiers("DocumentReference", root, extension)
 
@@ -233,7 +233,7 @@ class NoteActivityConverter(BaseConverter[Act]):
                 type_concept["coding"].append(primary_coding)
 
         # Add translation codes
-        if hasattr(code, "translation") and code.translation:
+        if code.translation:
             for trans in code.translation:
                 trans_coding = self._create_coding(
                     code=trans.code,
@@ -348,7 +348,7 @@ class NoteActivityConverter(BaseConverter[Act]):
             content_list.append(inline_content)
 
         # Check for reference to section narrative
-        if hasattr(text, "reference") and text.reference and section:
+        if text.reference and section:
             reference_content = self._create_reference_content(text.reference, section)
             if reference_content:
                 content_list.append(reference_content)
@@ -396,7 +396,7 @@ class NoteActivityConverter(BaseConverter[Act]):
         attachment = content["attachment"]
 
         # Content type from mediaType attribute
-        if hasattr(text, "media_type") and text.media_type:
+        if text.media_type:
             attachment["contentType"] = text.media_type
         else:
             # Default to text/plain if not specified
@@ -408,13 +408,13 @@ class NoteActivityConverter(BaseConverter[Act]):
         # 2. Base64 encoded (representation="B64")
         # Note: ED model stores text in 'value' attribute
         has_data = False
-        if hasattr(text, "representation") and text.representation == "B64":
+        if text.representation == "B64":
             # Already base64 encoded
-            if hasattr(text, "value") and text.value:
+            if text.value:
                 # Remove whitespace from base64 data
                 attachment["data"] = text.value.replace("\n", "").replace(" ", "").strip()
                 has_data = True
-        elif hasattr(text, "value") and text.value:
+        elif text.value:
             # Plain text - need to base64 encode it
             import base64
             text_bytes = text.value.encode("utf-8")
@@ -473,7 +473,7 @@ class NoteActivityConverter(BaseConverter[Act]):
 
         # Get reference value
         ref_value = None
-        if hasattr(reference, "value") and reference.value:
+        if reference.value:
             ref_value = reference.value
         elif isinstance(reference, str):
             ref_value = reference
@@ -485,7 +485,7 @@ class NoteActivityConverter(BaseConverter[Act]):
         ref_id = ref_value.lstrip("#")
 
         # Access section text/narrative
-        if not hasattr(section, "text") or not section.text:
+        if not section.text:
             return None
 
         # Use utility to extract text by ID from StrucDocText narrative
@@ -504,22 +504,21 @@ class NoteActivityConverter(BaseConverter[Act]):
         """
         texts = []
 
-        if hasattr(element, "content") and element.content:
+        if element.content:
             if isinstance(element.content, str):
                 texts.append(element.content)
             elif isinstance(element.content, list):
                 for item in element.content:
                     if isinstance(item, str):
                         texts.append(item)
-                    elif hasattr(item, "__dict__"):
+                    else:
                         texts.append(self._extract_text_from_element(item))
 
         # Check for direct text content
         for attr_name in ["text", "value", "_value"]:
-            if hasattr(element, attr_name):
-                attr_value = getattr(element, attr_name)
-                if isinstance(attr_value, str):
-                    texts.append(attr_value)
+            attr_value = getattr(element, attr_name, None)
+            if isinstance(attr_value, str):
+                texts.append(attr_value)
 
         # Recursively extract from children
         for attr_value in vars(element).values():
@@ -547,12 +546,18 @@ class NoteActivityConverter(BaseConverter[Act]):
         if note_act.effective_time:
             # Note Activity uses IVL_TS for effectiveTime
             # But it's often just a single timestamp, treat as start
-            if hasattr(note_act.effective_time, "low") and note_act.effective_time.low:
-                if note_act.effective_time.low.value:
+            from ccda_to_fhir.ccda.models.datatypes import IVL_TS, TS
+            if isinstance(note_act.effective_time, IVL_TS):
+                # Check for point-in-time (IVL_TS with direct value attribute)
+                if note_act.effective_time.value:
+                    start = self.convert_date(note_act.effective_time.value)
+                    if start:
+                        context["period"] = {"start": start}
+                elif note_act.effective_time.low and note_act.effective_time.low.value:
                     start = self.convert_date(note_act.effective_time.low.value)
                     if start:
                         context["period"] = {"start": start}
-            elif hasattr(note_act.effective_time, "value") and note_act.effective_time.value:
+            elif isinstance(note_act.effective_time, TS) and note_act.effective_time.value:
                 # Single timestamp
                 start = self.convert_date(note_act.effective_time.value)
                 if start:
@@ -562,7 +567,7 @@ class NoteActivityConverter(BaseConverter[Act]):
         if note_act.entry_relationship:
             for entry_rel in note_act.entry_relationship:
                 # Look for encounter in entryRelationship (typeCode="COMP")
-                if hasattr(entry_rel, "encounter") and entry_rel.encounter:
+                if entry_rel.encounter:
                     encounter = entry_rel.encounter
                     if encounter.id and len(encounter.id) > 0:
                         first_id = encounter.id[0]
@@ -605,7 +610,7 @@ class NoteActivityConverter(BaseConverter[Act]):
         relates_to = []
 
         for ref in references:
-            if hasattr(ref, "external_document") and ref.external_document:
+            if ref.external_document:
                 ext_doc = ref.external_document
                 if ext_doc.id and len(ext_doc.id) > 0:
                     first_id = ext_doc.id[0]

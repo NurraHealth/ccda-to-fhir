@@ -94,10 +94,12 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
                 practitioner_role["specialty"] = specialties
 
         # Handle multiple specialties from SDTC extension (if supported)
-        if hasattr(assigned, "sdtc_specialty") and assigned.sdtc_specialty:
+        # Note: sdtc_specialty only exists on AssignedEntity (Performer), not AssignedAuthor
+        sdtc_specialties = getattr(assigned, "sdtc_specialty", None)
+        if sdtc_specialties:
             if "specialty" not in practitioner_role:
                 practitioner_role["specialty"] = []
-            for sdtc_specialty in assigned.sdtc_specialty:
+            for sdtc_specialty in sdtc_specialties:
                 additional_specialties = self._convert_specialty(sdtc_specialty)
                 if additional_specialties:
                     practitioner_role["specialty"].extend(additional_specialties)
@@ -176,7 +178,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
 
         # Extract original text from ED if present
         original_text = None
-        if hasattr(code, "original_text") and code.original_text:
+        if code.original_text:
             original_text = self.extract_original_text(code.original_text)
 
         # Create CodeableConcept using base converter utility
@@ -213,7 +215,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
 
             fhir_identifier = self.create_identifier(
                 root=identifier.root,
-                extension=identifier.extension if hasattr(identifier, "extension") else None,
+                extension=identifier.extension,
             )
 
             if fhir_identifier:

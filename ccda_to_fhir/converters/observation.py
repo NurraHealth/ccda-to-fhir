@@ -114,7 +114,7 @@ class ObservationConverter(BaseConverter[Observation]):
         # We detect this and use a fallback ID generation to avoid duplicates
         if observation.id and len(observation.id) > 0:
             for id_elem in observation.id:
-                if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
+                if id_elem.root and not id_elem.null_flavor:
                     obs_id_key = (id_elem.root, id_elem.extension)
 
                     # Check if we've seen this observation ID before (duplicate)
@@ -142,13 +142,13 @@ class ObservationConverter(BaseConverter[Observation]):
             fallback_key_parts = []
 
             # Include code if available
-            if observation.code and hasattr(observation.code, "code") and observation.code.code:
+            if observation.code and observation.code.code:
                 fallback_key_parts.append(f"code:{observation.code.code}")
 
             # Include template ID if available
-            if hasattr(observation, "template_id") and observation.template_id:
+            if observation.template_id:
                 for template in observation.template_id:
-                    if hasattr(template, "root") and template.root:
+                    if template.root:
                         fallback_key_parts.append(f"template:{template.root}")
                         break
 
@@ -304,10 +304,11 @@ class ObservationConverter(BaseConverter[Observation]):
 
         if not (has_value or has_data_absent or has_component or has_has_member):
             # Check for nullFlavor on value element
+            # Use getattr since observation.value can be various types (PQ, CD, ED, etc.)
+            # and not all have null_flavor attribute
             has_null_flavor = (
                 observation.value
-                and hasattr(observation.value, 'null_flavor')
-                and observation.value.null_flavor
+                and getattr(observation.value, 'null_flavor', None)
             )
 
             if has_null_flavor:
@@ -354,7 +355,7 @@ class ObservationConverter(BaseConverter[Observation]):
         panel_id = None
         if organizer.id and len(organizer.id) > 0:
             for id_elem in organizer.id:
-                if id_elem.root and not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
+                if id_elem.root and not id_elem.null_flavor:
                     obs_id_key = (id_elem.root, id_elem.extension)
 
                     # Check if we've seen this organizer ID before (duplicate)
@@ -382,13 +383,13 @@ class ObservationConverter(BaseConverter[Observation]):
             fallback_key_parts = []
 
             # Include code if available
-            if organizer.code and hasattr(organizer.code, "code") and organizer.code.code:
+            if organizer.code and organizer.code.code:
                 fallback_key_parts.append(f"code:{organizer.code.code}")
 
             # Include template ID if available
-            if hasattr(organizer, "template_id") and organizer.template_id:
+            if organizer.template_id:
                 for template in organizer.template_id:
-                    if hasattr(template, "root") and template.root:
+                    if template.root:
                         fallback_key_parts.append(f"template:{template.root}")
                         break
 
@@ -790,7 +791,7 @@ class ObservationConverter(BaseConverter[Observation]):
             codings.append(coding)
 
         # Translations
-        if hasattr(code, "translation") and code.translation:
+        if code.translation:
             for trans in code.translation:
                 if trans.code and trans.code_system:
                     trans_system_uri = self.map_oid_to_uri(trans.code_system)
@@ -813,10 +814,10 @@ class ObservationConverter(BaseConverter[Observation]):
         codeable_concept: JSONObject = {"coding": codings}
 
         # Original text
-        if hasattr(code, "original_text") and code.original_text:
-            # original_text is ED (Encapsulated Data)
-            if hasattr(code.original_text, "text") and code.original_text.text:
-                codeable_concept["text"] = code.original_text.text
+        if code.original_text:
+            # original_text is ED (Encapsulated Data) - value attr holds text content
+            if code.original_text.value:
+                codeable_concept["text"] = code.original_text.value
 
         return codeable_concept
 
@@ -858,7 +859,7 @@ class ObservationConverter(BaseConverter[Observation]):
         laterality_qualifier_codes = ["272741003", "78615007"]  # "Laterality" and "with laterality"
         laterality_value = None
 
-        if hasattr(code, "qualifier") and code.qualifier:
+        if code.qualifier:
             for qualifier in code.qualifier:
                 # Check if this is a laterality qualifier
                 if qualifier.name and qualifier.name.code in laterality_qualifier_codes:
@@ -905,27 +906,31 @@ class ObservationConverter(BaseConverter[Observation]):
             or dict with start/end (for effectivePeriod),
             or None
         """
+        from ccda_to_fhir.ccda.models.datatypes import IVL_TS, TS
+
         if not observation.effective_time:
             return None
 
-        # Handle IVL_TS (interval)
-        if hasattr(observation.effective_time, "low") or hasattr(observation.effective_time, "high"):
-            has_low = hasattr(observation.effective_time, "low") and observation.effective_time.low
-            has_high = hasattr(observation.effective_time, "high") and observation.effective_time.high
+        eff_time = observation.effective_time
+
+        # Handle IVL_TS (interval) - check for low/high boundaries
+        if isinstance(eff_time, IVL_TS):
+            has_low = eff_time.low is not None
+            has_high = eff_time.high is not None
 
             # Case 1: Both low and high present → effectivePeriod
             if has_low and has_high:
                 period: JSONObject = {}
 
                 # Extract start from low
-                if hasattr(observation.effective_time.low, "value"):
-                    start_date = self.convert_date(observation.effective_time.low.value)
+                if eff_time.low.value:
+                    start_date = self.convert_date(eff_time.low.value)
                     if start_date:
                         period["start"] = start_date
 
                 # Extract end from high
-                if hasattr(observation.effective_time.high, "value"):
-                    end_date = self.convert_date(observation.effective_time.high.value)
+                if eff_time.high.value:
+                    end_date = self.convert_date(eff_time.high.value)
                     if end_date:
                         period["end"] = end_date
 
@@ -934,13 +939,20 @@ class ObservationConverter(BaseConverter[Observation]):
                     return period
 
             # Case 2: Only low present → effectiveDateTime (use start date)
-            elif has_low:
-                if hasattr(observation.effective_time.low, "value"):
-                    return self.convert_date(observation.effective_time.low.value)
+            elif has_low and eff_time.low.value:
+                return self.convert_date(eff_time.low.value)
+
+            # Case 3: IVL_TS with value attribute (point in time)
+            if eff_time.value:
+                return self.convert_date(eff_time.value)
 
         # Handle TS (single time point)
-        if hasattr(observation.effective_time, "value") and observation.effective_time.value:
-            return self.convert_date(observation.effective_time.value)
+        if isinstance(eff_time, TS) and eff_time.value:
+            return self.convert_date(eff_time.value)
+
+        # Fallback: check for value attribute (handles both TS and IVL_TS with value)
+        if eff_time.value:
+            return self.convert_date(eff_time.value)
 
         return None
 
@@ -953,17 +965,20 @@ class ObservationConverter(BaseConverter[Observation]):
         Returns:
             FHIR formatted datetime string or None
         """
+        from ccda_to_fhir.ccda.models.datatypes import IVL_TS
+
         if not organizer.effective_time:
             return None
 
-        # Handle IVL_TS (interval) - use low if available
-        if hasattr(organizer.effective_time, "low") and organizer.effective_time.low:
-            if hasattr(organizer.effective_time.low, "value"):
-                return self.convert_date(organizer.effective_time.low.value)
+        eff_time = organizer.effective_time
 
-        # Handle TS (single time point)
-        if hasattr(organizer.effective_time, "value") and organizer.effective_time.value:
-            return self.convert_date(organizer.effective_time.value)
+        # Handle IVL_TS (interval) - use low if available
+        if isinstance(eff_time, IVL_TS) and eff_time.low and eff_time.low.value:
+            return self.convert_date(eff_time.low.value)
+
+        # Handle TS (single time point) or IVL_TS with value
+        if eff_time.value:
+            return self.convert_date(eff_time.value)
 
         return None
 
@@ -1011,9 +1026,7 @@ class ObservationConverter(BaseConverter[Observation]):
 
         # Handle ST (String) → valueString
         if isinstance(observation.value, ST):
-            if hasattr(observation.value, "text") and observation.value.text:
-                return {"valueString": observation.value.text}
-            elif hasattr(observation.value, "value") and observation.value.value:
+            if observation.value.value:
                 return {"valueString": observation.value.value}
 
         # Handle ED (Encapsulated Data) → extension with valueAttachment
@@ -1133,14 +1146,14 @@ class ObservationConverter(BaseConverter[Observation]):
         attachment: JSONObject = {}
 
         # Content type from mediaType attribute (required if data present)
-        if hasattr(ed, "media_type") and ed.media_type:
+        if ed.media_type:
             attachment["contentType"] = ed.media_type
         else:
             # Default to application/octet-stream for binary data
             attachment["contentType"] = "application/octet-stream"
 
         # Language
-        if hasattr(ed, "language") and ed.language:
+        if ed.language:
             attachment["language"] = ed.language
 
         # Data - base64 encoded content
@@ -1149,13 +1162,13 @@ class ObservationConverter(BaseConverter[Observation]):
         # 2. Plain text content
         # Note: ED model stores text in 'value' attribute
         has_data = False
-        if hasattr(ed, "representation") and ed.representation == "B64":
+        if ed.representation == "B64":
             # Already base64 encoded
-            if hasattr(ed, "value") and ed.value:
+            if ed.value:
                 # Remove whitespace from base64 data
                 attachment["data"] = ed.value.replace("\n", "").replace(" ", "").strip()
                 has_data = True
-        elif hasattr(ed, "value") and ed.value:
+        elif ed.value:
             # Plain text or other content - need to base64 encode it
             text_bytes = ed.value.encode("utf-8")
             attachment["data"] = base64.b64encode(text_bytes).decode("ascii")
@@ -1208,7 +1221,7 @@ class ObservationConverter(BaseConverter[Observation]):
         if observation_range.text:
             # Extract text content from ED (encapsulated data) type
             # ED.value is aliased from _text in the XML
-            if hasattr(observation_range.text, 'value') and observation_range.text.value:
+            if observation_range.text.value:
                 ref_range["text"] = observation_range.text.value
 
         if ref_range:
@@ -1343,7 +1356,7 @@ class ObservationConverter(BaseConverter[Observation]):
                         }
 
                         # Extract value (TS type in C-CDA)
-                        if rel.observation.value and hasattr(rel.observation.value, 'value'):
+                        if rel.observation.value and rel.observation.value.value:
                             date_str = rel.observation.value.value
                             # Handle ISO format dates (YYYY-MM-DD) which may appear in C-CDA
                             if date_str and '-' in date_str:
@@ -1375,32 +1388,28 @@ class ObservationConverter(BaseConverter[Observation]):
                         }
 
                         # Extract value (PQ type in C-CDA)
-                        if rel.observation.value:
-                            if hasattr(rel.observation.value, 'value') and hasattr(rel.observation.value, 'unit'):
-                                value_quantity: JSONObject = {
-                                    "value": float(rel.observation.value.value)
-                                }
+                        if rel.observation.value and rel.observation.value.value is not None:
+                            value_quantity: JSONObject = {
+                                "value": float(rel.observation.value.value)
+                            }
 
-                                # Add unit if present
-                                if rel.observation.value.unit:
-                                    value_quantity["unit"] = rel.observation.value.unit
-                                    # Map common UCUM units
-                                    if rel.observation.value.unit.lower() in ("wk", "weeks", "week"):
-                                        value_quantity["system"] = "http://unitsofmeasure.org"
-                                        value_quantity["code"] = "wk"
-                                    elif rel.observation.value.unit.lower() in ("d", "days", "day"):
-                                        value_quantity["system"] = "http://unitsofmeasure.org"
-                                        value_quantity["code"] = "d"
-
-                                component["valueQuantity"] = value_quantity
-                            elif hasattr(rel.observation.value, 'value'):
+                            # Add unit if present
+                            if rel.observation.value.unit:
+                                value_quantity["unit"] = rel.observation.value.unit
+                                # Map common UCUM units
+                                if rel.observation.value.unit.lower() in ("wk", "weeks", "week"):
+                                    value_quantity["system"] = "http://unitsofmeasure.org"
+                                    value_quantity["code"] = "wk"
+                                elif rel.observation.value.unit.lower() in ("d", "days", "day"):
+                                    value_quantity["system"] = "http://unitsofmeasure.org"
+                                    value_quantity["code"] = "d"
+                            else:
                                 # Value without unit (assume weeks for gestational age)
-                                component["valueQuantity"] = {
-                                    "value": float(rel.observation.value.value),
-                                    "unit": "wk",
-                                    "system": "http://unitsofmeasure.org",
-                                    "code": "wk"
-                                }
+                                value_quantity["unit"] = "wk"
+                                value_quantity["system"] = "http://unitsofmeasure.org"
+                                value_quantity["code"] = "wk"
+
+                            component["valueQuantity"] = value_quantity
 
                         fhir_obs["component"].append(component)
 

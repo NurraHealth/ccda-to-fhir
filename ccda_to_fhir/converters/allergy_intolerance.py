@@ -668,7 +668,8 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                         onset_date = self.convert_date(rel.observation.effective_time.low.value)
                         if onset_date:
                             reaction["onset"] = onset_date
-                    elif hasattr(rel.observation.effective_time, "value") and rel.observation.effective_time.value:
+                    elif rel.observation.effective_time.value:
+                        # IVL_TS can also have direct value for point-in-time
                         onset_date = self.convert_date(rel.observation.effective_time.value)
                         if onset_date:
                             reaction["onset"] = onset_date

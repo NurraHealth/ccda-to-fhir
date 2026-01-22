@@ -375,7 +375,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 codings.append(primary_coding)
 
         # Translation codings
-        if hasattr(code, "translation") and code.translation:
+        if code.translation:
             for trans in code.translation:
                 trans_coding = self._create_coding(trans)
                 if trans_coding:
@@ -385,7 +385,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             codeable_concept["coding"] = codings
 
         # Original text
-        if hasattr(code, "original_text") and code.original_text:
+        if code.original_text:
             codeable_concept["text"] = code.original_text
 
         return codeable_concept
@@ -441,7 +441,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             >>> physical_type = self._infer_physical_type(code)
             >>> # Returns: {"coding": [{"system": "...", "code": "ho", "display": "House"}]}
         """
-        if not location_code or not hasattr(location_code, 'code') or not location_code.code:
+        if not location_code or not location_code.code:
             return None
 
         # Mapping from C-CDA location codes to FHIR physicalType codes
@@ -504,7 +504,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         physical_type_code = None
         display = None
 
-        code_system = location_code.code_system if hasattr(location_code, 'code_system') else None
+        code_system = location_code.code_system
         code_value = location_code.code
 
         if code_system == '2.16.840.1.113883.6.259':  # HSLOC
@@ -558,7 +558,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             >>> mode = self._determine_mode(code)
             >>> # Returns: "kind"
         """
-        if not location_code or not hasattr(location_code, 'code') or not location_code.code:
+        if not location_code or not location_code.code:
             # Default to instance when code is missing
             return "instance"
 

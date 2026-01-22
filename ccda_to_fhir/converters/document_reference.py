@@ -176,8 +176,8 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
 
         # Use document root and extension to create ID via cached UUID generator
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
-        root = document_id.root if hasattr(document_id, 'root') and document_id.root else None
-        extension = document_id.extension if hasattr(document_id, 'extension') and document_id.extension else None
+        root = document_id.root if document_id.root else None
+        extension = document_id.extension if document_id.extension else None
 
         return generate_id_from_identifiers("DocumentReference", root, extension)
 
@@ -767,11 +767,11 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
             return None
 
         if code.original_text:
-            # ED type - extract text
-            if hasattr(code.original_text, "text"):
-                return code.original_text.text
             # String type
-            elif isinstance(code.original_text, str):
+            if isinstance(code.original_text, str):
                 return code.original_text
+            # ED type - extract text
+            elif code.original_text.text:
+                return code.original_text.text
 
         return None

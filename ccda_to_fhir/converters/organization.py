@@ -87,8 +87,9 @@ class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganiz
 
         # Map type (organization classification)
         # Note: standard_industry_class_code only exists on Author/Performer organizations, not Custodian
-        if hasattr(organization, "standard_industry_class_code") and organization.standard_industry_class_code:
-            org_type = self._convert_type(organization.standard_industry_class_code)
+        std_class_code = getattr(organization, "standard_industry_class_code", None)
+        if std_class_code:
+            org_type = self._convert_type(std_class_code)
             if org_type:
                 org["type"] = [org_type]
 
@@ -135,7 +136,7 @@ class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganiz
 
         if not isinstance(names, list):
             # It's a single ON object
-            if hasattr(names, "value") and names.value:
+            if names.value:
                 return names.value
             else:
                 return str(names) if names else None
@@ -149,7 +150,7 @@ class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganiz
 
         # Handle ON (OrganizationName) objects
         # ON has a .value field that contains the text content
-        if hasattr(first_name, "value") and first_name.value:
+        if first_name.value:
             return first_name.value
         else:
             # Fallback to string representation

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
-from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS
+from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.constants import (
     SERVICE_REQUEST_MOOD_TO_INTENT,
@@ -77,11 +77,8 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             raise ValueError("Planned Procedure/Act must have a code")
 
         has_valid_code = (
-            hasattr(procedure.code, "code")
-            and procedure.code.code
-            and not (
-                hasattr(procedure.code, "null_flavor") and procedure.code.null_flavor
-            )
+            procedure.code.code
+            and not procedure.code.null_flavor
         )
 
         if not has_valid_code:
@@ -254,7 +251,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             FHIR ServiceRequest status code
         """
         # Check for nullFlavor - per C-CDA on FHIR IG
-        if status_code and hasattr(status_code, "null_flavor") and status_code.null_flavor:
+        if status_code and status_code.null_flavor:
             null_flavor_upper = status_code.null_flavor.upper()
             if null_flavor_upper == "UNK":
                 return FHIRCodes.ServiceRequestStatus.UNKNOWN
@@ -289,7 +286,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         Returns:
             FHIR ServiceRequest priority code or None
         """
-        if not priority_code or not hasattr(priority_code, "code"):
+        if not priority_code or not priority_code.code:
             return None
 
         ccda_priority = priority_code.code.upper()
@@ -309,7 +306,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         # Infer category based on code system and code ranges
         code_system = code.code_system
-        code_value = code.code if hasattr(code, "code") else None
+        code_value = code.code
 
         # LOINC codes - typically lab procedures
         if code_system == "2.16.840.1.113883.6.1":
@@ -399,7 +396,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         """
         return self.convert_code_to_codeable_concept(code)
 
-    def _convert_occurrence(self, effective_time: IVL_TS | str) -> JSONObject | str | None:
+    def _convert_occurrence(self, effective_time: IVL_TS | TS | str) -> JSONObject | str | None:
         """Convert C-CDA effectiveTime to FHIR occurrence[x].
 
         Args:
@@ -411,35 +408,35 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if isinstance(effective_time, str):
             return self.convert_date(effective_time)
 
-        if hasattr(effective_time, "value") and effective_time.value:
+        if isinstance(effective_time, IVL_TS):
+            # Check for point-in-time (IVL_TS with direct value attribute)
+            if effective_time.value:
+                return self.convert_date(effective_time.value)
+
+            # Handle period (low/high)
+            period: JSONObject = {}
+
+            if effective_time.low:
+                low_value = effective_time.low.value
+                if low_value:
+                    converted_low = self.convert_date(str(low_value))
+                    if converted_low:
+                        period["start"] = converted_low
+
+            if effective_time.high:
+                high_value = effective_time.high.value
+                if high_value:
+                    converted_high = self.convert_date(str(high_value))
+                    if converted_high:
+                        period["end"] = converted_high
+
+            return period if period else None
+
+        # Handle single value (TS type)
+        if isinstance(effective_time, TS) and effective_time.value:
             return self.convert_date(effective_time.value)
 
-        # Handle period
-        period: JSONObject = {}
-
-        if hasattr(effective_time, "low") and effective_time.low:
-            low_value = (
-                effective_time.low.value
-                if hasattr(effective_time.low, "value")
-                else effective_time.low
-            )
-            if low_value:
-                converted_low = self.convert_date(str(low_value))
-                if converted_low:
-                    period["start"] = converted_low
-
-        if hasattr(effective_time, "high") and effective_time.high:
-            high_value = (
-                effective_time.high.value
-                if hasattr(effective_time.high, "value")
-                else effective_time.high
-            )
-            if high_value:
-                converted_high = self.convert_date(str(high_value))
-                if converted_high:
-                    period["end"] = converted_high
-
-        return period if period else None
+        return None
 
     def _extract_authored_on(self, authors: list) -> str | None:
         """Extract authoredOn from C-CDA authors.
@@ -457,7 +454,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         # Get latest author by timestamp
         authors_with_time = [
-            a for a in authors if hasattr(a, "time") and a.time and a.time.value
+            a for a in authors if a.time and a.time.value
         ]
 
         if not authors_with_time:
@@ -481,7 +478,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             return None
 
         authors_with_time = [
-            a for a in authors if hasattr(a, "time") and a.time and a.time.value
+            a for a in authors if a.time and a.time.value
         ]
 
         if not authors_with_time:
@@ -489,17 +486,11 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         latest_author = max(authors_with_time, key=lambda a: a.time.value)
 
-        if (
-            hasattr(latest_author, "assigned_author")
-            and latest_author.assigned_author
-        ):
+        if latest_author.assigned_author:
             assigned_author = latest_author.assigned_author
 
-            if (
-                hasattr(assigned_author, "assigned_person")
-                and assigned_author.assigned_person
-            ):
-                if hasattr(assigned_author, "id") and assigned_author.id:
+            if assigned_author.assigned_person:
+                if assigned_author.id:
                     for id_elem in assigned_author.id:
                         if id_elem.root:
                             pract_id = self._generate_practitioner_id(
@@ -521,7 +512,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             FHIR CodeableConcept or None
         """
         for performer in performers:
-            if hasattr(performer, "function_code") and performer.function_code:
+            if performer.function_code:
                 return self._convert_code(performer.function_code)
 
         return None
@@ -557,29 +548,24 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         for entry_rel in entry_relationships:
             # Look for Instruction acts with typeCode="SUBJ" and inversionInd="true"
             if (
-                hasattr(entry_rel, "type_code")
-                and entry_rel.type_code == "SUBJ"
-                and hasattr(entry_rel, "inversion_ind")
+                entry_rel.type_code == "SUBJ"
                 and entry_rel.inversion_ind
             ):
-                if hasattr(entry_rel, "act") and entry_rel.act:
+                if entry_rel.act:
                     act = entry_rel.act
 
                     # Check if this is an Instruction template
                     is_instruction = False
-                    if hasattr(act, "template_id") and act.template_id:
+                    if act.template_id:
                         for template in act.template_id:
-                            if (
-                                hasattr(template, "root")
-                                and template.root == TemplateIds.INSTRUCTION_ACT
-                            ):
+                            if template.root == TemplateIds.INSTRUCTION_ACT:
                                 is_instruction = True
                                 break
 
-                    if is_instruction and hasattr(act, "text") and act.text:
+                    if is_instruction and act.text:
                         if isinstance(act.text, str):
                             return act.text
-                        elif hasattr(act.text, "value"):
+                        elif act.text.value:
                             return act.text.value
 
         return None

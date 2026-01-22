@@ -105,7 +105,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
                 device["version"] = version
 
         # Map owner organization from representedOrganization (if available)
-        if hasattr(self, "reference_registry") and self.reference_registry:
+        if self.reference_registry:
             owner_ref = self._extract_ehr_device_owner(assigned)
             if owner_ref:
                 device["owner"] = owner_ref
@@ -268,12 +268,12 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             code = participant_role.playing_device.code
             # Extract original text from ED object if present
             original_text = None
-            if hasattr(code, "original_text") and code.original_text:
+            if code.original_text:
                 original_text = self.extract_original_text(code.original_text)
             device_type = self.create_codeable_concept(
-                code=code.code if hasattr(code, "code") else None,
-                code_system=code.code_system if hasattr(code, "code_system") else None,
-                display_name=code.display_name if hasattr(code, "display_name") else None,
+                code=code.code,
+                code_system=code.code_system,
+                display_name=code.display_name,
                 original_text=original_text
             )
             if device_type:
@@ -307,7 +307,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         device["status"] = self._infer_device_status(procedure_status)
 
         # Map owner organization from scopingEntity (if available)
-        if hasattr(self, "reference_registry") and self.reference_registry:
+        if self.reference_registry:
             owner_ref = self._extract_device_owner(participant_role)
             if owner_ref:
                 device["owner"] = owner_ref
@@ -408,10 +408,10 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         if playing_device.code:
             display_name = None
             # Try original text first (extract from ED object if present)
-            if hasattr(playing_device.code, "original_text") and playing_device.code.original_text:
+            if playing_device.code.original_text:
                 display_name = self.extract_original_text(playing_device.code.original_text)
             # Fall back to display name
-            elif hasattr(playing_device.code, "display_name") and playing_device.code.display_name:
+            elif playing_device.code.display_name:
                 display_name = playing_device.code.display_name
 
             if display_name:
@@ -457,13 +457,13 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         Returns:
             Organization reference dict or None
         """
-        if not hasattr(participant_role, "scoping_entity") or not participant_role.scoping_entity:
+        if not participant_role.scoping_entity:
             return None
 
         scoping_entity = participant_role.scoping_entity
 
         # Extract organization ID from scopingEntity identifiers
-        if not hasattr(scoping_entity, "id") or not scoping_entity.id:
+        if not scoping_entity.id:
             return None
 
         # Generate organization ID using same method as OrganizationConverter
@@ -488,13 +488,13 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         Returns:
             Organization reference dict or None
         """
-        if not hasattr(assigned, "represented_organization") or not assigned.represented_organization:
+        if not assigned.represented_organization:
             return None
 
         represented_org = assigned.represented_organization
 
         # Extract organization ID from representedOrganization identifiers
-        if not hasattr(represented_org, "id") or not represented_org.id:
+        if not represented_org.id:
             return None
 
         # Generate organization ID using same method as OrganizationConverter

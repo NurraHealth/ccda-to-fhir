@@ -319,7 +319,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                     return "revoked"
 
         # 3. Check if document is authenticated (finalized)
-        if hasattr(doc, 'legal_authenticator') and doc.legal_authenticator:
+        if doc.legal_authenticator:
             return "active"
 
         # 4. Default to active
@@ -344,11 +344,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         Returns:
             Status string (completed, active, cancelled, suspended) or None
         """
-        if not hasattr(intervention_entry, 'status_code'):
+        if not intervention_entry.status_code:
             return None
 
         status_code = intervention_entry.status_code
-        if not status_code or not hasattr(status_code, 'code'):
+        if not status_code or not status_code.code:
             return None
 
         code = status_code.code.lower() if status_code.code else None
@@ -379,12 +379,12 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         """
         period: JSONObject = {}
 
-        if hasattr(effective_time, "low") and effective_time.low:
+        if effective_time.low:
             start = self.convert_date(effective_time.low.value)
             if start:
                 period["start"] = start
 
-        if hasattr(effective_time, "high") and effective_time.high:
+        if effective_time.high:
             end = self.convert_date(effective_time.high.value)
             if end:
                 period["end"] = end
@@ -460,11 +460,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             # Find outcomes linked to this intervention via entryRelationship
             linked_outcomes = []
 
-            if hasattr(intervention, 'entry_relationship'):
+            if intervention.entry_relationship:
                 for rel in intervention.entry_relationship:
                     # typeCode='GEVL' means "evaluates" - outcome evaluates the intervention
-                    if hasattr(rel, 'type_code') and rel.type_code == 'GEVL':
-                        if hasattr(rel, 'observation'):
+                    if rel.type_code == 'GEVL':
+                        if rel.observation:
                             outcome_id = self._get_entry_id(rel.observation)
                             # Check if this outcome is in our outcomes list
                             for outcome_entry in outcomes:
@@ -490,12 +490,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         Returns:
             ID root or None if not found
         """
-        if hasattr(entry, 'id') and entry.id:
+        if entry.id:
             # Handle both single id and list of ids
             if isinstance(entry.id, list) and len(entry.id) > 0:
-                if hasattr(entry.id[0], 'root'):
-                    return entry.id[0].root
-            elif hasattr(entry.id, 'root'):
+                return entry.id[0].root
+            elif entry.id.root:
                 return entry.id.root
         return None
 
@@ -511,7 +510,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         Returns:
             Generated FHIR resource ID or None
         """
-        if not hasattr(entry, 'id') or not entry.id:
+        if not entry.id:
             return None
 
         # Extract root and extension from first identifier
@@ -519,14 +518,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         extension = None
 
         if isinstance(entry.id, list) and len(entry.id) > 0:
-            if hasattr(entry.id[0], 'root'):
-                root = entry.id[0].root
-            if hasattr(entry.id[0], 'extension'):
-                extension = entry.id[0].extension
-        elif hasattr(entry.id, 'root'):
+            root = entry.id[0].root
+            extension = entry.id[0].extension
+        else:
             root = entry.id.root
-            if hasattr(entry.id, 'extension'):
-                extension = entry.id.extension
+            extension = entry.id.extension
 
         # Convert to strings if needed (handles Mock objects in tests)
         if root is not None and not isinstance(root, str):
@@ -559,11 +555,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             return None
 
         # First, check if this intervention has nested procedures/acts (COMP entryRelationships)
-        if hasattr(intervention_entry, 'entry_relationship') and intervention_entry.entry_relationship:
+        if intervention_entry.entry_relationship:
             for rel in intervention_entry.entry_relationship:
-                if hasattr(rel, 'type_code') and rel.type_code == 'COMP':
+                if rel.type_code == 'COMP':
                     # Look for nested procedure
-                    if hasattr(rel, 'procedure') and rel.procedure:
+                    if rel.procedure:
                         resource_id = self._generate_resource_id_from_entry(rel.procedure, "procedure")
                         if resource_id:
                             # Try as Procedure
@@ -575,7 +571,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                                 return f"urn:uuid:{resource_id}"
 
                     # Look for nested act
-                    elif hasattr(rel, 'act') and rel.act:
+                    elif rel.act:
                         resource_id = self._generate_resource_id_from_entry(rel.act, "procedure")
                         if resource_id:
                             # Try as Procedure
@@ -721,39 +717,39 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         """
         # First try to get text from nested procedure in entryRelationship
         # This is preferred as it provides more specific information
-        if hasattr(intervention_entry, 'entry_relationship'):
+        if intervention_entry.entry_relationship:
             for rel in intervention_entry.entry_relationship:
                 # Look for COMP (component) relationships with procedures
-                if hasattr(rel, 'type_code') and rel.type_code == 'COMP':
+                if rel.type_code == 'COMP':
                     # Check for procedure
-                    if hasattr(rel, 'procedure') and rel.procedure:
+                    if rel.procedure:
                         text = self._extract_code_display_text(rel.procedure)
                         if text:
                             return text
                     # Check for act
-                    elif hasattr(rel, 'act') and rel.act:
+                    elif rel.act:
                         text = self._extract_code_display_text(rel.act)
                         if text:
                             return text
 
         # Fallback to parent intervention code element
-        if hasattr(intervention_entry, 'code') and intervention_entry.code:
+        if intervention_entry.code:
             code = intervention_entry.code
 
             # Prefer displayName
-            if hasattr(code, 'display_name') and code.display_name:
+            if code.display_name:
                 return code.display_name
 
             # Fallback to originalText
-            if hasattr(code, 'original_text') and code.original_text:
+            if code.original_text:
                 # originalText might be a string or an object
                 if isinstance(code.original_text, str):
                     return code.original_text
-                elif hasattr(code.original_text, 'value'):
+                elif code.original_text.value:
                     return code.original_text.value
 
             # Fallback to code value
-            if hasattr(code, 'code') and code.code:
+            if code.code:
                 return f"Intervention (code: {code.code})"
 
         return None
@@ -767,20 +763,20 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         Returns:
             Display text or None
         """
-        if not hasattr(entry, 'code') or not entry.code:
+        if not entry.code:
             return None
 
         code = entry.code
 
         # Prefer displayName
-        if hasattr(code, 'display_name') and code.display_name:
+        if code.display_name:
             return code.display_name
 
         # Fallback to originalText
-        if hasattr(code, 'original_text') and code.original_text:
+        if code.original_text:
             if isinstance(code.original_text, str):
                 return code.original_text
-            elif hasattr(code.original_text, 'value'):
+            elif code.original_text.value:
                 return code.original_text.value
 
         return None

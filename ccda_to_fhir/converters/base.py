@@ -575,20 +575,18 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return None
 
         # Case 1: Direct value
-        if hasattr(original_text_element, 'value') and original_text_element.value:
+        if original_text_element.value:
             return original_text_element.value
 
         # Case 2: Reference to narrative
-        if hasattr(original_text_element, 'reference') and original_text_element.reference:
-            ref_value = original_text_element.reference.value if hasattr(
-                original_text_element.reference, 'value'
-            ) else original_text_element.reference
+        if original_text_element.reference:
+            ref_value = original_text_element.reference.value if original_text_element.reference.value else str(original_text_element.reference)
 
             if ref_value and isinstance(ref_value, str) and ref_value.startswith('#'):
                 content_id = ref_value[1:]  # Remove '#' prefix
 
                 # If section provided, search narrative
-                if section and hasattr(section, 'text'):
+                if section and section.text:
                     resolved = self._resolve_narrative_reference(section.text, content_id)
                     if resolved:
                         return resolved
@@ -651,11 +649,11 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Returns:
             Reference ID without '#' prefix, or None if no reference found
         """
-        if not hasattr(entry, 'text') or not entry.text:
+        if not entry.text:
             return None
 
         # Check if text has a reference element
-        if hasattr(entry.text, 'reference') and entry.text.reference:
+        if entry.text.reference:
             ref_value = entry.text.reference.value
             if ref_value and ref_value.startswith('#'):
                 # Remove '#' prefix to get the ID
@@ -700,7 +698,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return None
 
         # Check if entry has text element
-        if not hasattr(entry, 'text') or not entry.text:
+        if not entry.text:
             return None
 
         import html
@@ -710,13 +708,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         # Extract direct text value if present
         direct_text = None
-        if hasattr(entry.text, 'value') and entry.text.value:
+        if entry.text.value:
             direct_text = entry.text.value.strip()
 
         # Scenario 1 & 2: Entry has text/reference (with or without mixed content)
         if reference_id:
             # Need section to resolve reference
-            if not section or not hasattr(section, 'text') or not section.text:
+            if not section or not section.text:
                 # Can't resolve reference, fall back to direct text if available
                 if direct_text:
                     # Scenario 3 fallback
@@ -880,13 +878,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         notes: list[JSONValue] = []
 
         # Extract from text element
-        if include_text and hasattr(element, "text") and element.text:
+        if include_text and element.text:
             text_content = None
             if isinstance(element.text, str):
                 text_content = element.text
-            elif hasattr(element.text, "value") and element.text.value:
+            elif element.text.value:
                 text_content = element.text.value
-            elif hasattr(element.text, "reference"):
+            elif element.text.reference:
                 # Reference to narrative - skip (could resolve if needed)
                 pass
 
@@ -894,25 +892,25 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 notes.append({"text": text_content})
 
         # Extract from Comment Activity entries
-        if include_comments and hasattr(element, "entry_relationship") and element.entry_relationship:
+        if include_comments and element.entry_relationship:
             for entry_rel in element.entry_relationship:
-                if not hasattr(entry_rel, "act") or not entry_rel.act:
+                if not entry_rel.act:
                     continue
 
                 act = entry_rel.act
 
                 # Check if it's a Comment Activity
-                if not hasattr(act, "template_id") or not act.template_id:
+                if not act.template_id:
                     continue
 
                 for template in act.template_id:
                     if template.root == TemplateIds.COMMENT_ACTIVITY:
                         # This is a Comment Activity - extract text
-                        if hasattr(act, "text") and act.text:
+                        if act.text:
                             comment_text = None
                             if isinstance(act.text, str):
                                 comment_text = act.text
-                            elif hasattr(act.text, "value") and act.text.value:
+                            elif act.text.value:
                                 comment_text = act.text.value
 
                             if comment_text:
@@ -920,13 +918,12 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
                                 # Optionally add author time
                                 if include_author_time:
-                                    if hasattr(act, "author") and act.author and len(act.author) > 0:
+                                    if act.author and len(act.author) > 0:
                                         author = act.author[0]
-                                        if hasattr(author, "time") and author.time:
-                                            if hasattr(author.time, "value") and author.time.value:
-                                                time_str = self.convert_date(author.time.value)
-                                                if time_str:
-                                                    note["time"] = time_str
+                                        if author.time and author.time.value:
+                                            time_str = self.convert_date(author.time.value)
+                                            if time_str:
+                                                note["time"] = time_str
 
                                 notes.append(note)
                         break
@@ -1022,7 +1019,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             fhir_address: JSONObject = {}
 
             # Use
-            if hasattr(addr, "use") and addr.use:
+            if addr.use:
                 fhir_use = ADDRESS_USE_MAP.get(addr.use)
                 if fhir_use:
                     fhir_address["use"] = fhir_use
@@ -1032,45 +1029,45 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 fhir_address["type"] = FHIRCodes.AddressType.PHYSICAL
 
             # Street address lines
-            if hasattr(addr, "street_address_line") and addr.street_address_line:
+            if addr.street_address_line:
                 fhir_address["line"] = addr.street_address_line
 
             # City - handle potential list type
-            if hasattr(addr, "city") and addr.city:
+            if addr.city:
                 if isinstance(addr.city, list):
                     fhir_address["city"] = addr.city[0]
                 else:
                     fhir_address["city"] = addr.city
 
             # State - handle potential list type
-            if hasattr(addr, "state") and addr.state:
+            if addr.state:
                 if isinstance(addr.state, list):
                     fhir_address["state"] = addr.state[0]
                 else:
                     fhir_address["state"] = addr.state
 
             # Postal code - handle potential list type
-            if hasattr(addr, "postal_code") and addr.postal_code:
+            if addr.postal_code:
                 if isinstance(addr.postal_code, list):
                     fhir_address["postalCode"] = addr.postal_code[0]
                 else:
                     fhir_address["postalCode"] = addr.postal_code
 
             # Country - handle potential list type
-            if hasattr(addr, "country") and addr.country:
+            if addr.country:
                 if isinstance(addr.country, list):
                     fhir_address["country"] = addr.country[0]
                 else:
                     fhir_address["country"] = addr.country
 
             # Period from useable_period
-            if hasattr(addr, "useable_period") and addr.useable_period:
+            if addr.useable_period:
                 period: JSONObject = {}
-                if hasattr(addr.useable_period, "low") and addr.useable_period.low:
+                if addr.useable_period.low:
                     start = self.convert_date(addr.useable_period.low.value)
                     if start:
                         period["start"] = start
-                if hasattr(addr.useable_period, "high") and addr.useable_period.high:
+                if addr.useable_period.high:
                     end = self.convert_date(addr.useable_period.high.value)
                     if end:
                         period["end"] = end
@@ -1124,11 +1121,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Returns:
             Condition resource ID string, or None if no identifiers available
         """
-        if hasattr(observation, "id") and observation.id:
+        if observation.id:
             for id_elem in observation.id:
-                if hasattr(id_elem, "root") and id_elem.root:
-                    extension = id_elem.extension if hasattr(id_elem, "extension") else None
-                    return self._generate_condition_id(id_elem.root, extension)
+                if id_elem.root:
+                    return self._generate_condition_id(id_elem.root, id_elem.extension)
 
         from ccda_to_fhir.logging_config import get_logger
         logger = get_logger(__name__)
@@ -1172,26 +1168,24 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         for entry_rel in entry_relationships:
             # Look for RSON (reason) relationships
-            type_code = None
-            if hasattr(entry_rel, "type_code"):
-                type_code = entry_rel.type_code
-                # Handle TypeCodes enum if present
-                if hasattr(type_code, "value"):
-                    type_code = type_code.value
+            type_code = entry_rel.type_code
+            # Handle TypeCodes enum if present
+            if type_code and hasattr(type_code, "value"):
+                type_code = type_code.value
 
             if type_code != "RSON":
                 continue
 
-            if not hasattr(entry_rel, "observation") or not entry_rel.observation:
+            if not entry_rel.observation:
                 continue
 
             obs = entry_rel.observation
 
             # Check if this observation IS a Problem Observation
             is_problem_obs = False
-            if hasattr(obs, "template_id") and obs.template_id:
+            if obs.template_id:
                 for template in obs.template_id:
-                    if hasattr(template, "root") and template.root == problem_template_id:
+                    if template.root == problem_template_id:
                         is_problem_obs = True
                         break
 
@@ -1236,18 +1230,18 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         """
         codes: list[JSONValue] = []
 
-        if not hasattr(obs, "value") or not obs.value:
+        if not obs.value:
             return codes
 
         # Handle both single value and list of values
         values = obs.value if isinstance(obs.value, list) else [obs.value]
 
         for value in values:
-            if hasattr(value, "code") and value.code:
+            if value.code:
                 codeable = self.create_codeable_concept(
                     code=value.code,
-                    code_system=value.code_system if hasattr(value, "code_system") else None,
-                    display_name=value.display_name if hasattr(value, "display_name") else None,
+                    code_system=value.code_system,
+                    display_name=value.display_name,
                 )
                 if codeable:
                     codes.append(codeable)
@@ -1280,7 +1274,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if telecom is None:
                 continue
 
-            if not hasattr(telecom, "value") or not telecom.value:
+            if not telecom.value:
                 continue
 
             contact_point: JSONObject = {}
@@ -1305,19 +1299,19 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 contact_point["value"] = value
 
             # Use
-            if hasattr(telecom, "use") and telecom.use:
+            if telecom.use:
                 fhir_use = TELECOM_USE_MAP.get(telecom.use)
                 if fhir_use:
                     contact_point["use"] = fhir_use
 
             # Period from use_period
-            if hasattr(telecom, "use_period") and telecom.use_period:
+            if telecom.use_period:
                 period: JSONObject = {}
-                if hasattr(telecom.use_period, "low") and telecom.use_period.low:
+                if telecom.use_period.low:
                     start = self.convert_date(telecom.use_period.low.value)
                     if start:
                         period["start"] = start
-                if hasattr(telecom.use_period, "high") and telecom.use_period.high:
+                if telecom.use_period.high:
                     end = self.convert_date(telecom.use_period.high.value)
                     if end:
                         period["end"] = end
@@ -1372,10 +1366,12 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             fhir_name: JSONObject = {}
 
             # Handle null_flavor - name is explicitly unknown/masked
-            if hasattr(name, "null_flavor") and name.null_flavor:
+            # Use getattr for safety as input may be non-Pydantic mock objects in tests
+            null_flavor = getattr(name, "null_flavor", None)
+            if null_flavor:
                 fhir_name["extension"] = [{
                     "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
-                    "valueCode": self._map_null_flavor_to_data_absent_reason(name.null_flavor)
+                    "valueCode": self._map_null_flavor_to_data_absent_reason(null_flavor)
                 }]
                 fhir_names.append(fhir_name)
                 continue
@@ -1384,11 +1380,11 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             qualifier_use = None
 
             # Name use mapping from PN.use attribute
-            if hasattr(name, "use") and name.use:
+            if getattr(name, "use", None):
                 fhir_name["use"] = NAME_USE_MAP.get(name.use, FHIRCodes.NameUse.USUAL)
 
             # Family name - handle ENXP type with qualifier
-            if hasattr(name, "family") and name.family:
+            if getattr(name, "family", None):
                 family_value, family_qualifier = self._extract_enxp_value_and_qualifier(name.family)
                 if family_value:
                     fhir_name["family"] = family_value
@@ -1396,7 +1392,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     qualifier_use = self._ENXP_QUALIFIER_TO_USE[family_qualifier]
 
             # Given names - handle list of ENXP with qualifiers
-            if hasattr(name, "given") and name.given:
+            if getattr(name, "given", None):
                 given_names = []
                 for given in name.given:
                     value, qualifier = self._extract_enxp_value_and_qualifier(given)
@@ -1409,7 +1405,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     fhir_name["given"] = given_names
 
             # Prefix - handle list of ENXP
-            if hasattr(name, "prefix") and name.prefix:
+            if getattr(name, "prefix", None):
                 prefixes = []
                 for prefix in name.prefix:
                     value, _ = self._extract_enxp_value_and_qualifier(prefix)
@@ -1419,7 +1415,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     fhir_name["prefix"] = prefixes
 
             # Suffix - handle list of ENXP (including academic qualifiers)
-            if hasattr(name, "suffix") and name.suffix:
+            if getattr(name, "suffix", None):
                 suffixes = []
                 for suffix in name.suffix:
                     value, _ = self._extract_enxp_value_and_qualifier(suffix)
@@ -1446,23 +1442,25 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if text_parts:
                 # Use delimiter if provided, otherwise space
                 delimiter = " "
-                if hasattr(name, "delimiter") and name.delimiter:
+                name_delimiter = getattr(name, "delimiter", None)
+                if name_delimiter:
                     # delimiter is list[str], use first one
-                    if isinstance(name.delimiter, list) and len(name.delimiter) > 0:
-                        delimiter = name.delimiter[0]
-                    elif isinstance(name.delimiter, str):
-                        delimiter = name.delimiter
+                    if isinstance(name_delimiter, list) and len(name_delimiter) > 0:
+                        delimiter = name_delimiter[0]
+                    elif isinstance(name_delimiter, str):
+                        delimiter = name_delimiter
                 fhir_name["text"] = delimiter.join(text_parts)
 
             # Period from valid_time
-            if hasattr(name, "valid_time") and name.valid_time:
+            valid_time = getattr(name, "valid_time", None)
+            if valid_time:
                 period: JSONObject = {}
-                if hasattr(name.valid_time, "low") and name.valid_time.low:
-                    start = self.convert_date(name.valid_time.low.value)
+                if valid_time.low:
+                    start = self.convert_date(valid_time.low.value)
                     if start:
                         period["start"] = start
-                if hasattr(name.valid_time, "high") and name.valid_time.high:
-                    end = self.convert_date(name.valid_time.high.value)
+                if valid_time.high:
+                    end = self.convert_date(valid_time.high.value)
                     if end:
                         period["end"] = end
                 if period:
@@ -1489,18 +1487,9 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if isinstance(enxp, str):
             return (enxp, None)
 
-        value = None
-        qualifier = None
-
-        if hasattr(enxp, "value"):
-            value = enxp.value
-        else:
-            value = str(enxp) if enxp else None
-
-        if hasattr(enxp, "qualifier"):
-            qualifier = enxp.qualifier
-
-        return (value, qualifier)
+        # For Pydantic ENXP models, value attribute is always defined (can be None)
+        # Return the value directly (may be None or empty string, caller handles filtering)
+        return (enxp.value, enxp.qualifier)
 
     def _map_null_flavor_to_data_absent_reason(self, null_flavor: str) -> str:
         """Map HL7 v3 NullFlavor to FHIR data-absent-reason.
@@ -1599,7 +1588,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return None
 
         # Check for assigned_person (indicates this is a practitioner)
-        if not (hasattr(assigned_entity, "assigned_person") and assigned_entity.assigned_person):
+        if not assigned_entity.assigned_person:
             return None
 
         # Get identifiers
@@ -1708,12 +1697,11 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if not function_code:
             return None
 
-        code = function_code.code if hasattr(function_code, "code") else None
-        if not code:
+        if not function_code.code:
             return None
 
         # Map known function codes or pass through if not in map
-        mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(code, code)
+        mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(function_code.code, function_code.code)
 
         # Check exclusion list
         if exclude_codes and mapped_code in exclude_codes:
@@ -1723,7 +1711,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             "system": FHIRSystems.V3_PARTICIPATION_TYPE,
             "code": mapped_code,
         }
-        if hasattr(function_code, "display_name") and function_code.display_name:
+        if function_code.display_name:
             function_coding["display"] = function_code.display_name
 
         return {"coding": [function_coding]}
@@ -1742,21 +1730,19 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         """
         translations: list[JSONValue] = []
 
-        if not hasattr(code, "translation") or not code.translation:
+        if not code.translation:
             return translations
 
         for trans in code.translation:
             # Handle both object and dict representations
-            if hasattr(trans, "code"):
-                trans_code = trans.code
-                trans_system = getattr(trans, "code_system", None)
-                trans_display = getattr(trans, "display_name", None)
-            elif isinstance(trans, dict):
+            if isinstance(trans, dict):
                 trans_code = trans.get("code")
                 trans_system = trans.get("code_system")
                 trans_display = trans.get("display_name")
             else:
-                continue
+                trans_code = trans.code
+                trans_system = trans.code_system
+                trans_display = trans.display_name
 
             if trans_code and trans_system:
                 translations.append({
@@ -1845,10 +1831,11 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return default
 
         code = None
-        if hasattr(status_code, "code"):
-            code = status_code.code
-        elif isinstance(status_code, str):
+        if isinstance(status_code, str):
             code = status_code
+        else:
+            # Use getattr for safety as input may be non-Pydantic mock objects in tests
+            code = getattr(status_code, "code", None)
 
         if not code:
             return default
@@ -1878,7 +1865,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Returns:
             FHIR CodeableConcept dict or None if code is invalid
         """
-        if not code or not hasattr(code, "code") or not code.code:
+        if not code or not code.code:
             return None
 
         # Extract translations
@@ -1887,16 +1874,16 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         # Get original text if present
         original_text = None
         if include_original_text:
-            if hasattr(code, "original_text") and code.original_text:
+            if code.original_text:
                 original_text = self.extract_original_text(code.original_text, section=section)
             # Fallback to display_name if no original_text
-            if not original_text and hasattr(code, "display_name") and code.display_name:
+            if not original_text and code.display_name:
                 original_text = code.display_name
 
         return self.create_codeable_concept(
             code=code.code,
-            code_system=getattr(code, "code_system", None),
-            display_name=getattr(code, "display_name", None),
+            code_system=code.code_system,
+            display_name=code.display_name,
             original_text=original_text,
             translations=translations,
         )
@@ -2017,10 +2004,11 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return default
 
         code = None
-        if hasattr(status_code, "code"):
-            code = status_code.code
-        elif isinstance(status_code, str):
+        if isinstance(status_code, str):
             code = status_code
+        else:
+            # Use getattr for safety as input may be non-Pydantic mock objects in tests
+            code = getattr(status_code, "code", None)
 
         if not code:
             return default

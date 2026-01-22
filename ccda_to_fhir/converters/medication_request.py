@@ -75,7 +75,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         extension = None
         if substance_admin.id:
             for id_elem in substance_admin.id:
-                if not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
+                if not id_elem.null_flavor:
                     if id_elem.root or id_elem.extension:
                         root = id_elem.root
                         extension = id_elem.extension
@@ -92,10 +92,10 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                     context_parts.append(material.code.code)
             if substance_admin.effective_time:
                 # Use low value if available for determinism
-                if hasattr(substance_admin.effective_time, 'low') and substance_admin.effective_time.low:
-                    context_parts.append(str(substance_admin.effective_time.low.value or ""))
-                elif hasattr(substance_admin.effective_time, 'value') and substance_admin.effective_time.value:
-                    context_parts.append(str(substance_admin.effective_time.value))
+                for eff_time in substance_admin.effective_time:
+                    if isinstance(eff_time, IVL_TS) and eff_time.low:
+                        context_parts.append(str(eff_time.low.value or ""))
+                        break
             if substance_admin.status_code and substance_admin.status_code.code:
                 context_parts.append(substance_admin.status_code.code)
             fallback_context = "-".join(filter(None, context_parts))
@@ -167,20 +167,20 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             # Filter authors with time
             authors_with_time = [
                 a for a in substance_admin.author
-                if hasattr(a, 'time') and a.time and a.time.value
+                if a.time and a.time.value
             ]
 
             if authors_with_time:
                 # Sort by time and get latest
                 latest_author = max(authors_with_time, key=lambda a: a.time.value)
 
-                if hasattr(latest_author, 'assigned_author') and latest_author.assigned_author:
+                if latest_author.assigned_author:
                     assigned = latest_author.assigned_author
 
                     # Check for practitioner
                     # Only create reference if we have an explicit ID with root
-                    if hasattr(assigned, 'assigned_person') and assigned.assigned_person:
-                        if hasattr(assigned, 'id') and assigned.id:
+                    if assigned.assigned_person:
+                        if assigned.id:
                             for id_elem in assigned.id:
                                 if id_elem.root:
                                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
@@ -189,8 +189,8 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                     }
                                     break
                     # Check for device
-                    elif hasattr(assigned, 'assigned_authoring_device') and assigned.assigned_authoring_device:
-                        if hasattr(assigned, 'id') and assigned.id:
+                    elif assigned.assigned_authoring_device:
+                        if assigned.id:
                             for id_elem in assigned.id:
                                 if id_elem.root:
                                     device_id = self._generate_device_id(id_elem.root, id_elem.extension)
@@ -364,7 +364,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
             # Extract translations - convert CD objects to dictionaries
             translations = None
-            if hasattr(med_code, 'translation') and med_code.translation:
+            if med_code.translation:
                 translations = []
                 for trans in med_code.translation:
                     if trans.code and trans.code_system:
@@ -707,9 +707,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         repeat: JSONObject = {}
 
         # Extract event code
-        event_code = None
-        if hasattr(eivl_ts.event, "code") and eivl_ts.event.code:
-            event_code = eivl_ts.event.code
+        event_code = eivl_ts.event.code if eivl_ts.event.code else None
 
         if event_code:
             # Map to FHIR when code
@@ -718,7 +716,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 repeat["when"] = [when_code]
 
         # Extract offset (if present)
-        if hasattr(eivl_ts, "offset") and eivl_ts.offset:
+        if eivl_ts.offset:
             offset_pq = eivl_ts.offset
             if isinstance(offset_pq, PQ) and offset_pq.value is not None:
                 # Convert offset to minutes (FHIR offset is in minutes)
@@ -878,7 +876,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # Check repeatNumber on SubstanceAdministration
         if substance_admin.repeat_number:
             repeat_num = substance_admin.repeat_number
-            if hasattr(repeat_num, 'value') and repeat_num.value is not None:
+            if repeat_num.value is not None:
                 try:
                     ccda_repeat = int(repeat_num.value)
                     # C-CDA repeatNumber = FHIR numberOfRepeatsAllowed + 1
@@ -919,7 +917,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
                     # RepeatNumber from Supply overrides SubstanceAdministration
                     if supply.repeat_number:
-                        if hasattr(supply.repeat_number, 'high') and supply.repeat_number.high:
+                        if supply.repeat_number.high:
                             try:
                                 ccda_repeat = int(supply.repeat_number.high.value)
                                 fhir_repeats = max(0, ccda_repeat - 1)
