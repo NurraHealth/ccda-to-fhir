@@ -27,10 +27,14 @@ from ccda_to_fhir.constants import (
     FHIRSystems,
     TemplateIds,
 )
+from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
+from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.terminology import get_display_for_code
 
 from .base import BaseConverter
+
+logger = get_logger(__name__)
 
 
 class ObservationConverter(BaseConverter[Observation]):
@@ -67,12 +71,17 @@ class ObservationConverter(BaseConverter[Observation]):
             FHIR Observation resource as a dictionary
 
         Raises:
-            ValueError: If the observation lacks required data
+            MissingRequiredFieldError: If the observation lacks required data
+            ValueError: If reference_registry is not configured
         """
         # FHIR R4 Requirement: Observation.code is required (1..1)
         # Validate that we can extract a valid code before creating the resource
         if not observation.code:
-            raise ValueError("Observation must have a code element")
+            raise MissingRequiredFieldError(
+                field_name="code",
+                resource_type="Observation",
+                details="Observation must have a code element",
+            )
 
         code_cc = self._convert_code_to_codeable_concept(observation.code)
         if not code_cc:
@@ -83,9 +92,10 @@ class ObservationConverter(BaseConverter[Observation]):
                 text_from_narrative = self.extract_original_text(observation.text, section=section)
 
             if not text_from_narrative:
-                raise ValueError(
-                    "Observation code has nullFlavor with no extractable text. "
-                    "Cannot create valid FHIR Observation without code."
+                raise MissingRequiredFieldError(
+                    field_name="code",
+                    resource_type="Observation",
+                    details="Observation code has nullFlavor with no extractable text",
                 )
 
             # Create a text-only CodeableConcept from narrative
@@ -109,8 +119,6 @@ class ObservationConverter(BaseConverter[Observation]):
                     # Check if we've seen this observation ID before (duplicate)
                     if obs_id_key in self.seen_observation_ids:
                         # ID reuse detected - fall back to generating a unique ID
-                        from ccda_to_fhir.logging_config import get_logger
-                        logger = get_logger(__name__)
                         logger.warning(
                             f"Observation ID {id_elem.root} (extension={id_elem.extension}) is reused in C-CDA document. "
                             f"Generating unique ID to avoid duplicate Observation resources."
@@ -185,8 +193,6 @@ class ObservationConverter(BaseConverter[Observation]):
         fhir_obs["subject"] = patient_ref
 
         # Diagnostic logging
-        from ccda_to_fhir.logging_config import get_logger
-        logger = get_logger(__name__)
         logger.debug(
             f"Observation {fhir_obs.get('id', 'unknown')} assigned patient reference: {patient_ref['reference']}"
         )
@@ -353,8 +359,6 @@ class ObservationConverter(BaseConverter[Observation]):
                     # Check if we've seen this organizer ID before (duplicate)
                     if obs_id_key in self.seen_observation_ids:
                         # ID reuse detected - fall back to generating a unique ID
-                        from ccda_to_fhir.logging_config import get_logger
-                        logger = get_logger(__name__)
                         logger.warning(
                             f"Vital signs organizer ID {id_elem.root} (extension={id_elem.extension}) is reused in C-CDA document. "
                             f"Generating unique ID to avoid duplicate Observation panel resources."
@@ -460,14 +464,10 @@ class ObservationConverter(BaseConverter[Observation]):
                     # Convert the component observation to a standalone resource
                     try:
                         individual = self.convert(component.observation, section=section)
-                    except ValueError as e:
+                    except CCDAConversionError as e:
                         # Skip observations that can't be converted (e.g., nullFlavor codes without text)
                         # This handles real-world C-CDA documents with incomplete vital sign data
-                        from ccda_to_fhir.logging_config import get_logger
-                        logger = get_logger(__name__)
-                        logger.warning(
-                            f"Skipping vital sign component observation: {str(e)}"
-                        )
+                        logger.warning("Skipping vital sign component observation: %s", e)
                         continue
 
                     # Ensure it has an ID for referencing

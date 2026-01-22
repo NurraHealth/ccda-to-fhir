@@ -514,3 +514,281 @@ class TestConvertHumanNamesNullFlavor:
         assert "extension" in result[0]
         assert "given" not in result[0]
         assert "family" not in result[0]
+
+
+# =============================================================================
+# Error Handling Helpers Tests
+# =============================================================================
+
+
+class TestRequireField:
+    """Test require_field validation helper."""
+
+    def test_require_field_passes_with_value(self, converter):
+        """Test that require_field passes when value is present."""
+        # Should not raise
+        converter.require_field("some_value", "code", "Observation")
+
+    def test_require_field_passes_with_non_empty_list(self, converter):
+        """Test that require_field passes with non-empty list."""
+        # Should not raise
+        converter.require_field([1, 2, 3], "items", "Resource")
+
+    def test_require_field_raises_on_none(self, converter):
+        """Test that require_field raises MissingRequiredFieldError on None."""
+        from ccda_to_fhir.exceptions import MissingRequiredFieldError
+
+        with pytest.raises(MissingRequiredFieldError) as exc_info:
+            converter.require_field(None, "code", "Observation")
+
+        assert exc_info.value.field_name == "code"
+        assert exc_info.value.resource_type == "Observation"
+
+    def test_require_field_raises_on_empty_string(self, converter):
+        """Test that require_field raises on empty string."""
+        from ccda_to_fhir.exceptions import MissingRequiredFieldError
+
+        with pytest.raises(MissingRequiredFieldError) as exc_info:
+            converter.require_field("", "status", "Condition")
+
+        assert exc_info.value.field_name == "status"
+
+    def test_require_field_raises_on_empty_list(self, converter):
+        """Test that require_field raises on empty list."""
+        from ccda_to_fhir.exceptions import MissingRequiredFieldError
+
+        with pytest.raises(MissingRequiredFieldError) as exc_info:
+            converter.require_field([], "identifier", "Patient")
+
+        assert exc_info.value.field_name == "identifier"
+
+    def test_require_field_includes_details_in_message(self, converter):
+        """Test that require_field includes details in error message."""
+        from ccda_to_fhir.exceptions import MissingRequiredFieldError
+
+        with pytest.raises(MissingRequiredFieldError) as exc_info:
+            converter.require_field(
+                None,
+                "participant",
+                "AllergyIntolerance",
+                details="Allergen is required for allergy observation",
+            )
+
+        assert "Allergen is required" in str(exc_info.value)
+
+
+class TestOptionalField:
+    """Test optional_field conversion helper."""
+
+    def test_optional_field_returns_default_on_none(self, converter):
+        """Test that optional_field returns default when value is None."""
+        result = converter.optional_field(
+            None,
+            lambda x: x.upper(),
+            "name",
+            default="unknown",
+        )
+        assert result == "unknown"
+
+    def test_optional_field_converts_value(self, converter):
+        """Test that optional_field converts value when present."""
+        result = converter.optional_field(
+            "hello",
+            lambda x: x.upper(),
+            "name",
+            default="unknown",
+        )
+        assert result == "HELLO"
+
+    def test_optional_field_returns_default_on_exception(self, converter):
+        """Test that optional_field returns default when converter raises."""
+        def bad_converter(x):
+            raise ValueError("bad input")
+
+        result = converter.optional_field(
+            "some_value",
+            bad_converter,
+            "bad_field",
+            default="fallback",
+        )
+        assert result == "fallback"
+
+    def test_optional_field_returns_default_when_converter_returns_none(self, converter):
+        """Test that optional_field returns default when converter returns None."""
+        result = converter.optional_field(
+            "value",
+            lambda x: None,
+            "field",
+            default="default_value",
+        )
+        assert result == "default_value"
+
+
+class TestMapStatusCode:
+    """Test map_status_code utility method."""
+
+    def test_map_status_code_with_valid_code(self, converter):
+        """Test mapping a valid status code."""
+        mapping = {"active": "active", "completed": "inactive"}
+
+        class MockStatusCode:
+            code = "completed"
+
+        result = converter.map_status_code(MockStatusCode(), mapping, "unknown")
+        assert result == "inactive"
+
+    def test_map_status_code_case_insensitive(self, converter):
+        """Test that status code mapping is case insensitive."""
+        mapping = {"completed": "final"}
+
+        class MockStatusCode:
+            code = "COMPLETED"
+
+        result = converter.map_status_code(MockStatusCode(), mapping, "unknown")
+        assert result == "final"
+
+    def test_map_status_code_returns_default_on_none(self, converter):
+        """Test that None status code returns default."""
+        mapping = {"active": "active"}
+        result = converter.map_status_code(None, mapping, "unknown")
+        assert result == "unknown"
+
+    def test_map_status_code_returns_default_on_missing_code(self, converter):
+        """Test that missing code attribute returns default."""
+        mapping = {"active": "active"}
+
+        class MockStatusCodeNoCode:
+            pass
+
+        result = converter.map_status_code(MockStatusCodeNoCode(), mapping, "default")
+        assert result == "default"
+
+    def test_map_status_code_returns_default_on_unmapped(self, converter):
+        """Test that unmapped code returns default."""
+        mapping = {"active": "active"}
+
+        class MockStatusCode:
+            code = "unmapped_status"
+
+        result = converter.map_status_code(MockStatusCode(), mapping, "fallback")
+        assert result == "fallback"
+
+    def test_map_status_code_with_string_input(self, converter):
+        """Test that string input works directly."""
+        mapping = {"active": "active", "completed": "final"}
+        result = converter.map_status_code("active", mapping, "unknown")
+        assert result == "active"
+
+
+class TestHandleDuplicateId:
+    """Test handle_duplicate_id helper for ID reuse detection."""
+
+    def test_handle_duplicate_id_returns_none_for_new_id(self, converter):
+        """Test that new ID returns None (no fallback needed)."""
+        seen_ids = set()
+        id_key = ("2.16.840.1.113883.19.5", "obs-001")
+
+        result = converter.handle_duplicate_id(id_key, seen_ids, "Observation")
+
+        assert result is None
+
+    def test_handle_duplicate_id_returns_new_id_for_duplicate(self, converter):
+        """Test that duplicate ID returns a new unique ID."""
+        seen_ids = {("2.16.840.1.113883.19.5", "obs-001")}
+        id_key = ("2.16.840.1.113883.19.5", "obs-001")
+
+        result = converter.handle_duplicate_id(id_key, seen_ids, "Observation")
+
+        assert result is not None
+        # Should be a UUID format
+        assert len(result) == 36
+        assert result.count("-") == 4
+
+
+# =============================================================================
+# Exception Classes Tests
+# =============================================================================
+
+
+class TestConversionWarning:
+    """Test ConversionWarning exception class."""
+
+    def test_basic_message(self):
+        """Test ConversionWarning with just a message."""
+        from ccda_to_fhir.exceptions import ConversionWarning
+
+        warning = ConversionWarning("Unexpected format")
+        assert str(warning) == "Unexpected format"
+
+    def test_with_field_name(self):
+        """Test ConversionWarning with field name."""
+        from ccda_to_fhir.exceptions import ConversionWarning
+
+        warning = ConversionWarning("Unexpected format", field_name="telecom")
+        assert str(warning) == "telecom: Unexpected format"
+        assert warning.field_name == "telecom"
+
+    def test_with_context(self):
+        """Test ConversionWarning with context."""
+        from ccda_to_fhir.exceptions import ConversionWarning
+
+        warning = ConversionWarning(
+            "Code not recognized",
+            field_name="code",
+            context="Observation conversion",
+        )
+        assert "code: Code not recognized" in str(warning)
+        assert "(in Observation conversion)" in str(warning)
+        assert warning.context == "Observation conversion"
+
+
+class TestRecoverableConversionError:
+    """Test RecoverableConversionError exception class."""
+
+    def test_basic_message(self):
+        """Test RecoverableConversionError with just a message."""
+        from ccda_to_fhir.exceptions import RecoverableConversionError
+
+        error = RecoverableConversionError("Invalid date format")
+        assert str(error) == "Invalid date format"
+
+    def test_with_field_name(self):
+        """Test RecoverableConversionError with field name."""
+        from ccda_to_fhir.exceptions import RecoverableConversionError
+
+        error = RecoverableConversionError(
+            "Invalid format",
+            field_name="effectiveTime",
+        )
+        assert str(error) == "effectiveTime: Invalid format"
+        assert error.field_name == "effectiveTime"
+
+    def test_with_fallback_value(self):
+        """Test RecoverableConversionError with fallback value."""
+        from ccda_to_fhir.exceptions import RecoverableConversionError
+
+        error = RecoverableConversionError(
+            "Status code not mapped",
+            field_name="status",
+            fallback_value="unknown",
+        )
+        assert "status: Status code not mapped" in str(error)
+        assert "(using fallback: unknown)" in str(error)
+        assert error.fallback_value == "unknown"
+
+    def test_with_all_fields(self):
+        """Test RecoverableConversionError with all fields populated."""
+        from ccda_to_fhir.exceptions import RecoverableConversionError
+
+        error = RecoverableConversionError(
+            "Code system not recognized",
+            field_name="codeSystem",
+            fallback_value="urn:oid:2.16.840.1.113883",
+            context="CodeableConcept conversion",
+        )
+        assert error.field_name == "codeSystem"
+        assert error.fallback_value == "urn:oid:2.16.840.1.113883"
+        assert error.context == "CodeableConcept conversion"
+        assert "codeSystem: Code system not recognized" in str(error)
+        assert "(using fallback: urn:oid:2.16.840.1.113883)" in str(error)
+        assert "(in CodeableConcept conversion)" in str(error)

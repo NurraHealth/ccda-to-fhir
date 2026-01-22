@@ -800,7 +800,12 @@ class TestErrorHandling:
     """Test converter error handling and edge cases."""
 
     def test_handles_missing_patient_gracefully(self, mock_reference_registry):
-        """Test RecordTarget with no patient (malformed C-CDA)."""
+        """Test RecordTarget with no patient (malformed C-CDA).
+
+        Should raise MissingRequiredFieldError with clear context.
+        """
+        from ccda_to_fhir.exceptions import MissingRequiredFieldError
+
         record_target = RecordTarget(
             patient_role=PatientRole(
                 id=[II(root="2.16.840.1.113883.19.5", extension="error-001")],
@@ -810,8 +815,11 @@ class TestErrorHandling:
 
         converter = PatientConverter()
 
-        with pytest.raises((ValueError, AttributeError)):
+        with pytest.raises(MissingRequiredFieldError) as exc_info:
             converter.convert(record_target)
+
+        assert exc_info.value.field_name == "patient"
+        assert exc_info.value.resource_type == "Patient"
 
     def test_handles_invalid_gender_code(self, basic_patient, mock_reference_registry):
         """Test invalid administrative gender code.

@@ -13,6 +13,7 @@ from ccda_to_fhir.constants import (
     TemplateIds,
     TypeCodes,
 )
+from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
@@ -52,11 +53,16 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             FHIR MedicationRequest resource as a dictionary
 
         Raises:
-            ValueError: If the substance administration lacks required data
+            MissingRequiredFieldError: If the substance administration lacks required data
+            ValueError: If reference_registry is not configured
         """
         # Validation
         if not substance_admin.consumable:
-            raise ValueError("Medication Activity must have a consumable (medication)")
+            raise MissingRequiredFieldError(
+                field_name="consumable",
+                resource_type="MedicationRequest",
+                details="Medication Activity must have a consumable (medication)",
+            )
 
         med_request: JSONObject = {
             "resourceType": "MedicationRequest",

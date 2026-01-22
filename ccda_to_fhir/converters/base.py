@@ -7,9 +7,14 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
 from ccda_to_fhir.constants import FHIRSystems
+from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
+from ccda_to_fhir.id_generator import generate_id
+from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .code_systems import CodeSystemMapper
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.datatypes import CS
@@ -1895,3 +1900,168 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             original_text=original_text,
             translations=translations,
         )
+
+    # -------------------------------------------------------------------------
+    # Error Handling Helpers
+    # -------------------------------------------------------------------------
+    # These methods provide consistent error handling across all converters.
+
+    def require_field(
+        self,
+        value,
+        field_name: str,
+        resource_type: str,
+        details: str = "",
+    ) -> None:
+        """Validate that a required field is present.
+
+        Use this for FHIR required fields (1..1 or 1..*) where the conversion
+        cannot proceed without the value.
+
+        Args:
+            value: The field value to check
+            field_name: Name of the field for error message
+            resource_type: FHIR resource type for error message
+            details: Additional context about the requirement
+
+        Raises:
+            MissingRequiredFieldError: If value is None, empty string, or empty list
+
+        Example:
+            >>> self.require_field(observation.code, "code", "Observation")
+            >>> # Raises MissingRequiredFieldError if code is missing
+        """
+        is_empty = (
+            value is None
+            or value == ""
+            or (isinstance(value, list) and len(value) == 0)
+        )
+
+        if is_empty:
+            raise MissingRequiredFieldError(
+                field_name=field_name,
+                resource_type=resource_type,
+                details=details,
+            )
+
+    def optional_field(
+        self,
+        value,
+        converter,
+        field_name: str,
+        default=None,
+    ):
+        """Convert an optional field, returning default if missing or on error.
+
+        Use for optional FHIR fields (0..1 or 0..*) where conversion should
+        continue even if the value is missing or malformed.
+
+        Args:
+            value: The field value (may be None)
+            converter: Function to convert the value
+            field_name: Name used in warning logs if conversion fails
+            default: Value to return if field is missing or conversion fails
+
+        Returns:
+            Converted value, or default if missing/failed
+
+        Example:
+            >>> telecom = self.optional_field(
+            ...     patient_role.telecom,
+            ...     self.convert_telecom,
+            ...     "telecom",
+            ...     default=[]
+            ... )
+        """
+        if value is None:
+            return default
+
+        try:
+            result = converter(value)
+            return result if result is not None else default
+        except (CCDAConversionError, ValueError, TypeError, AttributeError) as e:
+            logger.warning(
+                f"Failed to convert optional field {field_name} "
+                f"({type(e).__name__}): {e}",
+                exc_info=True,
+            )
+            return default
+
+    def map_status_code(
+        self,
+        status_code,
+        mapping: dict[str, str],
+        default: str,
+    ) -> str:
+        """Map C-CDA status code to FHIR status using provided mapping.
+
+        Generic utility for status code mapping used by all converters.
+        Handles null/missing status codes gracefully with case-insensitive lookup.
+
+        Args:
+            status_code: C-CDA CS status code element (may be None)
+            mapping: Dictionary mapping C-CDA codes to FHIR codes
+            default: Default FHIR status if code is missing or unmapped
+
+        Returns:
+            FHIR status code string
+
+        Example:
+            >>> status = self.map_status_code(
+            ...     observation.status_code,
+            ...     OBSERVATION_STATUS_TO_FHIR,
+            ...     "final"
+            ... )
+        """
+        if not status_code:
+            return default
+
+        code = None
+        if hasattr(status_code, "code"):
+            code = status_code.code
+        elif isinstance(status_code, str):
+            code = status_code
+
+        if not code:
+            return default
+
+        # Case-insensitive lookup
+        return mapping.get(code.lower(), default)
+
+    def handle_duplicate_id(
+        self,
+        id_key: tuple[str | None, str | None],
+        seen_ids: set[tuple[str | None, str | None]],
+        resource_type: str,
+    ) -> str | None:
+        """Handle duplicate ID detection and generate fallback if needed.
+
+        Many converters need to detect when C-CDA documents incorrectly reuse
+        the same ID for multiple entries. This method centralizes that logic.
+
+        Args:
+            id_key: Tuple of (root, extension) from C-CDA identifier
+            seen_ids: Set tracking previously seen IDs
+            resource_type: Resource type for logging
+
+        Returns:
+            New unique ID if duplicate detected, None if ID is new
+
+        Example:
+            >>> id_key = (id_elem.root, id_elem.extension)
+            >>> fallback = self.handle_duplicate_id(id_key, self.seen_ids, "Observation")
+            >>> if fallback:
+            ...     resource["id"] = fallback
+            ... else:
+            ...     resource["id"] = self.generate_resource_id(...)
+            ...     self.seen_ids.add(id_key)
+        """
+        if id_key in seen_ids:
+            root, extension = id_key
+            logger.warning(
+                f"{resource_type} ID {root} (extension={extension}) is reused in C-CDA document. "
+                f"Generating unique ID to avoid duplicate {resource_type} resources."
+            )
+            return generate_id()
+
+        return None
