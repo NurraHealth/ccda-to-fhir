@@ -33,7 +33,7 @@ from .base import BaseConverter
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.author import AssignedAuthor
-    from ccda_to_fhir.ccda.models.datatypes import II, PN
+    from ccda_to_fhir.ccda.models.datatypes import II
     from ccda_to_fhir.ccda.models.performer import AssignedEntity
 
 
@@ -69,7 +69,7 @@ class PractitionerConverter(BaseConverter["AssignedAuthor | AssignedEntity"]):
 
         # Map name
         if assigned.assigned_person and assigned.assigned_person.name:
-            names = self._convert_names(assigned.assigned_person.name)
+            names = self.convert_human_names(assigned.assigned_person.name)
             if names:
                 practitioner["name"] = names
 
@@ -110,56 +110,3 @@ class PractitionerConverter(BaseConverter["AssignedAuthor | AssignedEntity"]):
 
         return generate_id_from_identifiers("Practitioner", root, extension)
 
-    def _convert_names(self, names: list[PN]) -> list[dict[str, str | list[str]]]:
-        """Convert C-CDA person names to FHIR HumanName.
-
-        Args:
-            names: List of C-CDA PN (person names)
-
-        Returns:
-            List of FHIR HumanName objects
-        """
-        fhir_names: list[dict[str, str | list[str]]] = []
-
-        for name in names:
-            fhir_name: dict[str, str | list[str]] = {}
-
-            # Family name
-            if name.family:
-                # PN.family is ENXP (single object)
-                if hasattr(name.family, "value"):
-                    fhir_name["family"] = name.family.value
-                else:
-                    fhir_name["family"] = str(name.family)
-
-            # Given names
-            if name.given:
-                # PN.given is list[ENXP]
-                fhir_name["given"] = [
-                    g.value if hasattr(g, "value") else str(g) for g in name.given
-                ]
-
-            # Prefix (Dr., Prof., etc.)
-            if name.prefix:
-                # PN.prefix is list[ENXP]
-                fhir_name["prefix"] = [
-                    p.value if hasattr(p, "value") else str(p) for p in name.prefix
-                ]
-
-            # Suffix (MD, PhD, etc.)
-            if name.suffix:
-                # PN.suffix is list[ENXP]
-                fhir_name["suffix"] = [
-                    s.value if hasattr(s, "value") else str(s) for s in name.suffix
-                ]
-
-            # Use code (L = Legal, P = Pseudonym, etc.)
-            # C-CDA uses EntityNameUse vocabulary, FHIR uses NameUse
-            # Common mappings: L → official, P → nickname, ASGN → usual
-            # For simplicity, we'll omit use unless it's clearly mapped
-            # (Most C-CDA names don't specify use, so this is rarely populated)
-
-            if fhir_name:
-                fhir_names.append(fhir_name)
-
-        return fhir_names

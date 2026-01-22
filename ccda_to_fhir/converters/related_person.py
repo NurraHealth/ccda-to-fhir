@@ -29,7 +29,7 @@ from .base import BaseConverter
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.clinical_document import RelatedEntity
-    from ccda_to_fhir.ccda.models.datatypes import CE, PN
+    from ccda_to_fhir.ccda.models.datatypes import CE
 
 
 class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
@@ -75,7 +75,7 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
 
         # Map name
         if related_entity.related_person and related_entity.related_person.name:
-            names = self._convert_names(related_entity.related_person.name)
+            names = self.convert_human_names(related_entity.related_person.name)
             if names:
                 related_person["name"] = names
 
@@ -173,48 +173,3 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
 
         return concept
 
-    def _convert_names(
-        self, names: list[PN]
-    ) -> list[dict[str, str | list[str]]]:
-        """Convert C-CDA person names to FHIR HumanName.
-
-        Args:
-            names: List of C-CDA PN (person names)
-
-        Returns:
-            List of FHIR HumanName objects
-        """
-        fhir_names: list[dict[str, str | list[str]]] = []
-
-        for name in names:
-            fhir_name: dict[str, str | list[str]] = {}
-
-            # Family name
-            if name.family:
-                if hasattr(name.family, "value"):
-                    fhir_name["family"] = name.family.value
-                else:
-                    fhir_name["family"] = str(name.family)
-
-            # Given names
-            if name.given:
-                fhir_name["given"] = [
-                    g.value if hasattr(g, "value") else str(g) for g in name.given
-                ]
-
-            # Prefix (Mr., Mrs., etc.)
-            if name.prefix:
-                fhir_name["prefix"] = [
-                    p.value if hasattr(p, "value") else str(p) for p in name.prefix
-                ]
-
-            # Suffix (Jr., Sr., etc.)
-            if name.suffix:
-                fhir_name["suffix"] = [
-                    s.value if hasattr(s, "value") else str(s) for s in name.suffix
-                ]
-
-            if fhir_name:
-                fhir_names.append(fhir_name)
-
-        return fhir_names
