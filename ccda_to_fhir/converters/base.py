@@ -12,6 +12,8 @@ from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from .code_systems import CodeSystemMapper
 
 if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.datatypes import CS
+
     from .references import ReferenceRegistry
 
 # Type variable for input C-CDA model
@@ -1614,7 +1616,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
     def map_status_code(
         self,
-        status_code,
+        status_code: CS | str | None,
         mapping: dict[str, str],
         default: str,
     ) -> str:
