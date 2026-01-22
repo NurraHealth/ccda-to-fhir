@@ -13,7 +13,7 @@ wheels = [
 
 [[package]]
 name = "ccda-to-fhir"
-version = "0.2.4"
+version = "0.2.5"
 source = { editable = "." }
 dependencies = [
     { name = "fhir-resources" },
@@ -30,11 +30,6 @@ dev = [
     { name = "ruff" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "fhir-resources", specifier = ">=8.1.0" },
@@ -47,9 +42,6 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8" },
 ]
 provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=9.0.2" }]
 
 [[package]]
 name = "colorama"
