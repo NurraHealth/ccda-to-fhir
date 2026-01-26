@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
-from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS
+from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
 from ccda_to_fhir.ccda.models.observation import Observation as CCDAObservation
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.constants import (
     PROCEDURE_STATUS_TO_FHIR,
     FHIRCodes,
-    FHIRSystems,
     TemplateIds,
 )
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
@@ -43,14 +42,14 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         self._pending_practitioners: list[FHIRResourceDict] = []
         self._pending_organizations: list[FHIRResourceDict] = []
 
-    def convert(self, procedure: CCDAProcedure | CCDAObservation | CCDAAct, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: CCDAProcedure | CCDAObservation | CCDAAct, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Procedure Activity to a FHIR Procedure resource.
 
         Accepts Procedure Activity Procedure, Procedure Activity Observation,
         and Procedure Activity Act templates, as all map to FHIR Procedure resource.
 
         Args:
-            procedure: The C-CDA Procedure Activity (Procedure, Observation, or Act element)
+            ccda_model: The C-CDA Procedure Activity (Procedure, Observation, or Act element)
             section: The C-CDA Section containing this procedure (for narrative)
 
         Returns:
@@ -59,14 +58,15 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         Raises:
             ValueError: If the procedure lacks required data
         """
+        procedure = ccda_model  # Alias for readability
         if not procedure.code:
             raise ValueError("Procedure Activity must have a code")
 
         # Check if code has null flavor (no actual code value)
         # Per C-CDA spec, code is required but may have nullFlavor
         has_valid_code = (
-            hasattr(procedure.code, "code") and procedure.code.code
-            and not (hasattr(procedure.code, "null_flavor") and procedure.code.null_flavor)
+            procedure.code.code
+            and not procedure.code.null_flavor
         )
 
         fhir_procedure: JSONObject = {
@@ -79,7 +79,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         extension = None
         if procedure.id and len(procedure.id) > 0:
             for id_elem in procedure.id:
-                if not (hasattr(id_elem, "null_flavor") and id_elem.null_flavor):
+                if not id_elem.null_flavor:
                     if id_elem.root or id_elem.extension:
                         root = id_elem.root
                         extension = id_elem.extension
@@ -90,13 +90,13 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if root is None and extension is None:
             # Create deterministic context from procedure properties
             context_parts = []
-            if procedure.code and hasattr(procedure.code, "code") and procedure.code.code:
+            if procedure.code and procedure.code.code:
                 context_parts.append(procedure.code.code)
             if procedure.effective_time:
                 # Use low value if available for determinism
-                if hasattr(procedure.effective_time, 'low') and procedure.effective_time.low:
+                if isinstance(procedure.effective_time, IVL_TS) and procedure.effective_time.low:
                     context_parts.append(str(procedure.effective_time.low.value or ""))
-                elif hasattr(procedure.effective_time, 'value') and procedure.effective_time.value:
+                elif isinstance(procedure.effective_time, TS) and procedure.effective_time.value:
                     context_parts.append(str(procedure.effective_time.value))
             if procedure.status_code and procedure.status_code.code:
                 context_parts.append(procedure.status_code.code)
@@ -131,7 +131,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         else:
             # Code has nullFlavor - extract text from narrative if available
             code_text = None
-            if hasattr(procedure, "text") and procedure.text:
+            if procedure.text:
                 # Try to resolve text reference to section narrative
                 code_text = self.extract_original_text(procedure.text, section=section)
 
@@ -142,7 +142,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 # No text available - use data-absent-reason extension
                 # Per C-CDA on FHIR IG ConceptMap CF-NullFlavorDataAbsentReason
                 # Extension goes INSIDE CodeableConcept (complex type, not primitive)
-                null_flavor = procedure.code.null_flavor if hasattr(procedure.code, "null_flavor") else None
+                null_flavor = procedure.code.null_flavor
                 fhir_procedure["code"] = {
                     "extension": [
                         self.create_data_absent_reason_extension(null_flavor, default_reason="unknown")
@@ -179,8 +179,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 ]
             }
 
-        # Body site (only available in Procedure, not in Act or Observation)
-        if hasattr(procedure, "target_site_code") and procedure.target_site_code:
+        # Body site (available in Procedure and Observation, not in Act)
+        if isinstance(procedure, (CCDAProcedure, CCDAObservation)) and procedure.target_site_code:
             body_sites = []
             for site_code in procedure.target_site_code:
                 if site_code.code:
@@ -331,29 +331,31 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             # Simple datetime value
             return self.convert_date(effective_time)
 
-        # Handle IVL_TS (interval)
-        if hasattr(effective_time, "value") and effective_time.value:
-            # Single point in time
-            return self.convert_date(effective_time.value)
+        # Handle IVL_TS
+        if isinstance(effective_time, IVL_TS):
+            # Check for point-in-time (IVL_TS with direct value attribute)
+            if effective_time.value:
+                return self.convert_date(effective_time.value)
 
-        # Handle period (low/high)
-        period: JSONObject = {}
-
-        if hasattr(effective_time, "low") and effective_time.low:
-            low_value = effective_time.low.value if hasattr(effective_time.low, "value") else effective_time.low
-            if low_value:
-                converted_low = self.convert_date(str(low_value))
+            # Handle interval with low/high
+            period: JSONObject = {}
+            if effective_time.low and effective_time.low.value:
+                converted_low = self.convert_date(str(effective_time.low.value))
                 if converted_low:
                     period["start"] = converted_low
 
-        if hasattr(effective_time, "high") and effective_time.high:
-            high_value = effective_time.high.value if hasattr(effective_time.high, "value") else effective_time.high
-            if high_value:
-                converted_high = self.convert_date(str(high_value))
+            if effective_time.high and effective_time.high.value:
+                converted_high = self.convert_date(str(effective_time.high.value))
                 if converted_high:
                     period["end"] = converted_high
 
-        return period if period else None
+            return period if period else None
+
+        # Handle TS (single point in time)
+        if isinstance(effective_time, TS) and effective_time.value:
+            return self.convert_date(effective_time.value)
+
+        return None
 
     def _extract_performers(self, performers: list) -> list[JSONObject]:
         """Extract FHIR performers from C-CDA performers and create related resources.
@@ -375,14 +377,14 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         fhir_performers = []
 
         for performer in performers:
-            if not hasattr(performer, "assigned_entity") or not performer.assigned_entity:
+            if not performer.assigned_entity:
                 continue
 
             assigned_entity = performer.assigned_entity
             performer_obj: JSONObject = {}
 
             # Extract function code using base helper (excludes encounter-only codes)
-            if hasattr(performer, "function_code") and performer.function_code:
+            if performer.function_code:
                 function = self.extract_performer_function(
                     performer.function_code,
                     exclude_codes=ENCOUNTER_ONLY_CODES,
@@ -431,13 +433,13 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         """
         for participant in participants:
             # Look for location participants (typeCode="LOC")
-            if hasattr(participant, "type_code") and participant.type_code == "LOC":
-                if hasattr(participant, "participant_role") and participant.participant_role:
+            if participant.type_code == "LOC":
+                if participant.participant_role:
                     role = participant.participant_role
 
                     # Generate location ID from role ID - REQUIRED
                     location_id = None
-                    if hasattr(role, "id") and role.id:
+                    if role.id:
                         for id_elem in role.id:
                             if id_elem.root:
                                 location_id = self._generate_location_id(id_elem.root, id_elem.extension)
@@ -448,13 +450,19 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
                     # Extract location name from playingEntity
                     display = None
-                    if hasattr(role, "playing_entity") and role.playing_entity:
+                    if role.playing_entity:
                         entity = role.playing_entity
-                        if hasattr(entity, "name"):
-                            if isinstance(entity.name, str):
+                        if entity.name:
+                            # name is list[ON | str] | None
+                            if isinstance(entity.name, list) and len(entity.name) > 0:
+                                first_name = entity.name[0]
+                                if isinstance(first_name, str):
+                                    display = first_name
+                                elif first_name.value:
+                                    # ON (Organization Name) has value attribute
+                                    display = first_name.value
+                            elif isinstance(entity.name, str):
                                 display = entity.name
-                            elif hasattr(entity.name, "value"):
-                                display = entity.name.value
 
                     # Create location reference (or would have raised error above)
                     location_ref: JSONObject = {
@@ -497,13 +505,13 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         for participant in participants:
             # Look for device participants (typeCode="DEV")
-            if hasattr(participant, "type_code") and participant.type_code == "DEV":
-                if hasattr(participant, "participant_role") and participant.participant_role:
+            if participant.type_code == "DEV":
+                if participant.participant_role:
                     role = participant.participant_role
 
                     # Check if this is a Product Instance (has template ID)
                     is_product_instance = False
-                    if hasattr(role, "template_id") and role.template_id:
+                    if role.template_id:
                         for template in role.template_id:
                             if template.root == product_instance_template:
                                 is_product_instance = True
@@ -578,7 +586,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         # Filter authors with time
         authors_with_time = [
             a for a in authors
-            if hasattr(a, 'time') and a.time and a.time.value
+            if a.time and a.time.value
         ]
 
         if not authors_with_time:
@@ -587,12 +595,12 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         # Get latest author by timestamp
         latest_author = max(authors_with_time, key=lambda a: a.time.value)
 
-        if hasattr(latest_author, "assigned_author") and latest_author.assigned_author:
+        if latest_author.assigned_author:
             assigned_author = latest_author.assigned_author
 
             # Check for practitioner (assigned_person)
-            if hasattr(assigned_author, "assigned_person") and assigned_author.assigned_person:
-                if hasattr(assigned_author, "id") and assigned_author.id:
+            if assigned_author.assigned_person:
+                if assigned_author.id:
                     for id_elem in assigned_author.id:
                         if id_elem.root:
                             pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
@@ -601,8 +609,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                             }
 
             # Check for device (assigned_authoring_device)
-            elif hasattr(assigned_author, "assigned_authoring_device") and assigned_author.assigned_authoring_device:
-                if hasattr(assigned_author, "id") and assigned_author.id:
+            elif assigned_author.assigned_authoring_device:
+                if assigned_author.id:
                     for id_elem in assigned_author.id:
                         if id_elem.root:
                             device_id = self._generate_device_id(id_elem.root, id_elem.extension)
@@ -642,16 +650,16 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         """
         # Look for outcome observations (typically typeCode="OUTC" or result observations)
         for entry_rel in entry_relationships:
-            if hasattr(entry_rel, "type_code") and entry_rel.type_code in ["OUTC", "COMP"]:
-                if hasattr(entry_rel, "observation") and entry_rel.observation:
+            if entry_rel.type_code in ["OUTC", "COMP"]:
+                if entry_rel.observation:
                     obs = entry_rel.observation
-                    if hasattr(obs, "value") and obs.value:
+                    if obs.value:
                         value = obs.value
-                        if hasattr(value, "code") and value.code:
+                        if value.code:
                             return self.create_codeable_concept(
                                 code=value.code,
-                                code_system=value.code_system if hasattr(value, "code_system") else None,
-                                display_name=value.display_name if hasattr(value, "display_name") else None,
+                                code_system=value.code_system,
+                                display_name=value.display_name,
                             )
 
         return None
@@ -669,16 +677,16 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         for entry_rel in entry_relationships:
             # Look for COMP (complication) relationships
-            if hasattr(entry_rel, "type_code") and entry_rel.type_code == "COMP":
-                if hasattr(entry_rel, "observation") and entry_rel.observation:
+            if entry_rel.type_code == "COMP":
+                if entry_rel.observation:
                     obs = entry_rel.observation
-                    if hasattr(obs, "value") and obs.value:
+                    if obs.value:
                         value = obs.value
-                        if hasattr(value, "code") and value.code:
+                        if value.code:
                             complication = self.create_codeable_concept(
                                 code=value.code,
-                                code_system=value.code_system if hasattr(value, "code_system") else None,
-                                display_name=value.display_name if hasattr(value, "display_name") else None,
+                                code_system=value.code_system,
+                                display_name=value.display_name,
                             )
                             if complication:
                                 complications.append(complication)
@@ -698,14 +706,14 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         for entry_rel in entry_relationships:
             # Look for SPRT (support) relationships which typically contain follow-up instructions
-            if hasattr(entry_rel, "type_code") and entry_rel.type_code == "SPRT":
-                if hasattr(entry_rel, "act") and entry_rel.act:
+            if entry_rel.type_code == "SPRT":
+                if entry_rel.act:
                     act = entry_rel.act
-                    if hasattr(act, "code") and act.code:
+                    if act.code:
                         followup = self.create_codeable_concept(
-                            code=act.code.code if hasattr(act.code, "code") else None,
-                            code_system=act.code.code_system if hasattr(act.code, "code_system") else None,
-                            display_name=act.code.display_name if hasattr(act.code, "display_name") else None,
+                            code=act.code.code,
+                            code_system=act.code.code_system,
+                            display_name=act.code.display_name,
                         )
                         if followup:
                             followups.append(followup)
@@ -757,12 +765,17 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         # Start with basic code conversion using existing method
         # Extract translations if present
         translations = []
-        if hasattr(code, "translation") and code.translation:
+        if code.translation:
             for trans in code.translation:
                 if isinstance(trans, (CD, dict)):
-                    trans_code = trans.code if hasattr(trans, "code") else trans.get("code")
-                    trans_system = trans.code_system if hasattr(trans, "code_system") else trans.get("code_system")
-                    trans_display = trans.display_name if hasattr(trans, "display_name") else trans.get("display_name")
+                    if isinstance(trans, dict):
+                        trans_code = trans.get("code")
+                        trans_system = trans.get("code_system")
+                        trans_display = trans.get("display_name")
+                    else:
+                        trans_code = trans.code
+                        trans_system = trans.code_system
+                        trans_display = trans.display_name
 
                     if trans_code and trans_system:
                         translations.append({
@@ -773,7 +786,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         # Get original text if present
         original_text = None
-        if hasattr(code, "original_text") and code.original_text:
+        if code.original_text:
             original_text = self.extract_original_text(code.original_text, section=None)
 
         # Use display_name as text if original_text not available
@@ -796,7 +809,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         laterality_qualifier_codes = ["272741003", "78615007"]  # "Laterality" and "with laterality"
         laterality_value = None
 
-        if hasattr(code, "qualifier") and code.qualifier:
+        if code.qualifier:
             for qualifier in code.qualifier:
                 # Check if this is a laterality qualifier
                 if qualifier.name and qualifier.name.code in laterality_qualifier_codes:

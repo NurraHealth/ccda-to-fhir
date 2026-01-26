@@ -33,11 +33,11 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         super().__init__(**kwargs)
         self.original_xml = original_xml
 
-    def convert(self, clinical_document: ClinicalDocument) -> FHIRResourceDict:
+    def convert(self, ccda_model: ClinicalDocument) -> FHIRResourceDict:
         """Convert a C-CDA ClinicalDocument to a FHIR DocumentReference resource.
 
         Args:
-            clinical_document: The C-CDA ClinicalDocument element
+            ccda_model: The C-CDA ClinicalDocument element
 
         Returns:
             FHIR DocumentReference resource as a dictionary
@@ -45,6 +45,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         Raises:
             ConversionError: If conversion fails
         """
+        clinical_document = ccda_model  # Alias for readability
         if not clinical_document:
             raise ValueError("ClinicalDocument is required")
 
@@ -175,8 +176,8 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
 
         # Use document root and extension to create ID via cached UUID generator
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
-        root = document_id.root if hasattr(document_id, 'root') and document_id.root else None
-        extension = document_id.extension if hasattr(document_id, 'extension') and document_id.extension else None
+        root = document_id.root if document_id.root else None
+        extension = document_id.extension if document_id.extension else None
 
         return generate_id_from_identifiers("DocumentReference", root, extension)
 
@@ -699,11 +700,10 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
             sha1_hash = hashlib.sha1(xml_bytes).digest()
             attachment["hash"] = base64.b64encode(sha1_hash).decode("ascii")
 
-        # URL (if the document is stored elsewhere)
-        # Could be populated if we have an external document repository
+            # URL (if the document is stored elsewhere)
+            # Could be populated if we have an external document repository
 
-        # Size (in bytes)
-        if self.original_xml:
+            # Size (in bytes)
             attachment["size"] = len(xml_bytes)
 
         # Creation date (document effectiveTime)
@@ -767,11 +767,11 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
             return None
 
         if code.original_text:
-            # ED type - extract text
-            if hasattr(code.original_text, "text"):
-                return code.original_text.text
             # String type
-            elif isinstance(code.original_text, str):
+            if isinstance(code.original_text, str):
                 return code.original_text
+            # ED type - extract text
+            elif code.original_text.text:
+                return code.original_text.text
 
         return None

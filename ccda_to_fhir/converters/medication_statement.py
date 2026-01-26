@@ -44,11 +44,11 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         # Track seen medication IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_medication_ids = seen_medication_ids if seen_medication_ids is not None else set()
 
-    def convert(self, substance_admin: SubstanceAdministration, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: SubstanceAdministration, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Medication Activity to a FHIR MedicationStatement.
 
         Args:
-            substance_admin: The C-CDA SubstanceAdministration (Medication Activity)
+            ccda_model: The C-CDA SubstanceAdministration (Medication Activity)
             section: The C-CDA Section containing this medication (for narrative)
 
         Returns:
@@ -57,6 +57,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         Raises:
             ValueError: If the substance administration lacks required data
         """
+        substance_admin = ccda_model  # Alias for readability
         # Validation
         if not substance_admin.consumable:
             raise MissingRequiredFieldError(
@@ -139,19 +140,19 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             # Filter authors with time
             authors_with_time = [
                 a for a in substance_admin.author
-                if hasattr(a, 'time') and a.time and a.time.value
+                if a.time and a.time.value
             ]
 
             if authors_with_time:
                 # Sort by time and get latest
                 latest_author = max(authors_with_time, key=lambda a: a.time.value)
 
-                if hasattr(latest_author, 'assigned_author') and latest_author.assigned_author:
+                if latest_author.assigned_author:
                     assigned = latest_author.assigned_author
 
                     # Check for practitioner
-                    if hasattr(assigned, 'assigned_person') and assigned.assigned_person:
-                        if hasattr(assigned, 'id') and assigned.id:
+                    if assigned.assigned_person:
+                        if assigned.id:
                             for id_elem in assigned.id:
                                 if id_elem.root:
                                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
@@ -160,8 +161,8 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                                     }
                                     break
                     # Check for device
-                    elif hasattr(assigned, 'assigned_authoring_device') and assigned.assigned_authoring_device:
-                        if hasattr(assigned, 'id') and assigned.id:
+                    elif assigned.assigned_authoring_device:
+                        if assigned.id:
                             for id_elem in assigned.id:
                                 if id_elem.root:
                                     device_id = self._generate_device_id(id_elem.root, id_elem.extension)
@@ -312,7 +313,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
 
         # Extract translations - convert CD objects to dictionaries
         translations = None
-        if med_code and hasattr(med_code, 'translation') and med_code.translation:
+        if med_code and med_code.translation:
             translations = []
             for trans in med_code.translation:
                 if trans.code and trans.code_system:
@@ -543,9 +544,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         repeat: JSONObject = {}
 
         # Extract event code
-        event_code = None
-        if hasattr(eivl_ts.event, "code") and eivl_ts.event.code:
-            event_code = eivl_ts.event.code
+        event_code = eivl_ts.event.code if eivl_ts.event.code else None
 
         if event_code:
             # Map to FHIR when code
@@ -554,7 +553,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                 repeat["when"] = [when_code]
 
         # Extract offset (if present)
-        if hasattr(eivl_ts, "offset") and eivl_ts.offset:
+        if eivl_ts.offset:
             offset_pq = eivl_ts.offset
             if isinstance(offset_pq, PQ) and offset_pq.value is not None:
                 # Convert offset to minutes (FHIR offset is in minutes)
@@ -597,7 +596,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             # Validate: reject absurdly large periods (> 10 years in any unit)
             # 10 years = 3650 days = 87600 hours = 5256000 minutes = 315360000 seconds
             # In months: 10 years = 120 months
-            max_reasonable_value = 120 if (hasattr(pq, 'unit') and pq.unit in ['mo', 'm']) else 3650
+            max_reasonable_value = 120 if (pq.unit and pq.unit in ['mo', 'm']) else 3650
             if value > max_reasonable_value:
                 # Invalid period - return None to skip this timing info
                 return None

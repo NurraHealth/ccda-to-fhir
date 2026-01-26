@@ -48,15 +48,16 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
     as PractitionerConverter.
     """
 
-    def convert(self, assigned: AssignedAuthor) -> FHIRResourceDict:
+    def convert(self, ccda_model: AssignedAuthor) -> FHIRResourceDict:
         """Convert AssignedAuthor with assignedAuthoringDevice to Device resource.
 
         Args:
-            assigned: AssignedAuthor from C-CDA containing assignedAuthoringDevice
+            ccda_model: AssignedAuthor from C-CDA containing assignedAuthoringDevice
 
         Returns:
             FHIR Device resource as dictionary
         """
+        assigned = ccda_model  # Alias for readability
         device: FHIRResourceDict = {
             "resourceType": FHIRCodes.ResourceTypes.DEVICE,
         }
@@ -104,7 +105,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
                 device["version"] = version
 
         # Map owner organization from representedOrganization (if available)
-        if hasattr(self, "reference_registry") and self.reference_registry:
+        if self.reference_registry:
             owner_ref = self._extract_ehr_device_owner(assigned)
             if owner_ref:
                 device["owner"] = owner_ref
@@ -267,12 +268,12 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             code = participant_role.playing_device.code
             # Extract original text from ED object if present
             original_text = None
-            if hasattr(code, "original_text") and code.original_text:
+            if code.original_text:
                 original_text = self.extract_original_text(code.original_text)
             device_type = self.create_codeable_concept(
-                code=code.code if hasattr(code, "code") else None,
-                code_system=code.code_system if hasattr(code, "code_system") else None,
-                display_name=code.display_name if hasattr(code, "display_name") else None,
+                code=code.code,
+                code_system=code.code_system,
+                display_name=code.display_name,
                 original_text=original_text
             )
             if device_type:
@@ -306,7 +307,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         device["status"] = self._infer_device_status(procedure_status)
 
         # Map owner organization from scopingEntity (if available)
-        if hasattr(self, "reference_registry") and self.reference_registry:
+        if self.reference_registry:
             owner_ref = self._extract_device_owner(participant_role)
             if owner_ref:
                 device["owner"] = owner_ref
@@ -353,12 +354,14 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         }
 
         # Add device identifier if parsed
-        if parsed.get("device_identifier"):
-            udi_carrier["deviceIdentifier"] = parsed["device_identifier"]
+        device_id = parsed.get("device_identifier")
+        if device_id:
+            udi_carrier["deviceIdentifier"] = device_id
 
         # Add issuer if detected
-        if parsed.get("issuer"):
-            udi_carrier["issuer"] = parsed["issuer"]
+        issuer = parsed.get("issuer")
+        if issuer:
+            udi_carrier["issuer"] = issuer
 
         # Set jurisdiction to FDA for US devices
         udi_carrier["jurisdiction"] = FHIRSystems.FDA_UDI
@@ -368,14 +371,18 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         }
 
         # Add parsed production identifiers
-        if parsed.get("manufacture_date"):
-            result["manufacture_date"] = parsed["manufacture_date"]
-        if parsed.get("expiration_date"):
-            result["expiration_date"] = parsed["expiration_date"]
-        if parsed.get("lot_number"):
-            result["lot_number"] = parsed["lot_number"]
-        if parsed.get("serial_number"):
-            result["serial_number"] = parsed["serial_number"]
+        manufacture_date = parsed.get("manufacture_date")
+        if manufacture_date:
+            result["manufacture_date"] = manufacture_date
+        expiration_date = parsed.get("expiration_date")
+        if expiration_date:
+            result["expiration_date"] = expiration_date
+        lot_number = parsed.get("lot_number")
+        if lot_number:
+            result["lot_number"] = lot_number
+        serial_number = parsed.get("serial_number")
+        if serial_number:
+            result["serial_number"] = serial_number
 
         return result
 
@@ -401,10 +408,10 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         if playing_device.code:
             display_name = None
             # Try original text first (extract from ED object if present)
-            if hasattr(playing_device.code, "original_text") and playing_device.code.original_text:
+            if playing_device.code.original_text:
                 display_name = self.extract_original_text(playing_device.code.original_text)
             # Fall back to display name
-            elif hasattr(playing_device.code, "display_name") and playing_device.code.display_name:
+            elif playing_device.code.display_name:
                 display_name = playing_device.code.display_name
 
             if display_name:
@@ -450,13 +457,13 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         Returns:
             Organization reference dict or None
         """
-        if not hasattr(participant_role, "scoping_entity") or not participant_role.scoping_entity:
+        if not participant_role.scoping_entity:
             return None
 
         scoping_entity = participant_role.scoping_entity
 
         # Extract organization ID from scopingEntity identifiers
-        if not hasattr(scoping_entity, "id") or not scoping_entity.id:
+        if not scoping_entity.id:
             return None
 
         # Generate organization ID using same method as OrganizationConverter
@@ -481,13 +488,13 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         Returns:
             Organization reference dict or None
         """
-        if not hasattr(assigned, "represented_organization") or not assigned.represented_organization:
+        if not assigned.represented_organization:
             return None
 
         represented_org = assigned.represented_organization
 
         # Extract organization ID from representedOrganization identifiers
-        if not hasattr(represented_org, "id") or not represented_org.id:
+        if not represented_org.id:
             return None
 
         # Generate organization ID using same method as OrganizationConverter

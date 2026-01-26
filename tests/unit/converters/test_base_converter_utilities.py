@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from ccda_to_fhir.ccda.models.datatypes import ENXP, IVL_TS, PN, TS
+from ccda_to_fhir.ccda.models.datatypes import CS, ENXP, IVL_TS, PN, TS
 from ccda_to_fhir.converters.patient import PatientConverter
 
 
@@ -212,25 +212,17 @@ class TestConvertHumanNames:
         # Empty strings should be filtered out
         assert result[0]["given"] == ["John", "Jacob"]
 
-    def test_handles_string_family_name(self, converter):
-        """Test handling of family as string instead of ENXP."""
-        # Some C-CDA documents might have family as string
-        class MockName:
-            def __init__(self):
-                self.given = [ENXP(value="John")]
-                self.family = "Smith"  # String instead of ENXP
-                self.prefix = None
-                self.suffix = None
-                self.use = None
-                self.valid_time = None
+    def test_extract_enxp_handles_string_input(self, converter):
+        """Test that _extract_enxp_value_and_qualifier handles string input.
 
-        names = [MockName()]
+        The ENXP extraction method accepts strings for backward compatibility
+        with edge cases where the parser produces plain strings.
+        """
+        # Direct string input to the extraction method
+        value, qualifier = converter._extract_enxp_value_and_qualifier("Smith")
 
-        result = converter.convert_human_names(names)
-
-        assert len(result) == 1
-        assert result[0]["family"] == "Smith"
-        assert result[0]["given"] == ["John"]
+        assert value == "Smith"
+        assert qualifier is None
 
     def test_complete_name_with_all_fields(self, converter):
         """Test complete name with all possible fields."""
@@ -362,19 +354,13 @@ class TestConvertHumanNamesDelimiter:
 
     def test_builds_text_with_custom_delimiter(self, converter):
         """Test that text respects custom delimiter."""
-        # Create a mock PN with delimiter
-        class MockNameWithDelimiter:
-            def __init__(self):
-                self.given = [ENXP(value="John")]
-                self.family = ENXP(value="Smith")
-                self.prefix = None
-                self.suffix = None
-                self.use = None
-                self.valid_time = None
-                self.null_flavor = None
-                self.delimiter = [", "]  # Custom delimiter
-
-        names = [MockNameWithDelimiter()]
+        names = [
+            PN(
+                given=[ENXP(value="John")],
+                family=ENXP(value="Smith"),
+                delimiter=[", "],  # Custom delimiter
+            )
+        ]
 
         result = converter.convert_human_names(names)
 
@@ -382,19 +368,14 @@ class TestConvertHumanNamesDelimiter:
         assert result[0]["text"] == "John, Smith"
 
     def test_builds_text_with_string_delimiter(self, converter):
-        """Test that text handles string delimiter (not list)."""
-        class MockNameWithStringDelimiter:
-            def __init__(self):
-                self.given = [ENXP(value="John")]
-                self.family = ENXP(value="Smith")
-                self.prefix = None
-                self.suffix = None
-                self.use = None
-                self.valid_time = None
-                self.null_flavor = None
-                self.delimiter = "-"  # String delimiter
-
-        names = [MockNameWithStringDelimiter()]
+        """Test that text handles string delimiter (single element list)."""
+        names = [
+            PN(
+                given=[ENXP(value="John")],
+                family=ENXP(value="Smith"),
+                delimiter=["-"],  # Single element list delimiter
+            )
+        ]
 
         result = converter.convert_human_names(names)
 
@@ -407,18 +388,7 @@ class TestConvertHumanNamesNullFlavor:
 
     def test_null_flavor_unk_creates_data_absent_reason(self, converter):
         """Test that UNK null_flavor creates data-absent-reason extension."""
-        class MockNameWithNullFlavor:
-            def __init__(self):
-                self.null_flavor = "UNK"  # Unknown
-                self.given = None
-                self.family = None
-                self.prefix = None
-                self.suffix = None
-                self.use = None
-                self.valid_time = None
-                self.delimiter = None
-
-        names = [MockNameWithNullFlavor()]
+        names = [PN(null_flavor="UNK")]  # Unknown
 
         result = converter.convert_human_names(names)
 
@@ -431,18 +401,7 @@ class TestConvertHumanNamesNullFlavor:
 
     def test_null_flavor_msk_creates_masked_reason(self, converter):
         """Test that MSK null_flavor maps to masked."""
-        class MockNameWithMaskedNullFlavor:
-            def __init__(self):
-                self.null_flavor = "MSK"  # Masked
-                self.given = None
-                self.family = None
-                self.prefix = None
-                self.suffix = None
-                self.use = None
-                self.valid_time = None
-                self.delimiter = None
-
-        names = [MockNameWithMaskedNullFlavor()]
+        names = [PN(null_flavor="MSK")]  # Masked
 
         result = converter.convert_human_names(names)
 
@@ -452,18 +411,7 @@ class TestConvertHumanNamesNullFlavor:
 
     def test_null_flavor_asku_creates_asked_unknown_reason(self, converter):
         """Test that ASKU null_flavor maps to asked-unknown."""
-        class MockNameWithAskuNullFlavor:
-            def __init__(self):
-                self.null_flavor = "ASKU"  # Asked but unknown
-                self.given = None
-                self.family = None
-                self.prefix = None
-                self.suffix = None
-                self.use = None
-                self.valid_time = None
-                self.delimiter = None
-
-        names = [MockNameWithAskuNullFlavor()]
+        names = [PN(null_flavor="ASKU")]  # Asked but unknown
 
         result = converter.convert_human_names(names)
 
@@ -473,18 +421,7 @@ class TestConvertHumanNamesNullFlavor:
 
     def test_null_flavor_na_creates_not_applicable_reason(self, converter):
         """Test that NA null_flavor maps to not-applicable."""
-        class MockNameWithNaNullFlavor:
-            def __init__(self):
-                self.null_flavor = "NA"  # Not applicable
-                self.given = None
-                self.family = None
-                self.prefix = None
-                self.suffix = None
-                self.use = None
-                self.valid_time = None
-                self.delimiter = None
-
-        names = [MockNameWithNaNullFlavor()]
+        names = [PN(null_flavor="NA")]  # Not applicable
 
         result = converter.convert_human_names(names)
 
@@ -494,18 +431,13 @@ class TestConvertHumanNamesNullFlavor:
 
     def test_null_flavor_skips_name_content_extraction(self, converter):
         """Test that null_flavor names don't have given/family extracted."""
-        class MockNameWithNullFlavorAndContent:
-            def __init__(self):
-                self.null_flavor = "UNK"
-                self.given = [ENXP(value="John")]  # Should be ignored
-                self.family = ENXP(value="Smith")  # Should be ignored
-                self.prefix = None
-                self.suffix = None
-                self.use = None
-                self.valid_time = None
-                self.delimiter = None
-
-        names = [MockNameWithNullFlavorAndContent()]
+        names = [
+            PN(
+                null_flavor="UNK",
+                given=[ENXP(value="John")],  # Should be ignored
+                family=ENXP(value="Smith"),  # Should be ignored
+            )
+        ]
 
         result = converter.convert_human_names(names)
 
@@ -630,21 +562,17 @@ class TestMapStatusCode:
     def test_map_status_code_with_valid_code(self, converter):
         """Test mapping a valid status code."""
         mapping = {"active": "active", "completed": "inactive"}
+        status_code = CS(code="completed")
 
-        class MockStatusCode:
-            code = "completed"
-
-        result = converter.map_status_code(MockStatusCode(), mapping, "unknown")
+        result = converter.map_status_code(status_code, mapping, "unknown")
         assert result == "inactive"
 
     def test_map_status_code_case_insensitive(self, converter):
         """Test that status code mapping is case insensitive."""
         mapping = {"completed": "final"}
+        status_code = CS(code="COMPLETED")
 
-        class MockStatusCode:
-            code = "COMPLETED"
-
-        result = converter.map_status_code(MockStatusCode(), mapping, "unknown")
+        result = converter.map_status_code(status_code, mapping, "unknown")
         assert result == "final"
 
     def test_map_status_code_returns_default_on_none(self, converter):
@@ -653,24 +581,20 @@ class TestMapStatusCode:
         result = converter.map_status_code(None, mapping, "unknown")
         assert result == "unknown"
 
-    def test_map_status_code_returns_default_on_missing_code(self, converter):
-        """Test that missing code attribute returns default."""
+    def test_map_status_code_returns_default_on_none_code(self, converter):
+        """Test that None code attribute returns default."""
         mapping = {"active": "active"}
+        status_code = CS(code=None)
 
-        class MockStatusCodeNoCode:
-            pass
-
-        result = converter.map_status_code(MockStatusCodeNoCode(), mapping, "default")
+        result = converter.map_status_code(status_code, mapping, "default")
         assert result == "default"
 
     def test_map_status_code_returns_default_on_unmapped(self, converter):
         """Test that unmapped code returns default."""
         mapping = {"active": "active"}
+        status_code = CS(code="unmapped_status")
 
-        class MockStatusCode:
-            code = "unmapped_status"
-
-        result = converter.map_status_code(MockStatusCode(), mapping, "fallback")
+        result = converter.map_status_code(status_code, mapping, "fallback")
         assert result == "fallback"
 
     def test_map_status_code_with_string_input(self, converter):

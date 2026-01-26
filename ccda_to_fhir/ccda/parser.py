@@ -12,14 +12,28 @@ The parser handles:
 
 from __future__ import annotations
 
-from typing import Any, TypeVar
+from typing import TypeAlias, TypeVar
 
 from lxml import etree
 from pydantic import BaseModel
 
-# Trigger model rebuilds for forward references
-# This is necessary because models use TYPE_CHECKING for circular dependencies
-# Import ALL models first so forward references resolve
+# -----------------------------------------------------------------------------
+# Parser Type Definitions
+# -----------------------------------------------------------------------------
+# These types represent the intermediate values during XML parsing before
+# Pydantic validation. The parser converts XML into these types, then Pydantic
+# validates and converts to the final typed models.
+
+# Single parsed value from an XML element (excludes None - filtered during parsing)
+ParsedValue: TypeAlias = str | bool | BaseModel
+
+# Data dict values can be single values or lists of values
+ParsedDataValue: TypeAlias = ParsedValue | list[ParsedValue]
+
+# The intermediate data dict passed to Pydantic's model_validate()
+ParsedDataDict: TypeAlias = dict[str, ParsedDataValue]
+
+# Import models - forward references are resolved by model_rebuild() in models/__init__.py
 from .models import (
     AD,
     BL,
@@ -49,58 +63,8 @@ from .models import (
     TEL,
     TN,
     TS,
-    Act,
     ClinicalDocument,
-    Encounter,
-    Observation,
-    Organizer,
-    Procedure,
-    SubstanceAdministration,
-    Supply,
 )
-from .models.act import Reference
-from .models.author import AssignedAuthoringDevice
-from .models.clinical_document import HealthCareFacility, Informant, RelatedEntity
-from .models.observation import EntryRelationship
-from .models.organizer import OrganizerComponent
-from .models.section import Entry, Section
-from .models.substance_administration import ManufacturedProduct, Precondition
-from .models.struc_doc import (
-    Content,
-    ListItem,
-    Paragraph,
-    StrucDocText,
-    TableDataCell,
-    TableHeaderCell,
-)
-
-# Trigger rebuilds in correct order (dependencies first)
-# These models have forward references that are now available
-EntryRelationship.model_rebuild()
-Entry.model_rebuild()
-OrganizerComponent.model_rebuild()
-AssignedAuthoringDevice.model_rebuild()
-HealthCareFacility.model_rebuild()
-
-# Rebuild StrucDocText models (have circular references)
-Paragraph.model_rebuild()
-Content.model_rebuild()
-ListItem.model_rebuild()
-TableHeaderCell.model_rebuild()
-TableDataCell.model_rebuild()
-StrucDocText.model_rebuild()
-
-# Rebuild Section (now references StrucDocText)
-Section.model_rebuild()
-
-# Rebuild clinical statement models that use EntryRelationship
-Observation.model_rebuild()
-Act.model_rebuild()
-Organizer.model_rebuild()
-Procedure.model_rebuild()
-SubstanceAdministration.model_rebuild()
-Encounter.model_rebuild()
-Supply.model_rebuild()
 
 # XML Namespaces used in C-CDA
 NAMESPACES = {
@@ -176,11 +140,6 @@ XSI_TYPE_MAP: dict[str, type[BaseModel]] = {
 }
 
 
-def _get_qname(tag: str, namespace: str = "hl7") -> str:
-    """Get qualified name for an XML tag."""
-    return f"{{{NAMESPACES[namespace]}}}{tag}"
-
-
 def _strip_namespace(tag: str) -> str:
     """Strip namespace from XML tag, returning just the local name."""
     if "}" in tag:
@@ -188,9 +147,12 @@ def _strip_namespace(tag: str) -> str:
     return tag
 
 
-def _parse_attributes(element: etree._Element) -> dict[str, Any]:
-    """Parse XML attributes into a dictionary with snake_case keys."""
-    attrs = {}
+def _parse_attributes(element: etree._Element) -> dict[str, str | bool]:
+    """Parse XML attributes into a dictionary with snake_case keys.
+
+    Returns str | bool values: strings for most attributes, bools for "true"/"false".
+    """
+    attrs: dict[str, str | bool] = {}
     for key, value in element.attrib.items():
         # Strip namespace from attribute names
         local_key = _strip_namespace(key)
@@ -228,12 +190,16 @@ def _to_camel_case(name: str) -> str:
     return parts[0] + ''.join(word.capitalize() for word in parts[1:])
 
 
-def _parse_typed_value(element: etree._Element) -> Any:
+def _parse_typed_value(element: etree._Element) -> BaseModel | None:
     """Parse an element with xsi:type attribute.
 
-    This handles polymorphic values like:
-    <value xsi:type="PQ" value="120" unit="mm[Hg]"/>
-    <value xsi:type="CD" code="123" codeSystem="..."/>
+    Returns a Pydantic model determined at runtime from the xsi:type XML attribute.
+    For example, <value xsi:type="PQ"> returns PQ, <value xsi:type="CD"> returns CD.
+    The specific subclass depends on XSI_TYPE_MAP lookup.
+
+    Examples:
+        <value xsi:type="PQ" value="120" unit="mm[Hg]"/> -> PQ model
+        <value xsi:type="CD" code="123" codeSystem="..."/> -> CD model
     """
     xsi_type = element.get(f"{{{NAMESPACES['xsi']}}}type")
     if not xsi_type:
@@ -258,7 +224,7 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
     4. Aggregates repeated elements into lists
     5. Returns a Pydantic model instance
     """
-    data: dict[str, Any] = {}
+    data: ParsedDataDict = {}
 
     # 1. Parse attributes
     data.update(_parse_attributes(element))
@@ -332,11 +298,9 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
 
         # 6. Populate tail_text for child elements (AFTER model creation)
         # This preserves mixed content order by capturing text after each element
+        from pydantic import BaseModel
         for field_name in model_fields:
-            if not hasattr(instance, field_name):
-                continue
-
-            field_value = getattr(instance, field_name)
+            field_value = getattr(instance, field_name, None)
             if field_value is None:
                 continue
 
@@ -347,16 +311,18 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
                     xml_children = child_elements[field_tag]
                     # Match parsed models with their XML elements by index
                     for parsed_item, xml_child in zip(field_value, xml_children, strict=False):
-                        if hasattr(parsed_item, 'tail_text') and hasattr(xml_child, 'tail') and xml_child.tail:
+                        # Not all models have tail_text field
+                        if hasattr(parsed_item, 'tail_text') and xml_child.tail:
                             if xml_child.tail.strip():
                                 parsed_item.tail_text = xml_child.tail.strip()
 
-            # Handle single-value fields
-            elif hasattr(field_value, '__dict__'):
+            # Handle single-value fields (Pydantic models, not primitives)
+            elif isinstance(field_value, BaseModel):
                 field_tag = _to_camel_case(field_name)
                 if field_tag in child_elements and child_elements[field_tag]:
                     xml_child = child_elements[field_tag][0]
-                    if hasattr(field_value, 'tail_text') and hasattr(xml_child, 'tail') and xml_child.tail:
+                    # Not all models have tail_text field
+                    if hasattr(field_value, 'tail_text') and xml_child.tail:
                         if xml_child.tail.strip():
                             field_value.tail_text = xml_child.tail.strip()
 
@@ -367,8 +333,12 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
         ) from e
 
 
-def _is_list_field(field_type: Any) -> bool:
-    """Check if a field type is a list."""
+def _is_list_field(field_type: object) -> bool:
+    """Check if a field type is a list.
+
+    Args:
+        field_type: A Python type annotation (list[X], X | None, Union[X, Y], etc.)
+    """
     import typing
 
     # Direct list type: list[X]
@@ -395,8 +365,12 @@ def _is_list_field(field_type: Any) -> bool:
 
 def _parse_child_element(
     element: etree._Element, field_name: str, parent_model_class: type[BaseModel]
-) -> Any:
-    """Parse a child element, determining its type from the parent model."""
+) -> ParsedValue | None:
+    """Parse a child element, determining its type from the parent model.
+
+    Returns str, bool, or BaseModel depending on the field's type annotation
+    and any xsi:type attribute. Returns None if the element cannot be parsed.
+    """
     # Get the expected type from the parent model
     field_info = parent_model_class.model_fields[field_name]
     field_type = field_info.annotation
@@ -470,8 +444,15 @@ def _parse_child_element(
     return None
 
 
-def _unwrap_field_type(field_type: Any) -> Any:
-    """Unwrap Optional, Union, and list types to get the core type."""
+def _unwrap_field_type(field_type: object) -> object:
+    """Unwrap Optional, Union, and list types to get the core type.
+
+    Args:
+        field_type: A Python type annotation (list[X], X | None, Union[X, Y], ForwardRef, etc.)
+
+    Returns:
+        The innermost non-wrapper type for parsing logic.
+    """
     import typing
     from typing import ForwardRef
 
@@ -514,8 +495,12 @@ def _unwrap_field_type(field_type: Any) -> Any:
     return field_type
 
 
-def _is_union_type(field_type: Any) -> bool:
-    """Check if a field type is a Union (not just Optional)."""
+def _is_union_type(field_type: object) -> bool:
+    """Check if a field type is a Union (not just Optional).
+
+    Takes Any because field_type comes from Pydantic annotations and could be
+    any type expression. Distinguishes true unions (A | B) from Optional (A | None).
+    """
     import typing
 
     # Python 3.10+ Union syntax: A | B | None
@@ -536,8 +521,16 @@ def _is_union_type(field_type: Any) -> bool:
     return False
 
 
-def _parse_union_element(element: etree._Element, union_type: Any) -> Any:
-    """Parse an element that could be one of multiple types."""
+def _parse_union_element(element: etree._Element, union_type: object) -> ParsedValue | None:
+    """Parse an element that could be one of multiple types.
+
+    Args:
+        element: XML element to parse
+        union_type: A union type annotation (e.g., CD | CE | PQ)
+
+    Returns:
+        The parsed value (str or BaseModel) or None if no type matches.
+    """
     args = getattr(union_type, "__args__", ())
     non_none_args = [arg for arg in args if arg is not type(None)]
 

@@ -164,8 +164,9 @@ class SectionProcessor:
                                     # Track error
                                     if metadata is not None:
                                         entry_id = None
-                                        if hasattr(entry_element, "id") and entry_element.id:
-                                            ids = entry_element.id if isinstance(entry_element.id, list) else [entry_element.id]
+                                        entry_ids = getattr(entry_element, "id", None)
+                                        if entry_ids:
+                                            ids = entry_ids if isinstance(entry_ids, list) else [entry_ids]
                                             if ids and ids[0]:
                                                 entry_id = f"{ids[0].root}/{ids[0].extension or ''}"
 

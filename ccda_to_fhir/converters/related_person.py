@@ -23,7 +23,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ccda_to_fhir.constants import FHIRCodes, FHIRSystems
-from ccda_to_fhir.types import FHIRResourceDict
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -48,15 +48,16 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         super().__init__()
         self.patient_id = patient_id
 
-    def convert(self, related_entity: RelatedEntity) -> FHIRResourceDict:
+    def convert(self, ccda_model: RelatedEntity) -> FHIRResourceDict:
         """Convert RelatedEntity to RelatedPerson resource.
 
         Args:
-            related_entity: RelatedEntity from C-CDA Informant
+            ccda_model: RelatedEntity from C-CDA Informant
 
         Returns:
             FHIR RelatedPerson resource as dictionary
         """
+        related_entity = ccda_model  # Alias for readability
         related_person: FHIRResourceDict = {
             "resourceType": FHIRCodes.ResourceTypes.RELATED_PERSON,
         }
@@ -119,12 +120,10 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
             names = related_entity.related_person.name
             if names and len(names) > 0:
                 name = names[0]
-                if hasattr(name, "family") and name.family:
-                    family = (
-                        name.family.value
-                        if hasattr(name.family, "value")
-                        else str(name.family)
-                    )
+                # PN has family attribute of type ENXP | None
+                if name.family:
+                    # ENXP has value attribute, fall back to str() if None
+                    family = name.family.value if name.family.value else str(name.family)
                     cache_key_parts.append(f"family:{family}")
 
         # Add classCode if available
@@ -136,7 +135,7 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
 
         return generate_id_from_identifiers("RelatedPerson", cache_key, None)
 
-    def _convert_relationship(self, code: CE) -> dict[str, list[dict[str, str]]]:
+    def _convert_relationship(self, code: CE) -> JSONObject:
         """Convert C-CDA relationship code to FHIR CodeableConcept.
 
         Args:
@@ -145,7 +144,7 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         Returns:
             FHIR CodeableConcept for relationship
         """
-        concept: dict[str, list[dict[str, str]]] = {"coding": []}
+        concept: JSONObject = {"coding": []}
 
         if code.code:
             coding: dict[str, str] = {}

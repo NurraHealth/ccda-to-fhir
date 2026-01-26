@@ -2,6 +2,12 @@
 
 This module provides a centralized logging configuration with structured
 logging support for production deployments.
+
+Type Note:
+    Any is used in logging method signatures (**kwargs: Any) because log methods
+    accept arbitrary keyword arguments for structured logging context (correlation
+    IDs, resource types, etc.). This matches Python's standard logging API pattern
+    and is outside the core data conversion flow.
 """
 
 from __future__ import annotations
@@ -37,12 +43,14 @@ class ConversionLogger:
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.INFO)
 
+    # Any used in extra dict because logging context can contain arbitrary values
+    # (strings, ints, resource IDs, etc.) for structured logging output
     def _add_context(self, msg: str, extra: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         """Add correlation ID and extra context to log message.
 
         Args:
             msg: Base log message
-            extra: Additional context to include
+            extra: Additional context to include (Any values for structured logging)
 
         Returns:
             Tuple of (formatted message, extra dict)

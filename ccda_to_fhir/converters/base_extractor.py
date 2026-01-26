@@ -81,11 +81,11 @@ class BaseParticipantExtractor(ABC, Generic[InfoType]):
         items: list[InfoType] = []
         attr_name = self._get_attribute_name()
 
-        if hasattr(element, attr_name):
-            attr_value = getattr(element, attr_name)
-            if attr_value:
-                for item in attr_value:
-                    items.append(self._create_info(item, context))
+        # Use getattr with default to avoid hasattr + getattr pattern
+        attr_value = getattr(element, attr_name, None)
+        if attr_value:
+            for item in attr_value:
+                items.append(self._create_info(item, context))
 
         return items
 
@@ -185,11 +185,10 @@ class BaseParticipantExtractor(ABC, Generic[InfoType]):
                     all_items.append(self._create_info(item, "concern_act"))
 
         # Extract from entry element
-        if hasattr(entry_element, attr_name):
-            attr_value = getattr(entry_element, attr_name)
-            if attr_value:
-                for item in attr_value:
-                    all_items.append(self._create_info(item, "entry_element"))
+        attr_value = getattr(entry_element, attr_name, None)
+        if attr_value:
+            for item in attr_value:
+                all_items.append(self._create_info(item, "entry_element"))
 
         # Deduplicate by ID (skip if key is all None - handles both 1 and 2-element tuples)
         seen: set[tuple] = set()

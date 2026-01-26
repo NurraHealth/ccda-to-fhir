@@ -36,11 +36,11 @@ class PatientConverter(BaseConverter[RecordTarget]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-patient.html
     """
 
-    def convert(self, record_target: RecordTarget) -> FHIRResourceDict:
+    def convert(self, ccda_model: RecordTarget) -> FHIRResourceDict:
         """Convert a C-CDA recordTarget to a FHIR Patient resource.
 
         Args:
-            record_target: The C-CDA recordTarget element
+            ccda_model: The C-CDA recordTarget element
 
         Returns:
             FHIR Patient resource as a dictionary
@@ -48,6 +48,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
         Raises:
             ConversionError: If conversion fails
         """
+        record_target = ccda_model  # Alias for readability
         if not record_target.patient_role:
             raise MissingRequiredFieldError(
                 field_name="patientRole",
@@ -144,11 +145,12 @@ class PatientConverter(BaseConverter[RecordTarget]):
             # Create a reference - in full document conversion, this would be resolved
             org_name = None
             if patient_role.provider_organization.name:
-                org_name = patient_role.provider_organization.name[0]
-                if isinstance(org_name, str):
-                    pass
+                name_entry = patient_role.provider_organization.name[0]
+                if isinstance(name_entry, str):
+                    org_name = name_entry
                 else:
-                    org_name = org_name.value if hasattr(org_name, 'value') else str(org_name)
+                    # ON (Organization Name) has value attribute
+                    org_name = name_entry.value if name_entry.value else str(name_entry)
 
             patient["managingOrganization"] = {"display": org_name} if org_name else {}
 

@@ -45,11 +45,11 @@ class GoalConverter(BaseConverter[Observation]):
         # Track seen goal IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_goal_ids = seen_goal_ids if seen_goal_ids is not None else set()
 
-    def convert(self, observation: Observation, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: Observation, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Goal Observation to a FHIR Goal.
 
         Args:
-            observation: The C-CDA Goal Observation (moodCode="GOL")
+            ccda_model: The C-CDA Goal Observation (moodCode="GOL")
             section: The C-CDA Section containing this observation (for narrative)
 
         Returns:
@@ -58,6 +58,7 @@ class GoalConverter(BaseConverter[Observation]):
         Raises:
             ValueError: If the observation lacks required data or is not a Goal
         """
+        observation = ccda_model  # Alias for readability
         # Validate this is a goal observation (moodCode="GOL")
         if observation.mood_code != "GOL":
             raise ValueError(
@@ -156,13 +157,13 @@ class GoalConverter(BaseConverter[Observation]):
         target_due_date = None  # Initialize outside if block to avoid UnboundLocalError
         if observation.effective_time:
             # effectiveTime/low → startDate
-            if hasattr(observation.effective_time, "low") and observation.effective_time.low:
+            if observation.effective_time.low and observation.effective_time.low.value:
                 start_date = self.convert_date(observation.effective_time.low.value)
                 if start_date:
                     fhir_goal["startDate"] = start_date
 
             # effectiveTime/high → target.dueDate (will be added to targets below)
-            if hasattr(observation.effective_time, "high") and observation.effective_time.high:
+            if observation.effective_time.high and observation.effective_time.high.value:
                 target_due_date = self.convert_date(observation.effective_time.high.value)
 
         # 7. Targets from component goals (entryRelationship typeCode="COMP")
@@ -252,24 +253,24 @@ class GoalConverter(BaseConverter[Observation]):
 
         # Extract original text if available
         original_text = None
-        if hasattr(code_element, "original_text") and code_element.original_text:
+        if code_element.original_text:
             original_text = self.extract_original_text(code_element.original_text)
 
         # Handle translations
         translations = []
-        if hasattr(code_element, "translation") and code_element.translation:
+        if code_element.translation:
             for trans in code_element.translation:
                 if trans.code and trans.code_system:
                     translations.append({
                         "code": trans.code,
                         "code_system": trans.code_system,
-                        "display_name": trans.display_name if hasattr(trans, "display_name") else None,
+                        "display_name": trans.display_name,
                     })
 
         return self.create_codeable_concept(
             code=code_element.code,
             code_system=code_element.code_system,
-            display_name=code_element.display_name if hasattr(code_element, "display_name") else None,
+            display_name=code_element.display_name,
             original_text=original_text,
             translations=translations,
         )
@@ -467,7 +468,7 @@ class GoalConverter(BaseConverter[Observation]):
 
             # Add display if we have the value
             if entry_ref_obs.value:
-                if isinstance(entry_ref_obs.value, (CD, CE)) and hasattr(entry_ref_obs.value, "display_name") and entry_ref_obs.value.display_name:
+                if isinstance(entry_ref_obs.value, (CD, CE)) and entry_ref_obs.value.display_name:
                     reference["display"] = entry_ref_obs.value.display_name
 
             return reference

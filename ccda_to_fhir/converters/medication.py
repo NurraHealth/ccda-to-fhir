@@ -31,13 +31,13 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
 
     def convert(
         self,
-        manufactured_product: ManufacturedProduct,
+        ccda_model: ManufacturedProduct,
         substance_admin: SubstanceAdministration | None = None,
     ) -> FHIRResourceDict:
         """Convert a C-CDA Manufactured Product to a FHIR Medication.
 
         Args:
-            manufactured_product: The C-CDA ManufacturedProduct
+            ccda_model: The C-CDA ManufacturedProduct
             substance_admin: Optional SubstanceAdministration for additional context
 
         Returns:
@@ -46,6 +46,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
         Raises:
             ValueError: If the manufactured product lacks required data
         """
+        manufactured_product = ccda_model  # Alias for readability
         # Validation
         if not manufactured_product.manufactured_material:
             raise ValueError("ManufacturedProduct must have a manufacturedMaterial")
@@ -66,7 +67,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
             code_elem = manufactured_product.manufactured_material.code
             # Extract translations - convert CD objects to dictionaries
             translations = None
-            if hasattr(code_elem, "translation") and code_elem.translation:
+            if code_elem.translation:
                 translations = []
                 for trans in code_elem.translation:
                     if trans.code and trans.code_system:
@@ -101,7 +102,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
                     # Handle both ON objects and plain strings
                     if isinstance(first_name, str):
                         org_name = first_name
-                    elif hasattr(first_name, "value") and first_name.value:
+                    elif first_name.value:
                         org_name = first_name.value
                     else:
                         org_name = str(first_name)

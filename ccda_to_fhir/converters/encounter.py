@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 
+from ccda_to_fhir.ccda.models.datatypes import IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
 from ccda_to_fhir.ccda.models.observation import EntryRelationship
 from ccda_to_fhir.constants import (
@@ -46,11 +47,11 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         self._pending_practitioners: list[FHIRResourceDict] = []
         self._pending_locations: list[FHIRResourceDict] = []
 
-    def convert(self, encounter: CCDAEncounter, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: CCDAEncounter, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Encounter Activity to a FHIR Encounter resource.
 
         Args:
-            encounter: The C-CDA Encounter Activity
+            ccda_model: The C-CDA Encounter Activity
             section: The C-CDA Section containing this encounter (for narrative)
 
         Returns:
@@ -59,6 +60,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         Raises:
             ValueError: If the encounter lacks required data
         """
+        encounter = ccda_model  # Alias for readability
         fhir_encounter: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.ENCOUNTER,
         }
@@ -83,9 +85,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                 context_parts.append(encounter.code.code)
             if encounter.effective_time:
                 # Use low value if available for determinism
-                if hasattr(encounter.effective_time, 'low') and encounter.effective_time.low:
+                if isinstance(encounter.effective_time, IVL_TS) and encounter.effective_time.low:
                     context_parts.append(str(encounter.effective_time.low.value or ""))
-                elif hasattr(encounter.effective_time, 'value') and encounter.effective_time.value:
+                elif isinstance(encounter.effective_time, TS) and encounter.effective_time.value:
                     context_parts.append(str(encounter.effective_time.value))
             if encounter.status_code and encounter.status_code.code:
                 context_parts.append(encounter.status_code.code)
@@ -245,7 +247,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
             # Check translations for V3 ActCode FIRST (before CPT mapping)
             # Per C-CDA on FHIR IG, explicit V3 ActCode translations should be preferred
-            if hasattr(encounter.code, "translation") and encounter.code.translation:
+            if encounter.code.translation:
                 for trans in encounter.code.translation:
                     trans_system = None
                     trans_code = None
@@ -255,10 +257,10 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                         trans_system = trans.get("code_system")
                         trans_code = trans.get("code")
                         trans_display = trans.get("display_name")
-                    elif hasattr(trans, "code_system"):
+                    else:
                         trans_system = trans.code_system
-                        trans_code = trans.code if hasattr(trans, "code") else None
-                        trans_display = trans.display_name if hasattr(trans, "display_name") else None
+                        trans_code = trans.code
+                        trans_display = trans.display_name
 
                     if trans_system == V3_ACT_CODE_SYSTEM and trans_code:
                         # Use standard display name from mapping if available
@@ -340,26 +342,36 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         period: JSONObject = {}
 
-        # Handle single value
-        if hasattr(effective_time, "value") and effective_time.value:
+        # Handle IVL_TS
+        if isinstance(effective_time, IVL_TS):
+            # Check for point-in-time (IVL_TS with direct value attribute)
+            if effective_time.value:
+                converted = self.convert_date(effective_time.value)
+                if converted:
+                    return {"start": converted}
+
+            # Handle period with low/high
+            if effective_time.low:
+                low_value = effective_time.low.value if effective_time.low.value else None
+                if low_value:
+                    converted_low = self.convert_date(str(low_value))
+                    if converted_low:
+                        period["start"] = converted_low
+
+            if effective_time.high:
+                high_value = effective_time.high.value if effective_time.high.value else None
+                if high_value:
+                    converted_high = self.convert_date(str(high_value))
+                    if converted_high:
+                        period["end"] = converted_high
+
+            return period if period else None
+
+        # Handle single value (TS type)
+        if isinstance(effective_time, TS) and effective_time.value:
             converted = self.convert_date(effective_time.value)
             if converted:
                 period["start"] = converted
-
-        # Handle period (low/high)
-        if hasattr(effective_time, "low") and effective_time.low:
-            low_value = effective_time.low.value if hasattr(effective_time.low, "value") else effective_time.low
-            if low_value:
-                converted_low = self.convert_date(str(low_value))
-                if converted_low:
-                    period["start"] = converted_low
-
-        if hasattr(effective_time, "high") and effective_time.high:
-            high_value = effective_time.high.value if hasattr(effective_time.high, "value") else effective_time.high
-            if high_value:
-                converted_high = self.convert_date(str(high_value))
-                if converted_high:
-                    period["end"] = converted_high
 
         return period if period else None
 
@@ -389,8 +401,8 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             # Map C-CDA ParticipationFunction codes to FHIR ParticipationType codes
             # Reference: docs/mapping/08-encounter.md lines 217-223
             # Reference: docs/mapping/09-participations.md lines 217-232
-            if hasattr(performer, "function_code") and performer.function_code:
-                function_code = performer.function_code.code if hasattr(performer.function_code, "code") else None
+            if performer.function_code:
+                function_code = performer.function_code.code
 
                 # Map known function codes (PCP→PPRF, ATTPHYS→ATND, ANEST→SPRF, etc.)
                 mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(
@@ -401,7 +413,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                 type_coding = {
                     "system": FHIRSystems.V3_PARTICIPATION_TYPE,
                     "code": mapped_code,
-                    "display": performer.function_code.display_name if hasattr(performer.function_code, "display_name") else None,
+                    "display": performer.function_code.display_name,
                 }
                 participant["type"] = [{"coding": [type_coding]}]
             else:
@@ -419,14 +431,13 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             # Prefer NPI (2.16.840.1.113883.4.6) over other identifiers for consistency
             # Only process if participant represents a person (has assigned_person)
             # Per C-CDA: assignedEntity can be just an organization without a person
-            if (hasattr(performer, "assigned_entity") and performer.assigned_entity and
-                hasattr(performer.assigned_entity, "assigned_person") and
+            if (performer.assigned_entity and
                 performer.assigned_entity.assigned_person):
                 assigned_entity = performer.assigned_entity
 
                 # Generate practitioner ID from NPI or other identifiers
                 # Prefer NPI for consistency
-                if hasattr(assigned_entity, "id") and assigned_entity.id:
+                if assigned_entity.id:
                     npi_id = None
                     first_id = None
 
@@ -491,45 +502,45 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         for participant in encounter.participant:
             # Look for location participants (typeCode="LOC")
-            if hasattr(participant, "type_code") and participant.type_code == "LOC":
+            if participant.type_code == "LOC":
                 location: JSONObject = {}
 
                 # Extract location reference and display
-                if hasattr(participant, "participant_role") and participant.participant_role:
+                if participant.participant_role:
                     role = participant.participant_role
 
                     # Extract location name from playingEntity (needed for synthetic ID)
                     display = None
-                    if hasattr(role, "playing_entity") and role.playing_entity:
+                    if role.playing_entity:
                         entity = role.playing_entity
-                        if hasattr(entity, "name") and entity.name:
+                        if entity.name:
                             if isinstance(entity.name, str):
                                 display = entity.name
                             elif isinstance(entity.name, list) and len(entity.name) > 0:
                                 # Handle list of ON objects
                                 first_name = entity.name[0]
-                                if hasattr(first_name, "value") and first_name.value:
+                                if first_name.value:
                                     display = first_name.value
-                            elif hasattr(entity.name, "value"):
+                            elif entity.name.value:
                                 display = entity.name.value
 
                     # Extract address data (needed for synthetic ID)
                     address_for_id = None
-                    if hasattr(role, "addr") and role.addr:
+                    if role.addr:
                         addr_raw = role.addr[0] if isinstance(role.addr, list) else role.addr
                         # Build simple address dict for ID generation
                         address_for_id = {}
-                        if hasattr(addr_raw, "city") and addr_raw.city:
+                        if addr_raw.city:
                             address_for_id["city"] = addr_raw.city
-                        if hasattr(addr_raw, "state") and addr_raw.state:
+                        if addr_raw.state:
                             address_for_id["state"] = addr_raw.state
-                        if hasattr(addr_raw, "street_address_line") and addr_raw.street_address_line:
+                        if addr_raw.street_address_line:
                             # street_address_line is a list, use first element
                             address_for_id["line"] = [addr_raw.street_address_line[0]] if addr_raw.street_address_line else []
 
                     # Generate location ID from role ID, or create synthetic ID if missing
                     location_id = None
-                    if hasattr(role, "id") and role.id:
+                    if role.id:
                         for id_elem in role.id:
                             if id_elem.root:
                                 location_id = self._generate_location_id(id_elem.root, id_elem.extension)
@@ -566,7 +577,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
                         # Extract period from participant time
                         period = None
-                        if hasattr(participant, "time") and participant.time:
+                        if participant.time:
                             period = self._convert_period(participant.time)
                             if period:
                                 location["period"] = period
@@ -669,7 +680,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         if encounter.code and encounter.code.code:
             if encounter.code.code_system == V3_ACT_CODE_SYSTEM:
                 encounter_class = encounter.code.code
-            elif hasattr(encounter.code, "translation") and encounter.code.translation:
+            elif encounter.code.translation:
                 for trans in encounter.code.translation:
                     trans_system = None
                     trans_code = None
@@ -677,9 +688,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                     if isinstance(trans, dict):
                         trans_system = trans.get("code_system")
                         trans_code = trans.get("code")
-                    elif hasattr(trans, "code_system"):
+                    else:
                         trans_system = trans.code_system
-                        trans_code = trans.code if hasattr(trans, "code") else None
+                        trans_code = trans.code
 
                     if trans_system == V3_ACT_CODE_SYSTEM and trans_code:
                         encounter_class = trans_code
@@ -754,7 +765,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                     "coding": [{
                         "system": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
                         "code": fhir_code,
-                        "display": disposition.display_name if hasattr(disposition, "display_name") and disposition.display_name else None,
+                        "display": disposition.display_name if disposition.display_name else None,
                     }]
                 }
 
@@ -887,7 +898,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             # Extract class from code or translation
             if encounter.code.code_system == V3_ACT_CODE_SYSTEM:
                 encounter_class = encounter.code.code
-            elif hasattr(encounter.code, "translation") and encounter.code.translation:
+            elif encounter.code.translation:
                 for trans in encounter.code.translation:
                     trans_system = None
                     trans_code = None
@@ -895,9 +906,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                     if isinstance(trans, dict):
                         trans_system = trans.get("code_system")
                         trans_code = trans.get("code")
-                    elif hasattr(trans, "code_system"):
+                    else:
                         trans_system = trans.code_system
-                        trans_code = trans.code if hasattr(trans, "code") else None
+                        trans_code = trans.code
 
                     if trans_system == V3_ACT_CODE_SYSTEM and trans_code:
                         encounter_class = trans_code

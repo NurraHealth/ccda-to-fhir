@@ -49,10 +49,10 @@ class TestLabReferenceRangesE2E:
             resource_types[rtype] = resource_types.get(rtype, 0) + 1
 
         assert resource_types.get("Patient") == 1, "Must have exactly 1 Patient"
-        assert resource_types.get("Practitioner") >= 1, "Must have at least 1 Practitioner"
-        assert resource_types.get("Organization") >= 1, "Must have at least 1 Organization"
-        assert resource_types.get("Observation") >= 1, "Must have at least 1 Observation"
-        assert resource_types.get("DiagnosticReport") >= 1, "Must have at least 1 DiagnosticReport"
+        assert resource_types.get("Practitioner", 0) >= 1, "Must have at least 1 Practitioner"
+        assert resource_types.get("Organization", 0) >= 1, "Must have at least 1 Organization"
+        assert resource_types.get("Observation", 0) >= 1, "Must have at least 1 Observation"
+        assert resource_types.get("DiagnosticReport", 0) >= 1, "Must have at least 1 DiagnosticReport"
         assert resource_types.get("Composition") == 1, "Must have exactly 1 Composition"
 
     def test_patient_exact_values(self, lab_reference_ranges_bundle):
