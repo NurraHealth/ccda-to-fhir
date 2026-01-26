@@ -276,8 +276,8 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 if isinstance(first_name, str):
                     return first_name
 
-                # Handle ON (OrganizationName) object
-                if hasattr(first_name, "value") and first_name.value:
+                # Handle ON (OrganizationName) object - has value attribute
+                if first_name.value:
                     return first_name.value
 
                 # Fallback to string representation
@@ -292,17 +292,17 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 # Extract street address (first line only)
                 if addr.street_address_line and len(addr.street_address_line) > 0:
                     street = addr.street_address_line[0]
-                    # Handle string or object with value attribute
+                    # Handle string or ADXP object with value attribute
                     if isinstance(street, str):
                         addr_parts.append(street)
-                    elif hasattr(street, "value") and street.value:
+                    elif street.value:
                         addr_parts.append(street.value)
 
                 # Extract city
                 if addr.city:
                     if isinstance(addr.city, str):
                         addr_parts.append(addr.city)
-                    elif hasattr(addr.city, "value") and addr.city.value:
+                    elif addr.city.value:
                         addr_parts.append(addr.city.value)
 
             if addr_parts:

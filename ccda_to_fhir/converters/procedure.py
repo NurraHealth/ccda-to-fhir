@@ -458,7 +458,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                                 first_name = entity.name[0]
                                 if isinstance(first_name, str):
                                     display = first_name
-                                elif hasattr(first_name, 'value') and first_name.value:
+                                elif first_name.value:
+                                    # ON (Organization Name) has value attribute
                                     display = first_name.value
                             elif isinstance(entity.name, str):
                                 display = entity.name

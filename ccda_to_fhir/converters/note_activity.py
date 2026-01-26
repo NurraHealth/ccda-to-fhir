@@ -520,11 +520,13 @@ class NoteActivityConverter(BaseConverter[Act]):
             if isinstance(attr_value, str):
                 texts.append(attr_value)
 
-        # Recursively extract from children
+        # Recursively extract from children (C-CDA models are Pydantic BaseModel subclasses)
+        from pydantic import BaseModel
         for attr_value in vars(element).values():
             if isinstance(attr_value, list):
                 for item in attr_value:
-                    if hasattr(item, "__dict__") and not isinstance(item, str):
+                    # Only recurse into Pydantic models (C-CDA structured elements)
+                    if isinstance(item, BaseModel):
                         child_text = self._extract_text_from_element(item)
                         if child_text:
                             texts.append(child_text)

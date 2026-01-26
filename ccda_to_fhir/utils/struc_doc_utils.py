@@ -13,6 +13,7 @@ if TYPE_CHECKING:
         Caption,
         Footnote,
         List,
+        Paragraph,
         StrucDocText,
         Table,
         TableBody,
@@ -282,11 +283,11 @@ def _extract_cell_text(cell: TableDataCell | TableHeaderCell) -> str:
             if content.text:
                 parts.append(content.text)
     # TableDataCell can have paragraphs, TableHeaderCell cannot
-    if hasattr(cell, "paragraph") and cell.paragraph:
+    if isinstance(cell, TableDataCell) and cell.paragraph:
         for para in cell.paragraph:
             parts.append(para.get_plain_text())
-    # Both can have footnotes
-    if hasattr(cell, "footnote") and cell.footnote:
+    # Both cell types have footnotes
+    if cell.footnote:
         for footnote in cell.footnote:
             footnote_text = _extract_footnote_text(footnote)
             if footnote_text:
@@ -671,7 +672,7 @@ def _content_to_html(content) -> str:
     result = f"<span{id_attr}{style_attr}>{content_html}</span>"
 
     # Append tail text if present (preserves mixed content order)
-    if hasattr(content, 'tail_text') and content.tail_text:
+    if content.tail_text:
         result += _escape_html(content.tail_text)
 
     return result
@@ -1018,20 +1019,18 @@ def find_element_by_id(narrative: StrucDocText, element_id: str):
     return None
 
 
-def _find_in_inline_elements(parent, element_id: str):
-    """Search for ID in inline elements of a parent."""
-    # Search content elements
-    if hasattr(parent, 'content') and parent.content:
-        for content in parent.content:
+def _find_in_inline_elements(para: "Paragraph", element_id: str):
+    """Search for ID in inline elements of a paragraph."""
+    if para.content:
+        for content in para.content:
             if content.id_attr == element_id:
                 return content
             found = _find_in_content(content, element_id)
             if found:
                 return found
 
-    # Search linkHtml elements
-    if hasattr(parent, 'link_html') and parent.link_html:
-        for link in parent.link_html:
+    if para.link_html:
+        for link in para.link_html:
             if link.id_attr == element_id:
                 return link
 

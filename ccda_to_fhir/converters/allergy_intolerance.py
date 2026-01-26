@@ -543,7 +543,8 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                             if isinstance(name, str):
                                 original_text = name
                                 break
-                            elif hasattr(name, 'value') and name.value:
+                            elif name.value:
+                                # ON (Organization Name) has value attribute
                                 original_text = name.value
                                 break
                     elif code.original_text:
@@ -651,9 +652,10 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     description_text = None
                     if isinstance(rel.observation.text, str):
                         description_text = rel.observation.text
-                    elif hasattr(rel.observation.text, "value") and rel.observation.text.value:
+                    elif rel.observation.text.value:
+                        # ED (Encapsulated Data) has value attribute
                         description_text = rel.observation.text.value
-                    elif hasattr(rel.observation.text, "reference"):
+                    elif rel.observation.text.reference:
                         # Resolve text reference to section narrative
                         description_text = self.extract_original_text(
                             rel.observation.text, section=self.section

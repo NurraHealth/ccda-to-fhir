@@ -17,7 +17,8 @@ from .code_systems import CodeSystemMapper
 logger = get_logger(__name__)
 
 if TYPE_CHECKING:
-    from ccda_to_fhir.ccda.models.datatypes import CS
+    from ccda_to_fhir.ccda.models.datatypes import CS, II
+    from ccda_to_fhir.ccda.models.performer import Performer
 
     from .references import ReferenceRegistry
 
@@ -615,8 +616,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if not narrative_text:
             return None
 
-        # Convert narrative to string if needed
-        narrative_str = str(narrative_text) if hasattr(narrative_text, '__str__') else narrative_text
+        narrative_str = str(narrative_text)
 
         # Simple regex-based resolution
         # Look for: <content ID="content_id">text</content>
@@ -1169,8 +1169,9 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         for entry_rel in entry_relationships:
             # Look for RSON (reason) relationships
             type_code = entry_rel.type_code
-            # Handle TypeCodes enum if present
-            if type_code and hasattr(type_code, "value"):
+            # Handle Enum (has .value) vs plain string
+            from enum import Enum
+            if isinstance(type_code, Enum):
                 type_code = type_code.value
 
             if type_code != "RSON":
@@ -1366,12 +1367,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             fhir_name: JSONObject = {}
 
             # Handle null_flavor - name is explicitly unknown/masked
-            # Use getattr for safety as input may be non-Pydantic mock objects in tests
-            null_flavor = getattr(name, "null_flavor", None)
-            if null_flavor:
+            if name.null_flavor:
                 fhir_name["extension"] = [{
                     "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
-                    "valueCode": self._map_null_flavor_to_data_absent_reason(null_flavor)
+                    "valueCode": self._map_null_flavor_to_data_absent_reason(name.null_flavor)
                 }]
                 fhir_names.append(fhir_name)
                 continue
@@ -1380,11 +1379,11 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             qualifier_use = None
 
             # Name use mapping from PN.use attribute
-            if getattr(name, "use", None):
+            if name.use:
                 fhir_name["use"] = NAME_USE_MAP.get(name.use, FHIRCodes.NameUse.USUAL)
 
             # Family name - handle ENXP type with qualifier
-            if getattr(name, "family", None):
+            if name.family:
                 family_value, family_qualifier = self._extract_enxp_value_and_qualifier(name.family)
                 if family_value:
                     fhir_name["family"] = family_value
@@ -1392,7 +1391,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     qualifier_use = self._ENXP_QUALIFIER_TO_USE[family_qualifier]
 
             # Given names - handle list of ENXP with qualifiers
-            if getattr(name, "given", None):
+            if name.given:
                 given_names = []
                 for given in name.given:
                     value, qualifier = self._extract_enxp_value_and_qualifier(given)
@@ -1405,7 +1404,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     fhir_name["given"] = given_names
 
             # Prefix - handle list of ENXP
-            if getattr(name, "prefix", None):
+            if name.prefix:
                 prefixes = []
                 for prefix in name.prefix:
                     value, _ = self._extract_enxp_value_and_qualifier(prefix)
@@ -1415,7 +1414,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     fhir_name["prefix"] = prefixes
 
             # Suffix - handle list of ENXP (including academic qualifiers)
-            if getattr(name, "suffix", None):
+            if name.suffix:
                 suffixes = []
                 for suffix in name.suffix:
                     value, _ = self._extract_enxp_value_and_qualifier(suffix)
@@ -1442,25 +1441,23 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if text_parts:
                 # Use delimiter if provided, otherwise space
                 delimiter = " "
-                name_delimiter = getattr(name, "delimiter", None)
-                if name_delimiter:
+                if name.delimiter:
                     # delimiter is list[str], use first one
-                    if isinstance(name_delimiter, list) and len(name_delimiter) > 0:
-                        delimiter = name_delimiter[0]
-                    elif isinstance(name_delimiter, str):
-                        delimiter = name_delimiter
+                    if isinstance(name.delimiter, list) and len(name.delimiter) > 0:
+                        delimiter = name.delimiter[0]
+                    elif isinstance(name.delimiter, str):
+                        delimiter = name.delimiter
                 fhir_name["text"] = delimiter.join(text_parts)
 
             # Period from valid_time
-            valid_time = getattr(name, "valid_time", None)
-            if valid_time:
+            if name.valid_time:
                 period: JSONObject = {}
-                if valid_time.low:
-                    start = self.convert_date(valid_time.low.value)
+                if name.valid_time.low:
+                    start = self.convert_date(name.valid_time.low.value)
                     if start:
                         period["start"] = start
-                if valid_time.high:
-                    end = self.convert_date(valid_time.high.value)
+                if name.valid_time.high:
+                    end = self.convert_date(name.valid_time.high.value)
                     if end:
                         period["end"] = end
                 if period:
@@ -1524,7 +1521,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
     def select_preferred_identifier(
         self,
-        identifiers: list,
+        identifiers: list[II],
         prefer_npi: bool = True,
     ) -> tuple[str | None, str | None]:
         """Select the preferred identifier from a list of C-CDA identifiers.
@@ -1542,26 +1539,25 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if not identifiers:
             return (None, None)
 
-        npi_id = None
-        first_id = None
+        npi_id: II | None = None
+        first_id: II | None = None
 
         for id_elem in identifiers:
-            root = getattr(id_elem, "root", None)
-            if not root:
+            if not id_elem.root:
                 continue
 
             if first_id is None:
                 first_id = id_elem
 
             # Check for NPI
-            if prefer_npi and root == self.NPI_OID:
+            if prefer_npi and id_elem.root == self.NPI_OID:
                 npi_id = id_elem
                 break
 
         # Use NPI if available and preferred, otherwise use first
         selected = npi_id if npi_id else first_id
         if selected:
-            return (selected.root, getattr(selected, "extension", None))
+            return (selected.root, selected.extension)
 
         return (None, None)
 
@@ -1592,11 +1588,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return None
 
         # Get identifiers
-        ids = getattr(assigned_entity, "id", None)
-        if not ids:
+        if not assigned_entity.id:
             return None
 
-        root, extension = self.select_preferred_identifier(ids)
+        root, extension = self.select_preferred_identifier(assigned_entity.id)
         if not root:
             return None
 
@@ -1645,11 +1640,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return None
 
         # Get identifiers
-        ids = getattr(represented_organization, "id", None)
-        if not ids:
+        if not represented_organization.id:
             return None
 
-        root, extension = self.select_preferred_identifier(ids)
+        root, extension = self.select_preferred_identifier(represented_organization.id)
         if not root:
             return None
 
@@ -1755,7 +1749,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
     def extract_performer_references(
         self,
-        performers: list,
+        performers: list[Performer],
         prefer_npi: bool = False,
     ) -> list[JSONObject]:
         """Extract FHIR performer references from C-CDA performer elements.
@@ -1785,16 +1779,16 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if not performer:
                 continue
 
-            assigned_entity = getattr(performer, "assigned_entity", None)
-            if not assigned_entity:
+            if not performer.assigned_entity:
                 continue
 
-            ids = getattr(assigned_entity, "id", None)
-            if not ids:
+            if not performer.assigned_entity.id:
                 continue
 
             # Select preferred identifier
-            root, extension = self.select_preferred_identifier(ids, prefer_npi=prefer_npi)
+            root, extension = self.select_preferred_identifier(
+                performer.assigned_entity.id, prefer_npi=prefer_npi
+            )
             if root:
                 practitioner_id = self._generate_practitioner_id(root, extension)
                 references.append({"reference": f"urn:uuid:{practitioner_id}"})
@@ -1834,8 +1828,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if isinstance(status_code, str):
             code = status_code
         else:
-            # Use getattr for safety as input may be non-Pydantic mock objects in tests
-            code = getattr(status_code, "code", None)
+            code = status_code.code
 
         if not code:
             return default
@@ -1973,48 +1966,6 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 exc_info=True,
             )
             return default
-
-    def map_status_code(
-        self,
-        status_code,
-        mapping: dict[str, str],
-        default: str,
-    ) -> str:
-        """Map C-CDA status code to FHIR status using provided mapping.
-
-        Generic utility for status code mapping used by all converters.
-        Handles null/missing status codes gracefully with case-insensitive lookup.
-
-        Args:
-            status_code: C-CDA CS status code element (may be None)
-            mapping: Dictionary mapping C-CDA codes to FHIR codes
-            default: Default FHIR status if code is missing or unmapped
-
-        Returns:
-            FHIR status code string
-
-        Example:
-            >>> status = self.map_status_code(
-            ...     observation.status_code,
-            ...     OBSERVATION_STATUS_TO_FHIR,
-            ...     "final"
-            ... )
-        """
-        if not status_code:
-            return default
-
-        code = None
-        if isinstance(status_code, str):
-            code = status_code
-        else:
-            # Use getattr for safety as input may be non-Pydantic mock objects in tests
-            code = getattr(status_code, "code", None)
-
-        if not code:
-            return default
-
-        # Case-insensitive lookup
-        return mapping.get(code.lower(), default)
 
     def handle_duplicate_id(
         self,

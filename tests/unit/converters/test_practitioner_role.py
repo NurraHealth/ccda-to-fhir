@@ -255,11 +255,11 @@ class TestPractitionerRoleConverter:
     def test_handles_missing_practitioner_id(
         self, converter: PractitionerRoleConverter, sample_assigned_author: AssignedAuthor
     ) -> None:
-        """Test that missing practitioner_id raises appropriate error."""
-        with pytest.raises((ValueError, TypeError)):
+        """Test that empty practitioner_id raises appropriate error."""
+        with pytest.raises(ValueError):
             converter.convert(
                 sample_assigned_author,
-                practitioner_id=None,  # type: ignore
+                practitioner_id="",
                 organization_id="org-456"
             )
 

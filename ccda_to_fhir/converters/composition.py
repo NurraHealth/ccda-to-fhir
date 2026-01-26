@@ -420,14 +420,16 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             for given in name.given:
                 if isinstance(given, str):
                     parts.append(given)
-                elif hasattr(given, "value") and given.value:
+                elif given.value:
+                    # ENXP has value attribute
                     parts.append(given.value)
 
         # Extract family name (handle ENXP object)
         if name.family:
             if isinstance(name.family, str):
                 parts.append(name.family)
-            elif hasattr(name.family, "value") and name.family.value:
+            elif name.family.value:
+                # ENXP has value attribute
                 parts.append(name.family.value)
 
         return " ".join(parts) if parts else None
@@ -919,7 +921,8 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             # Handle ON (organization name) object
             if isinstance(custodian_org.name, str):
                 return {"display": custodian_org.name}
-            elif hasattr(custodian_org.name, "value") and custodian_org.name.value:
+            elif custodian_org.name.value:
+                # ON has value attribute
                 return {"display": custodian_org.name.value}
 
         return None
@@ -993,10 +996,10 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             elif isinstance(section.text, str):
                 # Plain string
                 text_content = section.text
-            elif hasattr(section.text, "text") and section.text.text:
+            elif section.text.text:
                 # StrucDocText with only plain text (no structured elements)
                 text_content = section.text.text
-            elif hasattr(section.text, "value") and section.text.value:
+            elif section.text.value:
                 # ED type with value field
                 text_content = section.text.value
 

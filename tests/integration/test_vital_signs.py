@@ -10,15 +10,6 @@ from .conftest import wrap_in_ccda_document
 VITAL_SIGNS_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.4.1"
 
 
-def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObject | None:
-    """Find a resource of the given type in a FHIR Bundle."""
-    for entry in bundle.get("entry", []):
-        resource = entry.get("resource", {})
-        if resource.get("resourceType") == resource_type:
-            return resource
-    return None
-
-
 def _find_vital_signs_panel(bundle: JSONObject) -> JSONObject | None:
     """Find the vital signs panel Observation in the bundle."""
     for entry in bundle.get("entry", []):

@@ -45,13 +45,13 @@ from .datatypes import (
     TS,
     CDAModel,
 )
+from .entry_relationship import EntryRelationship
 from .participant import Participant
 from .performer import Performer
 
 if TYPE_CHECKING:
     from .act import Reference
     from .clinical_document import Informant
-    from .observation import EntryRelationship
 
 
 class ManufacturedMaterial(CDAModel):
