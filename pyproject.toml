@@ -28,13 +28,13 @@ dependencies = [
     "fhir-resources>=8.1.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "pytest-cov>=4.0",
-    "ruff>=0.8",
-    "mypy>=1.0",
     "lxml-stubs>=0.5",
+    "mypy>=1.19.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=4.0",
+    "ruff>=0.14.8",
 ]
 
 [project.urls]
@@ -100,4 +100,3 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
-
