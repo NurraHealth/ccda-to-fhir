@@ -1,12 +1,12 @@
 [project]
 name = "ccda-to-fhir"
-version = "0.2.5"
+version = "0.2.6"
 description = "A Python library to convert C-CDA documents to FHIR R4B resources"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "Nurra", email = "hello@nurra.ai" }
+    { name = "Nurra Health", email = "hello@nurra.me" }
 ]
 keywords = ["fhir", "ccda", "cda", "hl7", "healthcare", "interoperability", "r4b"]
 classifiers = [
@@ -28,13 +28,13 @@ dependencies = [
     "fhir-resources>=8.1.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "pytest-cov>=4.0",
-    "ruff>=0.8",
-    "mypy>=1.0",
     "lxml-stubs>=0.5",
+    "mypy>=1.19.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=4.0",
+    "ruff>=0.14.8",
 ]
 
 [project.urls]
@@ -100,4 +100,3 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
-
