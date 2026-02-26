@@ -113,6 +113,13 @@ uv run ruff check .
 uv run mypy ccda_to_fhir/
 ```
 
+## Releasing
+
+1. Bump `version` in `pyproject.toml`
+2. Open a PR, get it approved, and merge to main
+3. Create a GitHub Release
+4. The publish workflow automatically builds and uploads to PyPI
+
 ## Documentation
 
 See [docs/mapping/](docs/mapping/) for detailed field-level mapping documentation covering each resource type, including:
