@@ -14,13 +14,13 @@ from pydantic import Field, model_validator
 
 from .author import Author
 from .datatypes import CD, CE, CS, ED, II, IVL_TS, CDAModel
+from .entry_relationship import EntryRelationship
 from .participant import Participant
 from .performer import Performer
 
 if TYPE_CHECKING:
     from .act import Reference
     from .clinical_document import Informant
-    from .observation import EntryRelationship
     from .substance_administration import Precondition
 
 

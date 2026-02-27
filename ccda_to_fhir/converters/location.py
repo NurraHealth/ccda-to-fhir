@@ -37,11 +37,11 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
     # US Core Location profile
     US_CORE_LOCATION_PROFILE = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location"
 
-    def convert(self, participant_role: ParticipantRole) -> FHIRResourceDict:
+    def convert(self, ccda_model: ParticipantRole) -> FHIRResourceDict:
         """Convert Service Delivery Location to Location resource.
 
         Args:
-            participant_role: C-CDA ParticipantRole with classCode='SDLOC'
+            ccda_model: C-CDA ParticipantRole with classCode='SDLOC'
 
         Returns:
             FHIR Location resource as dictionary
@@ -49,6 +49,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         Raises:
             ValueError: If required elements are missing or invalid
         """
+        participant_role = ccda_model  # Alias for readability
         # Validate classCode (fundamental requirement)
         self._validate_class_code(participant_role)
 
@@ -275,8 +276,8 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 if isinstance(first_name, str):
                     return first_name
 
-                # Handle ON (OrganizationName) object
-                if hasattr(first_name, "value") and first_name.value:
+                # Handle ON (OrganizationName) object - has value attribute
+                if first_name.value:
                     return first_name.value
 
                 # Fallback to string representation
@@ -291,17 +292,17 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 # Extract street address (first line only)
                 if addr.street_address_line and len(addr.street_address_line) > 0:
                     street = addr.street_address_line[0]
-                    # Handle string or object with value attribute
+                    # Handle string or ADXP object with value attribute
                     if isinstance(street, str):
                         addr_parts.append(street)
-                    elif hasattr(street, "value") and street.value:
+                    elif street.value:
                         addr_parts.append(street.value)
 
                 # Extract city
                 if addr.city:
                     if isinstance(addr.city, str):
                         addr_parts.append(addr.city)
-                    elif hasattr(addr.city, "value") and addr.city.value:
+                    elif addr.city.value:
                         addr_parts.append(addr.city.value)
 
             if addr_parts:
@@ -374,7 +375,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 codings.append(primary_coding)
 
         # Translation codings
-        if hasattr(code, "translation") and code.translation:
+        if code.translation:
             for trans in code.translation:
                 trans_coding = self._create_coding(trans)
                 if trans_coding:
@@ -384,7 +385,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             codeable_concept["coding"] = codings
 
         # Original text
-        if hasattr(code, "original_text") and code.original_text:
+        if code.original_text:
             codeable_concept["text"] = code.original_text
 
         return codeable_concept
@@ -440,7 +441,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             >>> physical_type = self._infer_physical_type(code)
             >>> # Returns: {"coding": [{"system": "...", "code": "ho", "display": "House"}]}
         """
-        if not location_code or not hasattr(location_code, 'code') or not location_code.code:
+        if not location_code or not location_code.code:
             return None
 
         # Mapping from C-CDA location codes to FHIR physicalType codes
@@ -503,7 +504,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         physical_type_code = None
         display = None
 
-        code_system = location_code.code_system if hasattr(location_code, 'code_system') else None
+        code_system = location_code.code_system
         code_value = location_code.code
 
         if code_system == '2.16.840.1.113883.6.259':  # HSLOC
@@ -557,7 +558,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             >>> mode = self._determine_mode(code)
             >>> # Returns: "kind"
         """
-        if not location_code or not hasattr(location_code, 'code') or not location_code.code:
+        if not location_code or not location_code.code:
             # Default to instance when code is missing
             return "instance"
 

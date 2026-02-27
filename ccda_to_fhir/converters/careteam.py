@@ -100,11 +100,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         self.organization_converter = OrganizationConverter()
         self.practitioner_role_converter = PractitionerRoleConverter()
 
-    def convert(self, organizer: Organizer) -> FHIRResourceDict:
+    def convert(self, ccda_model: Organizer) -> FHIRResourceDict:
         """Convert Care Team Organizer to CareTeam resource.
 
         Args:
-            organizer: C-CDA Care Team Organizer
+            ccda_model: C-CDA Care Team Organizer
 
         Returns:
             FHIR CareTeam resource as dictionary
@@ -112,6 +112,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         Raises:
             ValueError: If required elements are missing or invalid
         """
+        organizer = ccda_model  # Alias for readability
         if not organizer:
             raise ValueError("Organizer is required")
 
@@ -157,10 +158,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         # Validate effectiveTime.low when effectiveTime is present
         if organizer.effective_time:
-            if hasattr(organizer.effective_time, "low"):
+            from ccda_to_fhir.ccda.models.datatypes import IVL_TS, TS
+            if isinstance(organizer.effective_time, IVL_TS):
                 if not organizer.effective_time.low:
                     raise ValueError("Care Team Organizer effectiveTime.low is required when effectiveTime is present")
-            elif not hasattr(organizer.effective_time, "value"):
+            elif not isinstance(organizer.effective_time, TS) or not organizer.effective_time.value:
                 raise ValueError("Care Team Organizer effectiveTime must have low or value")
 
         careteam: FHIRResourceDict = {
@@ -258,7 +260,6 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         # Check for valid template (root + extension)
         has_valid_template = any(
             tid.root == self.CARE_TEAM_ORGANIZER_TEMPLATE and
-            hasattr(tid, "extension") and
             tid.extension in self.CARE_TEAM_ORGANIZER_EXTENSIONS
             for tid in organizer.template_id
         )
@@ -266,7 +267,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         if not has_valid_template:
             # Provide helpful error message
             found_templates = [
-                f"{tid.root}" + (f" extension={tid.extension}" if hasattr(tid, "extension") and tid.extension else " (no extension)")
+                f"{tid.root}" + (f" extension={tid.extension}" if tid.extension else " (no extension)")
                 for tid in organizer.template_id
             ]
             raise ValueError(
@@ -311,7 +312,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
             fhir_identifier = self.create_identifier(
                 root=identifier.root,
-                extension=identifier.extension if hasattr(identifier, "extension") else None,
+                extension=identifier.extension,
             )
 
             if fhir_identifier:
@@ -380,17 +381,19 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         Returns:
             FHIR Period or None
         """
+        from ccda_to_fhir.ccda.models.datatypes import IVL_TS
         period: JSONObject = {}
 
-        if hasattr(effective_time, "low") and effective_time.low:
-            start = self.convert_date(effective_time.low.value)
-            if start:
-                period["start"] = start
+        if isinstance(effective_time, IVL_TS):
+            if effective_time.low:
+                start = self.convert_date(effective_time.low.value)
+                if start:
+                    period["start"] = start
 
-        if hasattr(effective_time, "high") and effective_time.high:
-            end = self.convert_date(effective_time.high.value)
-            if end:
-                period["end"] = end
+            if effective_time.high:
+                end = self.convert_date(effective_time.high.value)
+                if end:
+                    period["end"] = end
 
         return period if period else None
 
@@ -459,7 +462,6 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             # Validate template root and extension
             is_type_obs = any(
                 tid.root == self.CARE_TEAM_TYPE_OBSERVATION_TEMPLATE and
-                hasattr(tid, "extension") and
                 tid.extension == self.CARE_TEAM_TYPE_OBSERVATION_EXTENSION
                 for tid in observation.template_id
             )
@@ -524,7 +526,6 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             # Validate template root and extension
             is_member_act = any(
                 tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE and
-                hasattr(tid, "extension") and
                 tid.extension in self.CARE_TEAM_MEMBER_ACT_EXTENSIONS
                 for tid in act.template_id
             )
@@ -603,7 +604,6 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             # Validate template root and extension
             is_member_act = any(
                 tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE and
-                hasattr(tid, "extension") and
                 tid.extension in self.CARE_TEAM_MEMBER_ACT_EXTENSIONS
                 for tid in act.template_id
             )
@@ -869,13 +869,12 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         """
         # First, try to extract originalText from code
         original_text = None
-        if organizer.code and hasattr(organizer.code, "original_text"):
-            if organizer.code.original_text:
-                if hasattr(organizer.code.original_text, "reference"):
-                    # Reference to narrative block - we can't resolve this without section context
-                    pass
-                elif hasattr(organizer.code.original_text, "value"):
-                    original_text = organizer.code.original_text.value
+        if organizer.code and organizer.code.original_text:
+            if organizer.code.original_text.reference:
+                # Reference to narrative block - we can't resolve this without section context
+                pass
+            elif organizer.code.original_text.value:
+                original_text = organizer.code.original_text.value
 
         # If we have originalText, use it
         if original_text:

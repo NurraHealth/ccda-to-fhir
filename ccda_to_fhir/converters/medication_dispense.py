@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ccda_to_fhir.ccda.models.datatypes import IVL_TS
+from ccda_to_fhir.ccda.models.datatypes import CE, IVL_TS
 from ccda_to_fhir.ccda.models.supply import Supply
 from ccda_to_fhir.constants import (
     MEDICATION_DISPENSE_STATUS_TO_FHIR,
@@ -45,11 +45,11 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         """Initialize the medication dispense converter."""
         super().__init__(*args, **kwargs)
 
-    def convert(self, supply: Supply, parent_medication_request_id: str | None = None) -> FHIRResourceDict:
+    def convert(self, ccda_model: Supply, parent_medication_request_id: str | None = None) -> FHIRResourceDict:
         """Convert a C-CDA Medication Dispense to a FHIR MedicationDispense.
 
         Args:
-            supply: The C-CDA Supply (Medication Dispense)
+            ccda_model: The C-CDA Supply (Medication Dispense)
             parent_medication_request_id: Optional ID of parent MedicationRequest for authorizingPrescription
 
         Returns:
@@ -58,6 +58,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         Raises:
             ValueError: If the supply lacks required data or has invalid moodCode
         """
+        supply = ccda_model  # Alias for readability
         # Validation
         if not supply.product:
             raise ValueError("Medication Dispense must have a product (medication)")
@@ -303,7 +304,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         # Extract translations
         translations = None
-        if hasattr(med_code, "translation") and med_code.translation:
+        if med_code.translation:
             translations = []
             for trans in med_code.translation:
                 if trans.code and trans.code_system:
@@ -354,7 +355,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                 performer_obj: JSONObject = {}
 
                 # Determine if it's a practitioner or organization
-                if hasattr(assigned, "assigned_person") and assigned.assigned_person:
+                if assigned.assigned_person:
                     # Practitioner performer case - use base helper for ID selection
                     ids = getattr(assigned, "id", None)
                     root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
@@ -368,7 +369,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     if performer_obj.get("actor"):
                         performers.append(performer_obj)
 
-                elif hasattr(assigned, "represented_organization") and assigned.represented_organization:
+                elif assigned.represented_organization:
                     # Organization performer case (no assigned_person)
                     org = assigned.represented_organization
                     org_id = self._create_pharmacy_organization(org)
@@ -379,18 +380,18 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                         performers.append(performer_obj)
 
                 # Create Location resource from representedOrganization
-                if hasattr(assigned, "represented_organization") and assigned.represented_organization:
+                if assigned.represented_organization:
                     location_ref = self._create_pharmacy_location(assigned.represented_organization)
 
         # From author element (pharmacist who packaged)
         if supply.author:
             for author in supply.author:
-                if not hasattr(author, "assigned_author") or not author.assigned_author:
+                if not author.assigned_author:
                     continue
 
                 assigned = author.assigned_author
 
-                if hasattr(assigned, "assigned_person") and assigned.assigned_person:
+                if assigned.assigned_person:
                     ids = getattr(assigned, "id", None)
                     root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
                     if root:
@@ -423,7 +424,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         if isinstance(supply.repeat_number, IVL_INT):
             if supply.repeat_number.low and supply.repeat_number.low.value is not None:
                 repeat_value = supply.repeat_number.low.value
-        elif hasattr(supply.repeat_number, "value"):
+        elif supply.repeat_number.value:
             repeat_value = supply.repeat_number.value
 
         if repeat_value is None:
@@ -473,13 +474,13 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         # Look for Days Supply template (2.16.840.1.113883.10.20.37.3.10)
         for entry_rel in supply.entry_relationship:
-            if not hasattr(entry_rel, "supply") or not entry_rel.supply:
+            if not entry_rel.supply:
                 continue
 
             nested_supply = entry_rel.supply
 
             # Check if it's a Days Supply template
-            if hasattr(nested_supply, "template_id") and nested_supply.template_id:
+            if nested_supply.template_id:
                 for template_id in nested_supply.template_id:
                     if template_id.root == "2.16.840.1.113883.10.20.37.3.10":
                         # This is a Days Supply
@@ -599,20 +600,20 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         }]
 
         # Add address if available
-        if hasattr(organization, "addr") and organization.addr:
+        if organization.addr:
             address = self.convert_address_single(organization.addr)
             if address:
                 location["address"] = address
 
         # Add telecom if available
-        if hasattr(organization, "telecom") and organization.telecom:
+        if organization.telecom:
             telecom_list = self.convert_telecom(organization.telecom)
             if telecom_list:
                 location["telecom"] = telecom_list
 
         # Add identifiers from organization (US Core Must Support)
         # Per US Core: "Must be supported if the data is present in the sending system"
-        if hasattr(organization, "id") and organization.id:
+        if organization.id:
             identifiers = []
             for id_elem in organization.id:
                 if id_elem.root:
@@ -669,7 +670,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
         org_id = None
-        if hasattr(organization, "id") and organization.id:
+        if organization.id:
             for id_elem in organization.id:
                 if id_elem.root:
                     org_id = generate_id_from_identifiers(
@@ -729,7 +730,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
         # Try to use organization identifiers
-        if hasattr(organization, "id") and organization.id:
+        if organization.id:
             for id_elem in organization.id:
                 if id_elem.root:
                     return generate_id_from_identifiers(
@@ -765,7 +766,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             >>> name = self._extract_organization_name(org)
             >>> # Returns: "Community Pharmacy"
         """
-        if not hasattr(organization, "name") or not organization.name:
+        if not organization.name:
             return None
 
         names = organization.name
@@ -783,7 +784,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                 return first_name
 
             # Handle ON (OrganizationName) object
-            if hasattr(first_name, "value") and first_name.value:
+            if first_name.value:
                 return first_name.value
 
             # Fallback to string representation
@@ -809,7 +810,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             - FHIR codes: http://terminology.hl7.org/CodeSystem/medicationdispense-performer-function
         """
 
-        if not function_code or not hasattr(function_code, "code") or not function_code.code:
+        if not function_code or not function_code.code:
             return None
 
         # C-CDA ParticipationFunction doesn't have pharmacy-specific codes
@@ -868,7 +869,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         """
         # Check for functionCode in C-CDA performer
         mapped_function = None
-        if hasattr(performer, "function_code") and performer.function_code:
+        if performer.function_code:
             mapped_function = self._map_participation_function_to_fhir(performer.function_code)
             if mapped_function:
                 logger.debug(
@@ -931,7 +932,7 @@ def extract_medication_dispenses(
     """
     from ccda_to_fhir.constants import TypeCodes
 
-    if not hasattr(substance_admin, 'entry_relationship') or not substance_admin.entry_relationship:
+    if not substance_admin.entry_relationship:
         return
 
     # Look for dispense entry relationships
@@ -940,13 +941,13 @@ def extract_medication_dispenses(
             supply = rel.supply
 
             # Check if this is a Medication Dispense (moodCode="EVN")
-            if hasattr(supply, 'mood_code') and supply.mood_code == "EVN":
+            if supply.mood_code == "EVN":
                 # Check for Medication Dispense template
-                if hasattr(supply, 'template_id') and supply.template_id:
+                if supply.template_id:
                     is_dispense = any(
                         tid.root == TemplateIds.MEDICATION_DISPENSE
                         for tid in supply.template_id
-                        if hasattr(tid, 'root')
+                        if tid.root
                     )
 
                     if is_dispense:

@@ -15,10 +15,10 @@ from pydantic import Field
 
 from .author import Author
 from .datatypes import CE, CS, ED, II, IVL_INT, IVL_TS, PQ, CDAModel
+from .entry_relationship import EntryRelationship
 from .performer import Performer
 
 if TYPE_CHECKING:
-    from .observation import EntryRelationship
     from .substance_administration import ManufacturedProduct
 
 

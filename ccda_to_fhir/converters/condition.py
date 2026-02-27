@@ -53,28 +53,30 @@ def generate_id_from_observation_content(observation: Observation) -> str:
 
     # Add code (observation type)
     if observation.code:
-        if hasattr(observation.code, 'code') and observation.code.code:
+        if observation.code.code:
             parts.append(f"code:{observation.code.code}")
-        if hasattr(observation.code, 'code_system') and observation.code.code_system:
+        if observation.code.code_system:
             parts.append(f"sys:{observation.code.code_system}")
 
     # Add value (diagnosis code)
     if observation.value:
-        if hasattr(observation.value, 'code') and observation.value.code:
-            parts.append(f"value:{observation.value.code}")
-        if hasattr(observation.value, 'code_system') and observation.value.code_system:
-            parts.append(f"valuesys:{observation.value.code_system}")
+        # Use getattr since value can be various types (CD, CE, PQ, etc.)
+        value_code = getattr(observation.value, 'code', None)
+        if value_code:
+            parts.append(f"value:{value_code}")
+        value_sys = getattr(observation.value, 'code_system', None)
+        if value_sys:
+            parts.append(f"valuesys:{value_sys}")
         # For string values
         elif isinstance(observation.value, str):
             parts.append(f"value:{observation.value}")
 
     # Add effective time if present
     if observation.effective_time:
-        if hasattr(observation.effective_time, 'value') and observation.effective_time.value:
+        if observation.effective_time.value:
             parts.append(f"time:{observation.effective_time.value}")
-        elif hasattr(observation.effective_time, 'low') and observation.effective_time.low:
-            if hasattr(observation.effective_time.low, 'value'):
-                parts.append(f"time:{observation.effective_time.low.value}")
+        elif observation.effective_time.low and observation.effective_time.low.value:
+            parts.append(f"time:{observation.effective_time.low.value}")
 
     # Build content-based identifier string
     content_string = "|".join(parts) if parts else "no-content"
@@ -110,11 +112,11 @@ class ConditionConverter(BaseConverter[Observation]):
         # Track seen observation IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_observation_ids = seen_observation_ids if seen_observation_ids is not None else set()
 
-    def convert(self, observation: Observation) -> FHIRResourceDict:
+    def convert(self, ccda_model: Observation) -> FHIRResourceDict:
         """Convert a C-CDA Problem Observation to a FHIR Condition resource.
 
         Args:
-            observation: The C-CDA Problem Observation
+            ccda_model: The C-CDA Problem Observation
 
         Returns:
             FHIR Condition resource as a dictionary
@@ -122,6 +124,7 @@ class ConditionConverter(BaseConverter[Observation]):
         Raises:
             MissingRequiredFieldError: If the observation lacks required data
         """
+        observation = ccda_model  # Alias for readability
         if not observation.value:
             raise MissingRequiredFieldError(
                 field_name="value",
@@ -366,9 +369,9 @@ class ConditionConverter(BaseConverter[Observation]):
                         if entry_rel.act.effective_time:
                             eff_time = entry_rel.act.effective_time
                             # Handle both IVL_TS (with .low) and simple TS
-                            if hasattr(eff_time, 'low') and eff_time.low:
+                            if eff_time.low and eff_time.low.value:
                                 return self.convert_date(eff_time.low.value)
-                            elif hasattr(eff_time, 'value') and eff_time.value:
+                            elif eff_time.value:
                                 return self.convert_date(eff_time.value)
 
         return None
@@ -787,13 +790,13 @@ class ConditionConverter(BaseConverter[Observation]):
 
         for entry_rel in observation.entry_relationship:
             # Look for supporting observations (typeCode="SPRT") and component observations (typeCode="COMP")
-            if hasattr(entry_rel, "type_code") and entry_rel.type_code in (TypeCodes.SUPPORT, TypeCodes.COMPONENT):
-                if hasattr(entry_rel, "observation") and entry_rel.observation:
+            if entry_rel.type_code in (TypeCodes.SUPPORT, TypeCodes.COMPONENT):
+                if entry_rel.observation:
                     supporting_obs = entry_rel.observation
 
                     # Generate observation ID from the supporting observation's identifiers
                     obs_id = None
-                    if hasattr(supporting_obs, "id") and supporting_obs.id:
+                    if supporting_obs.id:
                         for id_elem in supporting_obs.id:
                             if id_elem.root:
                                 obs_id = self._generate_observation_id(id_elem.root, id_elem.extension)

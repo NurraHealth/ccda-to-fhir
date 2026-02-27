@@ -50,11 +50,11 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         # Track seen allergy IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_allergy_ids = seen_allergy_ids if seen_allergy_ids is not None else set()
 
-    def convert(self, observation: Observation) -> FHIRResourceDict:
+    def convert(self, ccda_model: Observation) -> FHIRResourceDict:
         """Convert a C-CDA Allergy Intolerance Observation to a FHIR AllergyIntolerance resource.
 
         Args:
-            observation: The C-CDA Allergy Intolerance Observation
+            ccda_model: The C-CDA Allergy Intolerance Observation
 
         Returns:
             FHIR AllergyIntolerance resource as a dictionary
@@ -62,6 +62,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         Raises:
             MissingRequiredFieldError: If the observation lacks required data
         """
+        observation = ccda_model  # Alias for readability
         # Check if this is a "no known allergy" case
         is_no_known_allergy = self._is_no_known_allergy(observation)
 
@@ -542,7 +543,8 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                             if isinstance(name, str):
                                 original_text = name
                                 break
-                            elif hasattr(name, 'value') and name.value:
+                            elif name.value:
+                                # ON (Organization Name) has value attribute
                                 original_text = name.value
                                 break
                     elif code.original_text:
@@ -650,9 +652,10 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     description_text = None
                     if isinstance(rel.observation.text, str):
                         description_text = rel.observation.text
-                    elif hasattr(rel.observation.text, "value") and rel.observation.text.value:
+                    elif rel.observation.text.value:
+                        # ED (Encapsulated Data) has value attribute
                         description_text = rel.observation.text.value
-                    elif hasattr(rel.observation.text, "reference"):
+                    elif rel.observation.text.reference:
                         # Resolve text reference to section narrative
                         description_text = self.extract_original_text(
                             rel.observation.text, section=self.section
@@ -667,7 +670,8 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                         onset_date = self.convert_date(rel.observation.effective_time.low.value)
                         if onset_date:
                             reaction["onset"] = onset_date
-                    elif hasattr(rel.observation.effective_time, "value") and rel.observation.effective_time.value:
+                    elif rel.observation.effective_time.value:
+                        # IVL_TS can also have direct value for point-in-time
                         onset_date = self.convert_date(rel.observation.effective_time.value)
                         if onset_date:
                             reaction["onset"] = onset_date

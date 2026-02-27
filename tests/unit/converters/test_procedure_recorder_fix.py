@@ -205,8 +205,6 @@ class TestProcedureMoodCodeStatusMapping:
 
     def test_planned_procedure_active_maps_to_preparation(self, mock_reference_registry):
         """Test moodCode=INT with statusCode=active maps to preparation."""
-        import uuid as uuid_module
-
         proc = CCDAProcedure()
         proc.mood_code = "INT"  # Intent/planned procedure
         proc.code = CE(

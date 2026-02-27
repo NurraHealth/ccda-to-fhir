@@ -21,36 +21,21 @@ from .datatypes import (
     CS,
     ED,
     EIVL_TS,
-    EN,
     II,
-    INT,
     IVL_INT,
-    IVL_PQ,
     IVL_TS,
-    MO,
-    ON,
-    PIVL_TS,
-    PN,
+    ObservationValueType,
     PQ,
-    REAL,
-    RTO,
-    ST,
     TEL,
-    TN,
-    TS,
     CDAModel,
 )
+from .entry_relationship import EntryRelationship
 from .participant import Participant
 from .performer import Performer
 
 if TYPE_CHECKING:
-    from .act import Act
     from .clinical_document import Informant
-    from .encounter import Encounter
-    from .organizer import Organizer
-    from .procedure import Procedure
-    from .substance_administration import Precondition, SubstanceAdministration
-    from .supply import Supply
+    from .substance_administration import Precondition
 
 
 class ReferenceRange(CDAModel):
@@ -70,66 +55,9 @@ class ObservationRange(CDAModel):
     mood_code: str | None = Field(default="EVN.CRT", alias="moodCode")
     code: CE | None = None
     text: ED | None = None
-    # Value can be various types per HL7 V3 spec
-    value: (
-        CD
-        | CE
-        | CS
-        | ST
-        | ED
-        | BL
-        | INT
-        | REAL
-        | PQ
-        | MO
-        | IVL_PQ
-        | IVL_INT
-        | IVL_TS
-        | TS
-        | PIVL_TS
-        | EIVL_TS
-        | RTO
-        | II
-        | TEL
-        | AD
-        | EN
-        | PN
-        | TN
-        | ON
-        | None
-    ) = None
+    # Value can be various types per HL7 V3 spec (xsi:type determines actual type)
+    value: ObservationValueType | None = None
     interpretation_code: CE | None = Field(default=None, alias="interpretationCode")
-
-
-class EntryRelationship(CDAModel):
-    """Relationship between clinical entries.
-
-    Links observations to related observations, acts, or other entries.
-    Common type codes:
-    - SUBJ: Subject of (e.g., problem observation subject of concern act)
-    - MFST: Manifestation of (e.g., reaction manifestation of allergy)
-    - REFR: Refers to (e.g., status observation)
-    - COMP: Component of (e.g., vital sign component of organizer)
-    - RSON: Reason for (e.g., reason for procedure)
-    - CAUS: Cause of
-    """
-
-    type_code: str | None = Field(default=None, alias="typeCode")
-    inversion_ind: bool | None = Field(default=None, alias="inversionInd")
-    context_conduction_ind: bool | None = Field(default=None, alias="contextConductionInd")
-    negation_ind: bool | None = Field(default=None, alias="negationInd")
-    sequence_number: int | None = Field(default=None, alias="sequenceNumber")
-
-    # The related clinical statement (one of these will be present)
-    observation: Observation | None = None
-    act: Act | None = None
-    procedure: Procedure | None = None
-    substance_administration: SubstanceAdministration | None = Field(
-        default=None, alias="substanceAdministration"
-    )
-    supply: Supply | None = None
-    encounter: Encounter | None = None
-    organizer: Organizer | None = None
 
 
 class Observation(CDAModel):
@@ -199,33 +127,7 @@ class Observation(CDAModel):
     # - TS/IVL_TS (timestamps and intervals)
     # - etc.
     # The xsi:type attribute in XML determines the actual type
-    value: (
-        CD
-        | CE
-        | CS
-        | ST
-        | ED
-        | BL
-        | INT
-        | REAL
-        | PQ
-        | MO
-        | IVL_PQ
-        | IVL_INT
-        | IVL_TS
-        | TS
-        | PIVL_TS
-        | EIVL_TS
-        | RTO
-        | II
-        | TEL
-        | AD
-        | EN
-        | PN
-        | TN
-        | ON
-        | None
-    ) = None
+    value: ObservationValueType | None = None
 
     # Interpretation code (e.g., H for high, L for low, N for normal)
     interpretation_code: list[CE] | None = Field(default=None, alias="interpretationCode")

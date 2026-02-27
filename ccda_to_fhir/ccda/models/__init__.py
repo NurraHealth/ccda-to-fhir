@@ -96,10 +96,10 @@ from .datatypes import (
     TELReference,
 )
 from .encounter import Encounter
+from .entry_relationship import EntryRelationship
 
 # Clinical statements
 from .observation import (
-    EntryRelationship,
     Observation,
     ObservationRange,
     ReferenceRange,
@@ -357,11 +357,38 @@ __all__ = [
 
 # Rebuild models with forward references after all imports are complete
 # This resolves circular dependencies between clinical statement types
+
+# Core entry types first (dependencies for others)
 EntryRelationship.model_rebuild()
 Entry.model_rebuild()
 OrganizerComponent.model_rebuild()
+
+# Author-related
+AssignedAuthoringDevice.model_rebuild()
+
+# Clinical document structure
 ClinicalDocument.model_rebuild()
 StructuredBody.model_rebuild()
+HealthCareFacility.model_rebuild()
 Informant.model_rebuild()
+
+# StrucDocText models (have circular references)
+Paragraph.model_rebuild()
+Content.model_rebuild()
+ListItem.model_rebuild()
+TableHeaderCell.model_rebuild()
+TableDataCell.model_rebuild()
+StrucDocText.model_rebuild()
+
+# Section (references StrucDocText)
 Section.model_rebuild()
 SectionComponent.model_rebuild()
+
+# Clinical statement models that use EntryRelationship
+Observation.model_rebuild()
+Act.model_rebuild()
+Organizer.model_rebuild()
+Procedure.model_rebuild()
+SubstanceAdministration.model_rebuild()
+Encounter.model_rebuild()
+Supply.model_rebuild()

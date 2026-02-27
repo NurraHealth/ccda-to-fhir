@@ -69,7 +69,7 @@ def test_athena_ccd_validation():
 
     # Validate expected resource types exist
     assert summary.get("Composition") == 1, "Should have exactly one Composition"
-    assert summary.get("Patient") >= 1, "Should have at least one Patient"
+    assert summary.get("Patient", 0) >= 1, "Should have at least one Patient"
 
     # Validate we have clinical data (not just metadata)
     clinical_count = (

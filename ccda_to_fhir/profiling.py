@@ -2,6 +2,12 @@
 
 This module provides decorators and context managers for profiling
 conversion performance in production environments.
+
+Type Note:
+    Any is used in the @profile decorator wrapper function because it wraps
+    arbitrary functions with unknown signatures. This is a standard pattern
+    for decorators and is outside the core data flow - profiling does not
+    affect type safety of the conversion pipeline.
 """
 
 from __future__ import annotations
@@ -146,6 +152,7 @@ def profile(operation_name: str | None = None, log_result: bool = False):
         op_name = operation_name or func.__name__
 
         @wraps(func)
+        # Any used because this decorator wraps arbitrary functions with unknown signatures
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             with profile_operation(op_name, log_result=log_result):
                 return func(*args, **kwargs)
@@ -214,7 +221,9 @@ class ConversionProfiler:
         """Get a detailed profiling report.
 
         Returns:
-            Dictionary with profiling information
+            Dictionary with profiling information. Uses Any because the nested
+            structure contains mixed types (floats, dicts) that vary by key.
+            This is a reporting utility outside core data flow.
         """
         return {
             "total_time": self.total_time,

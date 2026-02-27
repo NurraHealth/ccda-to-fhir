@@ -17,16 +17,6 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
     return None
 
 
-def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> list[JSONObject]:
-    """Find all resources of the given type in a FHIR Bundle."""
-    resources = []
-    for entry in bundle.get("entry", []):
-        resource = entry.get("resource", {})
-        if resource.get("resourceType") == resource_type:
-            resources.append(resource)
-    return resources
-
-
 class TestAuthorConversion:
     """E2E tests for C-CDA Author to FHIR Practitioner conversion."""
 

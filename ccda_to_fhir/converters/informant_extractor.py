@@ -102,16 +102,12 @@ class InformantInfo:
             names = related_entity.related_person.name
             if names and len(names) > 0:
                 name = names[0]
-                if hasattr(name, "family") and name.family:
-                    family = (
-                        name.family.value
-                        if hasattr(name.family, "value")
-                        else str(name.family)
-                    )
+                if name.family:
+                    family = name.family.value if name.family.value else str(name.family)
                     cache_key_parts.append(f"family:{family}")
 
         # Add classCode if available
-        if hasattr(related_entity, "class_code") and related_entity.class_code:
+        if related_entity.class_code:
             cache_key_parts.append(f"class:{related_entity.class_code}")
 
         # Build final cache key (or None for fully synthetic)

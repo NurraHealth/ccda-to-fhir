@@ -100,3 +100,20 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
+
+[tool.pyright]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
+# Strict checks we want to keep
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnusedImport = true
+reportUnusedClass = true
+reportUnusedFunction = true
+reportDuplicateImport = true
+# Relaxed checks for JSON type handling (Python's list invariance limitation)
+reportGeneralTypeIssues = "warning"
+reportOptionalSubscript = "warning"
+reportOptionalMemberAccess = "warning"
+reportOptionalIterable = "warning"
+reportIncompatibleMethodOverride = "warning"

@@ -7,6 +7,7 @@ to ensure generated resources conform to FHIR R4/R4B specifications.
 from __future__ import annotations
 
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
+from pydantic import ValidationError as PydanticValidationError
 
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict
@@ -165,7 +166,7 @@ class FHIRValidator:
         errors = []
 
         # Handle pydantic ValidationError
-        if hasattr(exception, "errors"):
+        if isinstance(exception, PydanticValidationError):
             for error in exception.errors():
                 loc = " -> ".join(str(x) for x in error.get("loc", []))
                 msg = error.get("msg", "Unknown error")

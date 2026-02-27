@@ -18,40 +18,29 @@ logger = logging.getLogger(__name__)
 
 from .author import Author
 from .datatypes import (
-    AD,
-    BL,
-    CD,
     CE,
     CS,
     ED,
     EIVL_TS,
-    EN,
     II,
-    INT,
-    IVL_INT,
     IVL_PQ,
     IVL_TS,
-    MO,
+    ObservationValueType,
     ON,
     PIVL_TS,
-    PN,
     PQ,
-    REAL,
     RTO,
-    ST,
     SXCM_TS,
-    TEL,
-    TN,
     TS,
     CDAModel,
 )
+from .entry_relationship import EntryRelationship
 from .participant import Participant
 from .performer import Performer
 
 if TYPE_CHECKING:
     from .act import Reference
     from .clinical_document import Informant
-    from .observation import EntryRelationship
 
 
 class ManufacturedMaterial(CDAModel):
@@ -134,34 +123,8 @@ class Criterion(CDAModel):
     mood_code: str | None = Field(default="EVN.CRT", alias="moodCode")
     code: CE | None = None
     text: ED | None = None
-    # Value can be various types per HL7 V3 spec
-    value: (
-        CD
-        | CE
-        | CS
-        | ST
-        | ED
-        | BL
-        | INT
-        | REAL
-        | PQ
-        | MO
-        | IVL_PQ
-        | IVL_INT
-        | IVL_TS
-        | TS
-        | PIVL_TS
-        | EIVL_TS
-        | RTO
-        | II
-        | TEL
-        | AD
-        | EN
-        | PN
-        | TN
-        | ON
-        | None
-    ) = None
+    # Value can be various types per HL7 V3 spec (xsi:type determines actual type)
+    value: ObservationValueType | None = None
 
 
 class SubstanceAdministration(CDAModel):

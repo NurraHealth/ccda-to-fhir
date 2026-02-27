@@ -400,6 +400,10 @@ class TestStatusMapping:
             def __init__(self, status_code_value):
                 self.status_code = CS(code=status_code_value)
                 self.id = [II(root="intervention-123")]
+                self.entry_relationship = None
+                self.code = None
+                self.text = None
+                self.effective_time = None
 
         intervention_entries = [
             MockIntervention("completed"),
@@ -435,6 +439,10 @@ class TestStatusMapping:
             def __init__(self, status_code_value):
                 self.status_code = CS(code=status_code_value)
                 self.id = [II(root=f"intervention-{status_code_value}")]
+                self.entry_relationship = None
+                self.code = None
+                self.text = None
+                self.effective_time = None
 
         intervention_entries = [
             MockIntervention("active"),
