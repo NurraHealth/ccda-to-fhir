@@ -21,7 +21,7 @@ dependencies = [
     { name = "pydantic" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "lxml-stubs" },
     { name = "mypy" },
@@ -34,14 +34,17 @@ dev = [
 requires-dist = [
     { name = "fhir-resources", specifier = ">=8.1.0" },
     { name = "lxml", specifier = ">=5.0" },
-    { name = "lxml-stubs", marker = "extra == 'dev'", specifier = ">=0.5" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "pydantic", specifier = ">=2.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8" },
 ]
-provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "lxml-stubs", specifier = ">=0.5" },
+    { name = "mypy", specifier = ">=1.19.0" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-cov", specifier = ">=4.0" },
+    { name = "ruff", specifier = ">=0.14.8" },
+]
 
 [[package]]
 name = "colorama"

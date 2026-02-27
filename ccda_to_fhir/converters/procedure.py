@@ -127,8 +127,15 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         # Code (required)
         # If code has nullFlavor, try to extract text from narrative
         if has_valid_code:
-            fhir_procedure["code"] = self._convert_code(procedure.code)
-        else:
+            converted_code = self._convert_code(procedure.code)
+            if converted_code is not None:
+                fhir_procedure["code"] = converted_code
+            else:
+                # _convert_code returned None (e.g., code exists but code_system is missing)
+                # Fall through to the nullFlavor handling below
+                has_valid_code = False
+
+        if not has_valid_code:
             # Code has nullFlavor - extract text from narrative if available
             code_text = None
             if procedure.text:
