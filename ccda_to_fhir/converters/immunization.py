@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, IVL_TS, PQ, TS
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.constants import (
@@ -13,7 +15,7 @@ from ccda_to_fhir.constants import (
     TypeCodes,
     V2ParticipationFunctionCodes,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 from .medication_request import MedicationRequestConverter
@@ -40,7 +42,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Track seen immunization IDs to detect invalid C-CDA documents that reuse IDs
         self.seen_immunization_ids = seen_immunization_ids if seen_immunization_ids is not None else set()
 
-    def convert(self, ccda_model: SubstanceAdministration, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
+    def convert(self, ccda_model: SubstanceAdministration, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:  # type: ignore[override]
         """Convert a C-CDA Immunization Activity to FHIR resources.
 
         Args:
@@ -170,18 +172,18 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         # Clinical indications go to reasonCode (only if NOT negated)
         if status != FHIRCodes.Immunization.STATUS_NOT_DONE and reason_codes:
-            immunization["reasonCode"] = reason_codes
+            immunization["reasonCode"] = cast(list[JSONValue], reason_codes)
 
         # 13. ProtocolApplied - from repeatNumber
         protocol_applied = self._extract_protocol_applied(substance_admin)
         if protocol_applied:
-            immunization["protocolApplied"] = protocol_applied
+            immunization["protocolApplied"] = cast(list[JSONValue], protocol_applied)
 
         # 14. Reactions - from reaction (MFST) entryRelationship
         # Returns both reaction objects (with references) and Observation resources
         reactions, reaction_observations = self._extract_reactions(substance_admin, immunization_id)
         if reactions:
-            immunization["reaction"] = reactions
+            immunization["reaction"] = cast(list[JSONValue], reactions)
 
         # 15. Supporting observations - from SPRT entryRelationship
         # Returns Observation resources for evidence/supporting observations
@@ -194,12 +196,12 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # 17. Performer - from performer
         performers = self._extract_performers(substance_admin)
         if performers:
-            immunization["performer"] = performers
+            immunization["performer"] = cast(list[JSONValue], performers)
 
         # 18. Notes - from Comment Activity entryRelationship
         notes = self._extract_notes(substance_admin)
         if notes:
-            immunization["note"] = notes
+            immunization["note"] = cast(list[JSONValue], notes)
 
         # primarySource is optional in US Core STU6+ (0..1, Must Support)
         # C-CDA has no equivalent concept for indicating if data came from primary source
@@ -423,7 +425,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if not substance_admin.route_code:
             return None
 
-        return self._convert_code_to_codeable_concept(substance_admin.route_code)
+        return self._convert_code_to_codeable_concept(cast(CE, substance_admin.route_code))
 
     def _extract_site(self, substance_admin: SubstanceAdministration) -> JSONObject | None:
         """Extract approach site (body site).
@@ -982,6 +984,8 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         org = getattr(assigned_entity, "represented_organization", None)
         if org:
             org_ids = getattr(org, "id", None)
+            if not org_ids:
+                return None
             root, extension = self.select_preferred_identifier(org_ids, prefer_npi=False)
             if root:
                 org_id = self._generate_organization_id(root, extension)

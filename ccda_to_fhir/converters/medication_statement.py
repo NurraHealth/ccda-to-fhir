@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, EIVL_TS, IVL_PQ, IVL_TS, PIVL_TS, PQ
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.constants import (
@@ -13,7 +15,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -145,7 +147,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
 
             if authors_with_time:
                 # Sort by time and get latest
-                latest_author = max(authors_with_time, key=lambda a: a.time.value)
+                latest_author = max(authors_with_time, key=lambda a: (a.time.value if a.time else None) or "")
 
                 if latest_author.assigned_author:
                     assigned = latest_author.assigned_author
@@ -174,17 +176,17 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         # 9. ReasonCode (from indication entry relationship)
         reason_codes = self._extract_reason_codes(substance_admin)
         if reason_codes:
-            med_statement["reasonCode"] = reason_codes
+            med_statement["reasonCode"] = cast(list[JSONValue], reason_codes)
 
         # 10. Dosage (complex)
         dosage = self._extract_dosage(substance_admin)
         if dosage:
-            med_statement["dosage"] = dosage
+            med_statement["dosage"] = cast(list[JSONValue], dosage)
 
         # 11. Note (from notes)
         notes = self._extract_notes(substance_admin)
         if notes:
-            med_statement["note"] = notes
+            med_statement["note"] = cast(list[JSONValue], notes)
 
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=substance_admin, section=section)
@@ -436,9 +438,10 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
 
         # 4. Route (from routeCode)
         if substance_admin.route_code:
+            code_system = getattr(substance_admin.route_code, 'code_system', None)
             route = self.create_codeable_concept(
                 code=substance_admin.route_code.code,
-                code_system=substance_admin.route_code.code_system,
+                code_system=code_system,
                 display_name=substance_admin.route_code.display_name,
             )
             if route:
@@ -447,7 +450,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         # 5. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)
         if dose_and_rate:
-            dosage["doseAndRate"] = dose_and_rate
+            dosage["doseAndRate"] = cast(list[JSONValue], dose_and_rate)
 
         # 6. MaxDosePerPeriod (from maxDoseQuantity)
         max_dose = self._extract_max_dose_per_period(substance_admin)
@@ -565,6 +568,8 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
 
     def _convert_to_minutes(self, pq: PQ) -> int | None:
         """Convert a PQ (physical quantity) with time unit to minutes."""
+        if pq.value is None:
+            return None
         try:
             value = float(pq.value)
             unit = pq.unit.lower() if pq.unit else "min"

@@ -133,7 +133,7 @@ class Organizer(CDAModel):
                     return True
         return False
 
-    @model_validator(mode='after')
+    @model_validator(mode='after')  # pyright: ignore[reportGeneralTypeIssues]
     def validate_vital_signs_organizer(self) -> Organizer:
         """Validate Vital Signs Organizer (2.16.840.1.113883.10.20.22.4.26).
 
@@ -189,7 +189,7 @@ class Organizer(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode='after')  # pyright: ignore[reportGeneralTypeIssues]
     def validate_result_organizer(self) -> Organizer:
         """Validate Result Organizer (2.16.840.1.113883.10.20.22.4.1).
 

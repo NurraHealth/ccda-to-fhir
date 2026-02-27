@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, EIVL_TS, IVL_PQ, IVL_TS, PIVL_TS, PQ
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.constants import (
@@ -15,7 +17,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 from .medication import MedicationConverter
@@ -172,7 +174,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
             if authors_with_time:
                 # Sort by time and get latest
-                latest_author = max(authors_with_time, key=lambda a: a.time.value)
+                latest_author = max(authors_with_time, key=lambda a: (a.time.value if a.time else None) or "")
 
                 if latest_author.assigned_author:
                     assigned = latest_author.assigned_author
@@ -202,12 +204,12 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # 8. ReasonCode (from indication entry relationship)
         reason_codes = self._extract_reason_codes(substance_admin)
         if reason_codes:
-            med_request["reasonCode"] = reason_codes
+            med_request["reasonCode"] = cast(list[JSONValue], reason_codes)
 
         # 9. DosageInstruction (complex)
         dosage_instructions = self._extract_dosage_instructions(substance_admin)
         if dosage_instructions:
-            med_request["dosageInstruction"] = dosage_instructions
+            med_request["dosageInstruction"] = cast(list[JSONValue], dosage_instructions)
 
         # 10. DispenseRequest (from supply order entry relationships or repeatNumber)
         dispense_request = self._extract_dispense_request(substance_admin)
@@ -354,7 +356,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             medication = medication_converter.convert(manufactured_product, substance_admin)
 
             # Store in registry for later extraction by DocumentConverter
-            medication_id = medication["id"]
+            medication_id = cast(str, medication["id"])
             _medication_registry[medication_id] = medication
 
             return {"medicationReference": {"reference": f"urn:uuid:{medication_id}"}}
@@ -491,7 +493,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # 3. AdditionalInstruction (from Instruction Act code)
         additional_instructions = self._extract_additional_instructions(substance_admin)
         if additional_instructions:
-            dosage["additionalInstruction"] = additional_instructions
+            dosage["additionalInstruction"] = cast(list[JSONValue], additional_instructions)
 
         # 4. Timing (from effectiveTime elements)
         timing = self._extract_timing(substance_admin)
@@ -528,7 +530,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # 7. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)
         if dose_and_rate:
-            dosage["doseAndRate"] = dose_and_rate
+            dosage["doseAndRate"] = cast(list[JSONValue], dose_and_rate)
 
         # 8. MaxDosePerPeriod (from maxDoseQuantity)
         max_dose = self._extract_max_dose_per_period(substance_admin)
@@ -735,6 +737,8 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         Returns:
             Value converted to minutes, or None if conversion fails
         """
+        if pq.value is None:
+            return None
         try:
             value = float(pq.value)
             unit = pq.unit.lower() if pq.unit else "min"
@@ -917,7 +921,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
                     # RepeatNumber from Supply overrides SubstanceAdministration
                     if supply.repeat_number:
-                        if supply.repeat_number.high:
+                        if supply.repeat_number.high and supply.repeat_number.high.value is not None:
                             try:
                                 ccda_repeat = int(supply.repeat_number.high.value)
                                 fhir_repeats = max(0, ccda_repeat - 1)

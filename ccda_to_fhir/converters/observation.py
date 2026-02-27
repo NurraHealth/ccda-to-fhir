@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, ED, INT, IVL_PQ, PQ, ST
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.ccda.models.organizer import Organizer
@@ -29,7 +31,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 from ccda_to_fhir.utils.terminology import get_display_for_code
 
 from .base import BaseConverter
@@ -174,7 +176,7 @@ class ObservationConverter(BaseConverter[Observation]):
         # 4. Category - determine based on template ID and observation code
         categories = self._determine_category(observation)
         if categories:
-            fhir_obs["category"] = categories
+            fhir_obs["category"] = cast(list[JSONValue], categories)
 
         # 4b. Set US Core profile based on category
         profile = self._determine_us_core_profile(categories, observation)
@@ -182,7 +184,7 @@ class ObservationConverter(BaseConverter[Observation]):
             fhir_obs["meta"] = {"profile": [profile]}
 
         # 5. Code (required) - already validated and extracted above
-        fhir_obs["code"] = code_cc
+        fhir_obs["code"] = cast(JSONValue, code_cc)
 
         # 6. Subject (patient reference)
         if not self.reference_registry:
@@ -275,7 +277,7 @@ class ObservationConverter(BaseConverter[Observation]):
         if observation.performer:
             performers = self.extract_performer_references(observation.performer)
             if performers:
-                fhir_obs["performer"] = performers
+                fhir_obs["performer"] = cast(list[JSONValue], performers)
 
         # 14. Pregnancy observation special handling
         if observation.template_id:
@@ -313,22 +315,23 @@ class ObservationConverter(BaseConverter[Observation]):
 
             if has_null_flavor:
                 # Map C-CDA nullFlavor to FHIR DataAbsentReason
-                fhir_obs["dataAbsentReason"] = {
+                null_flavor_val = cast(str, getattr(observation.value, 'null_flavor', None))
+                fhir_obs["dataAbsentReason"] = cast(JSONValue, {
                     "coding": [{
                         "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
-                        "code": self._map_null_flavor_to_data_absent_reason(observation.value.null_flavor),
+                        "code": self._map_null_flavor_to_data_absent_reason(null_flavor_val),
                     }]
-                }
+                })
             else:
                 # No value and no nullFlavor - use generic "unknown" reason
-                fhir_obs["dataAbsentReason"] = {
+                fhir_obs["dataAbsentReason"] = cast(JSONValue, {
                     "coding": [{
                         "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
                         "code": "unknown",
                         "display": "Unknown"
                     }],
                     "text": "Value not provided in source C-CDA document"
-                }
+                })
 
         return fhir_obs
 
@@ -469,7 +472,7 @@ class ObservationConverter(BaseConverter[Observation]):
                     except CCDAConversionError as e:
                         # Skip observations that can't be converted (e.g., nullFlavor codes without text)
                         # This handles real-world C-CDA documents with incomplete vital sign data
-                        logger.warning("Skipping vital sign component observation: %s", e)
+                        logger.warning("Skipping vital sign component observation: %s", str(e))  # type: ignore[arg-type]
                         continue
 
                     # Ensure it has an ID for referencing
@@ -716,8 +719,9 @@ class ObservationConverter(BaseConverter[Observation]):
         # Check category codes to determine profile
         for category in categories:
             if "coding" in category:
-                for coding in category["coding"]:
-                    code = coding.get("code")
+                for coding in cast(list[JSONValue], category["coding"]):
+                    coding_dict = cast(dict[str, JSONValue], coding)
+                    code = coding_dict.get("code")
 
                     # Vital signs
                     if code == "vital-signs":
@@ -774,8 +778,8 @@ class ObservationConverter(BaseConverter[Observation]):
 
         codings = []
 
-        # Primary coding
-        if code.code and code.code_system:
+        # Primary coding (code_system is only available on CD/CE, not CS)
+        if isinstance(code, (CD, CE)) and code.code and code.code_system:
             system_uri = self.map_oid_to_uri(code.code_system)
             coding: JSONObject = {
                 "system": system_uri,
@@ -789,9 +793,15 @@ class ObservationConverter(BaseConverter[Observation]):
                 if looked_up_display:
                     coding["display"] = looked_up_display
             codings.append(coding)
+        elif isinstance(code, CS) and code.code:
+            # CS has code but no code_system
+            coding_cs: JSONObject = {"code": code.code}
+            if code.display_name:
+                coding_cs["display"] = code.display_name
+            codings.append(coding_cs)
 
-        # Translations
-        if code.translation:
+        # Translations (only available on CD/CE, not CS)
+        if isinstance(code, (CD, CE)) and code.translation:
             for trans in code.translation:
                 if trans.code and trans.code_system:
                     trans_system_uri = self.map_oid_to_uri(trans.code_system)
@@ -811,10 +821,10 @@ class ObservationConverter(BaseConverter[Observation]):
         if not codings:
             return None
 
-        codeable_concept: JSONObject = {"coding": codings}
+        codeable_concept: JSONObject = {"coding": cast(JSONValue, codings)}
 
-        # Original text
-        if code.original_text:
+        # Original text (only available on CD/CE, not CS)
+        if isinstance(code, (CD, CE)) and code.original_text:
             # original_text is ED (Encapsulated Data) - value attr holds text content
             if code.original_text.value:
                 codeable_concept["text"] = code.original_text.value
@@ -878,8 +888,8 @@ class ObservationConverter(BaseConverter[Observation]):
 
             # Add laterality as additional coding
             if "coding" not in codeable_concept:
-                codeable_concept["coding"] = []
-            codeable_concept["coding"].append(laterality_coding)
+                codeable_concept["coding"] = cast(JSONValue, [])
+            cast(list[JSONValue], codeable_concept["coding"]).append(cast(JSONValue, laterality_coding))
 
             # Update text to include laterality for human readability
             # Format: "{laterality} {site}" (e.g., "Left Upper arm structure")
@@ -915,11 +925,8 @@ class ObservationConverter(BaseConverter[Observation]):
 
         # Handle IVL_TS (interval) - check for low/high boundaries
         if isinstance(eff_time, IVL_TS):
-            has_low = eff_time.low is not None
-            has_high = eff_time.high is not None
-
             # Case 1: Both low and high present → effectivePeriod
-            if has_low and has_high:
+            if eff_time.low is not None and eff_time.high is not None:
                 period: JSONObject = {}
 
                 # Extract start from low
@@ -939,7 +946,7 @@ class ObservationConverter(BaseConverter[Observation]):
                     return period
 
             # Case 2: Only low present → effectiveDateTime (use start date)
-            elif has_low and eff_time.low.value:
+            elif eff_time.low is not None and eff_time.low.value:
                 return self.convert_date(eff_time.low.value)
 
             # Case 3: IVL_TS with value attribute (point in time)
@@ -991,7 +998,7 @@ class ObservationConverter(BaseConverter[Observation]):
 
         # Case-insensitive lookup
         return NULL_FLAVOR_TO_DATA_ABSENT_REASON.get(
-            null_flavor.upper() if null_flavor else None, "unknown"
+            null_flavor.upper() if null_flavor else "", "unknown"
         )
 
     def _convert_value(self, observation: Observation) -> JSONObject | None:
@@ -1085,35 +1092,30 @@ class ObservationConverter(BaseConverter[Observation]):
         Returns:
             Dictionary with valueRange or valueQuantity element
         """
-        has_low = ivl_pq.low is not None
-        has_high = ivl_pq.high is not None
-
         # Case 1: Both boundaries → valueRange
-        if has_low and has_high:
+        if ivl_pq.low is not None and ivl_pq.high is not None:
             range_val: JSONObject = {}
-            if ivl_pq.low:
-                low = self._pq_to_simple_quantity(ivl_pq.low)
-                if low:
-                    range_val["low"] = low
-            if ivl_pq.high:
-                high = self._pq_to_simple_quantity(ivl_pq.high)
-                if high:
-                    range_val["high"] = high
-            return {"valueRange": range_val} if range_val else {}
+            low = self._pq_to_simple_quantity(ivl_pq.low)
+            if low:
+                range_val["low"] = cast(JSONValue, low)
+            high = self._pq_to_simple_quantity(ivl_pq.high)
+            if high:
+                range_val["high"] = cast(JSONValue, high)
+            return {"valueRange": cast(JSONValue, range_val)} if range_val else {}
 
         # Case 2: Only high → valueQuantity with comparator "<="
-        if has_high and not has_low:
+        if ivl_pq.high is not None and ivl_pq.low is None:
             quantity = self._pq_to_simple_quantity(ivl_pq.high)
             if quantity:
                 quantity["comparator"] = "<="
-                return {"valueQuantity": quantity}
+                return {"valueQuantity": cast(JSONValue, quantity)}
 
         # Case 3: Only low → valueQuantity with comparator ">="
-        if has_low and not has_high:
+        if ivl_pq.low is not None and ivl_pq.high is None:
             quantity = self._pq_to_simple_quantity(ivl_pq.low)
             if quantity:
                 quantity["comparator"] = ">="
-                return {"valueQuantity": quantity}
+                return {"valueQuantity": cast(JSONValue, quantity)}
 
         return {}
 
@@ -1175,13 +1177,13 @@ class ObservationConverter(BaseConverter[Observation]):
             return {}
 
         # Create extension with R5 backport URL
-        extension = {
-            "extension": [
+        extension: JSONObject = {
+            "extension": cast(JSONValue, [
                 {
                     "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value",
                     "valueAttachment": attachment,
                 }
-            ]
+            ])
         }
 
         return extension
@@ -1270,11 +1272,12 @@ class ObservationConverter(BaseConverter[Observation]):
         Returns:
             LOINC code string or None
         """
-        code = observation.get("code", {})
-        for coding in code.get("coding", []):
-            system = coding.get("system", "")
+        code = cast(dict[str, JSONValue], observation.get("code", {}))
+        for coding in cast(list[JSONValue], code.get("coding", [])):
+            coding_dict = cast(dict[str, JSONValue], coding)
+            system = cast(str, coding_dict.get("system", ""))
             if "loinc.org" in system:
-                return coding.get("code")
+                return cast(str | None, coding_dict.get("code"))
         return None
 
     def _handle_pregnancy_observation(self, observation: Observation, fhir_obs: JSONObject) -> None:
@@ -1338,24 +1341,25 @@ class ObservationConverter(BaseConverter[Observation]):
                     if code in date_codes:
                         # Initialize component array if not exists
                         if "component" not in fhir_obs:
-                            fhir_obs["component"] = []
+                            fhir_obs["component"] = cast(JSONValue, [])
 
                         # Create component
                         component: JSONObject = {
-                            "code": {
+                            "code": cast(JSONValue, {
                                 "coding": [{
                                     "system": "http://loinc.org",
                                     "code": code,
                                     "display": date_codes[code]
                                 }]
-                            }
+                            })
                         }
 
                         # Extract value (TS type in C-CDA)
-                        if rel.observation.value and rel.observation.value.value:
-                            date_str = rel.observation.value.value
+                        obs_value = rel.observation.value
+                        date_str = cast(str | None, getattr(obs_value, 'value', None))
+                        if obs_value and date_str:
                             # Handle ISO format dates (YYYY-MM-DD) which may appear in C-CDA
-                            if date_str and '-' in date_str:
+                            if '-' in date_str:
                                 # Already in ISO format, use directly
                                 component["valueDateTime"] = date_str
                             else:
@@ -1364,23 +1368,23 @@ class ObservationConverter(BaseConverter[Observation]):
                                 if value_date:
                                     component["valueDateTime"] = value_date
 
-                        fhir_obs["component"].append(component)
+                        cast(list[JSONValue], fhir_obs["component"]).append(cast(JSONValue, component))
 
                     # Handle quantity-type observations (gestational age)
                     elif code in quantity_codes:
                         # Initialize component array if not exists
                         if "component" not in fhir_obs:
-                            fhir_obs["component"] = []
+                            fhir_obs["component"] = cast(JSONValue, [])
 
                         # Create component
-                        component: JSONObject = {
-                            "code": {
+                        qty_component: JSONObject = {
+                            "code": cast(JSONValue, {
                                 "coding": [{
                                     "system": "http://loinc.org",
                                     "code": code,
                                     "display": quantity_codes[code]
                                 }]
-                            }
+                            })
                         }
 
                         # Extract value (PQ type in C-CDA)
@@ -1405,9 +1409,9 @@ class ObservationConverter(BaseConverter[Observation]):
                                 value_quantity["system"] = "http://unitsofmeasure.org"
                                 value_quantity["code"] = "wk"
 
-                            component["valueQuantity"] = value_quantity
+                            qty_component["valueQuantity"] = cast(JSONValue, value_quantity)
 
-                        fhir_obs["component"].append(component)
+                        cast(list[JSONValue], fhir_obs["component"]).append(cast(JSONValue, qty_component))
 
     def _create_blood_pressure_observation(
         self,
@@ -1500,11 +1504,12 @@ class ObservationConverter(BaseConverter[Observation]):
         # Reference ranges (combine from systolic and diastolic if present)
         # Per FHIR spec: referenceRange describes normal range for the observation
         # For BP panel, we include both systolic and diastolic reference ranges
-        reference_ranges = []
+        reference_ranges: list[JSONObject] = []
         if "referenceRange" in systolic_obs:
-            for ref_range in systolic_obs["referenceRange"]:
+            for ref_range in cast(list[JSONValue], systolic_obs["referenceRange"]):
                 # Add context to indicate this is for systolic component
-                ref_range_with_type = ref_range.copy()
+                ref_range_dict = cast(dict[str, JSONValue], ref_range)
+                ref_range_with_type = dict(ref_range_dict)
                 if "text" in ref_range_with_type:
                     ref_range_with_type["text"] = f"Systolic: {ref_range_with_type['text']}"
                 else:
@@ -1512,9 +1517,10 @@ class ObservationConverter(BaseConverter[Observation]):
                 reference_ranges.append(ref_range_with_type)
 
         if "referenceRange" in diastolic_obs:
-            for ref_range in diastolic_obs["referenceRange"]:
+            for ref_range in cast(list[JSONValue], diastolic_obs["referenceRange"]):
                 # Add context to indicate this is for diastolic component
-                ref_range_with_type = ref_range.copy()
+                ref_range_dict = cast(dict[str, JSONValue], ref_range)
+                ref_range_with_type = dict(ref_range_dict)
                 if "text" in ref_range_with_type:
                     ref_range_with_type["text"] = f"Diastolic: {ref_range_with_type['text']}"
                 else:
@@ -1522,7 +1528,7 @@ class ObservationConverter(BaseConverter[Observation]):
                 reference_ranges.append(ref_range_with_type)
 
         if reference_ranges:
-            bp_obs["referenceRange"] = reference_ranges
+            bp_obs["referenceRange"] = cast(list[JSONValue], reference_ranges)
 
         # Components
         components = []

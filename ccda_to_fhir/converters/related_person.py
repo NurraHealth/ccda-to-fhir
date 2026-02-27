@@ -20,10 +20,10 @@ Reference:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ccda_to_fhir.constants import FHIRCodes, FHIRSystems
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -78,19 +78,19 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         if related_entity.related_person and related_entity.related_person.name:
             names = self.convert_human_names(related_entity.related_person.name)
             if names:
-                related_person["name"] = names
+                related_person["name"] = cast(list[JSONValue], names)
 
         # Map telecom (phone, email)
         if related_entity.telecom:
             telecom_list = self.convert_telecom(related_entity.telecom)
             if telecom_list:
-                related_person["telecom"] = telecom_list
+                related_person["telecom"] = cast(list[JSONValue], telecom_list)
 
         # Map address
         if related_entity.addr:
             addresses = self.convert_addresses(related_entity.addr)
             if addresses:
-                related_person["address"] = addresses
+                related_person["address"] = cast(list[JSONValue], addresses)
 
         return related_person
 
@@ -144,10 +144,11 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         Returns:
             FHIR CodeableConcept for relationship
         """
-        concept: JSONObject = {"coding": []}
+        coding_list: list[JSONValue] = []
+        concept: JSONObject = {"coding": coding_list}
 
         if code.code:
-            coding: dict[str, str] = {}
+            coding: JSONObject = {}
 
             # Map system
             if code.code_system:
@@ -165,10 +166,9 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
             if code.display_name:
                 coding["display"] = code.display_name
 
-            concept["coding"].append(coding)
+            coding_list.append(coding)
 
         if code.display_name:
             concept["text"] = code.display_name
 
         return concept
-

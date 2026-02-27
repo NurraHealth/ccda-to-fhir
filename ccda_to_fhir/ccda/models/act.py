@@ -114,7 +114,7 @@ class Act(CDAModel):
                     return True
         return False
 
-    @model_validator(mode='after')
+    @model_validator(mode='after')  # pyright: ignore[reportGeneralTypeIssues]
     def validate_problem_concern_act(self) -> Act:
         """Validate Problem Concern Act (2.16.840.1.113883.10.20.22.4.3).
 
@@ -186,7 +186,7 @@ class Act(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode='after')  # pyright: ignore[reportGeneralTypeIssues]
     def validate_procedure_activity_act(self) -> Act:
         """Validate Procedure Activity Act (2.16.840.1.113883.10.20.22.4.12).
 
@@ -234,7 +234,7 @@ class Act(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode='after')  # pyright: ignore[reportGeneralTypeIssues]
     def validate_allergy_concern_act(self) -> Act:
         """Validate Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30).
 

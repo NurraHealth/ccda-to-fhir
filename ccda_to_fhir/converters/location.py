@@ -12,15 +12,15 @@ Reference:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ccda_to_fhir.constants import FHIRCodes
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
 if TYPE_CHECKING:
-    from ccda_to_fhir.ccda.models.datatypes import CE, II
+    from ccda_to_fhir.ccda.models.datatypes import CD, CE, II
     from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
 
@@ -78,7 +78,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         # Generate ID from identifiers, or create synthetic ID if missing
         if participant_role.id:
-            location["id"] = self._generate_location_id(participant_role.id)
+            location["id"] = self._generate_location_id_from_identifiers(participant_role.id)
         else:
             # Generate synthetic ID from name and address for locations without explicit IDs
             # This handles real-world C-CDA documents that omit location IDs
@@ -87,7 +87,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Map identifiers (NPI, CLIA, NAIC, etc.)
         identifiers = self._convert_identifiers(participant_role.id)
         if identifiers:
-            location["identifier"] = identifiers
+            location["identifier"] = cast(list[JSONValue], identifiers)
 
         # Map status (default: active)
         location["status"] = "active"
@@ -118,7 +118,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         if participant_role.telecom:
             telecom_list = self.convert_telecom(participant_role.telecom)
             if telecom_list:
-                location["telecom"] = telecom_list
+                location["telecom"] = cast(list[JSONValue], telecom_list)
 
         # Add address to location if it exists (already extracted above for ID generation)
         if address:
@@ -147,7 +147,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 f"a different type of entity (e.g., MANU=Manufactured Product) and should not be converted to Location."
             )
 
-    def _generate_location_id(self, identifiers: list[II]) -> str:
+    def _generate_location_id_from_identifiers(self, identifiers: list[II]) -> str:
         """Generate FHIR Location ID from C-CDA identifiers.
 
         Uses standard ID generation with hashing for consistency across all converters.
@@ -188,12 +188,12 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         if address:
             if "city" in address:
-                id_parts.append(address["city"])
+                id_parts.append(cast(str, address["city"]))
             if "state" in address:
-                id_parts.append(address["state"])
+                id_parts.append(cast(str, address["state"]))
             if "line" in address and address["line"]:
                 # Use first line
-                id_parts.append(address["line"][0])
+                id_parts.append(cast(str, cast(list[JSONValue], address["line"])[0]))
 
         # Create deterministic UUID v4 from combined location info
         combined = "|".join(id_parts)
@@ -382,15 +382,15 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                     codings.append(trans_coding)
 
         if codings:
-            codeable_concept["coding"] = codings
+            codeable_concept["coding"] = cast(list[JSONValue], codings)
 
         # Original text
         if code.original_text:
-            codeable_concept["text"] = code.original_text
+            codeable_concept["text"] = code.original_text.value if code.original_text.value else str(code.original_text)
 
         return codeable_concept
 
-    def _create_coding(self, code: CE) -> JSONObject:
+    def _create_coding(self, code: CE | CD) -> JSONObject:
         """Create a FHIR Coding from C-CDA CE.
 
         Args:
@@ -415,7 +415,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         return coding
 
-    def _infer_physical_type(self, location_code: CE) -> JSONObject | None:
+    def _infer_physical_type(self, location_code: CE | None) -> JSONObject | None:
         """Infer physical type from location type code.
 
         Maps C-CDA location codes to FHIR location-physical-type codes.
@@ -530,7 +530,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             }]
         }
 
-    def _determine_mode(self, location_code: CE) -> str:
+    def _determine_mode(self, location_code: CE | None) -> str:
         """Determine location mode (instance vs kind).
 
         Per FHIR R4 specification:
@@ -617,7 +617,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             return None
 
         # Generate organization ID from identifiers
-        org_id = self._generate_organization_id(scoping_entity.id)
+        org_id = self._generate_organization_id_from_identifiers(scoping_entity.id)
 
         # Check if Organization resource exists in registry
         # Only create reference if the Organization has been registered
@@ -628,7 +628,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # The organization may be created later or may not be relevant
         return None
 
-    def _generate_organization_id(self, identifiers: list[II]) -> str:
+    def _generate_organization_id_from_identifiers(self, identifiers: list[II]) -> str:
         """Generate FHIR Organization ID from C-CDA identifiers.
 
         Uses the same logic as OrganizationConverter to ensure consistent IDs.

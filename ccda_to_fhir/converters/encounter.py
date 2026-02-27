@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import cast
 
 from ccda_to_fhir.ccda.models.datatypes import IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
@@ -19,7 +20,7 @@ from ccda_to_fhir.constants import (
     TemplateIds,
     map_cpt_to_actcode,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -132,7 +133,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         # Participant - Extract performers and their roles
         participants = self._extract_participants(encounter)
         if participants:
-            fhir_encounter["participant"] = participants
+            fhir_encounter["participant"] = cast(list[JSONValue], participants)
 
         # Period - Convert effective time to period
         if encounter.effective_time:
@@ -152,12 +153,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         if diagnoses:
             # Apply intelligent diagnosis role detection based on encounter context
             self._apply_diagnosis_roles(diagnoses, encounter)
-            fhir_encounter["diagnosis"] = diagnoses
+            fhir_encounter["diagnosis"] = cast(list[JSONValue], diagnoses)
 
         # Location - Extract from location participants
         locations = self._extract_locations(encounter)
         if locations:
-            fhir_encounter["location"] = locations
+            fhir_encounter["location"] = cast(list[JSONValue], locations)
 
         # Hospitalization (discharge disposition)
         hospitalization = self._extract_hospitalization(encounter)
@@ -519,9 +520,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                             elif isinstance(entity.name, list) and len(entity.name) > 0:
                                 # Handle list of ON objects
                                 first_name = entity.name[0]
-                                if first_name.value:
+                                if not isinstance(first_name, str) and first_name.value:
                                     display = first_name.value
-                            elif entity.name.value:
+                            elif not isinstance(entity.name, (str, list)) and entity.name.value:  # type: ignore[unreachable]
                                 display = entity.name.value
 
                     # Extract address data (needed for synthetic ID)
@@ -853,9 +854,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         # Apply the determined role to all diagnoses in this encounter
         for diagnosis in diagnoses:
-            if "use" in diagnosis and "coding" in diagnosis["use"]:
-                diagnosis["use"]["coding"][0]["code"] = diagnosis_role["code"]
-                diagnosis["use"]["coding"][0]["display"] = diagnosis_role["display"]
+            use = cast(JSONObject, diagnosis.get("use"))
+            if use and "coding" in use:
+                coding_list = cast(list[JSONValue], use["coding"])
+                first_coding = cast(JSONObject, coding_list[0])
+                first_coding["code"] = diagnosis_role["code"]
+                first_coding["display"] = diagnosis_role["display"]
 
     def _determine_diagnosis_role(self, encounter: CCDAEncounter) -> dict[str, str]:
         """Determine the appropriate diagnosis role based on encounter context.
@@ -947,7 +951,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             Dict with "codes" and "references" lists
         """
         return self.extract_reasons_from_entry_relationships(
-            entry_relationships,
+            entry_relationships if entry_relationships is not None else [],
             problem_template_id=TemplateIds.PROBLEM_OBSERVATION,
         )
 
@@ -972,12 +976,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         if address:
             if "city" in address:
-                id_parts.append(address["city"])
+                id_parts.append(cast(str, address["city"]))
             if "state" in address:
-                id_parts.append(address["state"])
+                id_parts.append(cast(str, address["state"]))
             if "line" in address and address["line"]:
                 # Use first line
-                id_parts.append(address["line"][0])
+                id_parts.append(cast(str, cast(list[JSONValue], address["line"])[0]))
 
         # Create deterministic UUID v4 from combined location info
         combined = "|".join(id_parts)

@@ -19,10 +19,10 @@ Reference:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ccda_to_fhir.constants import FHIRCodes
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -44,7 +44,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
     for academic degrees (MD, PhD), not functional specialties.
     """
 
-    def convert(
+    def convert(  # type: ignore[override]
         self,
         ccda_model: AssignedAuthor | AssignedEntity,
         practitioner_id: str,
@@ -91,7 +91,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
         if assigned.code:
             specialties = self._convert_specialty(assigned.code)
             if specialties:
-                practitioner_role["specialty"] = specialties
+                practitioner_role["specialty"] = cast(list[JSONValue], specialties)
 
         # Handle multiple specialties from SDTC extension (if supported)
         # Note: sdtc_specialty only exists on AssignedEntity (Performer), not AssignedAuthor
@@ -102,7 +102,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
             for sdtc_specialty in sdtc_specialties:
                 additional_specialties = self._convert_specialty(sdtc_specialty)
                 if additional_specialties:
-                    practitioner_role["specialty"].extend(additional_specialties)
+                    cast(list[JSONValue], practitioner_role["specialty"]).extend(additional_specialties)
 
         # Optional: Map identifiers (context-specific IDs)
         # PractitionerRole.identifier can contain identifiers specific to this role
@@ -110,7 +110,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
         if assigned.id:
             identifiers = self._convert_identifiers(assigned.id)
             if identifiers:
-                practitioner_role["identifier"] = identifiers
+                practitioner_role["identifier"] = cast(list[JSONValue], identifiers)
 
         return practitioner_role
 

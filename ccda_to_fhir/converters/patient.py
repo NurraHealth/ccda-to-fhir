@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.datatypes import CE, II
 from ccda_to_fhir.ccda.models.record_target import (
     Guardian,
@@ -21,7 +23,7 @@ from ccda_to_fhir.constants import (
     V3RoleCodes,
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -77,15 +79,15 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         # Identifiers
         if patient_role.id:
-            patient["identifier"] = self._convert_identifiers(patient_role.id)
+            patient["identifier"] = cast(JSONValue, self._convert_identifiers(patient_role.id))
 
         # Names
         if patient_data.name:
-            patient["name"] = self.convert_human_names(patient_data.name)
+            patient["name"] = cast(JSONValue, self.convert_human_names(patient_data.name))
 
         # Telecom
         if patient_role.telecom:
-            patient["telecom"] = self.convert_telecom(patient_role.telecom)
+            patient["telecom"] = cast(JSONValue, self.convert_telecom(patient_role.telecom))
 
         # Gender
         if patient_data.administrative_gender_code:
@@ -111,7 +113,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         # Address
         if patient_role.addr:
-            patient["address"] = self.convert_addresses(patient_role.addr, include_type=True)
+            patient["address"] = cast(JSONValue, self.convert_addresses(patient_role.addr, include_type=True))
 
         # Marital status
         if patient_data.marital_status_code:
@@ -132,13 +134,13 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         # Contact (Guardian)
         if patient_data.guardian:
-            patient["contact"] = self._convert_guardians(patient_data.guardian)
+            patient["contact"] = cast(JSONValue, self._convert_guardians(patient_data.guardian))
 
         # Communication
         if patient_data.language_communication:
-            patient["communication"] = self._convert_communication(
+            patient["communication"] = cast(JSONValue, self._convert_communication(
                 patient_data.language_communication
-            )
+            ))
 
         # Managing organization
         if patient_role.provider_organization:
@@ -239,10 +241,10 @@ class PatientConverter(BaseConverter[RecordTarget]):
             # Convert full timestamp to datetime format
             birth_date_time = self.convert_date(birth_time_str)
             if birth_date_time:
-                birth_time_ext = {
+                birth_time_ext = cast(JSONObject, {
                     "url": FHIRSystems.PATIENT_BIRTH_TIME,
                     "valueDateTime": birth_date_time
-                }
+                })
 
         return birth_date, birth_time_ext
 
@@ -380,7 +382,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
             # Telecom
             if guardian.telecom:
-                contact["telecom"] = self.convert_telecom(guardian.telecom)
+                contact["telecom"] = cast(JSONValue, self.convert_telecom(guardian.telecom))
 
             # Address
             if guardian.addr:
@@ -444,7 +446,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
                     }
                     if comm.mode_code.display_name:
                         mode_sub_ext["valueCoding"]["display"] = comm.mode_code.display_name
-                    proficiency_ext["extension"].append(mode_sub_ext)
+                    cast(list[JSONValue], proficiency_ext["extension"]).append(mode_sub_ext)
 
                 if comm.proficiency_level_code:
                     level_sub_ext = {
@@ -462,7 +464,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
                         level_sub_ext["valueCoding"][
                             "display"
                         ] = comm.proficiency_level_code.display_name
-                    proficiency_ext["extension"].append(level_sub_ext)
+                    cast(list[JSONValue], proficiency_ext["extension"]).append(level_sub_ext)
 
                 if proficiency_ext["extension"]:
                     extensions.append(proficiency_ext)
@@ -528,12 +530,13 @@ class PatientConverter(BaseConverter[RecordTarget]):
                     {"url": "detailed", "valueCoding": coding}
                 )
 
-        extension["extension"].extend(omb_categories)
-        extension["extension"].extend(detailed_categories)
+        ext_list = cast(list[JSONValue], extension["extension"])
+        ext_list.extend(omb_categories)
+        ext_list.extend(detailed_categories)
 
         # Text element (required)
         text = ", ".join(text_parts) if text_parts else "Unknown"
-        extension["extension"].append({"url": "text", "valueString": text})
+        ext_list.append({"url": "text", "valueString": text})
 
         return extension
 
@@ -587,12 +590,13 @@ class PatientConverter(BaseConverter[RecordTarget]):
                     {"url": "detailed", "valueCoding": coding}
                 )
 
-        extension["extension"].extend(omb_categories)
-        extension["extension"].extend(detailed_categories)
+        ext_list = cast(list[JSONValue], extension["extension"])
+        ext_list.extend(omb_categories)
+        ext_list.extend(detailed_categories)
 
         # Text element (required)
         text = ", ".join(text_parts) if text_parts else "Unknown"
-        extension["extension"].append({"url": "text", "valueString": text})
+        ext_list.append({"url": "text", "valueString": text})
 
         return extension
 

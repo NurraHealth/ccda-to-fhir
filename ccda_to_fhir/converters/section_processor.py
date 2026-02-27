@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 from ccda_to_fhir.ccda.models.section import StructuredBody
 from ccda_to_fhir.logging_config import get_logger
@@ -196,7 +196,7 @@ class SectionProcessor:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         # Create a temporary structured body for recursion
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        temp_body = cast(StructuredBody, type("obj", (object,), {"component": [nested_comp]})())
                         nested_resources = self.process(temp_body, metadata, **converter_kwargs)
                         resources.extend(nested_resources)
 

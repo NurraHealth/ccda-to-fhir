@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, PQ
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
@@ -122,7 +124,7 @@ class GoalConverter(BaseConverter[Observation]):
             fhir_goal["lifecycleStatus"] = "active"
 
         # 4. Description (required) - map from code or narrative text
-        description = None
+        description: JSONObject | None = None
 
         # Try coded description first
         if observation.code:
@@ -273,7 +275,7 @@ class GoalConverter(BaseConverter[Observation]):
             display_name=code_element.display_name,
             original_text=original_text,
             translations=translations,
-        )
+        ) or {}
 
     def _convert_component_goal_to_target(self, component_obs: Observation) -> JSONObject | None:
         """Convert a component Goal Observation to a FHIR target.
@@ -300,7 +302,7 @@ class GoalConverter(BaseConverter[Observation]):
             # Handle PQ (Physical Quantity) → detailQuantity
             if isinstance(component_obs.value, PQ):
                 if component_obs.value.value is not None:
-                    detail_quantity = self.create_quantity(component_obs.value.value, component_obs.value.unit)
+                    detail_quantity = self.create_quantity(cast(float | int | None, component_obs.value.value), component_obs.value.unit)
                     if detail_quantity:
                         target["detailQuantity"] = detail_quantity
 
@@ -308,11 +310,11 @@ class GoalConverter(BaseConverter[Observation]):
             elif isinstance(component_obs.value, IVL_PQ):
                 detail_range: JSONObject = {}
                 if component_obs.value.low and component_obs.value.low.value is not None:
-                    low_quantity = self.create_quantity(component_obs.value.low.value, component_obs.value.low.unit)
+                    low_quantity = self.create_quantity(cast(float | int | None, component_obs.value.low.value), component_obs.value.low.unit)
                     if low_quantity:
                         detail_range["low"] = low_quantity
                 if component_obs.value.high and component_obs.value.high.value is not None:
-                    high_quantity = self.create_quantity(component_obs.value.high.value, component_obs.value.high.unit)
+                    high_quantity = self.create_quantity(cast(float | int | None, component_obs.value.high.value), component_obs.value.high.unit)
                     if high_quantity:
                         detail_range["high"] = high_quantity
                 if detail_range:

@@ -6,7 +6,7 @@ enabling validation that references point to actual resources in the Bundle.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ccda_to_fhir.exceptions import MissingReferenceError
 from ccda_to_fhir.logging_config import get_logger
@@ -52,8 +52,8 @@ class ReferenceRegistry:
         Args:
             resource: FHIR resource dictionary with resourceType and id
         """
-        resource_type = resource.get("resourceType")
-        resource_id = resource.get("id")
+        resource_type = cast(str | None, resource.get("resourceType"))
+        resource_id = cast(str | None, resource.get("id"))
 
         if not resource_type:
             logger.warning("Cannot register resource without resourceType")

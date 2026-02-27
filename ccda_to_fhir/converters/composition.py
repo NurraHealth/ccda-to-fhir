@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.ccda.models.datatypes import II
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.constants import FHIRCodes
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -229,7 +229,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             authors = self._convert_author_references(clinical_document.author)
             # FHIR requires at least one author
             if authors:
-                composition["author"] = authors
+                composition["author"] = cast(list[JSONValue], authors)
             else:
                 # Fallback if author extraction failed
                 composition["author"] = [{"display": "Unknown Author"}]
@@ -286,7 +286,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         if clinical_document.component and clinical_document.component.structured_body:
             sections = self._convert_sections(clinical_document.component.structured_body)
             if sections:
-                composition["section"] = sections
+                composition["section"] = cast(list[JSONValue], sections)
 
         return composition
 
@@ -487,7 +487,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             return None
 
         # Try to create party reference first (REQUIRED per US Realm Header Profile)
-        party_ref = None
+        party_ref: JSONObject | None = None
         if legal_authenticator.assigned_entity:
             assigned = legal_authenticator.assigned_entity
 
@@ -545,7 +545,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             return None
 
         # Try to create party reference first (REQUIRED per US Realm Header Profile)
-        party_ref = None
+        party_ref2: JSONObject | None = None
         if authenticator.assigned_entity:
             assigned = authenticator.assigned_entity
 
@@ -553,17 +553,17 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if assigned.id:
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
-                    party_ref = {
+                    party_ref2 = {
                         "reference": f"urn:uuid:{practitioner_id}"
                     }
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
-        if not party_ref:
+        if not party_ref2:
             return None
 
         attester: JSONObject = {
             "mode": "professional",  # Professional attestation
-            "party": party_ref  # Required per US Realm Header Profile
+            "party": party_ref2  # Required per US Realm Header Profile
         }
 
         # Extract time (optional)
@@ -866,7 +866,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         return None
 
-    def _generate_practitioner_id(self, identifiers: list[II]) -> str:
+    def _generate_practitioner_id(self, identifiers: list[II]) -> str:  # type: ignore[override]
         """Generate FHIR Practitioner ID using cached UUID v4.
 
         Args:
@@ -1012,7 +1012,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         # We need to look up which resources belong to this section
         entries = self._get_section_entries(section)
         if entries:
-            section_dict["entry"] = entries
+            section_dict["entry"] = cast(list[JSONValue], entries)
 
         # Nested sections (subsections)
         if section.component:

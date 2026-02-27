@@ -24,10 +24,10 @@ Reference:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ccda_to_fhir.constants import FHIRCodes
-from ccda_to_fhir.types import FHIRResourceDict
+from ccda_to_fhir.types import FHIRResourceDict, JSONValue
 
 from .base import BaseConverter
 
@@ -66,25 +66,25 @@ class PractitionerConverter(BaseConverter["AssignedAuthor | AssignedEntity"]):
         if assigned.id:
             identifiers = self.convert_identifiers(assigned.id)
             if identifiers:
-                practitioner["identifier"] = identifiers
+                practitioner["identifier"] = cast(list[JSONValue], identifiers)
 
         # Map name
         if assigned.assigned_person and assigned.assigned_person.name:
             names = self.convert_human_names(assigned.assigned_person.name)
             if names:
-                practitioner["name"] = names
+                practitioner["name"] = cast(list[JSONValue], names)
 
         # Map telecom (phone, email)
         if assigned.telecom:
             telecom_list = self.convert_telecom(assigned.telecom)
             if telecom_list:
-                practitioner["telecom"] = telecom_list
+                practitioner["telecom"] = cast(list[JSONValue], telecom_list)
 
         # Map address
         if assigned.addr:
             addresses = self.convert_addresses(assigned.addr)
             if addresses:
-                practitioner["address"] = addresses
+                practitioner["address"] = cast(list[JSONValue], addresses)
 
         # NOTE: assignedAuthor/code (specialty) is NOT mapped here.
         # It belongs in PractitionerRole.specialty, not Practitioner.qualification.
@@ -94,7 +94,7 @@ class PractitionerConverter(BaseConverter["AssignedAuthor | AssignedEntity"]):
 
         return practitioner
 
-    def _generate_practitioner_id(self, identifiers: list[II]) -> str:
+    def _generate_practitioner_id(self, identifiers: list[II]) -> str:  # type: ignore[override]
         """Generate FHIR ID using cached UUID v4 from C-CDA identifiers.
 
         Args:

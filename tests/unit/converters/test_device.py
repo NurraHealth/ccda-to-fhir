@@ -293,7 +293,7 @@ class TestDeviceConverter:
 
         # Setup reference registry with organization
         registry = ReferenceRegistry()
-        org_id = device_converter._generate_organization_id(
+        org_id = device_converter._generate_organization_id_from_list(
             [II(root="2.16.840.1.113883.19.5.9999.1393", extension="ORG-001")]
         )
         registry.register_resource({
@@ -987,7 +987,7 @@ class TestProductInstanceConverter:
 
         # Setup reference registry with organization
         registry = ReferenceRegistry()
-        org_id = device_converter._generate_organization_id(
+        org_id = device_converter._generate_organization_id_from_list(
             [II(root="2.16.840.1.113883.3.3719", extension="ORG-123")]
         )
         registry.register_resource({

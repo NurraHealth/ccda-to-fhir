@@ -12,7 +12,7 @@ The parser handles:
 
 from __future__ import annotations
 
-from typing import TypeAlias, TypeVar
+from typing import Any, TypeAlias, TypeVar, cast
 
 from lxml import etree
 from pydantic import BaseModel
@@ -155,17 +155,18 @@ def _parse_attributes(element: etree._Element) -> dict[str, str | bool]:
     attrs: dict[str, str | bool] = {}
     for key, value in element.attrib.items():
         # Strip namespace from attribute names
-        local_key = _strip_namespace(key)
+        local_key = _strip_namespace(cast(str, key))
 
         # Convert to snake_case for Pydantic
         # e.g., classCode -> class_code
         snake_key = _to_snake_case(local_key)
 
         # Convert boolean strings
-        if value.lower() in ("true", "false"):
-            attrs[snake_key] = value.lower() == "true"
+        str_value = cast(str, value)
+        if str_value.lower() in ("true", "false"):
+            attrs[snake_key] = str_value.lower() == "true"
         else:
-            attrs[snake_key] = value
+            attrs[snake_key] = str_value
 
     return attrs
 
@@ -323,7 +324,7 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
                     # Not all models have tail_text field
                     if hasattr(field_value, 'tail_text') and xml_child.tail:
                         if xml_child.tail.strip():
-                            field_value.tail_text = xml_child.tail.strip()
+                            cast(Any, field_value).tail_text = xml_child.tail.strip()
 
         return instance
     except Exception as e:
@@ -664,7 +665,7 @@ def parse_ccda(xml_string: str | bytes) -> ClinicalDocument:
             xml_bytes = xml_string.encode("utf-8")
         else:
             # For bytes input, decode, preprocess, then encode
-            xml_str = xml_string.decode("utf-8")
+            xml_str = cast(bytes, xml_string).decode("utf-8")
             xml_str = preprocess_ccda_namespaces(xml_str)
             xml_bytes = xml_str.encode("utf-8")
 
@@ -711,7 +712,7 @@ def parse_ccda_fragment(xml_string: str | bytes, model_class: type[T]) -> T:
             xml_bytes = xml_string.encode("utf-8")
         else:
             # For bytes input, decode, preprocess, then encode
-            xml_str = xml_string.decode("utf-8")
+            xml_str = cast(bytes, xml_string).decode("utf-8")
             xml_str = preprocess_ccda_namespaces(xml_str)
             xml_bytes = xml_str.encode("utf-8")
 

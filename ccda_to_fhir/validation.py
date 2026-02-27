@@ -6,6 +6,8 @@ to ensure generated resources conform to FHIR R4/R4B specifications.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 from pydantic import ValidationError as PydanticValidationError
 
@@ -106,7 +108,7 @@ class FHIRValidator:
             )
 
             if self.strict:
-                raise ValidationError(resource_type, errors) from e
+                raise ValidationError(cast(str, resource_type), errors) from e
 
             return None
 
@@ -129,12 +131,12 @@ class FHIRValidator:
 
         try:
             # Validate the bundle structure
-            validated_bundle = Bundle(**bundle_dict)
+            validated_bundle = Bundle(**cast(dict[str, Any], bundle_dict))  # noqa: F841
             self._validation_stats["passed"] += 1
 
             logger.info(
                 "Bundle validation passed",
-                entry_count=len(bundle_dict.get("entry", [])),
+                entry_count=len(cast(list[Any], bundle_dict.get("entry", []))),
             )
             return bundle_dict
 

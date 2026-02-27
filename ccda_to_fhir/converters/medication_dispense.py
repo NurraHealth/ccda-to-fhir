@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
-from ccda_to_fhir.ccda.models.datatypes import CE, IVL_TS
+from ccda_to_fhir.ccda.models.datatypes import CE, II, IVL_TS
 from ccda_to_fhir.ccda.models.supply import Supply
 from ccda_to_fhir.constants import (
     MEDICATION_DISPENSE_STATUS_TO_FHIR,
@@ -12,7 +12,7 @@ from ccda_to_fhir.constants import (
     TemplateIds,
 )
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -141,7 +141,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         # 7. Performer (pharmacy/pharmacist) and Location (pharmacy)
         performers, location_ref = self._extract_performers_and_location(supply)
         if performers:
-            med_dispense["performer"] = performers
+            med_dispense["performer"] = cast(list[JSONValue], performers)
 
         # 7b. Location (pharmacy location)
         if location_ref:
@@ -187,7 +187,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         # FHIR invariant mdd-1: whenHandedOver cannot be before whenPrepared
         # FHIRPath: whenHandedOver.empty() or whenPrepared.empty() or whenHandedOver >= whenPrepared
         if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
-            if med_dispense["whenHandedOver"] < med_dispense["whenPrepared"]:
+            if cast(str, med_dispense["whenHandedOver"]) < cast(str, med_dispense["whenPrepared"]):
                 logger.warning(
                     f"FHIR invariant mdd-1 violation: whenHandedOver ({med_dispense['whenHandedOver']}) "
                     f"cannot be before whenPrepared ({med_dispense['whenPrepared']}). "
@@ -357,8 +357,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                 # Determine if it's a practitioner or organization
                 if assigned.assigned_person:
                     # Practitioner performer case - use base helper for ID selection
-                    ids = getattr(assigned, "id", None)
-                    root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
+                    ids_perf: list[II] = getattr(assigned, "id", None) or []
+                    root, extension = self.select_preferred_identifier(ids_perf, prefer_npi=False)
                     if root:
                         pract_id = self._generate_practitioner_id(root, extension)
                         performer_obj["actor"] = {"reference": f"urn:uuid:{pract_id}"}
@@ -392,8 +392,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                 assigned = author.assigned_author
 
                 if assigned.assigned_person:
-                    ids = getattr(assigned, "id", None)
-                    root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
+                    ids_auth: list[II] = getattr(assigned, "id", None) or []
+                    root, extension = self.select_preferred_identifier(ids_auth, prefer_npi=False)
                     if root:
                         pract_id = self._generate_practitioner_id(root, extension)
                         performer_obj = {
@@ -609,7 +609,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         if organization.telecom:
             telecom_list = self.convert_telecom(organization.telecom)
             if telecom_list:
-                location["telecom"] = telecom_list
+                location["telecom"] = cast(list[JSONValue], telecom_list)
 
         # Add identifiers from organization (US Core Must Support)
         # Per US Core: "Must be supported if the data is present in the sending system"
@@ -707,7 +707,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         return org_id
 
-    def _generate_location_id(self, organization: RepresentedOrganization) -> str:
+    def _generate_location_id(self, organization: RepresentedOrganization) -> str:  # type: ignore[override]
         """Generate FHIR Location ID from pharmacy organization.
 
         Uses organization identifiers if available, otherwise generates
@@ -960,7 +960,7 @@ def extract_medication_dispenses(
 
                             # Store in global registry
                             if dispense.get("id"):
-                                _dispense_registry[dispense["id"]] = dispense
+                                _dispense_registry[cast(str, dispense["id"])] = dispense
                                 logger.debug(f"Extracted MedicationDispense: {dispense['id']}")
                         except Exception as e:
                             logger.warning(

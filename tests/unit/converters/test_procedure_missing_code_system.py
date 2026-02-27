@@ -4,8 +4,6 @@ This tests the fix for the bug where a procedure with a code value but no code_s
 would result in `code: null` in the FHIR output, causing validation errors.
 """
 
-import pytest
-
 from ccda_to_fhir.ccda.models.datatypes import CE, CS, II
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.converters.procedure import ProcedureConverter

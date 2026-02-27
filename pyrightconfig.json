@@ -1,0 +1,18 @@
+{
+    "pythonVersion": "3.10",
+    "typeCheckingMode": "standard",
+    "exclude": ["tests", ".venv", "**/__pycache__"],
+
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false,
+    "reportUnusedImport": true,
+    "reportUnusedClass": true,
+    "reportUnusedFunction": true,
+    "reportDuplicateImport": true,
+
+    "reportGeneralTypeIssues": "warning",
+    "reportOptionalSubscript": "warning",
+    "reportOptionalMemberAccess": "warning",
+    "reportOptionalIterable": "warning",
+    "reportIncompatibleMethodOverride": "warning"
+}

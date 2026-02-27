@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from typing import cast
+
+from ccda_to_fhir.types import FHIRResourceDict, JSONArray, JSONObject
 
 
 def create_bundle(
@@ -44,7 +46,7 @@ def create_bundle(
             resource_id = resource["id"]
             entry["fullUrl"] = f"urn:uuid:{resource_id}"
 
-        bundle["entry"].append(entry)
+        cast(JSONArray, bundle["entry"]).append(entry)
 
     return bundle
 

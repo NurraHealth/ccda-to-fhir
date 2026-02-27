@@ -21,10 +21,10 @@ Reference:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ccda_to_fhir.constants import FHIRCodes
-from ccda_to_fhir.types import FHIRResourceDict
+from ccda_to_fhir.types import FHIRResourceDict, JSONValue
 
 from .base import BaseConverter
 
@@ -65,7 +65,7 @@ class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganiz
         if organization.id:
             identifiers = self.convert_identifiers(organization.id)
             if identifiers:
-                org["identifier"] = identifiers
+                org["identifier"] = cast(list[JSONValue], identifiers)
 
         # Map name
         if organization.name:
@@ -77,13 +77,13 @@ class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganiz
         if organization.telecom:
             telecom_list = self.convert_telecom(organization.telecom)
             if telecom_list:
-                org["telecom"] = telecom_list
+                org["telecom"] = cast(list[JSONValue], telecom_list)
 
         # Map address
         if organization.addr:
             addresses = self.convert_addresses(organization.addr)
             if addresses:
-                org["address"] = addresses
+                org["address"] = cast(list[JSONValue], addresses)
 
         # Map type (organization classification)
         # Note: standard_industry_class_code only exists on Author/Performer organizations, not Custodian
@@ -91,14 +91,14 @@ class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganiz
         if std_class_code:
             org_type = self._convert_type(std_class_code)
             if org_type:
-                org["type"] = [org_type]
+                org["type"] = cast(list[JSONValue], [org_type])
 
         # Default to active unless we have information otherwise
         org["active"] = True
 
         return org
 
-    def _generate_organization_id(self, identifiers: list[II]) -> str:
+    def _generate_organization_id(self, identifiers: list[II]) -> str:  # type: ignore[override]
         """Generate FHIR ID using cached UUID v4 from C-CDA identifiers.
 
         Args:
@@ -189,7 +189,7 @@ class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganiz
         codeable_concept: dict[str, str | list[dict[str, str]]] = {"coding": [coding]}
 
         # Add original text if present
-        if code.original_text:
-            codeable_concept["text"] = code.original_text
+        if code.original_text and code.original_text.value:
+            codeable_concept["text"] = code.original_text.value
 
         return codeable_concept

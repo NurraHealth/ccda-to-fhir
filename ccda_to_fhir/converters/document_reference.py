@@ -5,10 +5,12 @@ from __future__ import annotations
 import base64
 import hashlib
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.ccda.models.datatypes import CE, II
 from ccda_to_fhir.constants import FHIRCodes, FHIRSystems
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -68,7 +70,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         # Additional identifiers (set_id for versioning)
         identifiers = self._convert_identifiers(clinical_document)
         if identifiers:
-            document_ref["identifier"] = identifiers
+            document_ref["identifier"] = cast(JSONValue, identifiers)
 
         # Document status (preliminary, final, amended, etc.)
         # Inferred from authenticator presence per C-CDA semantics
@@ -99,7 +101,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         if clinical_document.code:
             categories = self._derive_categories(clinical_document.code)
             if categories:
-                document_ref["category"] = categories
+                document_ref["category"] = cast(JSONValue, categories)
 
         # Subject (patient reference)
         if clinical_document.record_target and len(clinical_document.record_target) > 0:
@@ -117,7 +119,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         if clinical_document.author:
             authors = self._convert_author_references(clinical_document.author)
             if authors:
-                document_ref["author"] = authors
+                document_ref["author"] = cast(JSONValue, authors)
 
         # Authenticator (who validated the document)
         if clinical_document.legal_authenticator:
@@ -141,7 +143,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         if clinical_document.confidentiality_code:
             security_labels = self._convert_security_labels(clinical_document.confidentiality_code)
             if security_labels:
-                document_ref["securityLabel"] = security_labels
+                document_ref["securityLabel"] = cast(JSONValue, security_labels)
 
         # Context (clinical context)
         context = self._create_context(clinical_document)
@@ -152,7 +154,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         if clinical_document.related_document:
             relates_to = self._convert_related_documents(clinical_document.related_document)
             if relates_to:
-                document_ref["relatesTo"] = relates_to
+                document_ref["relatesTo"] = cast(JSONValue, relates_to)
 
         # Content (required - at least one)
         content = self._create_content(clinical_document)
@@ -160,7 +162,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
 
         return document_ref
 
-    def _generate_document_reference_id(self, document_id: II) -> str:
+    def _generate_document_reference_id(self, document_id: II | None) -> str:
         """Generate a FHIR resource ID from the document identifier.
 
         Args:
@@ -359,7 +361,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
 
         return author_refs
 
-    def _generate_practitioner_id(self, identifier: II) -> str:
+    def _generate_practitioner_id(self, identifier: II) -> str:  # type: ignore[override]
         """Generate practitioner ID using cached UUID v4.
 
         Args:
@@ -375,7 +377,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
 
         return generate_id_from_identifiers("Practitioner", root, extension)
 
-    def _generate_organization_id(self, identifier: II) -> str:
+    def _generate_organization_id(self, identifier: II) -> str:  # type: ignore[override]
         """Generate organization ID using cached UUID v4.
 
         Args:
@@ -583,7 +585,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
                         if event_code:
                             if "event" not in context:
                                 context["event"] = []
-                            context["event"].append(event_code)
+                            cast(list[JSONValue], context["event"]).append(event_code)
 
         # Facility type (from encompassing encounter location)
         if clinical_document.component_of:
@@ -671,8 +673,8 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         Returns:
             FHIR content object
         """
-        content: JSONObject = {"attachment": {}}
-        attachment = content["attachment"]
+        attachment: JSONObject = {}
+        content: JSONObject = {"attachment": attachment}
 
         # Content type
         attachment["contentType"] = "text/xml"
@@ -771,7 +773,7 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
             if isinstance(code.original_text, str):
                 return code.original_text
             # ED type - extract text
-            elif code.original_text.text:
-                return code.original_text.text
+            elif code.original_text.value:
+                return code.original_text.value
 
         return None

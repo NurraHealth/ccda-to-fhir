@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
 from ccda_to_fhir.ccda.models.observation import Observation as CCDAObservation
@@ -11,7 +13,7 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -202,7 +204,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if procedure.performer:
             performers = self._extract_performers(procedure.performer)
             if performers:
-                fhir_procedure["performer"] = performers
+                fhir_procedure["performer"] = cast(list[JSONValue], performers)
 
         # Location
         if procedure.participant:
@@ -240,17 +242,17 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             # Complications
             complications = self._extract_complications(procedure.entry_relationship)
             if complications:
-                fhir_procedure["complication"] = complications
+                fhir_procedure["complication"] = cast(list[JSONValue], complications)
 
             # Follow-up
             followups = self._extract_followups(procedure.entry_relationship)
             if followups:
-                fhir_procedure["followUp"] = followups
+                fhir_procedure["followUp"] = cast(list[JSONValue], followups)
 
         # Notes
         notes = self._extract_notes(procedure)
         if notes:
-            fhir_procedure["note"] = notes
+            fhir_procedure["note"] = cast(list[JSONValue], notes)
 
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=procedure, section=section)
@@ -314,7 +316,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             FHIRCodes.ProcedureStatus.UNKNOWN,
         )
 
-    def _convert_code(self, code: CD) -> JSONObject:
+    def _convert_code(self, code: CD) -> JSONObject | None:
         """Convert C-CDA procedure code to FHIR CodeableConcept.
 
         Args:
@@ -571,10 +573,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if not devices:
             return None
 
-        return {
+        return cast(JSONObject, {
             "devices": devices,
             "focal_devices": focal_devices
-        }
+        })
 
     def _extract_recorder(self, authors: list) -> JSONObject | None:
         """Extract FHIR recorder from C-CDA authors.
@@ -836,7 +838,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             # Add laterality as additional coding
             if "coding" not in codeable_concept:
                 codeable_concept["coding"] = []
-            codeable_concept["coding"].append(laterality_coding)
+            cast(list[JSONValue], codeable_concept["coding"]).append(laterality_coding)
 
             # Update text to include laterality for human readability
             # Format: "{laterality} {site}" (e.g., "Left Colon structure")

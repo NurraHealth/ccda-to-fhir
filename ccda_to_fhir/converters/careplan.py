@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -205,11 +205,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # Addresses - references to health concerns (Condition resources)
         if self.health_concern_refs:
-            careplan["addresses"] = self.health_concern_refs
+            careplan["addresses"] = cast(list[JSONValue], self.health_concern_refs)
 
         # Goal - references to Goal resources
         if self.goal_refs:
-            careplan["goal"] = self.goal_refs
+            careplan["goal"] = cast(list[JSONValue], self.goal_refs)
 
         # Activity - planned interventions with properly linked outcomes
         if self.intervention_entries:
@@ -218,12 +218,12 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 self.outcome_entries
             )
             if activities:
-                careplan["activity"] = activities
+                careplan["activity"] = cast(list[JSONValue], activities)
 
         # Text narrative - generate from sections
-        careplan["text"] = self._generate_narrative(
+        careplan["text"] = self._generate_careplan_narrative(
             clinical_document=clinical_document,
-            period=careplan.get("period"),
+            period=cast(JSONObject | None, careplan.get("period")),
             health_concern_count=len(self.health_concern_refs),
             goal_count=len(self.goal_refs),
             intervention_entries=self.intervention_entries,
@@ -286,7 +286,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         # 1. Check if period has ended (past end date → completed)
         if period and period.get('end'):
             try:
-                end_date_str = period['end']
+                end_date_str = cast(str, period['end'])
                 # Handle both date (YYYY-MM-DD) and datetime formats
                 if 'T' in end_date_str:
                     end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
@@ -493,9 +493,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         if entry.id:
             # Handle both single id and list of ids
             if isinstance(entry.id, list) and len(entry.id) > 0:
-                return entry.id[0].root
-            elif entry.id.root:
-                return entry.id.root
+                return entry.id[0].root  # type: ignore[union-attr]
+            else:
+                root = getattr(entry.id, 'root', None)
+                if root:
+                    return root
         return None
 
     def _generate_resource_id_from_entry(self, entry, resource_type: str) -> str | None:
@@ -518,11 +520,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         extension = None
 
         if isinstance(entry.id, list) and len(entry.id) > 0:
-            root = entry.id[0].root
-            extension = entry.id[0].extension
+            root = entry.id[0].root  # type: ignore[union-attr]
+            extension = entry.id[0].extension  # type: ignore[union-attr]
         else:
-            root = entry.id.root
-            extension = entry.id.extension
+            root = getattr(entry.id, 'root', None)
+            extension = getattr(entry.id, 'extension', None)
 
         # Convert to strings if needed (handles Mock objects in tests)
         if root is not None and not isinstance(root, str):
@@ -614,7 +616,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         return None
 
-    def _generate_narrative(
+    def _generate_careplan_narrative(
         self,
         clinical_document: ClinicalDocument,
         period: JSONObject | None,

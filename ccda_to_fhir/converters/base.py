@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar, cast
 
 from ccda_to_fhir.constants import FHIRSystems
 from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
@@ -164,7 +164,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Returns:
             List of FHIR identifier objects
         """
-        fhir_identifiers: list[JSONValue] = []
+        fhir_identifiers: list[JSONObject] = []
 
         for identifier in identifiers:
             if not identifier.root:
@@ -241,7 +241,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return None  # Return None instead of empty dict for proper truthiness checks
 
         codeable_concept: JSONObject = {}
-        codings: list[JSONValue] = []
+        codings: list[JSONObject] = []
 
         # Primary coding
         if code and code_system:
@@ -265,24 +265,24 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if translations:
             for trans in translations:
                 if trans.get("code") and trans.get("code_system"):
-                    trans_system_uri = self.map_oid_to_uri(trans["code_system"])
+                    trans_system_uri = self.map_oid_to_uri(cast(str, trans["code_system"]))
                     trans_coding: JSONObject = {
                         "system": trans_system_uri,
-                        "code": trans["code"].strip(),  # Sanitize: remove leading/trailing whitespace
+                        "code": cast(str, trans["code"]).strip(),  # Sanitize: remove leading/trailing whitespace
                     }
                     # ENHANCEMENT: Add display from terminology map if not provided
                     if trans.get("display_name"):
-                        trans_coding["display"] = trans["display_name"].strip()  # Sanitize display name too
+                        trans_coding["display"] = cast(str, trans["display_name"]).strip()  # Sanitize display name too
                     else:
                         # Look up display from terminology maps for known systems
                         from ccda_to_fhir.utils.terminology import get_display_for_code
-                        looked_up_display = get_display_for_code(trans_system_uri, trans["code"].strip())
+                        looked_up_display = get_display_for_code(trans_system_uri, cast(str, trans["code"]).strip())
                         if looked_up_display:
                             trans_coding["display"] = looked_up_display
                     codings.append(trans_coding)
 
         if codings:
-            codeable_concept["coding"] = codings
+            codeable_concept["coding"] = cast(list[JSONValue], codings)
 
         # Original text (preferred)
         if original_text:
@@ -876,7 +876,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         """
         from ccda_to_fhir.constants import TemplateIds
 
-        notes: list[JSONValue] = []
+        notes: list[JSONObject] = []
 
         # Extract from text element
         if include_text and element.text:
@@ -1008,7 +1008,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if addresses is None:
             return []
 
-        fhir_addresses: list[JSONValue] = []
+        fhir_addresses: list[JSONObject] = []
 
         # Normalize to list
         addr_list = addresses if isinstance(addresses, list) else [addresses]
@@ -1229,7 +1229,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Returns:
             List of FHIR CodeableConcept dicts
         """
-        codes: list[JSONValue] = []
+        codes: list[JSONObject] = []
 
         if not obs.value:
             return codes
@@ -1269,7 +1269,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if telecoms is None:
             return []
 
-        contact_points: list[JSONValue] = []
+        contact_points: list[JSONObject] = []
 
         # Normalize to list
         telecom_list = telecoms if isinstance(telecoms, list) else [telecoms]
@@ -1358,7 +1358,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if names is None:
             return []
 
-        fhir_names: list[JSONValue] = []
+        fhir_names: list[JSONObject] = []
 
         # Normalize to list
         name_list = names if isinstance(names, list) else [names]
@@ -1431,15 +1431,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 fhir_name["use"] = qualifier_use
 
             # Build text representation using delimiters if present
-            text_parts = []
+            text_parts: list[str] = []
             if "prefix" in fhir_name:
-                text_parts.extend(fhir_name["prefix"])
+                text_parts.extend(cast(list[str], fhir_name["prefix"]))
             if "given" in fhir_name:
-                text_parts.extend(fhir_name["given"])
+                text_parts.extend(cast(list[str], fhir_name["given"]))
             if "family" in fhir_name:
-                text_parts.append(fhir_name["family"])
+                text_parts.append(cast(str, fhir_name["family"]))
             if "suffix" in fhir_name:
-                text_parts.extend(fhir_name["suffix"])
+                text_parts.extend(cast(list[str], fhir_name["suffix"]))
 
             if text_parts:
                 # Use delimiter if provided, otherwise space
@@ -1725,7 +1725,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Returns:
             List of translation dicts with keys: code, code_system, display_name
         """
-        translations: list[JSONValue] = []
+        translations: list[JSONObject] = []
 
         if not code.translation:
             return translations
@@ -1776,7 +1776,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if not performers:
             return []
 
-        references: list[JSONValue] = []
+        references: list[JSONObject] = []
 
         for performer in performers:
             if not performer:

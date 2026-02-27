@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.substance_administration import (
     ManufacturedProduct,
     SubstanceAdministration,
 )
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -126,7 +128,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
         if substance_admin and substance_admin.participant:
             ingredients = self._extract_ingredients(substance_admin)
             if ingredients:
-                medication["ingredient"] = ingredients
+                medication["ingredient"] = cast(list[JSONValue], ingredients)
 
         # 6. Batch (lot number from manufacturedMaterial.lot_number_text)
         if manufactured_product.manufactured_material.lot_number_text:
@@ -191,6 +193,9 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
             List of FHIR ingredient objects
         """
         ingredients = []
+
+        if not substance_admin.participant:
+            return ingredients
 
         for participant in substance_admin.participant:
             # Check for drug vehicle (CSM = consumable)

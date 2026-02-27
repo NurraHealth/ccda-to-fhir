@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
@@ -16,6 +18,7 @@ from ccda_to_fhir.types import (
     ConversionResult,
     FHIRResourceDict,
     JSONObject,
+    JSONValue,
 )
 from ccda_to_fhir.validation import FHIRValidator
 from fhir.resources.R4B.allergyintolerance import AllergyIntolerance
@@ -1264,16 +1267,16 @@ class DocumentConverter:
                                     if template.root == TemplateIds.INTERVENTIONS_SECTION:
                                         # Extract intervention act entries for GEVL linking
                                         if section.entry:
-                                            for entry in section.entry:
-                                                if entry.act:
-                                                    intervention_entries.append(entry.act)
+                                            for sect_entry in section.entry:
+                                                if sect_entry.act:
+                                                    intervention_entries.append(sect_entry.act)
                                         break
                                     elif template.root == TemplateIds.OUTCOMES_SECTION:
                                         # Extract outcome observation entries for GEVL linking
                                         if section.entry:
-                                            for entry in section.entry:
-                                                if entry.observation:
-                                                    outcome_entries.append(entry.observation)
+                                            for sect_entry in section.entry:
+                                                if sect_entry.observation:
+                                                    outcome_entries.append(sect_entry.observation)
                                         break
 
                 # Create CarePlan converter and convert
@@ -1326,7 +1329,7 @@ class DocumentConverter:
                 resource_type = resource["resourceType"]
                 resource_id = resource["id"]
                 entry["fullUrl"] = f"urn:uuid:{resource_id}"
-            bundle["entry"].append(entry)
+            cast(list[JSONValue], bundle["entry"]).append(entry)
 
         # Log validation statistics
         if self.enable_validation:
@@ -1542,7 +1545,7 @@ class DocumentConverter:
                                         if panel.get("id"):
                                             self._store_author_metadata(
                                                 resource_type="Observation",
-                                                resource_id=panel["id"],
+                                                resource_id=cast(str, panel["id"]),
                                                 ccda_element=entry.organizer,
                                                 concern_act=None,
                                             )
@@ -1552,7 +1555,7 @@ class DocumentConverter:
                                             if individual.get("id"):
                                                 self._store_author_metadata(
                                                     resource_type="Observation",
-                                                    resource_id=individual["id"],
+                                                    resource_id=cast(str, individual["id"]),
                                                     ccda_element=entry.organizer,
                                                     concern_act=None,
                                                 )
@@ -1565,7 +1568,9 @@ class DocumentConverter:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        nested_vital_signs = self._extract_vital_signs(temp_body)
+                        nested_vital_signs = self._extract_vital_signs(
+                            cast(StructuredBody, temp_body)
+                        )
                         vital_signs.extend(nested_vital_signs)
 
         return vital_signs
@@ -1583,7 +1588,7 @@ class DocumentConverter:
             return
 
         # Create a map of report IDs to track which ones need metadata
-        report_ids_needing_metadata = {r.get("id") for r in reports if r.get("id")}
+        report_ids_needing_metadata = {cast(str, r.get("id")) for r in reports if r.get("id")}
 
         for comp in structured_body.component:
             if not comp.section:
@@ -1621,7 +1626,9 @@ class DocumentConverter:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        self._store_diagnostic_report_metadata(temp_body, reports)
+                        self._store_diagnostic_report_metadata(
+                            cast(StructuredBody, temp_body), reports
+                        )
 
     def _generate_report_id_from_identifier(
         self, root: str | None, extension: str | None
@@ -1688,7 +1695,7 @@ class DocumentConverter:
                                         if report.get("id"):
                                             self._store_author_metadata(
                                                 resource_type="DiagnosticReport",
-                                                resource_id=report["id"],
+                                                resource_id=cast(str, report["id"]),
                                                 ccda_element=entry.organizer,
                                                 concern_act=None,
                                             )
@@ -1698,7 +1705,7 @@ class DocumentConverter:
                                             if observation.get("id"):
                                                 self._store_author_metadata(
                                                     resource_type="Observation",
-                                                    resource_id=observation["id"],
+                                                    resource_id=cast(str, observation["id"]),
                                                     ccda_element=entry.organizer,
                                                     concern_act=None,
                                                 )
@@ -1711,7 +1718,7 @@ class DocumentConverter:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        nested_results = self._extract_results(temp_body)
+                        nested_results = self._extract_results(cast(StructuredBody, temp_body))
                         resources.extend(nested_results)
 
         return resources
@@ -2077,7 +2084,7 @@ class DocumentConverter:
                         # Create a temporary structured body for recursion
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
                         nested_extensions = self._extract_patient_extensions_from_social_history(
-                            temp_body
+                            cast(StructuredBody, temp_body)
                         )
                         extensions.extend(nested_extensions)
 
@@ -2176,7 +2183,7 @@ class DocumentConverter:
                                         if observation.get("id"):
                                             self._store_author_metadata(
                                                 resource_type="Observation",
-                                                resource_id=observation["id"],
+                                                resource_id=cast(str, observation["id"]),
                                                 ccda_element=entry.observation,
                                                 concern_act=None,
                                             )
@@ -2190,7 +2197,9 @@ class DocumentConverter:
                     if nested_comp.section:
                         # Create a temporary structured body for recursion
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        nested_observations = self._extract_social_history(temp_body)
+                        nested_observations = self._extract_social_history(
+                            cast(StructuredBody, temp_body)
+                        )
                         observations.extend(nested_observations)
 
         return observations
@@ -2264,7 +2273,7 @@ class DocumentConverter:
             return
 
         # Create a map of procedure IDs to track which ones need metadata
-        procedure_ids_needing_metadata = {p.get("id") for p in procedures if p.get("id")}
+        procedure_ids_needing_metadata = {cast(str, p.get("id")) for p in procedures if p.get("id")}
 
         for comp in structured_body.component:
             if not comp.section:
@@ -2358,7 +2367,9 @@ class DocumentConverter:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        self._store_procedure_metadata(temp_body, procedures)
+                        self._store_procedure_metadata(
+                            cast(StructuredBody, temp_body), procedures
+                        )
 
     def _process_interventions_section(
         self, structured_body: StructuredBody
@@ -2581,7 +2592,7 @@ class DocumentConverter:
             return
 
         # Create a map of encounter IDs to track which ones need metadata
-        encounter_ids_needing_metadata = {e.get("id") for e in encounters if e.get("id")}
+        encounter_ids_needing_metadata = {cast(str, e.get("id")) for e in encounters if e.get("id")}
 
         for comp in structured_body.component:
             if not comp.section:
@@ -2625,7 +2636,9 @@ class DocumentConverter:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        self._store_encounter_metadata(temp_body, encounters)
+                        self._store_encounter_metadata(
+                            cast(StructuredBody, temp_body), encounters
+                        )
 
     def _extract_encounter_diagnosis_conditions(
         self, structured_body: StructuredBody
@@ -2676,7 +2689,7 @@ class DocumentConverter:
                                 )
                                 condition = condition_converter.convert(obs)
                                 # Check for duplicates before adding (same observation might be in Problem section)
-                                condition_id = condition.get("id")
+                                condition_id = cast(str, condition.get("id"))
                                 if condition_id and not self.reference_registry.has_resource("Condition", condition_id):
                                     conditions.append(condition)
                                     self.reference_registry.register_resource(condition)
@@ -2691,7 +2704,9 @@ class DocumentConverter:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        nested_conditions = self._extract_encounter_diagnosis_conditions(temp_body)
+                        nested_conditions = self._extract_encounter_diagnosis_conditions(
+                            cast(StructuredBody, temp_body)
+                        )
                         conditions.extend(nested_conditions)
 
         return conditions
@@ -2746,7 +2761,7 @@ class DocumentConverter:
 
                                             # Deduplicate by checking both local registry and reference registry
                                             dedup_key = self._get_location_dedup_key(location)
-                                            location_id = location.get("id")
+                                            location_id = cast(str, location.get("id"))
 
                                             # Skip if already in reference registry (e.g., from header encounter)
                                             if location_id and self.reference_registry.has_resource("Location", location_id):
@@ -2773,7 +2788,7 @@ class DocumentConverter:
 
                                             # Deduplicate by checking both local registry and reference registry
                                             dedup_key = self._get_location_dedup_key(location)
-                                            location_id = location.get("id")
+                                            location_id = cast(str, location.get("id"))
 
                                             # Skip if already in reference registry (e.g., from header encounter)
                                             if location_id and self.reference_registry.has_resource("Location", location_id):
@@ -2789,7 +2804,9 @@ class DocumentConverter:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        nested_locations = self._extract_locations(temp_body)
+                        nested_locations = self._extract_locations(
+                            cast(StructuredBody, temp_body)
+                        )
                         for location in nested_locations:
                             dedup_key = self._get_location_dedup_key(location)
                             if dedup_key not in location_registry:
@@ -2813,15 +2830,16 @@ class DocumentConverter:
         """
         # Priority 1: Use NPI identifier
         if "identifier" in location:
-            for identifier in location["identifier"]:
-                if identifier.get("system") == "http://hl7.org/fhir/sid/us-npi":
-                    return f"npi:{identifier.get('value')}"
+            for id_item in cast(list[JSONValue], location["identifier"]):
+                id_dict = cast(dict[str, JSONValue], id_item)
+                if id_dict.get("system") == "http://hl7.org/fhir/sid/us-npi":
+                    return f"npi:{id_dict.get('value')}"
 
         # Priority 2: Use name + city combination
-        name = location.get("name", "")
+        name = cast(str, location.get("name", ""))
         city = ""
         if "address" in location:
-            city = location["address"].get("city", "")
+            city = cast(str, cast(dict[str, JSONValue], location["address"]).get("city", ""))
 
         if name and city:
             # Normalize to lowercase for case-insensitive deduplication
@@ -2848,8 +2866,8 @@ class DocumentConverter:
             True if encounters should be deduplicated, False otherwise
         """
         # Criterion 1: Exact ID match (case-insensitive)
-        header_id = header_encounter.get("id", "").lower()
-        body_id = body_encounter.get("id", "").lower()
+        header_id = cast(str, header_encounter.get("id", "")).lower()
+        body_id = cast(str, body_encounter.get("id", "")).lower()
         if header_id and body_id and header_id == body_id:
             return True
 
@@ -2859,16 +2877,18 @@ class DocumentConverter:
         body_dates = set()
 
         # Extract all dates from header encounter
-        if header_encounter.get("period", {}).get("start"):
-            header_dates.add(header_encounter["period"]["start"][:10])  # Extract YYYY-MM-DD
-        if header_encounter.get("period", {}).get("end"):
-            header_dates.add(header_encounter["period"]["end"][:10])
+        h_period = cast(dict[str, JSONValue], header_encounter.get("period", {}))
+        if h_period.get("start"):
+            header_dates.add(cast(str, h_period["start"])[:10])  # Extract YYYY-MM-DD
+        if h_period.get("end"):
+            header_dates.add(cast(str, h_period["end"])[:10])
 
         # Extract all dates from body encounter
-        if body_encounter.get("period", {}).get("start"):
-            body_dates.add(body_encounter["period"]["start"][:10])
-        if body_encounter.get("period", {}).get("end"):
-            body_dates.add(body_encounter["period"]["end"][:10])
+        b_period = cast(dict[str, JSONValue], body_encounter.get("period", {}))
+        if b_period.get("start"):
+            body_dates.add(cast(str, b_period["start"])[:10])
+        if b_period.get("end"):
+            body_dates.add(cast(str, b_period["end"])[:10])
 
         # Check if any dates overlap
         if header_dates & body_dates:  # Set intersection
@@ -2879,9 +2899,13 @@ class DocumentConverter:
 
         # Criterion 3: Identifier match
         header_identifiers = {
-            id.get("value") for id in header_encounter.get("identifier", [])
+            cast(str | None, cast(dict[str, JSONValue], id_val).get("value"))
+            for id_val in cast(list[JSONValue], header_encounter.get("identifier", []))
         }
-        body_identifiers = {id.get("value") for id in body_encounter.get("identifier", [])}
+        body_identifiers = {
+            cast(str | None, cast(dict[str, JSONValue], id_val).get("value"))
+            for id_val in cast(list[JSONValue], body_encounter.get("identifier", []))
+        }
 
         if header_identifiers & body_identifiers:  # Set intersection
             logger.debug(
@@ -2908,8 +2932,8 @@ class DocumentConverter:
         """
         # Preserve most complete period (prefer range over single date)
         # Header sometimes has fuller date range than body
-        header_period = header_encounter.get('period', {})
-        body_period = body_encounter.get('period', {})
+        header_period = cast(dict[str, JSONValue], header_encounter.get('period', {}))
+        body_period = cast(dict[str, JSONValue], body_encounter.get('period', {}))
 
         # If header has end date but body doesn't, use header's complete period
         if header_period.get('end') and not body_period.get('end'):
@@ -2922,39 +2946,44 @@ class DocumentConverter:
                 logger.debug(f"Using header period (full range): {header_period}")
 
         # Merge identifiers - include both header and body identifiers
-        header_ids = header_encounter.get("identifier", [])
-        body_ids = body_encounter.get("identifier", [])
+        header_ids = cast(list[JSONValue], header_encounter.get("identifier", []))
+        body_ids = cast(list[JSONValue], body_encounter.get("identifier", []))
 
         # Deduplicate identifiers by value
         # Skip identifiers without system (invalid per US Core)
-        id_values_seen = {id.get("value") for id in body_ids if id.get("system")}
-        for header_id in header_ids:
+        id_values_seen = {
+            cast(str | None, cast(dict[str, JSONValue], id_val).get("value"))
+            for id_val in body_ids
+            if cast(dict[str, JSONValue], id_val).get("system")
+        }
+        for header_id_val in header_ids:
+            header_id_obj = cast(dict[str, JSONValue], header_id_val)
             # Skip identifiers without system (US Core requirement)
-            if not header_id.get("system"):
+            if not header_id_obj.get("system"):
                 logger.warning(
-                    f"Skipping header identifier without system: {header_id.get('value')}"
+                    f"Skipping header identifier without system: {header_id_obj.get('value')}"
                 )
                 continue
-            if header_id.get("value") not in id_values_seen:
-                body_ids.append(header_id)
-                id_values_seen.add(header_id.get("value"))
+            if header_id_obj.get("value") not in id_values_seen:
+                body_ids.append(header_id_val)
+                id_values_seen.add(cast(str | None, header_id_obj.get("value")))
 
         if body_ids:
             body_encounter["identifier"] = body_ids
 
         # Merge participants - add header participants not in body
-        header_participants = header_encounter.get("participant", [])
-        body_participants = body_encounter.get("participant", [])
+        header_participants = cast(list[JSONValue], header_encounter.get("participant", []))
+        body_participants = cast(list[JSONValue], body_encounter.get("participant", []))
 
         # Track participant individual references to avoid duplicates
         body_participant_refs = {
-            p.get("individual", {}).get("reference")
+            cast(str | None, cast(dict[str, JSONValue], cast(dict[str, JSONValue], p).get("individual", {})).get("reference"))
             for p in body_participants
-            if p.get("individual", {}).get("reference")
+            if cast(dict[str, JSONValue], cast(dict[str, JSONValue], p).get("individual", {})).get("reference")
         }
 
         for header_participant in header_participants:
-            ref = header_participant.get("individual", {}).get("reference")
+            ref = cast(str | None, cast(dict[str, JSONValue], cast(dict[str, JSONValue], header_participant).get("individual", {})).get("reference"))
             if ref and ref not in body_participant_refs:
                 body_participants.append(header_participant)
                 body_participant_refs.add(ref)
@@ -3002,10 +3031,10 @@ class DocumentConverter:
             fhir_encounter["id"] = encounter_id
 
             # Also add as identifier
-            identifier = {"value": f"urn:uuid:{first_id.root}"}
+            id_entry: JSONObject = {"value": f"urn:uuid:{first_id.root}"}
             if first_id.extension:
-                identifier["value"] = f"{first_id.root}:{first_id.extension}"
-            fhir_encounter["identifier"] = [identifier]
+                id_entry["value"] = f"{first_id.root}:{first_id.extension}"
+            fhir_encounter["identifier"] = [id_entry]
 
         # Status: Default to "finished" for documented encounters
         # Header encounters in C-CDA documents are typically completed
@@ -3032,7 +3061,7 @@ class DocumentConverter:
                     if trans.code_system == "2.16.840.1.113883.5.4":  # V3 ActCode
                         class_code = trans.code
                         # Use standard display name from mapping if available
-                        standard_display = V3_ACTCODE_DISPLAY_NAMES.get(trans.code)
+                        standard_display = V3_ACTCODE_DISPLAY_NAMES.get(cast(str, trans.code))
                         class_display = standard_display or trans.display_name
                         break
 
@@ -3041,7 +3070,7 @@ class DocumentConverter:
             # Reference: docs/mapping/08-encounter.md lines 77-86
             if not class_code and encompassing_encounter.code.code_system == "2.16.840.1.113883.6.12":  # CPT
                 from ccda_to_fhir.constants import V3_ACTCODE_DISPLAY_NAMES, map_cpt_to_actcode
-                mapped_actcode = map_cpt_to_actcode(encompassing_encounter.code.code)
+                mapped_actcode = map_cpt_to_actcode(cast(str, encompassing_encounter.code.code))
                 if mapped_actcode:
                     class_code = mapped_actcode
                     # Use standard display name from mapping
@@ -3058,7 +3087,7 @@ class DocumentConverter:
 
             # Type: Main code goes to type
             if encompassing_encounter.code.code:
-                type_coding = {
+                type_coding: JSONObject = {
                     "code": encompassing_encounter.code.code,
                 }
                 if encompassing_encounter.code.code_system:
@@ -3069,11 +3098,10 @@ class DocumentConverter:
                 if encompassing_encounter.code.display_name:
                     type_coding["display"] = encompassing_encounter.code.display_name
 
-                fhir_encounter["type"] = [{
-                    "coding": [type_coding],
-                }]
+                type_entry: JSONObject = {"coding": [type_coding]}
+                fhir_encounter["type"] = [type_entry]
                 if encompassing_encounter.code.display_name:
-                    fhir_encounter["type"][0]["text"] = encompassing_encounter.code.display_name
+                    type_entry["text"] = encompassing_encounter.code.display_name
 
         # Period: Map from effectiveTime
         if encompassing_encounter.effective_time:
@@ -3108,7 +3136,7 @@ class DocumentConverter:
         # Discharge disposition
         if encompassing_encounter.discharge_disposition_code:
             if encompassing_encounter.discharge_disposition_code.code:
-                discharge_coding = {
+                discharge_coding: JSONObject = {
                     "code": encompassing_encounter.discharge_disposition_code.code,
                 }
                 if encompassing_encounter.discharge_disposition_code.code_system:
@@ -3180,7 +3208,7 @@ class DocumentConverter:
                 # This handles cases where IDs all have nullFlavor
                 person = assigned_entity.assigned_person
                 name_parts = []
-                if person.name:
+                if person and person.name:
                     names = person.name if isinstance(person.name, list) else [person.name]
                     for name in names:
                         if name.family:
@@ -3285,7 +3313,7 @@ class DocumentConverter:
                             self._temp_header_practitioners.append(practitioner)
 
                         # Only add participant reference if we have a person (practitioner)
-                        part_dict = {
+                        part_dict: dict[str, JSONValue] = {
                             "individual": {
                                 "reference": f"urn:uuid:{practitioner_id}"
                             }
@@ -3299,21 +3327,21 @@ class DocumentConverter:
                                 participant.type_code,
                                 participant.type_code  # Pass through if not in map
                             )
-                            part_dict["type"] = [{
+                            part_dict["type"] = cast(JSONValue, [{
                                 "coding": [{
                                     "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
                                     "code": mapped_code,
                                 }]
-                            }]
+                            }])
                         else:
                             # Default to PART (participant) if no type code specified
-                            part_dict["type"] = [{
+                            part_dict["type"] = cast(JSONValue, [{
                                 "coding": [{
                                     "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
                                     "code": "PART",
                                     "display": "participant",
                                 }]
-                            }]
+                            }])
                         participants.append(part_dict)
 
         if participants:
@@ -3379,7 +3407,7 @@ class DocumentConverter:
                     # Create Location resource if it doesn't already exist
                     if location_id and not self.reference_registry.has_resource("Location", location_id):
                         # Create a minimal Location resource
-                        location_resource = {
+                        location_resource: FHIRResourceDict = {
                             "resourceType": "Location",
                             "id": location_id,
                             "status": "active",
@@ -3391,14 +3419,14 @@ class DocumentConverter:
 
                         # Add address if available (from providerOrganization fallback)
                         if location_address:
-                            location_resource["address"] = location_address
+                            location_resource["address"] = cast(JSONValue, location_address)
 
                         # Add identifiers
                         if facility.id:
                             # Use encounter_converter to convert identifiers (it's already instantiated)
                             identifiers = self.encounter_converter.convert_identifiers(facility.id)
                             if identifiers:
-                                location_resource["identifier"] = identifiers
+                                location_resource["identifier"] = cast(JSONValue, identifiers)
 
                         # Add managing organization if available
                         if facility.service_provider_organization and facility.service_provider_organization.id:
@@ -3408,12 +3436,12 @@ class DocumentConverter:
                                 org_id_elem.root,
                                 org_id_elem.extension
                             )
-                            location_resource["managingOrganization"] = {
+                            location_resource["managingOrganization"] = cast(JSONValue, {
                                 "reference": f"urn:uuid:{org_id}"
-                            }
+                            })
 
                         # Register with reference registry
-                        self.reference_registry.register_resource(location_resource)
+                        self.reference_registry.register_resource(cast(FHIRResourceDict, location_resource))
 
                         # Store temporarily to add to bundle later
                         if not hasattr(self, '_temp_header_locations'):
@@ -3425,10 +3453,10 @@ class DocumentConverter:
                     if location_display:
                         location_dict["display"] = location_display
 
-                    fhir_encounter["location"] = [{
+                    fhir_encounter["location"] = cast(JSONValue, [{
                         "location": location_dict,
                         "status": "completed"  # Header encounters are completed
-                    }]
+                    }])
 
         # Patient reference (from recordTarget in document header)
         if not self.reference_registry:
@@ -3453,7 +3481,7 @@ class DocumentConverter:
             return
 
         # Create a map of note IDs to track which ones need metadata
-        note_ids_needing_metadata = {n.get("id") for n in notes if n.get("id")}
+        note_ids_needing_metadata = {cast(str | None, n.get("id")) for n in notes if n.get("id")}
 
         for comp in structured_body.component:
             if not comp.section:
@@ -3489,7 +3517,7 @@ class DocumentConverter:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        self._store_note_metadata(temp_body, notes)
+                        self._store_note_metadata(cast(StructuredBody, temp_body), notes)
 
     def _generate_note_id_from_identifier(self, identifier) -> str:
         """Generate a note ID matching NoteActivityConverter logic.
@@ -3588,7 +3616,7 @@ class DocumentConverter:
                     practitioner = self.practitioner_converter.convert(assigned_author)
 
                     # Validate and deduplicate based on ID
-                    practitioner_id = practitioner.get("id")
+                    practitioner_id = cast(str | None, practitioner.get("id"))
                     if self._validate_resource(practitioner):
                         if practitioner_id and practitioner_id not in seen_practitioners:
                             resources.append(practitioner)
@@ -3608,7 +3636,7 @@ class DocumentConverter:
                     )
 
                     # Validate and deduplicate based on ID
-                    org_id = organization.get("id")
+                    org_id = cast(str | None, organization.get("id"))
                     if self._validate_resource(organization):
                         # Check global registry to avoid duplicates across different extraction paths
                         if org_id and not self.reference_registry.has_resource("Organization", org_id):
@@ -3717,7 +3745,7 @@ class DocumentConverter:
                     if assigned.assigned_authoring_device:
                         try:
                             device = self.device_converter.convert(assigned)
-                            device_id = device.get("id")
+                            device_id = cast(str | None, device.get("id"))
 
                             if self._validate_resource(device):
                                 if device_id and device_id not in seen_devices:
@@ -3763,7 +3791,7 @@ class DocumentConverter:
                             organization = self.organization_converter.convert(
                                 assigned.represented_organization
                             )
-                            org_id = organization.get("id")
+                            org_id = cast(str | None, organization.get("id"))
 
                             if self._validate_resource(organization):
                                 if org_id and org_id not in seen_organizations:
@@ -3818,8 +3846,8 @@ class DocumentConverter:
 
         # Process each resource and create Provenance + missing author resources
         for resource in resources:
-            resource_type = resource.get("resourceType")
-            resource_id = resource.get("id")
+            resource_type = cast(str | None, resource.get("resourceType"))
+            resource_id = cast(str | None, resource.get("id"))
 
             if not resource_type or not resource_id:
                 continue
@@ -3957,7 +3985,7 @@ class DocumentConverter:
                                     "Cannot create RelatedPerson: patient_id is required. "
                                     "Patient must be processed before informants."
                                 )
-                            patient_id = self._patient_id
+                            patient_id = cast(str, self._patient_id)
 
                             from .converters.related_person import RelatedPersonConverter
                             related_person_converter = RelatedPersonConverter(patient_id=patient_id)

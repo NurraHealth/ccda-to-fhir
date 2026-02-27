@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, PQ
 from ccda_to_fhir.ccda.models.observation import Observation
@@ -21,7 +23,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 from ccda_to_fhir.utils.terminology import (
     get_display_for_code,
     get_display_for_condition_clinical_status,
@@ -181,9 +183,9 @@ class ConditionConverter(BaseConverter[Observation]):
             }
             if display:
                 coding["display"] = display
-            condition["clinicalStatus"] = {
+            condition["clinicalStatus"] = cast(JSONValue, {
                 "coding": [coding]
-            }
+            })
 
         # Handle negation: Check if this is a generic "no known problems" scenario
         # or a specific condition being refuted
@@ -215,9 +217,9 @@ class ConditionConverter(BaseConverter[Observation]):
                 }
                 if display:
                     coding["display"] = display
-                condition["verificationStatus"] = {
+                condition["verificationStatus"] = cast(JSONValue, {
                     "coding": [coding]
-                }
+                })
 
         # Default verificationStatus if not already set (US Core requirement)
         # Per US Core, verificationStatus is required (SHALL support)
@@ -233,18 +235,18 @@ class ConditionConverter(BaseConverter[Observation]):
             }
             if display:
                 coding["display"] = display
-            condition["verificationStatus"] = {
+            condition["verificationStatus"] = cast(JSONValue, {
                 "coding": [coding]
-            }
+            })
 
         # Category (from section code)
         categories = self._determine_categories(observation)
         if categories:
-            condition["category"] = categories
+            condition["category"] = cast(list[JSONValue], categories)
 
         # Code (diagnosis/problem) - only if not already set by negated concept code logic
         if "code" not in condition:
-            condition["code"] = self._convert_diagnosis_code(observation.value)
+            condition["code"] = self._convert_diagnosis_code(cast(CD | CE, observation.value))
 
         # Severity (from Severity Observation)
         severity = self._extract_severity(observation)
@@ -298,7 +300,7 @@ class ConditionConverter(BaseConverter[Observation]):
         if asserted_date:
             if "extension" not in condition:
                 condition["extension"] = []
-            condition["extension"].append({
+            cast(list[JSONValue], condition["extension"]).append({
                 "url": FHIRSystems.CONDITION_ASSERTED_DATE,
                 "valueDateTime": asserted_date
             })
@@ -310,7 +312,7 @@ class ConditionConverter(BaseConverter[Observation]):
         # Find latest author by time
         authors_with_time = [a for a in all_authors_info if a.time]
         if authors_with_time:
-            latest_author = max(authors_with_time, key=lambda a: a.time)
+            latest_author = max(authors_with_time, key=lambda a: a.time or "")
             if latest_author.practitioner_id:
                 condition["recorder"] = {
                     "reference": f"urn:uuid:{latest_author.practitioner_id}"
@@ -324,12 +326,12 @@ class ConditionConverter(BaseConverter[Observation]):
         if observation.entry_relationship:
             evidence = self._extract_evidence(observation)
             if evidence:
-                condition["evidence"] = evidence
+                condition["evidence"] = cast(list[JSONValue], evidence)
 
         # Notes (from text or comment activities)
         notes = self._extract_notes(observation)
         if notes:
-            condition["note"] = notes
+            condition["note"] = cast(list[JSONValue], notes)
 
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=observation, section=self.section)
@@ -447,7 +449,7 @@ class ConditionConverter(BaseConverter[Observation]):
             FHIR clinical status code
         """
         return SNOMED_PROBLEM_STATUS_TO_FHIR.get(
-            snomed_code, FHIRCodes.ConditionClinical.ACTIVE
+            snomed_code or "", FHIRCodes.ConditionClinical.ACTIVE
         )
 
     def _map_concern_status_to_clinical_status(
@@ -616,8 +618,8 @@ class ConditionConverter(BaseConverter[Observation]):
         Returns:
             Tuple of (onset_dict, abatement_dict)
         """
-        onset = None
-        abatement = None
+        onset: JSONObject | None = None
+        abatement: JSONObject | None = None
 
         if not observation.effective_time:
             return onset, abatement
@@ -697,13 +699,13 @@ class ConditionConverter(BaseConverter[Observation]):
             elif eff_time.high.null_flavor:
                 # Unknown abatement date - use data-absent-reason extension
                 # Per C-CDA on FHIR IG ConceptMap CF-NullFlavorDataAbsentReason
-                abatement = {
+                abatement = cast(JSONObject, {
                     "_abatementDateTime": {
                         "extension": [
                             self.create_data_absent_reason_extension(eff_time.high.null_flavor)
                         ]
                     }
-                }
+                })
 
         return onset, abatement
 

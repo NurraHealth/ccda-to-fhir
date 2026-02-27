@@ -12,11 +12,12 @@ Reference:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
+from ccda_to_fhir.ccda.models.datatypes import CD, II
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 from .organization import OrganizationConverter
@@ -180,7 +181,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         # Map identifiers
         identifiers = self._convert_identifiers(organizer.id)
         if identifiers:
-            careteam["identifier"] = identifiers
+            careteam["identifier"] = cast(list[JSONValue], identifiers)
 
         # Map status (required, defaults to active)
         careteam["status"] = self._map_status(organizer.status_code)
@@ -197,13 +198,13 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         # Map category from team type observations
         categories = self._extract_categories(organizer)
         if categories:
-            careteam["category"] = categories
+            careteam["category"] = cast(list[JSONValue], categories)
 
         # Map participants from Care Team Member Acts (required, at least one)
         participants = self._extract_participants(organizer)
         if not participants:
             raise ValueError("CareTeam requires at least one participant (US Core requirement)")
-        careteam["participant"] = participants
+        careteam["participant"] = cast(list[JSONValue], participants)
 
         # Extract managing organization from first member's organization
         managing_org_id = self._extract_managing_organization(organizer)
@@ -487,7 +488,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     continue
 
             # Extract value (team type code)
-            if observation.value:
+            if observation.value and isinstance(observation.value, CD):
                 type_code = observation.value
                 category = self.create_codeable_concept(
                     code=type_code.code,
@@ -563,8 +564,9 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     # Try to convert it
                     try:
                         organization = self.organization_converter.convert(org)
-                        organization_id = organization.get("id", f"org-{org_oid.replace('.', '-')}")
-                        self.organization_registry[org_oid] = organization_id
+                        org_oid_str = cast(str, org_oid)
+                        organization_id = cast(str, organization.get("id", f"org-{org_oid_str.replace('.', '-')}"))
+                        self.organization_registry[org_oid_str] = organization_id
                         return organization_id
                     except Exception:
                         # Organization conversion failed, continue to next member
@@ -673,7 +675,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return participants
 
-    def _identify_team_lead(self, organizer: Organizer) -> object | None:
+    def _identify_team_lead(self, organizer: Organizer) -> II | None:
         """Identify team lead from participant with typeCode='PPRF'.
 
         Args:
@@ -770,10 +772,10 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             # Create Practitioner resource
             if assigned_entity.assigned_person:
                 practitioner = self.practitioner_converter.convert(assigned_entity)
-                practitioner_id = practitioner.get("id", f"practitioner-{npi}")
+                practitioner_id = cast(str, practitioner.get("id", f"practitioner-{npi}"))
                 self.practitioner_registry[npi] = practitioner_id
                 # Store the created resource
-                self.created_practitioners[practitioner_id] = practitioner
+                self.created_practitioners[cast(str, practitioner_id)] = practitioner
             else:
                 # No person, can't create practitioner
                 return None
@@ -789,10 +791,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 else:
                     try:
                         organization = self.organization_converter.convert(org)
-                        organization_id = organization.get("id", f"org-{org_oid.replace('.', '-')}")
-                        self.organization_registry[org_oid] = organization_id
+                        org_oid_str = cast(str, org_oid)
+                        organization_id = cast(str, organization.get("id", f"org-{org_oid_str.replace('.', '-')}"))
+                        self.organization_registry[org_oid_str] = organization_id
                         # Store the created resource
-                        self.created_organizations[organization_id] = organization
+                        self.created_organizations[cast(str, organization_id)] = organization
                     except Exception:
                         # Organization conversion failed, continue without it
                         pass
@@ -806,13 +809,13 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             try:
                 practitioner_role = self.practitioner_role_converter.convert(
                     assigned_entity,
-                    practitioner_id=practitioner_id,
-                    organization_id=organization_id,
+                    practitioner_id=cast(str, practitioner_id),
+                    organization_id=cast(str | None, organization_id),
                 )
-                role_id = practitioner_role.get("id", f"role-{practitioner_id}-{organization_id}")
+                role_id = cast(str, practitioner_role.get("id", f"role-{practitioner_id}-{organization_id}"))
                 self.practitioner_role_registry[role_key] = role_id
                 # Store the created resource
-                self.created_practitioner_roles[role_id] = practitioner_role
+                self.created_practitioner_roles[cast(str, role_id)] = practitioner_role
             except Exception:
                 # PractitionerRole conversion failed, fallback to Practitioner
                 return {"reference": f"urn:uuid:{practitioner_id}"}
@@ -833,8 +836,10 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         team_type = "Care Team"
         if categories and len(categories) > 0:
             category = categories[0]
-            if "coding" in category and len(category["coding"]) > 0:
-                display = category["coding"][0].get("display", "")
+            coding_list = cast(list[JSONValue], category.get("coding", []))
+            if coding_list and len(coding_list) > 0:
+                first_coding = cast(JSONObject, coding_list[0])
+                display = cast(str, first_coding.get("display", ""))
                 if "longitudinal" in display.lower() or "coordination" in display.lower():
                     team_type = "Primary Care Team"
                 elif "condition" in display.lower():
@@ -852,7 +857,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return f"{team_type} for {patient_name}"
 
-    def _generate_narrative(
+    def _generate_narrative(  # type: ignore[override]
         self, organizer: Organizer, categories: list[JSONObject], participants: list[JSONObject]
     ) -> JSONObject | None:
         """Generate narrative text for the care team.
@@ -891,9 +896,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             if "role" in participant and participant["role"]:
                 role_data = participant["role"]
                 if isinstance(role_data, list) and len(role_data) > 0:
-                    role_data = role_data[0]
-                if "coding" in role_data and len(role_data["coding"]) > 0:
-                    role_display = role_data["coding"][0].get("display", "Team Member")
+                    role_data = cast(JSONObject, role_data[0])
+                if isinstance(role_data, dict) and "coding" in role_data:
+                    coding_list = cast(list[JSONValue], role_data["coding"])
+                    if len(coding_list) > 0:
+                        role_display = cast(str, cast(JSONObject, coding_list[0]).get("display", "Team Member"))
 
             participant_lines.append(f"<li>{role_display}</li>")
 

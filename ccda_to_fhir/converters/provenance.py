@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ccda_to_fhir.constants import (
     CCDA_ROLE_TO_PROVENANCE_AGENT,
@@ -31,7 +31,7 @@ class ProvenanceConverter(BaseConverter[None]):
     Reference: http://hl7.org/fhir/R4/provenance.html
     """
 
-    def convert(
+    def convert(  # type: ignore[override]
         self,
         target_resource: FHIRResourceDict,
         authors: list[AuthorInfo],
@@ -58,8 +58,8 @@ class ProvenanceConverter(BaseConverter[None]):
         # Generate ID from target resource using centralized generator
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        resource_type = target_resource["resourceType"]
-        resource_id = target_resource["id"]
+        resource_type = cast(str, target_resource["resourceType"])
+        resource_id = cast(str, target_resource["id"])
         # Use target resource type and ID as cache key for consistency
         provenance["id"] = generate_id_from_identifiers(
             "Provenance",

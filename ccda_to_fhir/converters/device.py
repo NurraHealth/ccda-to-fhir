@@ -23,10 +23,10 @@ Reference:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ccda_to_fhir.constants import FHIRCodes, FHIRSystems
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 from ccda_to_fhir.utils.udi_parser import parse_udi
 
 from .base import BaseConverter
@@ -68,13 +68,13 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
                 "Cannot generate Device ID: no identifiers provided. "
                 "C-CDA AssignedAuthor must have id element."
             )
-        device["id"] = self._generate_device_id(assigned.id)
+        device["id"] = self._generate_device_id_from_list(assigned.id)
 
         # Map identifiers
         if assigned.id:
             identifiers = self.convert_identifiers(assigned.id)
             if identifiers:
-                device["identifier"] = identifiers
+                device["identifier"] = cast(list[JSONValue], identifiers)
 
         # Map device names (manufacturer and software)
         if assigned.assigned_authoring_device:
@@ -82,7 +82,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
                 assigned.assigned_authoring_device.manufacturer_model_name,
                 assigned.assigned_authoring_device.software_name
             )
-            device["deviceName"] = device_names
+            device["deviceName"] = cast(list[JSONValue], device_names)
 
             # Add type for EHR systems (SNOMED CT 706689003)
             # Per task requirements, use SNOMED CT code 706689003 for "Electronic health record"
@@ -102,7 +102,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
                 assigned.assigned_authoring_device.software_name
             )
             if version:
-                device["version"] = version
+                device["version"] = cast(list[JSONValue], version)
 
         # Map owner organization from representedOrganization (if available)
         if self.reference_registry:
@@ -112,7 +112,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
 
         return device
 
-    def _generate_device_id(self, identifiers: list[II]) -> str:
+    def _generate_device_id_from_list(self, identifiers: list[II]) -> str:
         """Generate FHIR Device ID using cached UUID v4 from C-CDA identifiers.
 
         Args:
@@ -240,13 +240,13 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
                 "Cannot generate Device ID: no identifiers provided. "
                 "C-CDA ParticipantRole (Product Instance) must have id element."
             )
-        device["id"] = self._generate_device_id(participant_role.id)
+        device["id"] = self._generate_device_id_from_list(participant_role.id)
 
         # Map identifiers
         if participant_role.id:
             identifiers = self.convert_identifiers(participant_role.id)
             if identifiers:
-                device["identifier"] = identifiers
+                device["identifier"] = cast(list[JSONValue], identifiers)
 
         # Parse UDI if present
         udi_info = self._extract_udi_info(participant_role.id)
@@ -283,7 +283,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         if participant_role.playing_device:
             device_names = self._convert_product_instance_names(participant_role.playing_device)
             if device_names:
-                device["deviceName"] = device_names
+                device["deviceName"] = cast(list[JSONValue], device_names)
 
             # Map manufacturer model name to modelNumber
             if participant_role.playing_device.manufacturer_model_name:
@@ -467,10 +467,10 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             return None
 
         # Generate organization ID using same method as OrganizationConverter
-        org_id = self._generate_organization_id(scoping_entity.id)
+        org_id = self._generate_organization_id_from_list(scoping_entity.id)
 
         # Check if Organization resource exists in registry
-        if not self.reference_registry.has_resource("Organization", org_id):
+        if not self.reference_registry or not self.reference_registry.has_resource("Organization", org_id):
             return None
 
         return {"reference": f"urn:uuid:{org_id}"}
@@ -498,15 +498,15 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             return None
 
         # Generate organization ID using same method as OrganizationConverter
-        org_id = self._generate_organization_id(represented_org.id)
+        org_id = self._generate_organization_id_from_list(represented_org.id)
 
         # Check if Organization resource exists in registry
-        if not self.reference_registry.has_resource("Organization", org_id):
+        if not self.reference_registry or not self.reference_registry.has_resource("Organization", org_id):
             return None
 
         return {"reference": f"urn:uuid:{org_id}"}
 
-    def _generate_organization_id(self, identifiers: list[II]) -> str:
+    def _generate_organization_id_from_list(self, identifiers: list[II]) -> str:
         """Generate FHIR Organization ID using cached UUID v4 from C-CDA identifiers.
 
         Uses the same ID generation method as OrganizationConverter to ensure

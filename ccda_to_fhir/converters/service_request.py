@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
@@ -168,7 +170,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if procedure.performer:
             performers = self.extract_performer_references(procedure.performer)
             if performers:
-                fhir_service_request["performer"] = performers
+                fhir_service_request["performer"] = cast(list[JSONValue], performers)
 
         # PerformerType - from performer/functionCode
         if procedure.performer:
@@ -212,7 +214,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         # Notes
         notes = self._extract_notes(procedure)
         if notes:
-            fhir_service_request["note"] = notes
+            fhir_service_request["note"] = cast(list[JSONValue], notes)
 
         # Narrative
         narrative = self._generate_narrative(entry=procedure, section=section)
@@ -394,7 +396,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         Returns:
             FHIR CodeableConcept
         """
-        return self.convert_code_to_codeable_concept(code)
+        return self.convert_code_to_codeable_concept(code) or {}
 
     def _convert_occurrence(self, effective_time: IVL_TS | TS | str) -> JSONObject | str | None:
         """Convert C-CDA effectiveTime to FHIR occurrence[x].

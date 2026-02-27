@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.datatypes import CD
 from ccda_to_fhir.constants import (
     DOCUMENT_REFERENCE_STATUS_TO_FHIR,
     FHIRCodes,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
 
 from .base import BaseConverter
 
@@ -67,17 +69,17 @@ class NoteActivityConverter(BaseConverter[Act]):
         # US Core requires DocumentReference.type (1..1)
         # Use default if not set from note_act.code
         if "type" not in doc_ref:
-            doc_ref["type"] = {
+            doc_ref["type"] = cast(JSONValue, {
                 "coding": [{
                     "system": "http://loinc.org",
                     "code": "34133-9",
                     "display": "Summarization of Episode Note"
                 }],
                 "text": "Clinical Note"
-            }
+            })
 
         # Category - fixed to "clinical-note" for Note Activities
-        doc_ref["category"] = [
+        doc_ref["category"] = cast(JSONValue, [
             {
                 "coding": [
                     {
@@ -87,7 +89,7 @@ class NoteActivityConverter(BaseConverter[Act]):
                     }
                 ]
             }
-        ]
+        ])
 
         # Subject (patient reference) - placeholder that will be resolved later
         # Patient reference (from recordTarget in document header)
@@ -110,22 +112,22 @@ class NoteActivityConverter(BaseConverter[Act]):
         if note_act.author:
             authors = self._convert_author_references(note_act.author)
             if authors:
-                doc_ref["author"] = authors
+                doc_ref["author"] = cast(JSONValue, authors)
 
         # Content (required) - from text element
         # Note: Can have multiple content items (inline + reference)
         if note_act.text:
             content_list = self._create_content_list(note_act.text, section)
             if content_list:
-                doc_ref["content"] = content_list
+                doc_ref["content"] = cast(JSONValue, content_list)
             else:
                 # Content is required but text has no extractable data
                 # Use data-absent-reason extension per FHIR R4 spec
-                doc_ref["content"] = self._create_missing_content()
+                doc_ref["content"] = cast(JSONValue, self._create_missing_content())
         else:
             # Content is required but no text element present
             # Use data-absent-reason extension per FHIR R4 spec
-            doc_ref["content"] = self._create_missing_content()
+            doc_ref["content"] = cast(JSONValue, self._create_missing_content())
 
         # Context - encounter and period
         context = self._create_context(note_act)
@@ -136,7 +138,7 @@ class NoteActivityConverter(BaseConverter[Act]):
         if note_act.reference:
             relates_to = self._convert_relates_to(note_act.reference)
             if relates_to:
-                doc_ref["relatesTo"] = relates_to
+                doc_ref["relatesTo"] = cast(JSONValue, relates_to)
 
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=note_act, section=section)
@@ -222,6 +224,8 @@ class NoteActivityConverter(BaseConverter[Act]):
             "coding": [],
         }
 
+        coding_list = cast(list[JSONValue], type_concept["coding"])
+
         # Add primary code
         if code.code:
             primary_coding = self._create_coding(
@@ -230,7 +234,7 @@ class NoteActivityConverter(BaseConverter[Act]):
                 display=code.display_name,
             )
             if primary_coding:
-                type_concept["coding"].append(primary_coding)
+                coding_list.append(primary_coding)
 
         # Add translation codes
         if code.translation:
@@ -241,7 +245,7 @@ class NoteActivityConverter(BaseConverter[Act]):
                     display=trans.display_name,
                 )
                 if trans_coding:
-                    type_concept["coding"].append(trans_coding)
+                    coding_list.append(trans_coding)
 
         # Add text from display name
         if code.display_name:
@@ -305,7 +309,7 @@ class NoteActivityConverter(BaseConverter[Act]):
 
         return author_refs
 
-    def _generate_practitioner_id(self, identifier) -> str:
+    def _generate_practitioner_id(self, identifier) -> str:  # type: ignore[override]
         """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifier.
 
         Args:
@@ -392,8 +396,8 @@ class NoteActivityConverter(BaseConverter[Act]):
         if not text:
             return None
 
-        content: JSONObject = {"attachment": {}}
-        attachment = content["attachment"]
+        attachment: JSONObject = {}
+        content: JSONObject = {"attachment": attachment}
 
         # Content type from mediaType attribute
         if text.media_type:
@@ -442,8 +446,8 @@ class NoteActivityConverter(BaseConverter[Act]):
         if not resolved_text:
             return None
 
-        content: JSONObject = {"attachment": {}}
-        attachment = content["attachment"]
+        attachment: JSONObject = {}
+        content: JSONObject = {"attachment": attachment}
 
         # Determine content type based on markup presence
         if "<" in resolved_text and ">" in resolved_text:
@@ -575,8 +579,8 @@ class NoteActivityConverter(BaseConverter[Act]):
                         first_id = encounter.id[0]
                         encounter_id = self._generate_encounter_id(first_id)
                         if "encounter" not in context:
-                            context["encounter"] = []
-                        context["encounter"].append(
+                            context["encounter"] = cast(JSONValue, [])
+                        cast(list[JSONValue], context["encounter"]).append(
                             {"reference": f"urn:uuid:{encounter_id}"}
                         )
 
