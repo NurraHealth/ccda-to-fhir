@@ -21,23 +21,12 @@ from .datatypes import (
     CS,
     ED,
     EIVL_TS,
-    EN,
     II,
-    INT,
     IVL_INT,
-    IVL_PQ,
     IVL_TS,
-    MO,
-    ON,
-    PIVL_TS,
-    PN,
+    ObservationValueType,
     PQ,
-    REAL,
-    RTO,
-    ST,
     TEL,
-    TN,
-    TS,
     CDAModel,
 )
 from .entry_relationship import EntryRelationship
@@ -66,34 +55,8 @@ class ObservationRange(CDAModel):
     mood_code: str | None = Field(default="EVN.CRT", alias="moodCode")
     code: CE | None = None
     text: ED | None = None
-    # Value can be various types per HL7 V3 spec
-    value: (
-        CD
-        | CE
-        | CS
-        | ST
-        | ED
-        | BL
-        | INT
-        | REAL
-        | PQ
-        | MO
-        | IVL_PQ
-        | IVL_INT
-        | IVL_TS
-        | TS
-        | PIVL_TS
-        | EIVL_TS
-        | RTO
-        | II
-        | TEL
-        | AD
-        | EN
-        | PN
-        | TN
-        | ON
-        | None
-    ) = None
+    # Value can be various types per HL7 V3 spec (xsi:type determines actual type)
+    value: ObservationValueType | None = None
     interpretation_code: CE | None = Field(default=None, alias="interpretationCode")
 
 
@@ -164,33 +127,7 @@ class Observation(CDAModel):
     # - TS/IVL_TS (timestamps and intervals)
     # - etc.
     # The xsi:type attribute in XML determines the actual type
-    value: (
-        CD
-        | CE
-        | CS
-        | ST
-        | ED
-        | BL
-        | INT
-        | REAL
-        | PQ
-        | MO
-        | IVL_PQ
-        | IVL_INT
-        | IVL_TS
-        | TS
-        | PIVL_TS
-        | EIVL_TS
-        | RTO
-        | II
-        | TEL
-        | AD
-        | EN
-        | PN
-        | TN
-        | ON
-        | None
-    ) = None
+    value: ObservationValueType | None = None
 
     # Interpretation code (e.g., H for high, L for low, N for normal)
     interpretation_code: list[CE] | None = Field(default=None, alias="interpretationCode")

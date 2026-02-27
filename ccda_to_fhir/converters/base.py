@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
 from ccda_to_fhir.constants import FHIRSystems
@@ -1170,7 +1171,6 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             # Look for RSON (reason) relationships
             type_code = entry_rel.type_code
             # Handle Enum (has .value) vs plain string
-            from enum import Enum
             if isinstance(type_code, Enum):
                 type_code = type_code.value
 
@@ -1238,11 +1238,14 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         values = obs.value if isinstance(obs.value, list) else [obs.value]
 
         for value in values:
-            if value.code:
+            # Use getattr since value can be various types (CD, CE, PQ, ST, etc.)
+            # and not all have code/code_system/display_name attributes
+            code = getattr(value, "code", None)
+            if code:
                 codeable = self.create_codeable_concept(
-                    code=value.code,
-                    code_system=value.code_system,
-                    display_name=value.display_name,
+                    code=code,
+                    code_system=getattr(value, "code_system", None),
+                    display_name=getattr(value, "display_name", None),
                 )
                 if codeable:
                     codes.append(codeable)

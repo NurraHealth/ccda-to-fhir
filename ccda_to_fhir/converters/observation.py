@@ -950,10 +950,6 @@ class ObservationConverter(BaseConverter[Observation]):
         if isinstance(eff_time, TS) and eff_time.value:
             return self.convert_date(eff_time.value)
 
-        # Fallback: check for value attribute (handles both TS and IVL_TS with value)
-        if eff_time.value:
-            return self.convert_date(eff_time.value)
-
         return None
 
     def _extract_organizer_effective_time(self, organizer: Organizer) -> str | None:
@@ -1388,7 +1384,7 @@ class ObservationConverter(BaseConverter[Observation]):
                         }
 
                         # Extract value (PQ type in C-CDA)
-                        if rel.observation.value and rel.observation.value.value is not None:
+                        if isinstance(rel.observation.value, PQ) and rel.observation.value.value is not None:
                             value_quantity: JSONObject = {
                                 "value": float(rel.observation.value.value)
                             }

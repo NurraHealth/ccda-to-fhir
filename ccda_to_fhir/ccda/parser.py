@@ -298,7 +298,6 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
 
         # 6. Populate tail_text for child elements (AFTER model creation)
         # This preserves mixed content order by capturing text after each element
-        from pydantic import BaseModel
         for field_name in model_fields:
             field_value = getattr(instance, field_name, None)
             if field_value is None:
