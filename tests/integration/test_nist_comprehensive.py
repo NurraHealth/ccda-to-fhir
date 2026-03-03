@@ -703,42 +703,6 @@ class TestNISTComprehensive:
         assert addr["state"] == "OR"
         assert addr["postalCode"] == "97266"
 
-    def test_document_reference_exact_values(self, nist_bundle):
-        """Validate DocumentReference has EXACT values."""
-        docrefs = [e.resource for e in nist_bundle.entry
-                  if e.resource.get_resource_type() == "DocumentReference"]
-
-        assert len(docrefs) >= 1, "Must have DocumentReference resource"
-
-        docref = docrefs[0].dict() if hasattr(docrefs[0], 'dict') else docrefs[0].model_dump()
-
-        # Exact status
-        assert docref["status"] == "current"
-
-        # Exact type - LOINC code for summary note
-        assert "type" in docref
-        assert "coding" in docref["type"]
-        loinc_coding = next((c for c in docref["type"]["coding"]
-                            if c.get("system") == "http://loinc.org"), None)
-        assert loinc_coding is not None
-        # NIST uses LOINC 34133-9 for Summarization of Episode Note
-        assert loinc_coding["code"] in ["34133-9", "34109-9"]  # Either is valid
-
-        # Exact category
-        assert "category" in docref
-        assert len(docref["category"]) >= 1
-        cat_coding = docref["category"][0]["coding"][0]
-        assert cat_coding["code"] == "clinical-note"
-        assert cat_coding["display"] == "Clinical Note"
-
-        # Has content attachment
-        assert "content" in docref
-        assert len(docref["content"]) >= 1
-        att = docref["content"][0]["attachment"]
-        assert att["contentType"] == "text/xml"
-        assert "data" not in att  # No inline base64 by default
-        assert "size" in att
-
     def test_related_person_exact_values(self, nist_bundle):
         """Validate RelatedPerson has EXACT values."""
         related_persons = [e.resource for e in nist_bundle.entry

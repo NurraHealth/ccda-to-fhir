@@ -11,7 +11,6 @@ from .composition import CompositionConverter
 from .condition import ConditionConverter, convert_problem_concern_act
 from .device import DeviceConverter
 from .diagnostic_report import DiagnosticReportConverter
-from .document_reference import DocumentReferenceConverter
 from .encounter import EncounterConverter
 from .immunization import ImmunizationConverter
 from .location import LocationConverter
@@ -43,7 +42,6 @@ __all__ = [
     "ObservationConverter",
     "DeviceConverter",
     "DiagnosticReportConverter",
-    "DocumentReferenceConverter",
     "CompositionConverter",
     "ProcedureConverter",
     "ServiceRequestConverter",

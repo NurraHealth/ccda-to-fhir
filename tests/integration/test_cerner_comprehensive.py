@@ -551,50 +551,6 @@ class TestCernerComprehensive:
         assert model is not None
         assert model["name"] == "Millennium Clinical Document Generator"
 
-    def test_document_reference_exact_values(self, cerner_bundle):
-        """Validate DocumentReference has EXACT values."""
-        docrefs = [e.resource for e in cerner_bundle.entry
-                  if e.resource.get_resource_type() == "DocumentReference"]
-
-        assert len(docrefs) >= 1, "Must have DocumentReference resource"
-
-        docref = docrefs[0].dict() if hasattr(docrefs[0], 'dict') else docrefs[0].model_dump()
-
-        # Exact status
-        assert docref["status"] == "current"
-
-        # Exact type - LOINC 34133-9
-        assert "type" in docref
-        assert "coding" in docref["type"]
-        loinc_coding = next((c for c in docref["type"]["coding"]
-                            if c.get("system") == "http://loinc.org"), None)
-        assert loinc_coding is not None
-        assert loinc_coding["code"] == "34133-9"
-        assert loinc_coding["display"] == "Summarization of episode note"
-        assert docref["type"]["text"] == "Summarization of episode note"
-
-        # Exact category
-        assert "category" in docref
-        assert len(docref["category"]) >= 1
-        cat_coding = docref["category"][0]["coding"][0]
-        assert cat_coding["code"] == "clinical-note"
-        assert cat_coding["display"] == "Clinical Note"
-
-        # Exact masterIdentifier
-        assert "masterIdentifier" in docref
-        assert docref["masterIdentifier"]["system"] == "urn:oid:2.16.840.1.113883.1.13.99999.999362"
-        assert docref["masterIdentifier"]["value"] == "280004"
-
-        # Exact content attachment
-        assert "content" in docref
-        assert len(docref["content"]) >= 1
-        att = docref["content"][0]["attachment"]
-        assert att["contentType"] == "text/xml"
-        assert att["title"] == "Summarization of episode note"
-        assert "creation" in att
-        assert "data" not in att  # No inline base64 by default
-        assert att["size"] == 94270
-
     def test_location_exact_values(self, cerner_bundle):
         """Validate Location has EXACT values."""
         locations = [e.resource for e in cerner_bundle.entry

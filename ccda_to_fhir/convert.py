@@ -53,7 +53,6 @@ from .converters.composition import CompositionConverter
 from .converters.condition import ConditionConverter, convert_problem_concern_act
 from .converters.device import DeviceConverter
 from .converters.diagnostic_report import DiagnosticReportConverter
-from .converters.document_reference import DocumentReferenceConverter
 from .converters.encounter import EncounterConverter
 from .converters.goal import GoalConverter
 from .converters.immunization import convert_immunization_activity
@@ -234,7 +233,6 @@ class DocumentConverter:
     def __init__(
         self,
         code_system_mapper: CodeSystemMapper | None = None,
-        original_xml: str | bytes | None = None,
         enable_validation: bool = False,
         strict_validation: bool = False,
     ):
@@ -242,12 +240,10 @@ class DocumentConverter:
 
         Args:
             code_system_mapper: Optional code system mapper
-            original_xml: Optional original C-CDA XML for DocumentReference metadata
             enable_validation: If True, validate FHIR resources during conversion
             strict_validation: If True, raise exceptions on validation failures
         """
         self.code_system_mapper = code_system_mapper or CodeSystemMapper()
-        self.original_xml = original_xml
 
         # Reference registry for tracking and validating resource references
         self.reference_registry = ReferenceRegistry()
@@ -279,11 +275,6 @@ class DocumentConverter:
         # Initialize individual resource converters
         self.patient_converter = PatientConverter(
             code_system_mapper=self.code_system_mapper
-        )
-        self.document_reference_converter = DocumentReferenceConverter(
-            code_system_mapper=self.code_system_mapper,
-            original_xml=original_xml,
-            reference_registry=self.reference_registry,
         )
         self.observation_converter = ObservationConverter(
             code_system_mapper=self.code_system_mapper,
@@ -899,34 +890,6 @@ class DocumentConverter:
                                     f"Error converting documentationOf performer practitioner: {e}",
                                     exc_info=True
                                 )
-
-        # Convert DocumentReference (document metadata)
-        try:
-            doc_reference = self.document_reference_converter.convert(ccda_doc)
-
-            # Validate DocumentReference
-            if self._validate_resource(doc_reference):
-                resources.append(doc_reference)
-                self.reference_registry.register_resource(doc_reference)
-            else:
-                logger.warning(
-                    "DocumentReference failed validation, skipping",
-                    resource_id=doc_reference.get("id")
-                )
-        except CCDAConversionError as e:
-            # Expected conversion errors - log and continue
-            logger.error(
-                f"Error converting document reference: {e}",
-                exc_info=True,
-                extra={"error_type": type(e).__name__}
-            )
-        except (AttributeError, KeyError, TypeError) as e:
-            # Unexpected structural errors
-            logger.warning(
-                f"Unexpected error in document reference conversion: {e}",
-                exc_info=True,
-                extra={"error_type": type(e).__name__}
-            )
 
         # Convert section-based resources and build section→resource mapping
         if ccda_doc.component and ccda_doc.component.structured_body:
@@ -3991,14 +3954,12 @@ def convert_document(ccda_input: str | ClinicalDocument) -> ConversionResult:
     Raises:
         Exception: If parsing or conversion fails
     """
-    # Parse if needed and keep original XML for DocumentReference metadata
-    original_xml = None
+    # Parse if needed
     if isinstance(ccda_input, str):
-        original_xml = ccda_input
         ccda_doc = parse_ccda(ccda_input)
     else:
         ccda_doc = ccda_input
 
     # Convert using DocumentConverter
-    converter = DocumentConverter(original_xml=original_xml)
+    converter = DocumentConverter()
     return converter.convert(ccda_doc)
