@@ -644,7 +644,7 @@ class TestAthenaComprehensive:
         assert att["contentType"] == "text/xml"
         assert att["title"] == "Summarization of Episode Note"
         assert "creation" in att
-        assert "data" in att  # Has base64 data
+        assert "data" not in att  # No inline base64 by default
         assert att["size"] == 315345
 
     def test_provenance_exact_values(self, athena_bundle):

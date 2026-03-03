@@ -234,7 +234,7 @@ class DocumentConverter:
     def __init__(
         self,
         code_system_mapper: CodeSystemMapper | None = None,
-                original_xml: str | bytes | None = None,
+        original_xml: str | bytes | None = None,
         enable_validation: bool = False,
         strict_validation: bool = False,
     ):
@@ -242,7 +242,7 @@ class DocumentConverter:
 
         Args:
             code_system_mapper: Optional code system mapper
-            original_xml: Optional original C-CDA XML for DocumentReference content
+            original_xml: Optional original C-CDA XML for DocumentReference metadata
             enable_validation: If True, validate FHIR resources during conversion
             strict_validation: If True, raise exceptions on validation failures
         """
@@ -3991,7 +3991,7 @@ def convert_document(ccda_input: str | ClinicalDocument) -> ConversionResult:
     Raises:
         Exception: If parsing or conversion fails
     """
-    # Parse if needed and keep original XML for DocumentReference
+    # Parse if needed and keep original XML for DocumentReference metadata
     original_xml = None
     if isinstance(ccda_input, str):
         original_xml = ccda_input

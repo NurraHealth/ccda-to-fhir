@@ -679,7 +679,7 @@ class TestEpicComprehensive:
         assert att["contentType"] == "text/xml"
         assert att["title"] == "Summarization of Episode Note"
         assert "creation" in att
-        assert "data" in att  # Has base64 data
+        assert "data" not in att  # No inline base64 by default
         assert att["size"] == 61873
 
     def test_location_exact_values(self, epic_bundle):

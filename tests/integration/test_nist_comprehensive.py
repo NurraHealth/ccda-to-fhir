@@ -736,7 +736,7 @@ class TestNISTComprehensive:
         assert len(docref["content"]) >= 1
         att = docref["content"][0]["attachment"]
         assert att["contentType"] == "text/xml"
-        assert "data" in att  # Has base64 data
+        assert "data" not in att  # No inline base64 by default
         assert "size" in att
 
     def test_related_person_exact_values(self, nist_bundle):

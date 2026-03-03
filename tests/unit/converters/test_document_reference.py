@@ -381,3 +381,72 @@ class TestEdgeCases:
         assert doc_ref["resourceType"] == "DocumentReference"
         # Should not have docStatus
         assert "docStatus" not in doc_ref
+
+
+# ============================================================================
+# Tests - Attachment Data Embedding
+# ============================================================================
+
+
+class TestAttachmentContent:
+    """Test that attachment never contains inline base64 data."""
+
+    def test_no_inline_data_with_original_xml(
+        self,
+        basic_clinical_document,
+        converter,
+    ) -> None:
+        """Attachment must never contain base64-encoded source XML."""
+        doc_ref = converter.convert(basic_clinical_document)
+        attachment = doc_ref["content"][0]["attachment"]
+        assert "data" not in attachment
+
+    def test_hash_and_size_included_with_original_xml(
+        self,
+        basic_clinical_document,
+        converter,
+    ) -> None:
+        """Hash and size should be present when original_xml is provided."""
+        doc_ref = converter.convert(basic_clinical_document)
+        attachment = doc_ref["content"][0]["attachment"]
+        assert "hash" in attachment
+        assert "size" in attachment
+
+    def test_hash_is_correct(
+        self,
+        basic_clinical_document,
+        reference_registry,
+    ) -> None:
+        """Hash should be SHA-1 of the original XML bytes."""
+        import base64
+        import hashlib
+
+        xml = "<ClinicalDocument>test</ClinicalDocument>"
+        conv = DocumentReferenceConverter(
+            reference_registry=reference_registry,
+            original_xml=xml,
+        )
+        doc_ref = conv.convert(basic_clinical_document)
+        attachment = doc_ref["content"][0]["attachment"]
+
+        expected_hash = base64.b64encode(
+            hashlib.sha1(xml.encode("utf-8")).digest()
+        ).decode("ascii")
+        assert attachment["hash"] == expected_hash
+        assert attachment["size"] == len(xml.encode("utf-8"))
+
+    def test_no_original_xml_no_metadata(
+        self,
+        basic_clinical_document,
+        reference_registry,
+    ) -> None:
+        """No original_xml means no hash, size, or data."""
+        conv = DocumentReferenceConverter(
+            reference_registry=reference_registry,
+            original_xml=None,
+        )
+        doc_ref = conv.convert(basic_clinical_document)
+        attachment = doc_ref["content"][0]["attachment"]
+        assert "data" not in attachment
+        assert "hash" not in attachment
+        assert "size" not in attachment

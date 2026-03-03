@@ -23,11 +23,17 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
     Reference: http://hl7.org/fhir/R4/documentreference.html
     """
 
-    def __init__(self, original_xml: str | bytes | None = None, **kwargs):
+    def __init__(
+        self,
+        original_xml: str | bytes | None = None,
+        **kwargs,
+    ):
         """Initialize the converter.
 
         Args:
-            original_xml: Optional original C-CDA XML for content.attachment.data
+            original_xml: Optional original C-CDA XML for attachment metadata
+                (hash and size).  The raw XML is never embedded as base64 in
+                attachment.data — that is the consumer's responsibility.
             **kwargs: Additional arguments passed to BaseConverter
         """
         super().__init__(**kwargs)
@@ -687,23 +693,15 @@ class DocumentReferenceConverter(BaseConverter[ClinicalDocument]):
         elif clinical_document.title:
             attachment["title"] = clinical_document.title
 
-        # Data (base64 encoded original XML)
+        # Metadata from original XML (hash + size for integrity, no inline data)
         if self.original_xml:
             if isinstance(self.original_xml, str):
                 xml_bytes = self.original_xml.encode("utf-8")
             else:
                 xml_bytes = self.original_xml
 
-            attachment["data"] = base64.b64encode(xml_bytes).decode("ascii")
-
-            # Hash (SHA-1 hash of the content for integrity verification)
             sha1_hash = hashlib.sha1(xml_bytes).digest()
             attachment["hash"] = base64.b64encode(sha1_hash).decode("ascii")
-
-            # URL (if the document is stored elsewhere)
-            # Could be populated if we have an external document repository
-
-            # Size (in bytes)
             attachment["size"] = len(xml_bytes)
 
         # Creation date (document effectiveTime)

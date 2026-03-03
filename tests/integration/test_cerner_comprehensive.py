@@ -592,7 +592,7 @@ class TestCernerComprehensive:
         assert att["contentType"] == "text/xml"
         assert att["title"] == "Summarization of episode note"
         assert "creation" in att
-        assert "data" in att  # Has base64 data
+        assert "data" not in att  # No inline base64 by default
         assert att["size"] == 94270
 
     def test_location_exact_values(self, cerner_bundle):
