@@ -354,6 +354,54 @@ class TestDocumentReferenceWithContext:
         assert doc_ref["context"]["period"]["start"].startswith("2023-12-15")
 
 
+class TestDocumentReferenceAttachmentData:
+    """Tests that attachment never contains inline base64-encoded source XML."""
+
+    def test_no_inline_data_in_attachment(self) -> None:
+        """DocumentReference must not embed the original C-CDA XML as base64."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+        attachment = doc_ref["content"][0]["attachment"]
+        assert "data" not in attachment
+
+    def test_attachment_has_hash_and_size(self) -> None:
+        """Attachment should include hash and size for integrity verification."""
+        ccda_doc = wrap_in_ccda_document("")
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+        attachment = doc_ref["content"][0]["attachment"]
+        assert "hash" in attachment
+        assert "size" in attachment
+        # SHA-1 hash in base64 is 28 characters
+        assert len(attachment["hash"]) == 28
+        assert attachment["size"] > 0
+
+    def test_no_inline_data_with_real_fixture(self) -> None:
+        """Real C-CDA fixture must not produce inline data in DocumentReference."""
+        with open("tests/integration/fixtures/documents/athena_ccd.xml") as f:
+            xml = f.read()
+        bundle = convert_document(xml)["bundle"]
+
+        doc_refs = [
+            e["resource"]
+            for e in bundle.get("entry", [])
+            if e.get("resource", {}).get("resourceType") == "DocumentReference"
+        ]
+        assert len(doc_refs) >= 1
+
+        for doc_ref in doc_refs:
+            attachment = doc_ref["content"][0]["attachment"]
+            assert "data" not in attachment, (
+                f"DocumentReference should not embed source XML inline "
+                f"(found {len(attachment.get('data', ''))} chars of base64)"
+            )
+
+
 class TestDocumentReferenceNewFeatures:
     """Tests for newly implemented DocumentReference features."""
 
