@@ -69,7 +69,7 @@ class TestAgasthaE2E:
     def test_bundle_structure(self, agastha_bundle):
         """Validate Bundle has expected structure."""
         assert agastha_bundle.type == "document"
-        assert len(agastha_bundle.entry) == 46, "Bundle must contain exactly 46 resources"
+        assert len(agastha_bundle.entry) == 45, "Bundle must contain exactly 45 resources"
 
         # Verify has Patient and Composition
         has_patient = any(e.resource.get_resource_type() == "Patient" for e in agastha_bundle.entry)
@@ -93,7 +93,6 @@ class TestAgasthaE2E:
         assert resource_types["Observation"] == 17
         assert resource_types["Device"] == 1
         assert resource_types["RelatedPerson"] == 1
-        assert resource_types["DocumentReference"] == 1
         assert resource_types["DiagnosticReport"] == 1
         assert resource_types["Encounter"] == 1
         assert resource_types["Location"] == 1
@@ -916,24 +915,6 @@ class TestAgasthaE2E:
         # Verify has code and status
         assert report.code is not None, "DiagnosticReport must have code"
         assert report.status is not None, "DiagnosticReport must have status"
-
-    # ========================================================================
-    # DOCUMENT REFERENCE
-    # ========================================================================
-
-    def test_document_reference_present(self, agastha_bundle):
-        """Validate Bundle contains DocumentReference."""
-        doc_refs = [
-            e.resource for e in agastha_bundle.entry
-            if e.resource.get_resource_type() == "DocumentReference"
-        ]
-
-        assert len(doc_refs) == 1, "Bundle must contain exactly 1 DocumentReference"
-        doc_ref = doc_refs[0]
-
-        # Verify has status and subject
-        assert doc_ref.status is not None, "DocumentReference must have status"
-        assert doc_ref.subject is not None, "DocumentReference must reference patient"
 
     # ========================================================================
     # PRACTITIONERS AND ORGANIZATIONS

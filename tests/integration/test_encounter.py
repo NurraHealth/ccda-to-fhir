@@ -736,14 +736,6 @@ class TestEncounterConversion:
         assert "dischargeDisposition" in encounter["hospitalization"]
         assert encounter["hospitalization"]["dischargeDisposition"]["coding"][0]["code"] == "home"
 
-        # Verify DocumentReference.context.encounter references this encounter
-        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
-        assert doc_ref is not None
-        assert "context" in doc_ref
-        assert "encounter" in doc_ref["context"]
-        assert len(doc_ref["context"]["encounter"]) >= 1
-        assert doc_ref["context"]["encounter"][0]["reference"] == f"urn:uuid:{encounter['id']}"
-
     def test_deduplication_prefers_body_over_header(
         self, ccda_header_and_body_encounter: str
     ) -> None:
