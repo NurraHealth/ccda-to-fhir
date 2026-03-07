@@ -23,6 +23,7 @@ from fhir.resources.R4B.careplan import CarePlan
 from fhir.resources.R4B.careteam import CareTeam
 from fhir.resources.R4B.composition import Composition
 from fhir.resources.R4B.condition import Condition
+from fhir.resources.R4B.coverage import Coverage
 from fhir.resources.R4B.device import Device
 from fhir.resources.R4B.diagnosticreport import DiagnosticReport
 from fhir.resources.R4B.documentreference import DocumentReference
@@ -51,6 +52,7 @@ from .converters.careteam import CareTeamConverter
 from .converters.code_systems import CodeSystemMapper
 from .converters.composition import CompositionConverter
 from .converters.condition import ConditionConverter, convert_problem_concern_act
+from .converters.coverage import convert_coverage_activity
 from .converters.device import DeviceConverter
 from .converters.diagnostic_report import DiagnosticReportConverter
 from .converters.encounter import EncounterConverter
@@ -107,6 +109,7 @@ RESOURCE_TYPE_MAPPING: dict[str, type[FHIRAbstractModel]] = {
     "Goal": Goal,
     "CarePlan": CarePlan,
     "CareTeam": CareTeam,
+    "Coverage": Coverage,
 }
 
 
@@ -506,6 +509,17 @@ class DocumentConverter:
                 entry_type="organizer",
                 converter=convert_careteam_organizer,
                 error_message="care team organizer",
+                include_section_code=False,
+            )
+        )
+
+        # Coverage (Coverage Activities)
+        self.coverage_processor = SectionProcessor(
+            SectionConfig(
+                template_id=TemplateIds.COVERAGE_ACTIVITY,
+                entry_type="act",
+                converter=convert_coverage_activity,
+                error_message="coverage activity",
                 include_section_code=False,
             )
         )
@@ -1091,6 +1105,18 @@ class DocumentConverter:
             if notes:
                 section_resource_map[TemplateIds.NOTES_SECTION] = notes
 
+            # Coverage (from Payers sections)
+            coverage_resources = self._extract_coverages(ccda_doc.component.structured_body, metadata)
+            # Separate Coverage from related Organization resources
+            coverages = []
+            for resource in coverage_resources:
+                self.reference_registry.register_resource(resource)
+                if resource.get("resourceType") == "Coverage":
+                    coverages.append(resource)
+            resources.extend(coverage_resources)
+            if coverages:
+                section_resource_map[TemplateIds.PAYERS_SECTION] = coverages
+
         # Generate Provenance resources and create missing author resources
         # (after all clinical resources, before Composition)
         provenances, devices, practitioners, organizations = self._generate_provenance_resources(resources)
@@ -1456,6 +1482,27 @@ class DocumentConverter:
             List of FHIR CareTeam resources
         """
         return self.careteam_processor.process(
+            structured_body,
+            metadata=metadata,
+            reference_registry=self.reference_registry,
+            code_system_mapper=self.code_system_mapper,
+        )
+
+    def _extract_coverages(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
+        """Extract and convert Coverage resources from the Payers section.
+
+        Args:
+            structured_body: The structuredBody element
+            metadata: Optional conversion metadata tracker
+
+        Returns:
+            List of FHIR Coverage and Organization resources
+        """
+        return self.coverage_processor.process(
             structured_body,
             metadata=metadata,
             reference_registry=self.reference_registry,
