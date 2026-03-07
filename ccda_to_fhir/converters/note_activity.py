@@ -2,8 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.datatypes import CD
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.section import Section
+    from ccda_to_fhir.converters.code_systems import CodeSystemMapper
+    from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.constants import (
     DOCUMENT_REFERENCE_STATUS_TO_FHIR,
     FHIRCodes,
@@ -630,9 +637,9 @@ class NoteActivityConverter(BaseConverter[Act]):
 
 def convert_note_activity(
     note_act: Act,
-    code_system_mapper=None,
-    section=None,
-    reference_registry=None,
+    code_system_mapper: CodeSystemMapper | None = None,
+    section: Section | None = None,
+    reference_registry: ReferenceRegistry | None = None,
 ) -> FHIRResourceDict:
     """Convert a C-CDA Note Activity Act to a FHIR DocumentReference resource.
 

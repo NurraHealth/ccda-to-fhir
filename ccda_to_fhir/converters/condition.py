@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, PQ
 from ccda_to_fhir.ccda.models.observation import Observation
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.section import Section
+    from ccda_to_fhir.converters.code_systems import CodeSystemMapper
+    from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.constants import (
     AGE_UNIT_MAP,
     PROBLEM_TYPE_TO_CONDITION_CATEGORY,
@@ -823,11 +831,11 @@ class ConditionConverter(BaseConverter[Observation]):
 def convert_problem_concern_act(
     act: Act,
     section_code: str | None = None,
-    code_system_mapper=None,
-    metadata_callback=None,
-    section=None,
-    reference_registry=None,
-    seen_observation_ids=None,
+    code_system_mapper: CodeSystemMapper | None = None,
+    metadata_callback: Callable[..., None] | None = None,
+    section: Section | None = None,
+    reference_registry: ReferenceRegistry | None = None,
+    seen_observation_ids: set[tuple[str, str | None]] | None = None,
 ) -> list[FHIRResourceDict]:
     """Convert a Problem Concern Act to a list of FHIR Condition resources.
 
