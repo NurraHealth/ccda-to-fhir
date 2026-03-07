@@ -34,9 +34,9 @@ def create_bundle(
 
         # For document bundles, the first entry should have fullUrl with composition
         # For other bundle types, add fullUrl for all resources
-        if resource.get("resourceType") and resource.get("id"):
-            resource_id = resource["id"]
-            entry["fullUrl"] = f"urn:uuid:{resource_id}"
+        raw_id = resource.get("id")
+        if resource.get("resourceType") and isinstance(raw_id, str) and raw_id:
+            entry["fullUrl"] = f"urn:uuid:{raw_id}"
 
         entries.append(entry)
 
