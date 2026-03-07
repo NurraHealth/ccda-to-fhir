@@ -149,3 +149,73 @@ class TestMapStatusCode:
             FHIRCodes.ObservationStatus.FINAL,
         )
         assert result == FHIRCodes.ObservationStatus.REGISTERED
+
+
+class TestCreateCodeableConceptTranslations:
+    """Tests for empty/whitespace translation code filtering in create_codeable_concept."""
+
+    @pytest.fixture
+    def converter(self):
+        return ConcreteConverter()
+
+    def test_translation_with_empty_code_is_skipped(self, converter):
+        result = converter.create_codeable_concept(
+            code="1234",
+            code_system="2.16.840.1.113883.6.96",
+            translations=[{"code": "", "code_system": "2.16.840.1.113883.6.96"}],
+        )
+        assert len(result["coding"]) == 1
+
+    def test_translation_with_whitespace_code_is_skipped(self, converter):
+        result = converter.create_codeable_concept(
+            code="1234",
+            code_system="2.16.840.1.113883.6.96",
+            translations=[{"code": "  ", "code_system": "2.16.840.1.113883.6.96"}],
+        )
+        assert len(result["coding"]) == 1
+
+    def test_translation_with_empty_code_system_is_skipped(self, converter):
+        result = converter.create_codeable_concept(
+            code="1234",
+            code_system="2.16.840.1.113883.6.96",
+            translations=[{"code": "5678", "code_system": ""}],
+        )
+        assert len(result["coding"]) == 1
+
+    def test_translation_with_whitespace_code_system_is_skipped(self, converter):
+        result = converter.create_codeable_concept(
+            code="1234",
+            code_system="2.16.840.1.113883.6.96",
+            translations=[{"code": "5678", "code_system": "   "}],
+        )
+        assert len(result["coding"]) == 1
+
+    def test_translation_with_missing_code_is_skipped(self, converter):
+        result = converter.create_codeable_concept(
+            code="1234",
+            code_system="2.16.840.1.113883.6.96",
+            translations=[{"code_system": "2.16.840.1.113883.6.96"}],
+        )
+        assert len(result["coding"]) == 1
+
+    def test_translation_with_valid_code_is_included(self, converter):
+        result = converter.create_codeable_concept(
+            code="1234",
+            code_system="2.16.840.1.113883.6.96",
+            translations=[{"code": "5678", "code_system": "2.16.840.1.113883.6.3"}],
+        )
+        assert len(result["coding"]) == 2
+        assert result["coding"][1]["code"] == "5678"
+
+    def test_mixed_valid_and_empty_translations(self, converter):
+        result = converter.create_codeable_concept(
+            code="1234",
+            code_system="2.16.840.1.113883.6.96",
+            translations=[
+                {"code": "", "code_system": "2.16.840.1.113883.6.96"},
+                {"code": "5678", "code_system": "2.16.840.1.113883.6.3"},
+                {"code": "  ", "code_system": "2.16.840.1.113883.6.96"},
+            ],
+        )
+        assert len(result["coding"]) == 2
+        assert result["coding"][1]["code"] == "5678"

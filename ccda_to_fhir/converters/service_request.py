@@ -12,7 +12,7 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject, JSONValue
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -125,7 +125,9 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             fhir_service_request["category"] = [category]
 
         # Code (required)
-        fhir_service_request["code"] = self._convert_code(procedure.code)
+        code = self._convert_code(procedure.code)
+        if code:
+            fhir_service_request["code"] = code
 
         # Subject (required) - patient reference
         if not self.reference_registry:
@@ -184,7 +186,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         # Body site - from targetSiteCode (only CCDAProcedure has this)
         if isinstance(procedure, CCDAProcedure) and procedure.target_site_code:
-            body_sites: list[JSONValue] = []
+            body_sites: list[JSONObject] = []
             for site_code in procedure.target_site_code:
                 if site_code.code:
                     body_site = self._convert_code(site_code)
@@ -385,7 +387,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             ]
         }
 
-    def _convert_code(self, code: CD) -> JSONObject:
+    def _convert_code(self, code: CD) -> JSONObject | None:
         """Convert C-CDA code to FHIR CodeableConcept.
 
         Args:
