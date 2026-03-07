@@ -25,7 +25,7 @@ from pydantic import BaseModel
 # validates and converts to the final typed models.
 
 # Single parsed value from an XML element (excludes None - filtered during parsing)
-ParsedValue: TypeAlias = str | bool | BaseModel
+ParsedValue: TypeAlias = str | bool | int | BaseModel
 
 # Data dict values can be single values or lists of values
 ParsedDataValue: TypeAlias = ParsedValue | list[ParsedValue]
@@ -424,6 +424,16 @@ def _parse_child_element(
         value_attr = element.get("value")
         if value_attr:
             return value_attr.lower() == "true"
+        return None
+
+    # Simple int elements (sequenceNumber, etc.)
+    if target_type is int:
+        value_attr = element.get("value")
+        if value_attr:
+            try:
+                return int(value_attr)
+            except ValueError:
+                return None
         return None
 
     # If target_type is BaseModel subclass, recursively parse

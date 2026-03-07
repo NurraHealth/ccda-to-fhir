@@ -94,6 +94,14 @@ class SupportedTemplates:
         "2.16.840.1.113883.10.20.22.4.500.1": "Care Team Member Act",
         "2.16.840.1.113883.10.20.22.4.500.2": "Care Team Member Schedule Observation",
 
+        # Coverage/Payers
+        TemplateIds.COVERAGE_ACTIVITY: "Coverage Activity",
+        TemplateIds.POLICY_ACTIVITY: "Policy Activity",
+        TemplateIds.PAYER_PERFORMER: "Payer Performer",
+        TemplateIds.GUARANTOR_PERFORMER: "Guarantor Performer",
+        TemplateIds.COVERED_PARTY: "Covered Party Participant",
+        TemplateIds.POLICY_HOLDER: "Policy Holder Participant",
+
         # Devices (22-device.md)
         "2.16.840.1.113883.10.20.22.4.37": "Product Instance",
 
@@ -121,6 +129,7 @@ class SupportedTemplates:
         TemplateIds.HEALTH_CONCERNS_SECTION: "Health Concerns Section",
         "2.16.840.1.113883.10.20.21.2.3": "Interventions Section",
         "2.16.840.1.113883.10.20.22.2.61": "Outcomes Section",
+        TemplateIds.PAYERS_SECTION: "Payers Section",
         TemplateIds.CARE_TEAMS_SECTION: "Care Teams Section",
     }
 
