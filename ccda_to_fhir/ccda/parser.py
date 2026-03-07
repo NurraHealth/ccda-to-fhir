@@ -429,7 +429,7 @@ def _parse_child_element(
     # Simple int elements (sequenceNumber, etc.)
     if target_type is int:
         value_attr = element.get("value")
-        if value_attr:
+        if value_attr is not None:
             try:
                 return int(value_attr)
             except ValueError:

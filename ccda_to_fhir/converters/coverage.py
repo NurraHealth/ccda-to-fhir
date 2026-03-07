@@ -59,7 +59,10 @@ _RELATIONSHIP_MAP = {
     "SELF": {"code": "self", "display": "Self"},
     "SPOUSE": {"code": "spouse", "display": "Spouse"},
     "CHILD": {"code": "child", "display": "Child"},
+    "STPCHLD": {"code": "child", "display": "Child"},
     "PARENT": {"code": "parent", "display": "Parent"},
+    "DOMPART": {"code": "common", "display": "Common Law Spouse"},
+    "FAMMEMB": {"code": "other", "display": "Other"},
     "OTHER": {"code": "other", "display": "Other"},
 }
 
@@ -163,9 +166,13 @@ class CoverageConverter(BaseConverter["Act"]):
 
         # Status
         if policy.status_code and policy.status_code.code:
-            coverage["status"] = _STATUS_MAP.get(
-                policy.status_code.code, "active"
-            )
+            status_code = policy.status_code.code
+            mapped = _STATUS_MAP.get(status_code)
+            if mapped:
+                coverage["status"] = mapped
+            else:
+                logger.warning("Unmapped Coverage statusCode '%s', defaulting to 'active'", status_code)
+                coverage["status"] = "active"
         else:
             coverage["status"] = "active"
 
@@ -302,7 +309,8 @@ class CoverageConverter(BaseConverter["Act"]):
             if any(t.root == TemplateIds.PAYER_PERFORMER for t in performer.template_id):
                 return True
         if performer.assigned_entity and performer.assigned_entity.code:
-            return performer.assigned_entity.code.code == "PAYOR"
+            code = performer.assigned_entity.code.code
+            return code.upper() == "PAYOR" if code else False
         return False
 
     def _process_participant(
@@ -334,13 +342,15 @@ class CoverageConverter(BaseConverter["Act"]):
             if role.code and role.code.code:
                 relationship_code = role.code.code.upper()
                 rel = _RELATIONSHIP_MAP.get(relationship_code)
-                if rel:
-                    coverage["relationship"] = {
-                        "coding": [{
-                            "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
-                            **rel,
-                        }],
-                    }
+                if not rel:
+                    logger.warning("Unmapped relationship code '%s', defaulting to 'other'", relationship_code)
+                    rel = _RELATIONSHIP_MAP["OTHER"]
+                coverage["relationship"] = {
+                    "coding": [{
+                        "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                        **rel,
+                    }],
+                }
 
             # When relationship is SELF, subscriber is the patient (beneficiary)
             if relationship_code == "SELF" and self.reference_registry:
@@ -355,10 +365,14 @@ class CoverageConverter(BaseConverter["Act"]):
         elif participant.type_code == "HLD":
             # Policy holder
             if role.id:
+                first = role.id[0]
+                value = first.extension or first.root
+                if not value:
+                    return
                 ident: FHIRResourceDict = {}
-                if role.id[0].root:
-                    ident["system"] = self.map_oid_to_uri(role.id[0].root)
-                ident["value"] = role.id[0].extension or role.id[0].root
+                if first.root:
+                    ident["system"] = self.map_oid_to_uri(first.root)
+                ident["value"] = value
                 coverage["policyHolder"] = {"identifier": ident}
 
 
