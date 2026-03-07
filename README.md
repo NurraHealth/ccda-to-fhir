@@ -48,6 +48,8 @@ print(f"Converted {len(bundle['entry'])} resources")
 | Encounters | Encounter |
 | Care Plans | CarePlan, Goal |
 | Care Teams | CareTeam |
+| Payers | Coverage, Organization |
+| Plan of Treatment | ServiceRequest |
 | Notes | DocumentReference |
 | Devices | Device |
 | Authors/Performers | Practitioner, PractitionerRole, Provenance |
