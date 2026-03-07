@@ -272,6 +272,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                         "system": trans_system_uri,
                         "code": trans_code.strip(),
                     }
+                    # Add display from translation or look up from terminology map
                     trans_display = trans.get("display_name")
                     if isinstance(trans_display, str):
                         trans_coding["display"] = trans_display.strip()
@@ -283,7 +284,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     codings.append(trans_coding)
 
         if codings:
-            codeable_concept["coding"] = list(codings)
+            codeable_concept["coding"] = codings
 
         # Original text (preferred)
         if original_text:
@@ -1386,6 +1387,12 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if name.use:
                 fhir_name["use"] = NAME_USE_MAP.get(name.use, FHIRCodes.NameUse.USUAL)
 
+            # Collect name parts for both dict assignment and text building
+            prefixes = []
+            given_names = []
+            family_value: str | None = None
+            suffixes = []
+
             # Family name - handle ENXP type with qualifier
             if name.family:
                 family_value, family_qualifier = self._extract_enxp_value_and_qualifier(name.family)
@@ -1396,7 +1403,6 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
             # Given names - handle list of ENXP with qualifiers
             if name.given:
-                given_names = []
                 for given in name.given:
                     value, qualifier = self._extract_enxp_value_and_qualifier(given)
                     if value:
@@ -1409,7 +1415,6 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
             # Prefix - handle list of ENXP
             if name.prefix:
-                prefixes = []
                 for prefix in name.prefix:
                     value, _ = self._extract_enxp_value_and_qualifier(prefix)
                     if value:
@@ -1419,7 +1424,6 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
             # Suffix - handle list of ENXP (including academic qualifiers)
             if name.suffix:
-                suffixes = []
                 for suffix in name.suffix:
                     value, _ = self._extract_enxp_value_and_qualifier(suffix)
                     if value:
@@ -1431,20 +1435,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if qualifier_use and "use" not in fhir_name:
                 fhir_name["use"] = qualifier_use
 
-            # Build text representation using delimiters if present
+            # Build text representation from local variables (all str)
             text_parts: list[str] = []
-            prefix_val = fhir_name.get("prefix")
-            if isinstance(prefix_val, list):
-                text_parts.extend(str(p) for p in prefix_val)
-            given_val = fhir_name.get("given")
-            if isinstance(given_val, list):
-                text_parts.extend(str(g) for g in given_val)
-            family_val = fhir_name.get("family")
-            if isinstance(family_val, str):
-                text_parts.append(family_val)
-            suffix_val = fhir_name.get("suffix")
-            if isinstance(suffix_val, list):
-                text_parts.extend(str(s) for s in suffix_val)
+            text_parts.extend(prefixes)
+            text_parts.extend(given_names)
+            if family_value:
+                text_parts.append(family_value)
+            text_parts.extend(suffixes)
 
             if text_parts:
                 # Use delimiter if provided, otherwise space

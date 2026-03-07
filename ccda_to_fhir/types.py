@@ -6,13 +6,16 @@ avoiding the use of Any wherever possible.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
 # JSON primitive types
 JSONPrimitive: TypeAlias = str | int | float | bool | None
 
-# JSON value can be primitive, list, or object (recursive)
-JSONValue: TypeAlias = JSONPrimitive | list["JSONValue"] | dict[str, "JSONValue"]
+# JSON value can be primitive, sequence, or object (recursive)
+# Uses Sequence (covariant) instead of list (invariant) so that
+# list[str], list[JSONObject], etc. are assignable to JSONValue
+JSONValue: TypeAlias = JSONPrimitive | Sequence["JSONValue"] | dict[str, "JSONValue"]
 
 # FHIR resources are JSON objects with string keys
 FHIRResourceDict: TypeAlias = dict[str, JSONValue]
