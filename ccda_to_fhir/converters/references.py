@@ -55,11 +55,11 @@ class ReferenceRegistry:
         raw_resource_type = resource.get("resourceType")
         raw_resource_id = resource.get("id")
 
-        if not isinstance(raw_resource_type, str):
+        if not isinstance(raw_resource_type, str) or not raw_resource_type:
             logger.warning("Cannot register resource without resourceType")
             return
 
-        if not isinstance(raw_resource_id, str):
+        if not isinstance(raw_resource_id, str) or not raw_resource_id:
             logger.warning(
                 f"Cannot register {raw_resource_type} without id",
                 extra={"resource_type": raw_resource_type}

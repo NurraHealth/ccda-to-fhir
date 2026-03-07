@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Literal, TypeAlias
+from typing import Literal, TypeAlias
 
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.encounter import Encounter as CDAEncounter
@@ -93,7 +93,7 @@ class SectionProcessor:
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
-        **converter_kwargs: Any,
+        **converter_kwargs: object,
     ) -> list[FHIRResourceDict]:
         """Process a structured body and extract resources.
 
@@ -147,7 +147,7 @@ class SectionProcessor:
                                     import inspect
                                     converter_sig = inspect.signature(self.config.converter)
 
-                                    kwargs: dict[str, Any] = {}
+                                    kwargs: dict[str, object] = {}
 
                                     # Pass section_code if needed and supported
                                     if self.config.include_section_code and "section_code" in converter_sig.parameters:
