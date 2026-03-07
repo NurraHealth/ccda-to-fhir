@@ -240,15 +240,31 @@ class TestCoverageConverter:
         assert "subscriber" in coverage
         assert coverage["subscriber"]["reference"] == "urn:uuid:patient-123"
 
-    def test_policy_holder_identifier(self, converter, coverage_activity):
+    def test_policy_holder_root_only_omits_system(self, converter, coverage_activity):
+        """When HLD has only root (no extension), root is value and system is omitted."""
         result = converter.convert(coverage_activity)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
 
         assert "policyHolder" in coverage
-        assert "identifier" in coverage["policyHolder"]
-        # system should not be None -- either present with a value or omitted
         ident = coverage["policyHolder"]["identifier"]
-        assert ident.get("system") is not None or "system" not in ident
+        # root is used as value, so system must be omitted to avoid duplication
+        assert "system" not in ident
+        assert ident["value"] == "b38d9bca-28ab-4980-b602-3308a6cec5b3"
+
+    def test_policy_holder_with_root_and_extension(self, converter):
+        """When HLD has both root and extension, system is mapped from root."""
+        policy = _make_policy(participants=[Participant(
+            type_code="HLD",
+            participant_role=ParticipantRole(
+                id=[II(root="2.16.840.1.113883.4.1", extension="HLD-54321")],
+            ),
+        )])
+        act = _wrap_in_coverage_activity(policy)
+        result = converter.convert(act)
+        coverage = next(r for r in result if r["resourceType"] == "Coverage")
+        ident = coverage["policyHolder"]["identifier"]
+        assert "system" in ident
+        assert ident["value"] == "HLD-54321"
 
     def test_policy_holder_no_root_omits_system(self, converter):
         """When HLD participant has no root OID, system key is omitted."""

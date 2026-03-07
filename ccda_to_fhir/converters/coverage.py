@@ -150,7 +150,7 @@ class CoverageConverter(BaseConverter["Act"]):
         }
 
         # Generate ID from policy identifiers
-        if policy.id and len(policy.id) > 0:
+        if policy.id:
             first_id = policy.id[0]
             coverage["id"] = generate_id_from_identifiers(
                 "Coverage",
@@ -220,7 +220,7 @@ class CoverageConverter(BaseConverter["Act"]):
 
         return coverage, related
 
-    def _convert_period(self, effective_time: IVL_TS) -> FHIRResourceDict | None:
+    def _convert_period(self, effective_time: IVL_TS) -> dict[str, str] | None:
         """Convert IVL_TS to FHIR Period.
 
         Args:
@@ -229,7 +229,7 @@ class CoverageConverter(BaseConverter["Act"]):
         Returns:
             FHIR Period dict or None
         """
-        period: FHIRResourceDict = {}
+        period: dict[str, str] = {}
 
         if effective_time.value:
             # Single point in time
@@ -383,7 +383,9 @@ class CoverageConverter(BaseConverter["Act"]):
                 if not value:
                     return
                 ident: FHIRResourceDict = {}
-                if first.root:
+                # Only set system when extension is the value (root is the OID namespace);
+                # when root is used as value itself, skip system to avoid duplication
+                if first.root and first.extension:
                     ident["system"] = self.map_oid_to_uri(first.root)
                 ident["value"] = value
                 coverage["policyHolder"] = {"identifier": ident}

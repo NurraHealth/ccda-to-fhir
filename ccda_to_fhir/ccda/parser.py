@@ -25,6 +25,8 @@ from pydantic import BaseModel
 # validates and converts to the final typed models.
 
 # Single parsed value from an XML element (excludes None - filtered during parsing)
+# Note: bool must precede int because bool is a subclass of int in Python;
+# the parser checks bool before int in _parse_child_element to match this ordering.
 ParsedValue: TypeAlias = str | bool | int | BaseModel
 
 # Data dict values can be single values or lists of values
