@@ -265,6 +265,8 @@ class CoverageConverter(BaseConverter["Act"]):
 
         # Identify PAYOR performer by templateId (.87) first, fall back to code
         if not self._is_payor_performer(performer):
+            if self._is_guarantor_performer(performer):
+                logger.debug("Guarantor performer (.88) present but not mapped to FHIR Coverage")
             return
 
         assigned = performer.assigned_entity
@@ -311,6 +313,17 @@ class CoverageConverter(BaseConverter["Act"]):
         if performer.assigned_entity and performer.assigned_entity.code:
             code = performer.assigned_entity.code.code
             return code.upper() == "PAYOR" if code else False
+        return False
+
+    @staticmethod
+    def _is_guarantor_performer(performer: Performer) -> bool:
+        """Check if a performer is a GUARANTOR by templateId (.88) or code."""
+        if performer.template_id:
+            if any(t.root == TemplateIds.GUARANTOR_PERFORMER for t in performer.template_id):
+                return True
+        if performer.assigned_entity and performer.assigned_entity.code:
+            code = performer.assigned_entity.code.code
+            return code.upper() == "GUAR" if code else False
         return False
 
     def _process_participant(
