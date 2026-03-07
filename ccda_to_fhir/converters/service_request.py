@@ -125,7 +125,9 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             fhir_service_request["category"] = [category]
 
         # Code (required)
-        fhir_service_request["code"] = self._convert_code(procedure.code)
+        code = self._convert_code(procedure.code)
+        if code:
+            fhir_service_request["code"] = code
 
         # Subject (required) - patient reference
         if not self.reference_registry:
