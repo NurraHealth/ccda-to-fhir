@@ -266,22 +266,27 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             for trans in translations:
                 trans_code = trans.get("code")
                 trans_code_system = trans.get("code_system")
-                if isinstance(trans_code, str) and isinstance(trans_code_system, str):
-                    trans_system_uri = self.map_oid_to_uri(trans_code_system)
-                    trans_coding: JSONObject = {
-                        "system": trans_system_uri,
-                        "code": trans_code.strip(),
-                    }
-                    # Add display from translation or look up from terminology map
-                    trans_display = trans.get("display_name")
-                    if isinstance(trans_display, str):
-                        trans_coding["display"] = trans_display.strip()
-                    else:
-                        from ccda_to_fhir.utils.terminology import get_display_for_code
-                        looked_up_display = get_display_for_code(trans_system_uri, trans_code.strip())
-                        if looked_up_display:
-                            trans_coding["display"] = looked_up_display
-                    codings.append(trans_coding)
+                if not (isinstance(trans_code, str) and isinstance(trans_code_system, str)):
+                    continue
+                trans_code = trans_code.strip()
+                trans_code_system = trans_code_system.strip()
+                if not trans_code or not trans_code_system:
+                    continue
+                trans_system_uri = self.map_oid_to_uri(trans_code_system)
+                trans_coding: JSONObject = {
+                    "system": trans_system_uri,
+                    "code": trans_code,
+                }
+                # Add display from translation or look up from terminology map
+                trans_display = trans.get("display_name")
+                if isinstance(trans_display, str):
+                    trans_coding["display"] = trans_display.strip()
+                else:
+                    from ccda_to_fhir.utils.terminology import get_display_for_code
+                    looked_up_display = get_display_for_code(trans_system_uri, trans_code)
+                    if looked_up_display:
+                        trans_coding["display"] = looked_up_display
+                codings.append(trans_coding)
 
         if codings:
             codeable_concept["coding"] = codings
