@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from ccda_to_fhir.convert import convert_document
 from ccda_to_fhir.types import JSONObject
 
@@ -170,14 +168,56 @@ class TestNoteConversion:
         assert "type" in doc_ref
         assert doc_ref["type"]["text"] == "Note"
 
-    @pytest.mark.skip(reason="NoteActivity text reference resolution not yet implemented")
     def test_resolves_text_reference(self) -> None:
-        """Test that text references to section narrative are resolved."""
-        # Create a note with text reference (no direct content)
-        ccda_with_reference = """
-        <section xmlns="urn:hl7-org:v3">
+        """Test that text references to section narrative are resolved.
+
+        When a Note Activity's <text> contains only a <reference value="#id"/>,
+        the converter should look up the referenced element in the section
+        narrative and base64-encode its content into the attachment.
+        """
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="2.16.840.1.113883.19.5.99999.1"/>
+  <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+  <effectiveTime value="20240315120000-0500"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="test-patient-id"/>
+      <patient>
+        <name><given>Test</given><family>Patient</family></name>
+        <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+        <birthTime value="19800101"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20240315120000-0500"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+      <assignedPerson>
+        <name><given>Test</given><family>Author</family></name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5"/>
+        <name>Test Organization</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
           <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
-          <code code="29299-5" displayName="Reason for visit"/>
+          <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
           <text>
             <paragraph ID="note-ref-1">This is the actual note content from section narrative.</paragraph>
           </text>
@@ -193,12 +233,19 @@ class TestNoteConversion:
             </act>
           </entry>
         </section>
-        """
-        ccda_doc = wrap_in_ccda_document(ccda_with_reference, NOTES_TEMPLATE_ID)
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>"""
         bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
+
+        # Must be the Note Activity DR (type code 34109-9), not the document-level one
+        type_codes = [c.get("code") for c in doc_ref.get("type", {}).get("coding", [])]
+        assert "34109-9" in type_codes, f"Expected Note Activity DR (34109-9), got type codes: {type_codes}"
+
         assert "content" in doc_ref
         assert len(doc_ref["content"]) > 0
 
@@ -211,6 +258,84 @@ class TestNoteConversion:
         import base64
         decoded_text = base64.b64decode(attachment["data"]).decode("utf-8")
         assert "actual note content" in decoded_text.lower()
+
+    def test_reference_to_missing_id_uses_data_absent_reason(self) -> None:
+        """Test that a reference to a non-existent ID produces data-absent-reason."""
+        ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <id root="2.16.840.1.113883.19.5.99999.1"/>
+  <code code="34133-9" displayName="Summarization of Episode Note" codeSystem="2.16.840.1.113883.6.1"/>
+  <effectiveTime value="20240315120000-0500"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  <recordTarget>
+    <patientRole>
+      <id root="test-patient-id"/>
+      <patient>
+        <name><given>Test</given><family>Patient</family></name>
+        <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+        <birthTime value="19800101"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+  <author>
+    <time value="20240315120000-0500"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="999999999"/>
+      <assignedPerson>
+        <name><given>Test</given><family>Author</family></name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5"/>
+        <name>Test Organization</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.65"/>
+          <code code="29299-5" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for visit"/>
+          <text>
+            <paragraph ID="some-other-id">Unrelated text.</paragraph>
+          </text>
+          <entry>
+            <act classCode="ACT" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.202"/>
+              <code code="34109-9" codeSystem="2.16.840.1.113883.6.1" displayName="Note"/>
+              <text>
+                <reference value="#nonexistent-id"/>
+              </text>
+              <statusCode code="completed"/>
+              <effectiveTime value="20240101"/>
+            </act>
+          </entry>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>"""
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+
+        type_codes = [c.get("code") for c in doc_ref.get("type", {}).get("coding", [])]
+        assert "34109-9" in type_codes
+
+        # Reference couldn't be resolved, so content should use data-absent-reason
+        assert "content" in doc_ref
+        attachment = doc_ref["content"][0]["attachment"]
+        assert "_data" in attachment
+        assert attachment["_data"]["extension"][0]["valueCode"] == "unknown"
 
     def test_provenance_created_for_note_with_author(
         self, ccda_note: str
