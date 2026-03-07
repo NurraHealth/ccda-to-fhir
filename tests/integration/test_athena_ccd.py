@@ -224,9 +224,12 @@ def test_athena_ccd_comprehensive() -> None:
     assert "type" in coverage
     assert coverage["type"]["coding"][0]["code"] == "OT"
 
-    # Relationship (SELF)
+    # Relationship (SELF) and subscriber
     assert "relationship" in coverage
     assert coverage["relationship"]["coding"][0]["code"] == "self"
+    # When relationship is SELF, subscriber should reference the patient
+    assert "subscriber" in coverage
+    assert coverage["subscriber"]["reference"] in resources_by_id
 
     # Payor Organization should have a name
     payor_org = resources_by_id[payor_ref]

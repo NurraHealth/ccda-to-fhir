@@ -13,6 +13,7 @@ from ccda_to_fhir.ccda.models.performer import (
     Performer,
     RepresentedOrganization,
 )
+from ccda_to_fhir.constants import TemplateIds
 from ccda_to_fhir.converters.coverage import CoverageConverter, convert_coverage_activity
 from ccda_to_fhir.converters.references import ReferenceRegistry
 
@@ -188,12 +189,142 @@ class TestCoverageConverter:
 
         assert coverage["beneficiary"]["reference"] == "urn:uuid:patient-123"
 
+    def test_subscriber_set_when_self(self, converter, coverage_activity):
+        """When relationship is SELF, subscriber references the patient."""
+        result = converter.convert(coverage_activity)
+        coverage = next(r for r in result if r["resourceType"] == "Coverage")
+
+        assert "subscriber" in coverage
+        assert coverage["subscriber"]["reference"] == "urn:uuid:patient-123"
+
     def test_policy_holder_identifier(self, converter, coverage_activity):
         result = converter.convert(coverage_activity)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
 
         assert "policyHolder" in coverage
         assert "identifier" in coverage["policyHolder"]
+        # system should not be None — either present with a value or omitted
+        ident = coverage["policyHolder"]["identifier"]
+        assert ident.get("system") is not None or "system" not in ident
+
+    def test_policy_holder_no_root_omits_system(self, converter):
+        """When HLD participant has no root OID, system key is omitted."""
+        policy = Act(
+            class_code="ACT",
+            mood_code="EVN",
+            template_id=[II(root=TemplateIds.POLICY_ACTIVITY)],
+            id=[II(root="test-root")],
+            status_code=CS(code="completed"),
+            participant=[Participant(
+                type_code="HLD",
+                participant_role=ParticipantRole(
+                    id=[II(root=None, extension="HLD-EXT-123")],
+                ),
+            )],
+        )
+        act = Act(
+            template_id=[II(root=TemplateIds.COVERAGE_ACTIVITY)],
+            status_code=CS(code="completed"),
+            entry_relationship=[EntryRelationship(type_code="COMP", act=policy)],
+        )
+        result = converter.convert(act)
+        coverage = next(r for r in result if r["resourceType"] == "Coverage")
+        assert "system" not in coverage["policyHolder"]["identifier"]
+        assert coverage["policyHolder"]["identifier"]["value"] == "HLD-EXT-123"
+
+    def test_payor_identified_by_template_id_without_code(self, converter):
+        """PAYOR performer identified by templateId .87 even without code."""
+        payor = Performer(
+            type_code="PRF",
+            template_id=[II(root=TemplateIds.PAYER_PERFORMER)],
+            assigned_entity=AssignedEntity(
+                id=[II(root="payor-oid", extension="12345")],
+                # No code field
+                represented_organization=RepresentedOrganization(
+                    name=[ON(value="AETNA")],
+                ),
+            ),
+        )
+        policy = Act(
+            class_code="ACT",
+            mood_code="EVN",
+            template_id=[II(root=TemplateIds.POLICY_ACTIVITY)],
+            id=[II(root="test-root")],
+            status_code=CS(code="completed"),
+            performer=[payor],
+        )
+        act = Act(
+            template_id=[II(root=TemplateIds.COVERAGE_ACTIVITY)],
+            status_code=CS(code="completed"),
+            entry_relationship=[EntryRelationship(type_code="COMP", act=policy)],
+        )
+        result = converter.convert(act)
+        org = next((r for r in result if r["resourceType"] == "Organization"), None)
+        assert org is not None
+        assert org["name"] == "AETNA"
+        coverage = next(r for r in result if r["resourceType"] == "Coverage")
+        assert "payor" in coverage
+
+    def test_cov_participant_time_overrides_policy_effective_time(self, converter):
+        """COV participant time takes priority over policy effectiveTime for period."""
+        policy = Act(
+            class_code="ACT",
+            mood_code="EVN",
+            template_id=[II(root=TemplateIds.POLICY_ACTIVITY)],
+            id=[II(root="test-root")],
+            status_code=CS(code="completed"),
+            effective_time=IVL_TS(
+                low=TS(value="20200101"),
+                high=TS(value="20201231"),
+            ),
+            participant=[Participant(
+                type_code="COV",
+                participant_role=ParticipantRole(
+                    id=[II(root="member-root", extension="M999")],
+                    code=CE(code="SELF", code_system="2.16.840.1.113883.5.111"),
+                ),
+                time=IVL_TS(
+                    low=TS(value="20210601"),
+                    high=TS(value="20220531"),
+                ),
+            )],
+        )
+        act = Act(
+            template_id=[II(root=TemplateIds.COVERAGE_ACTIVITY)],
+            status_code=CS(code="completed"),
+            entry_relationship=[EntryRelationship(type_code="COMP", act=policy)],
+        )
+        result = converter.convert(act)
+        coverage = next(r for r in result if r["resourceType"] == "Coverage")
+        # COV participant time should win
+        assert "2021" in coverage["period"]["start"]
+        assert "2022" in coverage["period"]["end"]
+
+    def test_subscriber_not_set_for_non_self(self, converter):
+        """When relationship is not SELF, subscriber is not set."""
+        policy = Act(
+            class_code="ACT",
+            mood_code="EVN",
+            template_id=[II(root=TemplateIds.POLICY_ACTIVITY)],
+            id=[II(root="test-root")],
+            status_code=CS(code="completed"),
+            participant=[Participant(
+                type_code="COV",
+                participant_role=ParticipantRole(
+                    id=[II(root="member-root", extension="DEP001")],
+                    code=CE(code="CHILD", code_system="2.16.840.1.113883.5.111"),
+                ),
+            )],
+        )
+        act = Act(
+            template_id=[II(root=TemplateIds.COVERAGE_ACTIVITY)],
+            status_code=CS(code="completed"),
+            entry_relationship=[EntryRelationship(type_code="COMP", act=policy)],
+        )
+        result = converter.convert(act)
+        coverage = next(r for r in result if r["resourceType"] == "Coverage")
+        assert "subscriber" not in coverage
+        assert coverage["relationship"]["coding"][0]["code"] == "child"
 
     def test_empty_entry_relationships(self, converter):
         act = Act(

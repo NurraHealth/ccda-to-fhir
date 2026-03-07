@@ -8,16 +8,19 @@ C-CDA Structure:
          └─ entryRelationship[COMP]
               ├─ sequenceNumber — maps to Coverage.order
               └─ Policy Activity (Act, template .61) — insurance details
-                   ├─ id — Coverage.identifier + subscriberId
+                   ├─ id — Coverage.identifier
                    ├─ code — Coverage.type
                    ├─ statusCode — Coverage.status
+                   ├─ effectiveTime — Coverage.period (fallback)
                    ├─ performer[PAYOR] (.87) — Coverage.payor (→ Organization)
                    ├─ performer[GUAR] (.88) — not mapped (guarantor info)
-                   ├─ participant[COV] (.89) — Coverage.subscriberId, relationship
+                   ├─ participant[COV] (.89) — Coverage.subscriberId, relationship,
+                   │                           subscriber, period (from time)
                    └─ participant[HLD] (.90) — Coverage.policyHolder
 
 Reference:
 - C-CDA: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-CoverageActivity.html
+- C-CDA: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-PolicyActivity.html
 - FHIR: https://hl7.org/fhir/R4B/coverage.html
 """
 
@@ -35,6 +38,7 @@ from .organization import OrganizationConverter
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.act import Act
+    from ccda_to_fhir.ccda.models.datatypes import IVL_TS
     from ccda_to_fhir.ccda.models.participant import Participant
     from ccda_to_fhir.ccda.models.performer import Performer
 
@@ -179,7 +183,7 @@ class CoverageConverter(BaseConverter["Act"]):
         if sequence_number is not None:
             coverage["order"] = sequence_number
 
-        # Period from effectiveTime
+        # Period from policy effectiveTime (may be overridden by COV participant time)
         if policy.effective_time:
             period = self._convert_period(policy.effective_time)
             if period:
@@ -209,7 +213,7 @@ class CoverageConverter(BaseConverter["Act"]):
 
         return coverage, related
 
-    def _convert_period(self, effective_time) -> FHIRResourceDict | None:
+    def _convert_period(self, effective_time: IVL_TS) -> FHIRResourceDict | None:
         """Convert IVL_TS to FHIR Period.
 
         Args:
@@ -252,45 +256,54 @@ class CoverageConverter(BaseConverter["Act"]):
         if not performer.assigned_entity:
             return
 
+        # Identify PAYOR performer by templateId (.87) first, fall back to code
+        if not self._is_payor_performer(performer):
+            return
+
         assigned = performer.assigned_entity
+        org_converter = OrganizationConverter(
+            code_system_mapper=self.code_system_mapper,
+        )
 
-        # Check if this is a PAYOR performer
-        if assigned.code and assigned.code.code == "PAYOR":
-            org_converter = OrganizationConverter(
-                code_system_mapper=self.code_system_mapper,
-            )
-
-            # Try representedOrganization first, fall back to assignedEntity itself
-            if assigned.represented_organization:
-                org = org_converter.convert(assigned.represented_organization)
-                if org:
-                    # Ensure org has an ID (some don't have identifiers)
-                    if not org.get("id"):
-                        org["id"] = generate_id()
-                    related.append(org)
-                    org_id = org["id"]
-                    coverage["payor"] = [
-                        {"reference": f"urn:uuid:{org_id}"}
-                    ]
-            elif assigned.id:
-                # Create minimal Organization from assignedEntity
-                org_id = generate_id_from_identifiers(
-                    "Organization",
-                    assigned.id[0].root if assigned.id else None,
-                    assigned.id[0].extension if assigned.id else None,
-                )
-                org: FHIRResourceDict = {
-                    "resourceType": FHIRCodes.ResourceTypes.ORGANIZATION,
-                    "id": org_id,
-                    "active": True,
-                }
-                identifiers = self.convert_identifiers(assigned.id)
-                if identifiers:
-                    org["identifier"] = identifiers
+        # Try representedOrganization first, fall back to assignedEntity itself
+        if assigned.represented_organization:
+            org = org_converter.convert(assigned.represented_organization)
+            if org:
+                if not org.get("id"):
+                    org["id"] = generate_id()
                 related.append(org)
                 coverage["payor"] = [
-                    {"reference": f"urn:uuid:{org_id}"}
+                    {"reference": f"urn:uuid:{org['id']}"}
                 ]
+        elif assigned.id:
+            # Create minimal Organization from assignedEntity
+            org_id = generate_id_from_identifiers(
+                "Organization",
+                assigned.id[0].root,
+                assigned.id[0].extension,
+            )
+            minimal_org: FHIRResourceDict = {
+                "resourceType": FHIRCodes.ResourceTypes.ORGANIZATION,
+                "id": org_id,
+                "active": True,
+            }
+            identifiers = self.convert_identifiers(assigned.id)
+            if identifiers:
+                minimal_org["identifier"] = identifiers
+            related.append(minimal_org)
+            coverage["payor"] = [
+                {"reference": f"urn:uuid:{org_id}"}
+            ]
+
+    @staticmethod
+    def _is_payor_performer(performer: Performer) -> bool:
+        """Check if a performer is a PAYOR by templateId (.87) or code."""
+        if performer.template_id:
+            if any(t.root == TemplateIds.PAYER_PERFORMER for t in performer.template_id):
+                return True
+        if performer.assigned_entity and performer.assigned_entity.code:
+            return performer.assigned_entity.code.code == "PAYOR"
+        return False
 
     def _process_participant(
         self,
@@ -309,7 +322,7 @@ class CoverageConverter(BaseConverter["Act"]):
         role = participant.participant_role
 
         if participant.type_code == "COV":
-            # Covered party — extract subscriber ID and relationship
+            # Covered party — extract member ID and relationship
             if role.id:
                 for identifier in role.id:
                     if identifier.extension:
@@ -317,8 +330,10 @@ class CoverageConverter(BaseConverter["Act"]):
                         break
 
             # Relationship code (SELF, SPOUSE, CHILD, etc.)
+            relationship_code: str | None = None
             if role.code and role.code.code:
-                rel = _RELATIONSHIP_MAP.get(role.code.code.upper())
+                relationship_code = role.code.code.upper()
+                rel = _RELATIONSHIP_MAP.get(relationship_code)
                 if rel:
                     coverage["relationship"] = {
                         "coding": [{
@@ -327,17 +342,24 @@ class CoverageConverter(BaseConverter["Act"]):
                         }],
                     }
 
+            # When relationship is SELF, subscriber is the patient (beneficiary)
+            if relationship_code == "SELF" and self.reference_registry:
+                coverage["subscriber"] = self.reference_registry.get_patient_reference()
+
+            # COV participant time is the coverage period (preferred over policy effectiveTime)
+            if participant.time:
+                period = self._convert_period(participant.time)
+                if period:
+                    coverage["period"] = period
+
         elif participant.type_code == "HLD":
-            # Policy holder — set policyHolder reference
-            # Without a linked Patient/RelatedPerson, we record the address
-            # as a contained reference or just note the relationship exists
+            # Policy holder
             if role.id:
-                coverage["policyHolder"] = {
-                    "identifier": {
-                        "system": self.map_oid_to_uri(role.id[0].root) if role.id[0].root else None,
-                        "value": role.id[0].extension or role.id[0].root,
-                    }
-                }
+                ident: FHIRResourceDict = {}
+                if role.id[0].root:
+                    ident["system"] = self.map_oid_to_uri(role.id[0].root)
+                ident["value"] = role.id[0].extension or role.id[0].root
+                coverage["policyHolder"] = {"identifier": ident}
 
 
 def _has_template(act: Act, template_id: str) -> bool:
