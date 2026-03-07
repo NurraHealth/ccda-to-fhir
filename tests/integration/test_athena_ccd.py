@@ -195,46 +195,39 @@ def test_athena_ccd_comprehensive() -> None:
         assert "recorded" in provenance
         assert "agent" in provenance
 
-    # === COVERAGE VALIDATION ===
+    # === COVERAGE STRUCTURAL VALIDATION ===
+    # These checks validate FHIR-compliance regardless of fixture content
     coverages = resources_by_type.get("Coverage", [])
     assert len(coverages) >= 1, "Expected at least one Coverage from payers section"
 
     coverage = coverages[0]
     assert "id" in coverage
-    assert coverage["status"] in ("active", "cancelled")
+    assert coverage["status"] in ("active", "cancelled", "draft", "entered-in-error")
     assert "beneficiary" in coverage
     assert coverage["beneficiary"]["reference"] in resources_by_id
     assert "payor" in coverage
     assert len(coverage["payor"]) >= 1
-    # Payor should reference a valid Organization
     payor_ref = coverage["payor"][0]["reference"]
     assert payor_ref in resources_by_id, f"Coverage payor ref {payor_ref} not found"
     assert resources_by_id[payor_ref]["resourceType"] == "Organization"
 
-    # Subscriber ID from COV participant
-    assert "subscriberId" in coverage
-    assert isinstance(coverage["subscriberId"], str)
-    assert len(coverage["subscriberId"]) > 0
-
-    # Coverage order from sequenceNumber
-    assert "order" in coverage
-    assert coverage["order"] == 1
-
-    # Insurance type
-    assert "type" in coverage
-    assert coverage["type"]["coding"][0]["code"] == "OT"
-
-    # Relationship (SELF) and subscriber
-    assert "relationship" in coverage
-    assert coverage["relationship"]["coding"][0]["code"] == "self"
-    # When relationship is SELF, subscriber should reference the patient
-    assert "subscriber" in coverage
-    assert coverage["subscriber"]["reference"] in resources_by_id
-
-    # Payor Organization should have a name
     payor_org = resources_by_id[payor_ref]
     assert "name" in payor_org
     assert len(payor_org["name"]) > 0
+
+    # === COVERAGE FIXTURE-SPECIFIC VALIDATION ===
+    # These checks are tied to the athena_ccd.xml fixture data
+    assert "subscriberId" in coverage
+    assert isinstance(coverage["subscriberId"], str)
+    assert len(coverage["subscriberId"]) > 0
+    assert "order" in coverage
+    assert coverage["order"] == 1
+    assert "type" in coverage
+    assert coverage["type"]["coding"][0]["code"] == "OT"
+    assert "relationship" in coverage
+    assert coverage["relationship"]["coding"][0]["code"] == "self"
+    assert "subscriber" in coverage
+    assert coverage["subscriber"]["reference"] in resources_by_id
 
     print("\n✓ athena_ccd comprehensive validation passed!")
     print(f"  Resources validated: {len(resources_by_id)}")

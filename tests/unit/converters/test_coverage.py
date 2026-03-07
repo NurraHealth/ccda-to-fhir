@@ -399,6 +399,7 @@ class TestStatusMapping:
         ("active", "active"),
         ("suspended", "cancelled"),
         ("aborted", "cancelled"),
+        ("nullified", "entered-in-error"),
     ])
     def test_status_mapping(self, converter, ccda_status, fhir_status):
         policy = _make_policy(status=ccda_status)
@@ -628,15 +629,16 @@ class TestMissingOptionalFields:
 
 
 class TestWithoutReferenceRegistry:
-    def test_beneficiary_fallback_without_registry(self):
-        """Without reference_registry, beneficiary defaults to Patient/unknown."""
+    def test_coverage_omits_beneficiary_without_registry(self, caplog):
+        """Without reference_registry, Coverage lacks beneficiary and payor."""
         converter = CoverageConverter()
         policy = _make_policy()
         act = _wrap_in_coverage_activity(policy)
         result = converter.convert(act)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
-        assert coverage["beneficiary"]["reference"] == "Patient/unknown"
-        assert coverage["payor"][0]["reference"] == "Patient/unknown"
+        assert "beneficiary" not in coverage
+        assert "payor" not in coverage
+        assert "No reference registry" in caplog.text
 
 
 class TestConvertCoverageActivityFunction:

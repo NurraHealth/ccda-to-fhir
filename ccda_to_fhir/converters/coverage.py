@@ -39,7 +39,7 @@ from .organization import OrganizationConverter
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.act import Act
     from ccda_to_fhir.ccda.models.datatypes import IVL_TS
-    from ccda_to_fhir.ccda.models.participant import Participant
+    from ccda_to_fhir.ccda.models.participant import Participant, ParticipantRole
     from ccda_to_fhir.ccda.models.performer import Performer
 
     from .references import ReferenceRegistry
@@ -52,6 +52,7 @@ _STATUS_MAP = {
     "active": "active",
     "suspended": "cancelled",
     "aborted": "cancelled",
+    "nullified": "entered-in-error",
 }
 
 # C-CDA relationship code → FHIR Coverage.relationship coding
@@ -171,7 +172,10 @@ class CoverageConverter(BaseConverter["Act"]):
             if mapped:
                 coverage["status"] = mapped
             else:
-                logger.warning("Unmapped Coverage statusCode '%s', defaulting to 'active'", status_code)
+                logger.warning(
+                    "Unmapped Coverage statusCode '%s', defaulting to 'active'",
+                    status_code,
+                )
                 coverage["status"] = "active"
         else:
             coverage["status"] = "active"
@@ -207,16 +211,15 @@ class CoverageConverter(BaseConverter["Act"]):
                 self._process_participant(participant, coverage)
 
         # Beneficiary — reference to the document's patient
-        if self.reference_registry:
-            patient_ref = self.reference_registry.get_patient_reference()
-            coverage["beneficiary"] = patient_ref
-            # payor is required in FHIR Coverage — default to patient if no PAYOR performer
-            if "payor" not in coverage:
-                coverage["payor"] = [patient_ref]
-        else:
-            coverage["beneficiary"] = {"reference": "Patient/unknown"}
-            if "payor" not in coverage:
-                coverage["payor"] = [{"reference": "Patient/unknown"}]
+        if not self.reference_registry:
+            logger.warning("No reference registry; Coverage will lack beneficiary/payor")
+            return coverage, related
+
+        patient_ref = self.reference_registry.get_patient_reference()
+        coverage["beneficiary"] = patient_ref
+        # payor is required in FHIR Coverage — default to patient if no PAYOR performer
+        if "payor" not in coverage:
+            coverage["payor"] = [patient_ref]
 
         return coverage, related
 
@@ -279,6 +282,7 @@ class CoverageConverter(BaseConverter["Act"]):
             org = org_converter.convert(assigned.represented_organization)
             if org:
                 if not org.get("id"):
+                    logger.warning("Organization converter produced no id; generating fallback")
                     org["id"] = generate_id()
                 related.append(org)
                 coverage["payor"] = [
@@ -343,52 +347,84 @@ class CoverageConverter(BaseConverter["Act"]):
         role = participant.participant_role
 
         if participant.type_code == "COV":
-            # Covered party — extract member ID and relationship
-            if role.id:
-                for identifier in role.id:
-                    if identifier.extension:
-                        coverage["subscriberId"] = identifier.extension
-                        break
-
-            # Relationship code (SELF, SPOUSE, CHILD, etc.)
-            relationship_code: str | None = None
-            if role.code and role.code.code:
-                relationship_code = role.code.code.upper()
-                rel = _RELATIONSHIP_MAP.get(relationship_code)
-                if not rel:
-                    logger.warning("Unmapped relationship code '%s', defaulting to 'other'", relationship_code)
-                    rel = _RELATIONSHIP_MAP["OTHER"]
-                coverage["relationship"] = {
-                    "coding": [{
-                        "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
-                        **rel,
-                    }],
-                }
-
-            # When relationship is SELF, subscriber is the patient (beneficiary)
-            if relationship_code == "SELF" and self.reference_registry:
-                coverage["subscriber"] = self.reference_registry.get_patient_reference()
-
-            # COV participant time is the coverage period (preferred over policy effectiveTime)
-            if participant.time:
-                period = self._convert_period(participant.time)
-                if period:
-                    coverage["period"] = period
-
+            self._process_cov_participant(role, participant, coverage)
         elif participant.type_code == "HLD":
-            # Policy holder
-            if role.id:
-                first = role.id[0]
-                value = first.extension or first.root
-                if not value:
-                    return
-                ident: FHIRResourceDict = {}
-                # Only set system when extension is the value (root is the OID namespace);
-                # when root is used as value itself, skip system to avoid duplication
-                if first.root and first.extension:
-                    ident["system"] = self.map_oid_to_uri(first.root)
-                ident["value"] = value
-                coverage["policyHolder"] = {"identifier": ident}
+            self._process_hld_participant(role, coverage)
+
+    def _process_cov_participant(
+        self,
+        role: ParticipantRole,
+        participant: Participant,
+        coverage: FHIRResourceDict,
+    ) -> None:
+        """Extract subscriber ID, relationship, and period from COV participant."""
+        # Subscriber ID from first identifier with an extension
+        if role.id:
+            for identifier in role.id:
+                if identifier.extension:
+                    coverage["subscriberId"] = identifier.extension
+                    break
+
+        # Relationship code (SELF, SPOUSE, CHILD, etc.)
+        relationship_code = self._extract_relationship(role, coverage)
+
+        # When relationship is SELF, subscriber is the patient (beneficiary)
+        if relationship_code == "SELF" and self.reference_registry:
+            coverage["subscriber"] = self.reference_registry.get_patient_reference()
+
+        # COV participant time is the coverage period (preferred over policy effectiveTime)
+        if participant.time:
+            period = self._convert_period(participant.time)
+            if period:
+                coverage["period"] = period
+
+    @staticmethod
+    def _extract_relationship(
+        role: ParticipantRole,
+        coverage: FHIRResourceDict,
+    ) -> str | None:
+        """Extract and map relationship code from participant role.
+
+        Returns the uppercased C-CDA relationship code, or None if absent.
+        """
+        if not (role.code and role.code.code):
+            return None
+
+        relationship_code = role.code.code.upper()
+        rel = _RELATIONSHIP_MAP.get(relationship_code)
+        if not rel:
+            logger.warning(
+                "Unmapped relationship code '%s', defaulting to 'other'",
+                relationship_code,
+            )
+            rel = _RELATIONSHIP_MAP["OTHER"]
+        coverage["relationship"] = {
+            "coding": [{
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                **rel,
+            }],
+        }
+        return relationship_code
+
+    def _process_hld_participant(
+        self,
+        role: ParticipantRole,
+        coverage: FHIRResourceDict,
+    ) -> None:
+        """Extract policy holder identifier from HLD participant."""
+        if not role.id:
+            return
+        first = role.id[0]
+        value = first.extension or first.root
+        if not value:
+            return
+        ident: FHIRResourceDict = {}
+        # Only set system when extension is the value (root is the OID namespace);
+        # when root is used as value itself, skip system to avoid duplication
+        if first.root and first.extension:
+            ident["system"] = self.map_oid_to_uri(first.root)
+        ident["value"] = value
+        coverage["policyHolder"] = {"identifier": ident}
 
 
 def _has_template(act: Act, template_id: str) -> bool:
