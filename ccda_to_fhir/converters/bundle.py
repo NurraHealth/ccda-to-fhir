@@ -24,12 +24,7 @@ def create_bundle(
         from ccda_to_fhir.id_generator import generate_id
         bundle_id = generate_id()
 
-    bundle: JSONObject = {
-        "resourceType": "Bundle",
-        "id": bundle_id,
-        "type": bundle_type,
-        "entry": [],
-    }
+    entries: list[JSONObject] = []
 
     # Add resources as bundle entries
     for resource in resources:
@@ -40,11 +35,17 @@ def create_bundle(
         # For document bundles, the first entry should have fullUrl with composition
         # For other bundle types, add fullUrl for all resources
         if resource.get("resourceType") and resource.get("id"):
-            resource_type = resource["resourceType"]
             resource_id = resource["id"]
             entry["fullUrl"] = f"urn:uuid:{resource_id}"
 
-        bundle["entry"].append(entry)
+        entries.append(entry)
+
+    bundle: FHIRResourceDict = {
+        "resourceType": "Bundle",
+        "id": bundle_id,
+        "type": bundle_type,
+        "entry": entries,
+    }
 
     return bundle
 

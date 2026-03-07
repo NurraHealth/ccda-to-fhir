@@ -54,7 +54,6 @@ class CodeSystemMapper:
 
         # HL7 V2 Tables
         "2.16.840.1.113883.12.112": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
-        "2.16.840.1.113883.12.292": "http://hl7.org/fhir/sid/cvx",
 
         # FHIR CodeSystems (for when C-CDA uses FHIR codes)
         # Note: Some C-CDA documents incorrectly use ValueSet OIDs as codeSystem
@@ -78,7 +77,7 @@ class CodeSystemMapper:
             self.mappings.update(custom_mappings)
 
         # Create reverse mapping for URI to OID
-        self.uri_to_oid = {uri: oid for oid, uri in self.mappings.items()}
+        self._uri_to_oid_map: dict[str, str] = {uri: oid for oid, uri in self.mappings.items()}
 
     def oid_to_uri(self, oid: str) -> str:
         """Convert an OID to a FHIR canonical URI.
@@ -155,8 +154,8 @@ class CodeSystemMapper:
             return uri[8:]  # Remove "urn:oid:" prefix
 
         # Check for known reverse mapping
-        if uri in self.uri_to_oid:
-            return self.uri_to_oid[uri]
+        if uri in self._uri_to_oid_map:
+            return self._uri_to_oid_map[uri]
 
         # Return URI as-is if no mapping found
         return uri
@@ -169,4 +168,4 @@ class CodeSystemMapper:
             uri: The FHIR canonical URI
         """
         self.mappings[oid] = uri
-        self.uri_to_oid[uri] = oid
+        self._uri_to_oid_map[uri] = oid
