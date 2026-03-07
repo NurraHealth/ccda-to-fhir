@@ -37,10 +37,10 @@ class ReferenceRegistry:
         >>> # Returns: None (and logs warning)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty registry."""
         self._resources: dict[str, dict[str, FHIRResourceDict]] = {}
-        self._stats = {
+        self._stats: dict[str, int] = {
             "registered": 0,
             "resolved": 0,
             "failed": 0,
@@ -52,19 +52,22 @@ class ReferenceRegistry:
         Args:
             resource: FHIR resource dictionary with resourceType and id
         """
-        resource_type = resource.get("resourceType")
-        resource_id = resource.get("id")
+        raw_resource_type = resource.get("resourceType")
+        raw_resource_id = resource.get("id")
 
-        if not resource_type:
+        if not isinstance(raw_resource_type, str) or not raw_resource_type:
             logger.warning("Cannot register resource without resourceType")
             return
 
-        if not resource_id:
+        if not isinstance(raw_resource_id, str) or not raw_resource_id:
             logger.warning(
-                f"Cannot register {resource_type} without id",
-                extra={"resource_type": resource_type}
+                f"Cannot register {raw_resource_type} without id",
+                extra={"resource_type": raw_resource_type}
             )
             return
+
+        resource_type: str = raw_resource_type
+        resource_id: str = raw_resource_id
 
         # Initialize type bucket if needed
         if resource_type not in self._resources:
@@ -187,7 +190,7 @@ class ReferenceRegistry:
         Returns:
             List of all resources in registration order
         """
-        all_resources = []
+        all_resources: list[FHIRResourceDict] = []
         for resource_type_dict in self._resources.values():
             all_resources.extend(resource_type_dict.values())
         return all_resources

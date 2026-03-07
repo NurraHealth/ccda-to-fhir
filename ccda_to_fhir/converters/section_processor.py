@@ -8,14 +8,41 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeAlias
 
-from ccda_to_fhir.ccda.models.section import StructuredBody
+from ccda_to_fhir.ccda.models.act import Act
+from ccda_to_fhir.ccda.models.encounter import Encounter as CDAEncounter
+from ccda_to_fhir.ccda.models.observation import Observation
+from ccda_to_fhir.ccda.models.organizer import Organizer
+from ccda_to_fhir.ccda.models.procedure import Procedure
+from ccda_to_fhir.ccda.models.section import Entry, StructuredBody
+from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.template_registry import SupportedTemplates
 from ccda_to_fhir.types import ConversionMetadata, FHIRResourceDict
 
 logger = get_logger(__name__)
+
+# NOTE: Callable[..., ConverterResult] uses `...` for parameters because
+# converters have heterogeneous signatures (different ClinicalStatement subtypes
+# and optional kwargs). The SectionConfig.entry_type guarantees the correct
+# subtype is dispatched at runtime via _get_entry_element(). A Protocol can't
+# express this constraint due to parameter contravariance — converters accept
+# narrow types (e.g. Act) but the processor dispatches the union type.
+# Eliminating this requires a generic SectionConfig[T] approach (future work).
+
+# Union of all C-CDA clinical statement types that can appear as entry elements
+ClinicalStatement: TypeAlias = (
+    Act | Observation | Organizer | Procedure | CDAEncounter | SubstanceAdministration
+)
+
+# Return type union for converter functions
+ConverterResult: TypeAlias = (
+    FHIRResourceDict
+    | list[FHIRResourceDict]
+    | tuple[FHIRResourceDict, list[FHIRResourceDict]]
+    | None
+)
 
 EntryType = Literal[
     "act",
@@ -41,7 +68,7 @@ class SectionConfig:
 
     template_id: str
     entry_type: EntryType
-    converter: Callable
+    converter: Callable[..., ConverterResult]
     error_message: str
     include_section_code: bool = False
 
@@ -76,7 +103,7 @@ class SectionProcessor:
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
-        **converter_kwargs,
+        **converter_kwargs: object,
     ) -> list[FHIRResourceDict]:
         """Process a structured body and extract resources.
 
@@ -92,7 +119,7 @@ class SectionProcessor:
         Returns:
             List of FHIR resources extracted from matching entries
         """
-        resources = []
+        resources: list[FHIRResourceDict] = []
 
         if not structured_body.component:
             return resources
@@ -130,7 +157,7 @@ class SectionProcessor:
                                     import inspect
                                     converter_sig = inspect.signature(self.config.converter)
 
-                                    kwargs = {}
+                                    kwargs: dict[str, object] = {}
 
                                     # Pass section_code if needed and supported
                                     if self.config.include_section_code and "section_code" in converter_sig.parameters:
@@ -150,23 +177,27 @@ class SectionProcessor:
                                         entry_element, **kwargs
                                     )
 
-                                    # Handle single resource or list
-                                    if isinstance(result, list):
+                                    # Handle tuple (resource, pending_resources), list, or single resource
+                                    if isinstance(result, tuple):
+                                        resource, pending = result
+                                        resources.append(resource)
+                                        resources.extend(pending)
+                                    elif isinstance(result, list):
                                         resources.extend(result)
                                     elif result is not None:
                                         resources.append(result)
 
                                     # Track successful conversion
-                                    if metadata is not None:
+                                    if metadata is not None and template.root is not None:
                                         self._track_processed(metadata, template.root)
 
                                 except Exception as e:
                                     # Track error
                                     if metadata is not None:
                                         entry_id = None
-                                        entry_ids = getattr(entry_element, "id", None)
-                                        if entry_ids:
-                                            ids = entry_ids if isinstance(entry_ids, list) else [entry_ids]
+                                        element_ids = entry_element.id
+                                        if element_ids is not None:
+                                            ids = element_ids if isinstance(element_ids, list) else [element_ids]
                                             if ids and ids[0]:
                                                 entry_id = f"{ids[0].root}/{ids[0].extension or ''}"
 
@@ -196,13 +227,13 @@ class SectionProcessor:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         # Create a temporary structured body for recursion
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        temp_body = StructuredBody(component=[nested_comp])
                         nested_resources = self.process(temp_body, metadata, **converter_kwargs)
                         resources.extend(nested_resources)
 
         return resources
 
-    def _get_entry_element(self, entry):
+    def _get_entry_element(self, entry: Entry) -> ClinicalStatement | None:
         """Get the appropriate entry element based on entry type.
 
         Args:
@@ -211,7 +242,20 @@ class SectionProcessor:
         Returns:
             The entry element (act, observation, etc.) or None
         """
-        return getattr(entry, self.config.entry_type, None)
+        entry_type = self.config.entry_type
+        if entry_type == "act":  # noqa: SIM116
+            return entry.act
+        elif entry_type == "observation":
+            return entry.observation
+        elif entry_type == "organizer":
+            return entry.organizer
+        elif entry_type == "procedure":
+            return entry.procedure
+        elif entry_type == "encounter":
+            return entry.encounter
+        elif entry_type == "substance_administration":
+            return entry.substance_administration
+        return None
 
     def _track_processed(self, metadata: ConversionMetadata, template_id: str) -> None:
         """Track a successfully processed template.

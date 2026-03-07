@@ -2,31 +2,28 @@
 
 This module provides decorators and context managers for profiling
 conversion performance in production environments.
-
-Type Note:
-    Any is used in the @profile decorator wrapper function because it wraps
-    arbitrary functions with unknown signatures. This is a standard pattern
-    for decorators and is outside the core data flow - profiling does not
-    affect type safety of the conversion pipeline.
 """
 
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from functools import wraps
-from typing import Any
+from typing import ParamSpec, TypedDict, TypeVar
 
 from ccda_to_fhir.logging_config import get_logger
 
 logger = get_logger(__name__)
 
+P = ParamSpec("P")
+T = TypeVar("T")
+
 
 class PerformanceMetrics:
     """Collects and reports performance metrics."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize performance metrics collector."""
         self.metrics: dict[str, list[float]] = {}
         self.counts: dict[str, int] = {}
@@ -72,7 +69,7 @@ class PerformanceMetrics:
         Returns:
             Dictionary mapping operation names to their statistics
         """
-        return {op: self.get_stats(op) for op in self.metrics.keys()}
+        return {op: self.get_stats(op) for op in self.metrics}
 
     def report(self) -> None:
         """Log a summary of all performance metrics."""
@@ -106,7 +103,7 @@ def get_metrics() -> PerformanceMetrics:
 
 
 @contextmanager
-def profile_operation(operation_name: str, log_result: bool = True):
+def profile_operation(operation_name: str, log_result: bool = True) -> Generator[None, None, None]:
     """Context manager for profiling an operation.
 
     Args:
@@ -131,7 +128,9 @@ def profile_operation(operation_name: str, log_result: bool = True):
             logger.debug(f"{operation_name} completed in {duration:.3f}s")
 
 
-def profile(operation_name: str | None = None, log_result: bool = False):
+def profile(
+    operation_name: str | None = None, log_result: bool = False
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator for profiling a function.
 
     Args:
@@ -148,18 +147,33 @@ def profile(operation_name: str | None = None, log_result: bool = False):
             pass
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         op_name = operation_name or func.__name__
 
         @wraps(func)
-        # Any used because this decorator wraps arbitrary functions with unknown signatures
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             with profile_operation(op_name, log_result=log_result):
                 return func(*args, **kwargs)
 
         return wrapper
 
     return decorator
+
+
+class ResourceStats(TypedDict):
+    """Stats for a single resource type."""
+
+    count: int
+    total_time: float
+    avg_time: float
+
+
+class ProfilingReport(TypedDict):
+    """Profiling report structure."""
+
+    total_time: float
+    stages: dict[str, float]
+    resources: dict[str, ResourceStats]
 
 
 class ConversionProfiler:
@@ -169,7 +183,7 @@ class ConversionProfiler:
     breaking down timing by conversion stage and resource type.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the conversion profiler."""
         self.stage_times: dict[str, float] = {}
         self.resource_counts: dict[str, int] = {}
@@ -217,30 +231,28 @@ class ConversionProfiler:
             self.total_time = time.time() - self.start_time
         return self.total_time
 
-    def get_report(self) -> dict[str, Any]:
+    def get_report(self) -> ProfilingReport:
         """Get a detailed profiling report.
 
         Returns:
-            Dictionary with profiling information. Uses Any because the nested
-            structure contains mixed types (floats, dicts) that vary by key.
-            This is a reporting utility outside core data flow.
+            Typed profiling report with stages and resource stats.
         """
-        return {
-            "total_time": self.total_time,
-            "stages": self.stage_times.copy(),
-            "resources": {
-                resource_type: {
-                    "count": self.resource_counts[resource_type],
-                    "total_time": self.resource_times[resource_type],
-                    "avg_time": (
+        return ProfilingReport(
+            total_time=self.total_time,
+            stages=self.stage_times.copy(),
+            resources={
+                resource_type: ResourceStats(
+                    count=self.resource_counts[resource_type],
+                    total_time=self.resource_times[resource_type],
+                    avg_time=(
                         self.resource_times[resource_type] / self.resource_counts[resource_type]
                         if self.resource_counts[resource_type] > 0
                         else 0
                     ),
-                }
-                for resource_type in self.resource_times.keys()
+                )
+                for resource_type in self.resource_times
             },
-        }
+        )
 
     def log_report(self) -> None:
         """Log the profiling report."""
