@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, IVL_TS, PQ, TS
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.section import Section
+    from ccda_to_fhir.converters.code_systems import CodeSystemMapper
+    from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.constants import (
     IMMUNIZATION_STATUS_TO_FHIR,
     NO_IMMUNIZATION_REASON_CODES,
@@ -1058,11 +1066,11 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
 def convert_immunization_activity(
     substance_admin: SubstanceAdministration,
-    code_system_mapper=None,
-    metadata_callback=None,
-    section=None,
-    reference_registry=None,
-    seen_immunization_ids=None,
+    code_system_mapper: CodeSystemMapper | None = None,
+    metadata_callback: Callable[..., None] | None = None,
+    section: Section | None = None,
+    reference_registry: ReferenceRegistry | None = None,
+    seen_immunization_ids: set[tuple[str, str | None]] | None = None,
 ) -> list[FHIRResourceDict]:
     """Convert a C-CDA Immunization Activity to FHIR resources.
 

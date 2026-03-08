@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.participant import Participant, ParticipantRole
     from ccda_to_fhir.ccda.models.performer import Performer
 
+    from .code_systems import CodeSystemMapper
     from .references import ReferenceRegistry
 
 logger = get_logger(__name__)
@@ -72,7 +73,7 @@ def convert_coverage_activity(
     act: Act,
     *,
     reference_registry: ReferenceRegistry | None = None,
-    code_system_mapper=None,
+    code_system_mapper: CodeSystemMapper | None = None,
 ) -> list[FHIRResourceDict]:
     """Convert a Coverage Activity Act to FHIR Coverage + Organization resources.
 

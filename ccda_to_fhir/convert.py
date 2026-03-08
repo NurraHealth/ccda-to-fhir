@@ -2,22 +2,8 @@
 
 from __future__ import annotations
 
-from fhir_core.fhirabstractmodel import FHIRAbstractModel
+from collections.abc import Callable
 
-from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
-from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II, ON
-from ccda_to_fhir.ccda.models.section import StructuredBody
-from ccda_to_fhir.ccda.parser import parse_ccda
-from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP, TemplateIds
-from ccda_to_fhir.exceptions import CCDAConversionError
-from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import (
-    ConversionMetadata,
-    ConversionResult,
-    FHIRResourceDict,
-    JSONObject,
-)
-from ccda_to_fhir.validation import FHIRValidator
 from fhir.resources.R4B.allergyintolerance import AllergyIntolerance
 from fhir.resources.R4B.careplan import CarePlan
 from fhir.resources.R4B.careteam import CareTeam
@@ -44,6 +30,24 @@ from fhir.resources.R4B.procedure import Procedure
 from fhir.resources.R4B.provenance import Provenance
 from fhir.resources.R4B.relatedperson import RelatedPerson
 from fhir.resources.R4B.servicerequest import ServiceRequest
+from fhir_core.fhirabstractmodel import FHIRAbstractModel
+
+from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
+from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II, ON
+from ccda_to_fhir.ccda.models.organizer import Organizer
+from ccda_to_fhir.ccda.models.section import Section, StructuredBody
+from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
+from ccda_to_fhir.ccda.parser import parse_ccda
+from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP, TemplateIds
+from ccda_to_fhir.exceptions import CCDAConversionError
+from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import (
+    ConversionMetadata,
+    ConversionResult,
+    FHIRResourceDict,
+    JSONObject,
+)
+from ccda_to_fhir.validation import FHIRValidator
 
 from .converters.allergy_intolerance import convert_allergy_concern_act
 from .converters.author_extractor import AuthorExtractor, AuthorInfo
@@ -77,7 +81,18 @@ from .converters.practitioner_role import PractitionerRoleConverter
 from .converters.procedure import ProcedureConverter
 from .converters.provenance import ProvenanceConverter
 from .converters.references import ReferenceRegistry
-from .converters.section_processor import SectionConfig, SectionProcessor
+from .converters.section_traversal import (
+    ClinicalStatement,
+    collect_results,
+    converting,
+    iter_matching_acts,
+    iter_matching_encounters,
+    iter_matching_observations,
+    iter_matching_organizers,
+    iter_matching_procedures,
+    iter_matching_substance_administrations,
+    scan_skipped_templates,
+)
 from .converters.service_request import ServiceRequestConverter
 
 logger = get_logger(__name__)
@@ -114,11 +129,11 @@ RESOURCE_TYPE_MAPPING: dict[str, type[FHIRAbstractModel]] = {
 
 
 def convert_careteam_organizer(
-    organizer,
-    code_system_mapper=None,
-    metadata_callback=None,
-    section=None,
-    reference_registry=None,
+    organizer: Organizer,
+    code_system_mapper: CodeSystemMapper | None = None,
+    metadata_callback: Callable[..., None] | None = None,
+    section: Section | None = None,
+    reference_registry: ReferenceRegistry | None = None,
 ) -> list[FHIRResourceDict]:
     """Convert a Care Team Organizer to FHIR CareTeam and related resources.
 
@@ -167,12 +182,12 @@ def convert_careteam_organizer(
 
 
 def convert_medication(
-    substance_admin,
-    code_system_mapper=None,
-    metadata_callback=None,
-    section=None,
-    reference_registry=None,
-    seen_medication_ids=None,
+    substance_admin: SubstanceAdministration,
+    code_system_mapper: CodeSystemMapper | None = None,
+    metadata_callback: Callable[..., None] | None = None,
+    section: Section | None = None,
+    reference_registry: ReferenceRegistry | None = None,
+    seen_medication_ids: set[tuple[str, str | None]] | None = None,
 ) -> FHIRResourceDict:
     """Route medication activity to appropriate converter based on moodCode.
 
@@ -320,209 +335,6 @@ class DocumentConverter:
             code_system_mapper=self.code_system_mapper
         )
 
-        # Initialize section processors for generic extraction
-        self._init_section_processors()
-
-    def _init_section_processors(self) -> None:
-        """Initialize section processors for extracting resources from sections."""
-        # Conditions (Problem Concern Acts)
-        self.condition_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.PROBLEM_CONCERN_ACT,
-                entry_type="act",
-                converter=convert_problem_concern_act,
-                error_message="problem concern act",
-                include_section_code=True,
-            )
-        )
-
-        # Allergies (Allergy Concern Acts)
-        self.allergy_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.ALLERGY_CONCERN_ACT,
-                entry_type="act",
-                converter=convert_allergy_concern_act,
-                error_message="allergy concern act",
-                include_section_code=False,
-            )
-        )
-
-        # Medications (Medication Activities)
-        # Routes to MedicationRequest or MedicationStatement based on moodCode
-        self.medication_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.MEDICATION_ACTIVITY,
-                entry_type="substance_administration",
-                converter=convert_medication,
-                error_message="medication activity",
-                include_section_code=False,
-            )
-        )
-
-        # Immunizations (Immunization Activities)
-        self.immunization_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.IMMUNIZATION_ACTIVITY,
-                entry_type="substance_administration",
-                converter=convert_immunization_activity,
-                error_message="immunization activity",
-                include_section_code=False,
-            )
-        )
-
-        # Procedures (Procedure Activity Procedures)
-        self.procedure_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE,
-                entry_type="procedure",
-                converter=self.procedure_converter.convert,
-                error_message="procedure",
-                include_section_code=False,
-            )
-        )
-
-        # Procedure Activity Observations (also map to FHIR Procedure)
-        self.procedure_observation_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION,
-                entry_type="observation",
-                converter=self.procedure_converter.convert,
-                error_message="procedure observation",
-                include_section_code=False,
-            )
-        )
-
-        # Procedure Activity Acts (also map to FHIR Procedure)
-        self.procedure_act_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.PROCEDURE_ACTIVITY_ACT,
-                entry_type="act",
-                converter=self.procedure_converter.convert,
-                error_message="procedure act",
-                include_section_code=False,
-            )
-        )
-
-        # Encounters (Encounter Activities)
-        self.encounter_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.ENCOUNTER_ACTIVITY,
-                entry_type="encounter",
-                converter=self.encounter_converter.convert,
-                error_message="encounter",
-                include_section_code=False,
-            )
-        )
-
-        # Notes (Note Activities)
-        self.note_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.NOTE_ACTIVITY,
-                entry_type="act",
-                converter=convert_note_activity,
-                error_message="note activity",
-                include_section_code=False,
-            )
-        )
-
-        # Vital Signs (Vital Signs Organizers)
-        self.vital_signs_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.VITAL_SIGNS_ORGANIZER,
-                entry_type="organizer",
-                converter=self.observation_converter.convert_vital_signs_organizer,
-                error_message="vital signs organizer",
-                include_section_code=False,
-            )
-        )
-
-        # Results (Result Organizers)
-        self.results_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.RESULT_ORGANIZER,
-                entry_type="organizer",
-                converter=self.diagnostic_report_converter.convert,
-                error_message="result organizer",
-                include_section_code=False,
-            )
-        )
-
-        # Smoking Status Observations
-        self.smoking_status_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.SMOKING_STATUS_OBSERVATION,
-                entry_type="observation",
-                converter=self.observation_converter.convert,
-                error_message="smoking status observation",
-                include_section_code=False,
-            )
-        )
-
-        # Social History Observations (general)
-        self.social_history_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.SOCIAL_HISTORY_OBSERVATION,
-                entry_type="observation",
-                converter=self.observation_converter.convert,
-                error_message="social history observation",
-                include_section_code=False,
-            )
-        )
-
-        # Goals (Goal Observations)
-        self.goal_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.GOAL_OBSERVATION,
-                entry_type="observation",
-                converter=self.goal_converter.convert,
-                error_message="goal observation",
-                include_section_code=False,
-            )
-        )
-
-        # Service Requests (Planned Procedures)
-        self.planned_procedure_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.PLANNED_PROCEDURE,
-                entry_type="procedure",
-                converter=self.service_request_converter.convert,
-                error_message="planned procedure",
-                include_section_code=False,
-            )
-        )
-
-        # Service Requests (Planned Acts)
-        self.planned_act_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.PLANNED_ACT,
-                entry_type="act",
-                converter=self.service_request_converter.convert,
-                error_message="planned act",
-                include_section_code=False,
-            )
-        )
-
-        # Care Teams (Care Team Organizers)
-        self.careteam_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.CARE_TEAM_ORGANIZER,
-                entry_type="organizer",
-                converter=convert_careteam_organizer,
-                error_message="care team organizer",
-                include_section_code=False,
-            )
-        )
-
-        # Coverage (Coverage Activities)
-        self.coverage_processor = SectionProcessor(
-            SectionConfig(
-                template_id=TemplateIds.COVERAGE_ACTIVITY,
-                entry_type="act",
-                converter=convert_coverage_activity,
-                error_message="coverage activity",
-                include_section_code=False,
-            )
-        )
 
     def _create_bundle_identifier(self, doc_id: II) -> JSONObject:
         """Create Bundle identifier from ClinicalDocument ID.
@@ -940,7 +752,7 @@ class DocumentConverter:
                 section_resource_map[TemplateIds.IMMUNIZATIONS_SECTION] = immunizations
 
             # Vital Signs (from Vital Signs sections)
-            vital_signs = self._extract_vital_signs(ccda_doc.component.structured_body)
+            vital_signs = self._extract_vital_signs(ccda_doc.component.structured_body, metadata)
             resources.extend(vital_signs)
             for vital_sign in vital_signs:
                 self.reference_registry.register_resource(vital_sign)
@@ -948,7 +760,7 @@ class DocumentConverter:
                 section_resource_map[TemplateIds.VITAL_SIGNS_SECTION] = vital_signs
 
             # Results (from Results sections)
-            results = self._extract_results(ccda_doc.component.structured_body)
+            results = self._extract_results(ccda_doc.component.structured_body, metadata)
             resources.extend(results)
             for result in results:
                 self.reference_registry.register_resource(result)
@@ -988,7 +800,7 @@ class DocumentConverter:
                 section_resource_map[TemplateIds.CARE_TEAMS_SECTION] = careteams
 
             # Procedures (from Procedures sections)
-            procedures = self._extract_procedures(ccda_doc.component.structured_body)
+            procedures = self._extract_procedures(ccda_doc.component.structured_body, metadata)
             resources.extend(procedures)
             for procedure in procedures:
                 self.reference_registry.register_resource(procedure)
@@ -1015,7 +827,7 @@ class DocumentConverter:
 
             # Service Requests (from Plan of Treatment sections)
             service_requests = self._extract_service_requests(
-                ccda_doc.component.structured_body
+                ccda_doc.component.structured_body, metadata
             )
             resources.extend(service_requests)
             for service_request in service_requests:
@@ -1024,7 +836,7 @@ class DocumentConverter:
                 section_resource_map[TemplateIds.PLAN_OF_TREATMENT_SECTION] = service_requests
 
             # Encounters (from Encounters sections)
-            encounters = self._extract_encounters(ccda_doc.component.structured_body)
+            encounters = self._extract_encounters(ccda_doc.component.structured_body, metadata)
 
             # Also extract header encounter if present (componentOf.encompassingEncounter)
             # Deduplication: Merge with body encounter if duplicate, otherwise add separately
@@ -1098,7 +910,7 @@ class DocumentConverter:
                 self.reference_registry.register_resource(location)
 
             # Notes (from Notes sections)
-            notes = self._extract_notes(ccda_doc.component.structured_body)
+            notes = self._extract_notes(ccda_doc.component.structured_body, metadata)
             resources.extend(notes)
             for note in notes:
                 self.reference_registry.register_resource(note)
@@ -1116,6 +928,9 @@ class DocumentConverter:
             resources.extend(coverage_resources)
             if coverages:
                 section_resource_map[TemplateIds.PAYERS_SECTION] = coverages
+
+            # Track any unsupported templates as skipped
+            scan_skipped_templates(ccda_doc.component.structured_body, metadata)
 
         # Generate Provenance resources and create missing author resources
         # (after all clinical resources, before Composition)
@@ -1357,281 +1172,201 @@ class DocumentConverter:
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
     ) -> list[FHIRResourceDict]:
-        """Extract and convert Conditions from the structured body.
-
-        Args:
-            structured_body: The structuredBody element
-            metadata: Optional conversion metadata tracker
-
-        Returns:
-            List of FHIR Condition resources
-        """
-        return self.condition_processor.process(
-            structured_body,
-            metadata=metadata,
-            code_system_mapper=self.code_system_mapper,
-            metadata_callback=self._store_author_metadata,
-            reference_registry=self.reference_registry,
-            seen_observation_ids=self._seen_observation_ids,
-        )
+        """Extract and convert Conditions from the structured body."""
+        resources: list[FHIRResourceDict] = []
+        for act, section, section_code in iter_matching_acts(
+            structured_body, TemplateIds.PROBLEM_CONCERN_ACT
+        ):
+            with converting(metadata, TemplateIds.PROBLEM_CONCERN_ACT, act.id, "problem concern act"):
+                result = convert_problem_concern_act(
+                    act,
+                    section_code=section_code,
+                    code_system_mapper=self.code_system_mapper,
+                    metadata_callback=self._store_author_metadata,
+                    reference_registry=self.reference_registry,
+                    seen_observation_ids=self._seen_observation_ids,
+                    section=section,
+                )
+                collect_results(resources, result)
+        return resources
 
     def _extract_allergies(
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
     ) -> list[FHIRResourceDict]:
-        """Extract and convert Allergies from the structured body.
-
-        Args:
-            structured_body: The structuredBody element
-            metadata: Optional conversion metadata tracker
-
-        Returns:
-            List of FHIR AllergyIntolerance resources
-        """
-        return self.allergy_processor.process(
-            structured_body,
-            metadata=metadata,
-            code_system_mapper=self.code_system_mapper,
-            reference_registry=self.reference_registry,
-            metadata_callback=self._store_author_metadata,
-            seen_allergy_ids=self._seen_allergy_ids,
-        )
+        """Extract and convert Allergies from the structured body."""
+        resources: list[FHIRResourceDict] = []
+        for act, section, _section_code in iter_matching_acts(
+            structured_body, TemplateIds.ALLERGY_CONCERN_ACT
+        ):
+            with converting(metadata, TemplateIds.ALLERGY_CONCERN_ACT, act.id, "allergy concern act"):
+                result = convert_allergy_concern_act(
+                    act,
+                    code_system_mapper=self.code_system_mapper,
+                    metadata_callback=self._store_author_metadata,
+                    reference_registry=self.reference_registry,
+                    seen_allergy_ids=self._seen_allergy_ids,
+                    section=section,
+                )
+                collect_results(resources, result)
+        return resources
 
     def _extract_medications(
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
     ) -> list[FHIRResourceDict]:
-        """Extract and convert Medications from the structured body.
-
-        Routes to MedicationRequest (moodCode=INT/RQO/PRMS/PRP) or
-        MedicationStatement (moodCode=EVN) based on mood code.
-
-        Args:
-            structured_body: The structuredBody element
-            metadata: Optional conversion metadata tracker
-
-        Returns:
-            List of FHIR MedicationRequest and/or MedicationStatement resources
-        """
-        return self.medication_processor.process(
-            structured_body,
-            metadata=metadata,
-            code_system_mapper=self.code_system_mapper,
-            metadata_callback=self._store_author_metadata,
-            reference_registry=self.reference_registry,
-            seen_medication_ids=self._seen_medication_ids,
-        )
+        """Extract and convert Medications from the structured body."""
+        resources: list[FHIRResourceDict] = []
+        for sa, section, _section_code in iter_matching_substance_administrations(
+            structured_body, TemplateIds.MEDICATION_ACTIVITY
+        ):
+            with converting(metadata, TemplateIds.MEDICATION_ACTIVITY, sa.id, "medication activity"):
+                result = convert_medication(
+                    sa,
+                    code_system_mapper=self.code_system_mapper,
+                    metadata_callback=self._store_author_metadata,
+                    reference_registry=self.reference_registry,
+                    seen_medication_ids=self._seen_medication_ids,
+                    section=section,
+                )
+                collect_results(resources, result)
+        return resources
 
     def _extract_immunizations(
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
     ) -> list[FHIRResourceDict]:
-        """Extract and convert Immunizations from the structured body.
-
-        Args:
-            structured_body: The structuredBody element
-            metadata: Optional conversion metadata tracker
-
-        Returns:
-            List of FHIR Immunization resources
-        """
-        return self.immunization_processor.process(
-            structured_body,
-            metadata=metadata,
-            code_system_mapper=self.code_system_mapper,
-            metadata_callback=self._store_author_metadata,
-            reference_registry=self.reference_registry,
-            seen_immunization_ids=self._seen_immunization_ids,
-        )
+        """Extract and convert Immunizations from the structured body."""
+        resources: list[FHIRResourceDict] = []
+        for sa, section, _section_code in iter_matching_substance_administrations(
+            structured_body, TemplateIds.IMMUNIZATION_ACTIVITY
+        ):
+            with converting(metadata, TemplateIds.IMMUNIZATION_ACTIVITY, sa.id, "immunization activity"):
+                result = convert_immunization_activity(
+                    sa,
+                    code_system_mapper=self.code_system_mapper,
+                    metadata_callback=self._store_author_metadata,
+                    reference_registry=self.reference_registry,
+                    seen_immunization_ids=self._seen_immunization_ids,
+                    section=section,
+                )
+                collect_results(resources, result)
+        return resources
 
     def _extract_goals(
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
     ) -> list[FHIRResourceDict]:
-        """Extract and convert Goals from the structured body.
-
-        Args:
-            structured_body: The structuredBody element
-            metadata: Optional conversion metadata tracker
-
-        Returns:
-            List of FHIR Goal resources
-        """
-        return self.goal_processor.process(
-            structured_body,
-            metadata=metadata,
-            reference_registry=self.reference_registry,
-        )
+        """Extract and convert Goals from the structured body."""
+        resources: list[FHIRResourceDict] = []
+        for obs, section, _section_code in iter_matching_observations(
+            structured_body, TemplateIds.GOAL_OBSERVATION
+        ):
+            with converting(metadata, TemplateIds.GOAL_OBSERVATION, obs.id, "goal observation"):
+                result = self.goal_converter.convert(obs, section=section)
+                collect_results(resources, result)
+        return resources
 
     def _extract_careteams(
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
     ) -> list[FHIRResourceDict]:
-        """Extract and convert CareTeams from the structured body.
-
-        Args:
-            structured_body: The structuredBody element
-            metadata: Optional conversion metadata tracker
-
-        Returns:
-            List of FHIR CareTeam resources
-        """
-        return self.careteam_processor.process(
-            structured_body,
-            metadata=metadata,
-            reference_registry=self.reference_registry,
-            code_system_mapper=self.code_system_mapper,
-        )
+        """Extract and convert CareTeams from the structured body."""
+        resources: list[FHIRResourceDict] = []
+        for org, section, _section_code in iter_matching_organizers(
+            structured_body, TemplateIds.CARE_TEAM_ORGANIZER
+        ):
+            with converting(metadata, TemplateIds.CARE_TEAM_ORGANIZER, org.id, "care team organizer"):
+                result = convert_careteam_organizer(
+                    org,
+                    code_system_mapper=self.code_system_mapper,
+                    reference_registry=self.reference_registry,
+                    section=section,
+                )
+                collect_results(resources, result)
+        return resources
 
     def _extract_coverages(
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
     ) -> list[FHIRResourceDict]:
-        """Extract and convert Coverage resources from the Payers section.
+        """Extract and convert Coverage resources from the Payers section."""
+        resources: list[FHIRResourceDict] = []
+        for act, _section, _section_code in iter_matching_acts(
+            structured_body, TemplateIds.COVERAGE_ACTIVITY
+        ):
+            with converting(metadata, TemplateIds.COVERAGE_ACTIVITY, act.id, "coverage activity"):
+                result = convert_coverage_activity(
+                    act,
+                    reference_registry=self.reference_registry,
+                    code_system_mapper=self.code_system_mapper,
+                )
+                collect_results(resources, result)
+        return resources
 
-        Args:
-            structured_body: The structuredBody element
-            metadata: Optional conversion metadata tracker
+    def _extract_vital_signs(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
+        """Extract and convert Vital Signs from the structured body."""
+        vital_signs: list[FHIRResourceDict] = []
+        for organizer, section, _section_code in iter_matching_organizers(
+            structured_body, TemplateIds.VITAL_SIGNS_ORGANIZER
+        ):
+            with converting(metadata, TemplateIds.VITAL_SIGNS_ORGANIZER, organizer.id, "vital signs organizer"):
+                panel, individuals = self.observation_converter.convert_vital_signs_organizer(
+                    organizer, section=section
+                )
+                vital_signs.append(panel)
+                vital_signs.extend(individuals)
 
-        Returns:
-            List of FHIR Coverage and Organization resources
-        """
-        return self.coverage_processor.process(
-            structured_body,
-            metadata=metadata,
-            reference_registry=self.reference_registry,
-            code_system_mapper=self.code_system_mapper,
-        )
-
-    def _extract_vital_signs(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
-        """Extract and convert Vital Signs from the structured body.
-
-        Note: Kept manual due to special author metadata handling.
-
-        Args:
-            structured_body: The structuredBody element
-
-        Returns:
-            List of FHIR Observation resources (panels with contained vital signs)
-        """
-        vital_signs = []
-
-        if not structured_body.component:
-            return vital_signs
-
-        for comp in structured_body.component:
-            if not comp.section:
-                continue
-
-            section = comp.section
-
-            if section.entry:
-                for entry in section.entry:
-                    if entry.organizer:
-                        if entry.organizer.template_id:
-                            for template in entry.organizer.template_id:
-                                if template.root == TemplateIds.VITAL_SIGNS_ORGANIZER:
-                                    try:
-                                        panel, individuals = self.observation_converter.convert_vital_signs_organizer(
-                                            entry.organizer, section=section
-                                        )
-
-                                        # Add the panel observation
-                                        vital_signs.append(panel)
-
-                                        # Add individual vital sign observations
-                                        vital_signs.extend(individuals)
-
-                                        # Store author metadata for panel observation
-                                        if panel.get("id"):
-                                            self._store_author_metadata(
-                                                resource_type="Observation",
-                                                resource_id=panel["id"],
-                                                ccda_element=entry.organizer,
-                                                concern_act=None,
-                                            )
-
-                                        # Store author metadata for individual observations
-                                        for individual in individuals:
-                                            if individual.get("id"):
-                                                self._store_author_metadata(
-                                                    resource_type="Observation",
-                                                    resource_id=individual["id"],
-                                                    ccda_element=entry.organizer,
-                                                    concern_act=None,
-                                                )
-                                    except Exception:
-                                        logger.error("Error converting vital signs organizer", exc_info=True)
-                                    break
-
-            # Process nested sections recursively
-            if section.component:
-                for nested_comp in section.component:
-                    if nested_comp.section:
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        nested_vital_signs = self._extract_vital_signs(temp_body)
-                        vital_signs.extend(nested_vital_signs)
-
+                # Store author metadata for panel and individual observations
+                if panel.get("id"):
+                    self._store_author_metadata(
+                        resource_type="Observation",
+                        resource_id=panel["id"],
+                        ccda_element=organizer,
+                        concern_act=None,
+                    )
+                for individual in individuals:
+                    if individual.get("id"):
+                        self._store_author_metadata(
+                            resource_type="Observation",
+                            resource_id=individual["id"],
+                            ccda_element=organizer,
+                            concern_act=None,
+                        )
         return vital_signs
 
     def _store_diagnostic_report_metadata(
         self, structured_body: StructuredBody, reports: list[FHIRResourceDict]
     ):
-        """Store author metadata for DiagnosticReport resources.
-
-        Args:
-            structured_body: The structuredBody element
-            reports: List of converted DiagnosticReport resources
-        """
-        if not structured_body.component:
-            return
-
-        # Create a map of report IDs to track which ones need metadata
+        """Store author metadata for DiagnosticReport resources."""
         report_ids_needing_metadata = {r.get("id") for r in reports if r.get("id")}
 
-        for comp in structured_body.component:
-            if not comp.section:
-                continue
-
-            section = comp.section
-
-            # Process entries in this section
-            if section.entry:
-                for entry in section.entry:
-                    if entry.organizer and entry.organizer.template_id:
-                        for template in entry.organizer.template_id:
-                            if template.root == TemplateIds.RESULT_ORGANIZER:
-                                # Generate the same ID the converter would use
-                                if entry.organizer.id and len(entry.organizer.id) > 0:
-                                    first_id = entry.organizer.id[0]
-                                    report_id = self._generate_report_id_from_identifier(
-                                        first_id.root, first_id.extension
-                                    )
-
-                                    # If this report is in our list, store metadata
-                                    if report_id and report_id in report_ids_needing_metadata:
-                                        self._store_author_metadata(
-                                            resource_type="DiagnosticReport",
-                                            resource_id=report_id,
-                                            ccda_element=entry.organizer,
-                                            concern_act=None,
-                                        )
-                                        # Remove from tracking set
-                                        report_ids_needing_metadata.discard(report_id)
-                                break
-
-            # Process nested sections recursively
-            if section.component:
-                for nested_comp in section.component:
-                    if nested_comp.section:
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        self._store_diagnostic_report_metadata(temp_body, reports)
+        for organizer, _section, _section_code in iter_matching_organizers(
+            structured_body, TemplateIds.RESULT_ORGANIZER
+        ):
+            if organizer.id and len(organizer.id) > 0:
+                first_id = organizer.id[0]
+                report_id = self._generate_report_id_from_identifier(
+                    first_id.root, first_id.extension
+                )
+                if report_id and report_id in report_ids_needing_metadata:
+                    self._store_author_metadata(
+                        resource_type="DiagnosticReport",
+                        resource_id=report_id,
+                        ccda_element=organizer,
+                        concern_act=None,
+                    )
+                    report_ids_needing_metadata.discard(report_id)
 
     def _generate_report_id_from_identifier(
         self, root: str | None, extension: str | None
@@ -1653,77 +1388,39 @@ class DocumentConverter:
             return root.replace(".", "-").replace(":", "-")
         return None
 
-    def _extract_results(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
-        """Extract and convert Lab Results from the structured body.
+    def _extract_results(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
+        """Extract and convert Lab Results from the structured body."""
+        resources: list[FHIRResourceDict] = []
+        for organizer, section, _section_code in iter_matching_organizers(
+            structured_body, TemplateIds.RESULT_ORGANIZER
+        ):
+            with converting(metadata, TemplateIds.RESULT_ORGANIZER, organizer.id, "result organizer"):
+                report, observations = self.diagnostic_report_converter.convert(
+                    organizer, section=section
+                )
+                resources.append(report)
+                resources.extend(observations)
 
-        Per FHIR best practices, result observations are created as standalone
-        resources (not contained) since they have proper identifiers and independent
-        existence.
-
-        Args:
-            structured_body: The structuredBody element
-
-        Returns:
-            List of FHIR resources (DiagnosticReport and Observation resources)
-        """
-        resources = []
-
-        if not structured_body.component:
-            return resources
-
-        for comp in structured_body.component:
-            if not comp.section:
-                continue
-
-            section = comp.section
-
-            if section.entry:
-                for entry in section.entry:
-                    if entry.organizer:
-                        if entry.organizer.template_id:
-                            for template in entry.organizer.template_id:
-                                if template.root == TemplateIds.RESULT_ORGANIZER:
-                                    try:
-                                        report, observations = self.diagnostic_report_converter.convert(
-                                            entry.organizer, section=section
-                                        )
-
-                                        # Add the DiagnosticReport
-                                        resources.append(report)
-
-                                        # Add standalone result observations
-                                        resources.extend(observations)
-
-                                        # Store author metadata for DiagnosticReport
-                                        if report.get("id"):
-                                            self._store_author_metadata(
-                                                resource_type="DiagnosticReport",
-                                                resource_id=report["id"],
-                                                ccda_element=entry.organizer,
-                                                concern_act=None,
-                                            )
-
-                                        # Store author metadata for observations
-                                        for observation in observations:
-                                            if observation.get("id"):
-                                                self._store_author_metadata(
-                                                    resource_type="Observation",
-                                                    resource_id=observation["id"],
-                                                    ccda_element=entry.organizer,
-                                                    concern_act=None,
-                                                )
-                                    except Exception:
-                                        logger.error("Error converting result organizer", exc_info=True)
-                                    break
-
-            # Process nested sections recursively
-            if section.component:
-                for nested_comp in section.component:
-                    if nested_comp.section:
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        nested_results = self._extract_results(temp_body)
-                        resources.extend(nested_results)
-
+                # Store author metadata for DiagnosticReport and observations
+                if report.get("id"):
+                    self._store_author_metadata(
+                        resource_type="DiagnosticReport",
+                        resource_id=report["id"],
+                        ccda_element=organizer,
+                        concern_act=None,
+                    )
+                for observation in observations:
+                    if observation.get("id"):
+                        self._store_author_metadata(
+                            resource_type="Observation",
+                            resource_id=observation["id"],
+                            ccda_element=organizer,
+                            concern_act=None,
+                        )
         return resources
 
     def _extract_patient_extensions_from_social_history(
@@ -2085,7 +1782,7 @@ class DocumentConverter:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         # Create a temporary structured body for recursion
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        temp_body = StructuredBody(component=[nested_comp])
                         nested_extensions = self._extract_patient_extensions_from_social_history(
                             temp_body
                         )
@@ -2199,176 +1896,92 @@ class DocumentConverter:
                 for nested_comp in section.component:
                     if nested_comp.section:
                         # Create a temporary structured body for recursion
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        temp_body = StructuredBody(component=[nested_comp])
                         nested_observations = self._extract_social_history(temp_body)
                         observations.extend(nested_observations)
 
         return observations
 
-    def _extract_procedures(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
-        """Extract and convert Procedures from the structured body.
+    def _extract_procedures(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
+        """Extract and convert Procedures from the structured body."""
+        procedures: list[FHIRResourceDict] = []
+        performer_resources: list[FHIRResourceDict] = []
 
-        Processes Procedure Activity Procedure, Procedure Activity Observation,
-        and Procedure Activity Act templates, as all map to FHIR Procedure resource.
+        # Procedure Activity Procedures
+        for proc, section, _section_code in iter_matching_procedures(
+            structured_body, TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE
+        ):
+            with converting(metadata, TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE, proc.id, "procedure"):
+                result = self.procedure_converter.convert(proc, section=section)
+                collect_results(procedures, result)
+                performer_resources.extend(self.procedure_converter.get_pending_resources())
 
-        Also collects Practitioner and Organization resources created inline during
-        performer extraction.
+        # Procedure Activity Observations (also map to FHIR Procedure)
+        for obs, section, _section_code in iter_matching_observations(
+            structured_body, TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION
+        ):
+            with converting(metadata, TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION, obs.id, "procedure observation"):
+                result = self.procedure_converter.convert(obs, section=section)
+                collect_results(procedures, result)
+                performer_resources.extend(self.procedure_converter.get_pending_resources())
 
-        Args:
-            structured_body: The structuredBody element
+        # Procedure Activity Acts (also map to FHIR Procedure)
+        for act, section, _section_code in iter_matching_acts(
+            structured_body, TemplateIds.PROCEDURE_ACTIVITY_ACT
+        ):
+            with converting(metadata, TemplateIds.PROCEDURE_ACTIVITY_ACT, act.id, "procedure act"):
+                result = self.procedure_converter.convert(act, section=section)
+                collect_results(procedures, result)
+                performer_resources.extend(self.procedure_converter.get_pending_resources())
 
-        Returns:
-            List of FHIR resources (Procedures, Practitioners, and Organizations)
-        """
-        # Process Procedure Activity Procedures
-        procedures = self.procedure_processor.process(
-            structured_body,
-            reference_registry=self.reference_registry,
-        )
-
-        # Collect performer resources created during conversion
-        performer_resources = self.procedure_converter.get_pending_resources()
-
-        # Process Procedure Activity Observations (also map to Procedure)
-        procedure_observations = self.procedure_observation_processor.process(
-            structured_body,
-            reference_registry=self.reference_registry,
-        )
-        procedures.extend(procedure_observations)
-
-        # Collect more performer resources
-        performer_resources.extend(self.procedure_converter.get_pending_resources())
-
-        # Process Procedure Activity Acts (also map to Procedure)
-        procedure_acts = self.procedure_act_processor.process(
-            structured_body,
-            reference_registry=self.reference_registry,
-        )
-        procedures.extend(procedure_acts)
-
-        # Collect remaining performer resources
-        performer_resources.extend(self.procedure_converter.get_pending_resources())
-
-        # Store author metadata for each procedure
-        # Note: We need to re-traverse to get the C-CDA elements for metadata
-        # This is a limitation of the class-based converter approach
         self._store_procedure_metadata(structured_body, procedures)
-
-        # Return both procedures and performer resources
-        all_resources = []
-        all_resources.extend(procedures)
-        all_resources.extend(performer_resources)
-
-        return all_resources
+        return procedures + performer_resources
 
     def _store_procedure_metadata(
         self, structured_body: StructuredBody, procedures: list[FHIRResourceDict]
     ):
-        """Store author metadata for procedure resources.
-
-        Args:
-            structured_body: The structuredBody element
-            procedures: List of converted Procedure resources
-        """
-        if not structured_body.component:
-            return
-
-        # Create a map of procedure IDs to track which ones need metadata
+        """Store author metadata for procedure resources."""
         procedure_ids_needing_metadata = {p.get("id") for p in procedures if p.get("id")}
 
-        for comp in structured_body.component:
-            if not comp.section:
-                continue
+        def _find_procedure_id(element: ClinicalStatement) -> str | None:
+            if not element.id:
+                return None
+            for id_elem in element.id:
+                if id_elem.root and not id_elem.null_flavor:
+                    return self.procedure_converter._generate_procedure_id(
+                        id_elem.root, id_elem.extension
+                    )
+            return None
 
-            section = comp.section
+        def _try_store(element: ClinicalStatement) -> None:
+            procedure_id = _find_procedure_id(element)
+            if procedure_id and procedure_id in procedure_ids_needing_metadata:
+                self._store_author_metadata(
+                    resource_type="Procedure",
+                    resource_id=procedure_id,
+                    ccda_element=element,
+                    concern_act=None,
+                )
+                procedure_ids_needing_metadata.discard(procedure_id)
 
-            # Process entries in this section
-            if section.entry:
-                for entry in section.entry:
-                    # Check for Procedure Activity Procedure
-                    if entry.procedure and entry.procedure.template_id:
-                        for template in entry.procedure.template_id:
-                            if template.root == TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE:
-                                # Generate the same ID the converter would use
-                                procedure_id = None
-                                if entry.procedure.id and len(entry.procedure.id) > 0:
-                                    for id_elem in entry.procedure.id:
-                                        if id_elem.root and not id_elem.null_flavor:
-                                            procedure_id = self.procedure_converter._generate_procedure_id(
-                                                id_elem.root, id_elem.extension
-                                            )
-                                            break
+        for proc, _section, _code in iter_matching_procedures(
+            structured_body, TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE
+        ):
+            _try_store(proc)
 
-                                    # If this procedure is in our list, store metadata
-                                    if procedure_id and procedure_id in procedure_ids_needing_metadata:
-                                        self._store_author_metadata(
-                                            resource_type="Procedure",
-                                            resource_id=procedure_id,
-                                            ccda_element=entry.procedure,
-                                            concern_act=None,
-                                        )
-                                        # Remove from tracking set
-                                        procedure_ids_needing_metadata.discard(procedure_id)
-                                break
+        for obs, _section, _code in iter_matching_observations(
+            structured_body, TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION
+        ):
+            _try_store(obs)
 
-                    # Check for Procedure Activity Observation
-                    if entry.observation and entry.observation.template_id:
-                        for template in entry.observation.template_id:
-                            if template.root == TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION:
-                                # Generate the same ID the converter would use
-                                procedure_id = None
-                                if entry.observation.id and len(entry.observation.id) > 0:
-                                    for id_elem in entry.observation.id:
-                                        if id_elem.root and not id_elem.null_flavor:
-                                            procedure_id = self.procedure_converter._generate_procedure_id(
-                                                id_elem.root, id_elem.extension
-                                            )
-                                            break
-
-                                    # If this procedure is in our list, store metadata
-                                    if procedure_id and procedure_id in procedure_ids_needing_metadata:
-                                        self._store_author_metadata(
-                                            resource_type="Procedure",
-                                            resource_id=procedure_id,
-                                            ccda_element=entry.observation,
-                                            concern_act=None,
-                                        )
-                                        # Remove from tracking set
-                                        procedure_ids_needing_metadata.discard(procedure_id)
-                                break
-
-                    # Check for Procedure Activity Act
-                    if entry.act and entry.act.template_id:
-                        for template in entry.act.template_id:
-                            if template.root == TemplateIds.PROCEDURE_ACTIVITY_ACT:
-                                # Generate the same ID the converter would use
-                                procedure_id = None
-                                if entry.act.id and len(entry.act.id) > 0:
-                                    for id_elem in entry.act.id:
-                                        if id_elem.root and not id_elem.null_flavor:
-                                            procedure_id = self.procedure_converter._generate_procedure_id(
-                                                id_elem.root, id_elem.extension
-                                            )
-                                            break
-
-                                    # If this procedure is in our list, store metadata
-                                    if procedure_id and procedure_id in procedure_ids_needing_metadata:
-                                        self._store_author_metadata(
-                                            resource_type="Procedure",
-                                            resource_id=procedure_id,
-                                            ccda_element=entry.act,
-                                            concern_act=None,
-                                        )
-                                        # Remove from tracking set
-                                        procedure_ids_needing_metadata.discard(procedure_id)
-                                break
-
-            # Process nested sections recursively
-            if section.component:
-                for nested_comp in section.component:
-                    if nested_comp.section:
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        self._store_procedure_metadata(temp_body, procedures)
+        for act, _section, _code in iter_matching_acts(
+            structured_body, TemplateIds.PROCEDURE_ACTIVITY_ACT
+        ):
+            _try_store(act)
 
     def _process_interventions_section(
         self, structured_body: StructuredBody
@@ -2517,125 +2130,74 @@ class DocumentConverter:
         return resources
 
     def _extract_service_requests(
-        self, structured_body: StructuredBody
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
     ) -> list[FHIRResourceDict]:
-        """Extract and convert ServiceRequests from the structured body.
+        """Extract and convert ServiceRequests from the structured body."""
+        resources: list[FHIRResourceDict] = []
 
-        Processes Planned Procedure and Planned Act templates from Plan of Treatment sections.
-        CRITICAL: Only converts procedures/acts with moodCode in {INT, RQO, PRP, ARQ, PRMS}.
+        # Planned Procedures
+        for proc, section, _section_code in iter_matching_procedures(
+            structured_body, TemplateIds.PLANNED_PROCEDURE
+        ):
+            with converting(metadata, TemplateIds.PLANNED_PROCEDURE, proc.id, "planned procedure"):
+                result = self.service_request_converter.convert(proc, section=section)
+                collect_results(resources, result)
 
-        Args:
-            structured_body: The structuredBody element
+        # Planned Acts
+        for act, section, _section_code in iter_matching_acts(
+            structured_body, TemplateIds.PLANNED_ACT
+        ):
+            with converting(metadata, TemplateIds.PLANNED_ACT, act.id, "planned act"):
+                result = self.service_request_converter.convert(act, section=section)
+                collect_results(resources, result)
 
-        Returns:
-            List of FHIR ServiceRequest resources
-        """
-        # Process Planned Procedures
-        service_requests = self.planned_procedure_processor.process(
-            structured_body,
-            reference_registry=self.reference_registry,
-        )
+        return resources
 
-        # Process Planned Acts
-        planned_acts = self.planned_act_processor.process(
-            structured_body,
-            reference_registry=self.reference_registry,
-        )
-        service_requests.extend(planned_acts)
+    def _extract_encounters(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
+        """Extract and convert Encounters from the structured body."""
+        encounters: list[FHIRResourceDict] = []
+        for enc, section, _section_code in iter_matching_encounters(
+            structured_body, TemplateIds.ENCOUNTER_ACTIVITY
+        ):
+            with converting(metadata, TemplateIds.ENCOUNTER_ACTIVITY, enc.id, "encounter"):
+                result = self.encounter_converter.convert(enc, section=section)
+                collect_results(encounters, result)
 
-        return service_requests
-
-    def _extract_encounters(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
-        """Extract and convert Encounters from the structured body.
-
-        Also collects Practitioner and Location resources created inline during
-        participant/location extraction.
-
-        Args:
-            structured_body: The structuredBody element
-
-        Returns:
-            List of FHIR resources (Encounters, Practitioners, and Locations)
-        """
-        # Process encounters using the section processor
-        encounters = self.encounter_processor.process(
-            structured_body,
-            reference_registry=self.reference_registry,
-        )
-
-        # Collect participant and location resources created during conversion
         participant_resources = self.encounter_converter.get_pending_resources()
-
-        # Store author metadata for each encounter
-        # Note: We need to re-traverse to get the C-CDA elements for metadata
-        # This is a limitation of the class-based converter approach
         self._store_encounter_metadata(structured_body, encounters)
-
-        # Return both encounters and participant/location resources
-        all_resources = []
-        all_resources.extend(encounters)
-        all_resources.extend(participant_resources)
-
-        return all_resources
+        return encounters + participant_resources
 
     def _store_encounter_metadata(
         self, structured_body: StructuredBody, encounters: list[FHIRResourceDict]
     ):
-        """Store author metadata for encounter resources.
-
-        Args:
-            structured_body: The structuredBody element
-            encounters: List of converted Encounter resources
-        """
-        if not structured_body.component:
-            return
-
-        # Create a map of encounter IDs to track which ones need metadata
+        """Store author metadata for encounter resources."""
         encounter_ids_needing_metadata = {e.get("id") for e in encounters if e.get("id")}
 
-        for comp in structured_body.component:
-            if not comp.section:
-                continue
-
-            section = comp.section
-
-            # Process entries in this section
-            if section.entry:
-                for entry in section.entry:
-                    if entry.encounter and entry.encounter.template_id:
-                        for template in entry.encounter.template_id:
-                            if template.root == TemplateIds.ENCOUNTER_ACTIVITY:
-                                # Generate the same ID the converter would use (skip nullFlavor)
-                                encounter_id = None
-                                if entry.encounter.id:
-                                    # Find first valid identifier (skip nullFlavor)
-                                    for id_elem in entry.encounter.id:
-                                        if not id_elem.null_flavor and (id_elem.root or id_elem.extension):
-                                            encounter_id = self.encounter_converter._generate_encounter_id(
-                                                id_elem.root, id_elem.extension
-                                            )
-                                            break
-
-                                if encounter_id:
-
-                                    # If this encounter is in our list, store metadata
-                                    if encounter_id in encounter_ids_needing_metadata:
-                                        self._store_author_metadata(
-                                            resource_type="Encounter",
-                                            resource_id=encounter_id,
-                                            ccda_element=entry.encounter,
-                                            concern_act=None,
-                                        )
-                                        # Remove from tracking set
-                                        encounter_ids_needing_metadata.discard(encounter_id)
-                                break
-
-            # Process nested sections recursively
-            if section.component:
-                for nested_comp in section.component:
-                    if nested_comp.section:
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        self._store_encounter_metadata(temp_body, encounters)
+        for enc, _section, _code in iter_matching_encounters(
+            structured_body, TemplateIds.ENCOUNTER_ACTIVITY
+        ):
+            encounter_id = None
+            if enc.id:
+                for id_elem in enc.id:
+                    if not id_elem.null_flavor and (id_elem.root or id_elem.extension):
+                        encounter_id = self.encounter_converter._generate_encounter_id(
+                            id_elem.root, id_elem.extension
+                        )
+                        break
+            if encounter_id and encounter_id in encounter_ids_needing_metadata:
+                self._store_author_metadata(
+                    resource_type="Encounter",
+                    resource_id=encounter_id,
+                    ccda_element=enc,
+                    concern_act=None,
+                )
+                encounter_ids_needing_metadata.discard(encounter_id)
 
     def _extract_encounter_diagnosis_conditions(
         self, structured_body: StructuredBody
@@ -2700,7 +2262,7 @@ class DocumentConverter:
             if section.component:
                 for nested_comp in section.component:
                     if nested_comp.section:
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        temp_body = StructuredBody(component=[nested_comp])
                         nested_conditions = self._extract_encounter_diagnosis_conditions(temp_body)
                         conditions.extend(nested_conditions)
 
@@ -2798,7 +2360,7 @@ class DocumentConverter:
             if section.component:
                 for nested_comp in section.component:
                     if nested_comp.section:
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
+                        temp_body = StructuredBody(component=[nested_comp])
                         nested_locations = self._extract_locations(temp_body)
                         for location in nested_locations:
                             dedup_key = self._get_location_dedup_key(location)
@@ -3153,7 +2715,7 @@ class DocumentConverter:
             encompassing_encounter.responsible_party.assigned_entity and
             encompassing_encounter.responsible_party.assigned_entity.assigned_person):
             from ccda_to_fhir.converters.practitioner import PractitionerConverter
-            from ccda_to_fhir.id_generator import generate_id_from_identifiers, generate_id
+            from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 
             assigned_entity = encompassing_encounter.responsible_party.assigned_entity
 
@@ -3453,53 +3015,23 @@ class DocumentConverter:
     def _store_note_metadata(
         self, structured_body: StructuredBody, notes: list[FHIRResourceDict]
     ):
-        """Store author metadata for note (DocumentReference) resources.
-
-        Args:
-            structured_body: The structuredBody element
-            notes: List of converted DocumentReference resources
-        """
-        if not structured_body.component:
-            return
-
-        # Create a map of note IDs to track which ones need metadata
+        """Store author metadata for note (DocumentReference) resources."""
         note_ids_needing_metadata = {n.get("id") for n in notes if n.get("id")}
 
-        for comp in structured_body.component:
-            if not comp.section:
-                continue
-
-            section = comp.section
-
-            # Process entries in this section
-            if section.entry:
-                for entry in section.entry:
-                    if entry.act and entry.act.template_id:
-                        for template in entry.act.template_id:
-                            if template.root == TemplateIds.NOTE_ACTIVITY:
-                                # Generate the same ID the converter would use
-                                if entry.act.id and len(entry.act.id) > 0:
-                                    first_id = entry.act.id[0]
-                                    note_id = self._generate_note_id_from_identifier(first_id)
-
-                                    # If this note is in our list, store metadata
-                                    if note_id and note_id in note_ids_needing_metadata:
-                                        self._store_author_metadata(
-                                            resource_type="DocumentReference",
-                                            resource_id=note_id,
-                                            ccda_element=entry.act,
-                                            concern_act=None,
-                                        )
-                                        # Remove from tracking set
-                                        note_ids_needing_metadata.discard(note_id)
-                                break
-
-            # Process nested sections recursively
-            if section.component:
-                for nested_comp in section.component:
-                    if nested_comp.section:
-                        temp_body = type("obj", (object,), {"component": [nested_comp]})()
-                        self._store_note_metadata(temp_body, notes)
+        for act, _section, _code in iter_matching_acts(
+            structured_body, TemplateIds.NOTE_ACTIVITY
+        ):
+            if act.id and len(act.id) > 0:
+                first_id = act.id[0]
+                note_id = self._generate_note_id_from_identifier(first_id)
+                if note_id and note_id in note_ids_needing_metadata:
+                    self._store_author_metadata(
+                        resource_type="DocumentReference",
+                        resource_id=note_id,
+                        ccda_element=act,
+                        concern_act=None,
+                    )
+                    note_ids_needing_metadata.discard(note_id)
 
     def _generate_note_id_from_identifier(self, identifier) -> str:
         """Generate a note ID matching NoteActivityConverter logic.
@@ -3521,24 +3053,26 @@ class DocumentConverter:
 
         return generate_id_from_identifiers("DocumentReference", root, extension)
 
-    def _extract_notes(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
-        """Extract and convert Note Activities from the structured body.
+    def _extract_notes(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
+        """Extract and convert Note Activities from the structured body."""
+        notes: list[FHIRResourceDict] = []
+        for act, section, _section_code in iter_matching_acts(
+            structured_body, TemplateIds.NOTE_ACTIVITY
+        ):
+            with converting(metadata, TemplateIds.NOTE_ACTIVITY, act.id, "note activity"):
+                result = convert_note_activity(
+                    act,
+                    code_system_mapper=self.code_system_mapper,
+                    reference_registry=self.reference_registry,
+                    section=section,
+                )
+                collect_results(notes, result)
 
-        Args:
-            structured_body: The structuredBody element
-
-        Returns:
-            List of FHIR DocumentReference resources
-        """
-        notes = self.note_processor.process(
-            structured_body,
-            code_system_mapper=self.code_system_mapper,
-            reference_registry=self.reference_registry,
-        )
-
-        # Store author metadata for Provenance generation
         self._store_note_metadata(structured_body, notes)
-
         return notes
 
     def _extract_practitioners_and_organizations(
