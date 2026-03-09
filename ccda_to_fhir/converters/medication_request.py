@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from ccda_to_fhir.converters.code_systems import CodeSystemMapper
     from ccda_to_fhir.converters.references import ReferenceRegistry
     from ccda_to_fhir.types import SubstanceAdminMetadataCallback
+
 from ccda_to_fhir.constants import (
     EIVL_EVENT_TO_FHIR_WHEN,
     MEDICATION_MOOD_TO_INTENT,

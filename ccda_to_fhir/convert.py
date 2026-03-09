@@ -1796,8 +1796,8 @@ class DocumentConverter:
 
                                         # Store author metadata
                                         obs_id = observation.get("id")
-                                        if isinstance(obs_id, str) and entry.observation:
-                                            authors = self.author_extractor.extract_from_observation(entry.observation)
+                                        if isinstance(obs_id, str):
+                                            authors = self.author_extractor.extract_from_observation(obs)
                                             self._store_authors("Observation", obs_id, authors)
                                     except Exception:
                                         logger.error("Error converting social history observation", exc_info=True)
