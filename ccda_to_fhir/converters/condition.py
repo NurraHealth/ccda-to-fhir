@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from ccda_to_fhir.converters.code_systems import CodeSystemMapper
     from ccda_to_fhir.converters.references import ReferenceRegistry
     from ccda_to_fhir.types import MetadataCallback
+
 from ccda_to_fhir.constants import (
     AGE_UNIT_MAP,
     PROBLEM_TYPE_TO_CONDITION_CATEGORY,
