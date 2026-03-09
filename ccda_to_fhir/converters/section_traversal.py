@@ -19,15 +19,12 @@ from ccda_to_fhir.ccda.models.section import Entry, Section, StructuredBody
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.template_registry import SupportedTemplates
-from ccda_to_fhir.types import ConversionMetadata, FHIRResourceDict
+from ccda_to_fhir.types import ClinicalStatement, ConversionMetadata, FHIRResourceDict
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.datatypes import II
 
 logger = get_logger(__name__)
-
-# Union type for template-bearing entry elements
-ClinicalStatement = Act | Observation | Organizer | Procedure | CDAEncounter | SubstanceAdministration
 
 
 def _iter_sections(body: StructuredBody) -> Iterator[tuple[Section, str | None]]:

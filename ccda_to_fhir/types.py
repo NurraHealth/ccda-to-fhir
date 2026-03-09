@@ -7,7 +7,20 @@ avoiding the use of Any wherever possible.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TypeAlias, TypedDict
+from typing import TYPE_CHECKING, Protocol, TypeAlias, TypedDict
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.act import Act
+    from ccda_to_fhir.ccda.models.encounter import Encounter as CDAEncounter
+    from ccda_to_fhir.ccda.models.observation import Observation
+    from ccda_to_fhir.ccda.models.organizer import Organizer
+    from ccda_to_fhir.ccda.models.procedure import Procedure
+    from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
+
+# Union of all C-CDA clinical statement types that appear as entry elements
+ClinicalStatement: TypeAlias = (
+    "Act | Observation | Organizer | Procedure | CDAEncounter | SubstanceAdministration"
+)
 
 # JSON primitive types
 JSONPrimitive: TypeAlias = str | int | float | bool | None
@@ -103,3 +116,16 @@ class ConversionResult(TypedDict):
 
     metadata: ConversionMetadata
     """Metadata about the conversion process"""
+
+
+class MetadataCallback(Protocol):
+    """Callback signature for storing author metadata during conversion."""
+
+    def __call__(
+        self,
+        *,
+        resource_type: str,
+        resource_id: str,
+        ccda_element: ClinicalStatement,
+        concern_act: Act | None,
+    ) -> None: ...

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from ccda_to_fhir.ccda.models.act import Act
@@ -13,6 +12,7 @@ if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.section import Section
     from ccda_to_fhir.converters.code_systems import CodeSystemMapper
     from ccda_to_fhir.converters.references import ReferenceRegistry
+    from ccda_to_fhir.types import MetadataCallback
 from ccda_to_fhir.constants import (
     AGE_UNIT_MAP,
     PROBLEM_TYPE_TO_CONDITION_CATEGORY,
@@ -832,7 +832,7 @@ def convert_problem_concern_act(
     act: Act,
     section_code: str | None = None,
     code_system_mapper: CodeSystemMapper | None = None,
-    metadata_callback: Callable[..., None] | None = None,
+    metadata_callback: MetadataCallback | None = None,
     section: Section | None = None,
     reference_registry: ReferenceRegistry | None = None,
     seen_observation_ids: set[tuple[str, str | None]] | None = None,
