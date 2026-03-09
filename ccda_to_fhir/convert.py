@@ -42,19 +42,18 @@ from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP, TemplateIds
 from ccda_to_fhir.exceptions import CCDAConversionError
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import (
-    ClinicalStatement,
+    ConcernActMetadataCallback,
     ConversionMetadata,
     ConversionResult,
     FHIRResourceDict,
     JSONObject,
-    MetadataCallback,
+    SubstanceAdminMetadataCallback,
 )
 from ccda_to_fhir.validation import FHIRValidator
 
 if TYPE_CHECKING:
-    from ccda_to_fhir.ccda.models.act import Act
-    from ccda_to_fhir.ccda.models.observation import Observation as CDAObservation
-    from ccda_to_fhir.ccda.models.procedure import Procedure as CDAProcedure
+    from ccda_to_fhir.ccda.models.act import Act as CcdaAct
+    from ccda_to_fhir.ccda.models.observation import Observation as CcdaObservation
 
 from .converters.allergy_intolerance import convert_allergy_concern_act
 from .converters.author_extractor import AuthorExtractor, AuthorInfo
@@ -137,7 +136,6 @@ RESOURCE_TYPE_MAPPING: dict[str, type[FHIRAbstractModel]] = {
 def convert_careteam_organizer(
     organizer: Organizer,
     code_system_mapper: CodeSystemMapper | None = None,
-    metadata_callback: MetadataCallback | None = None,
     section: Section | None = None,
     reference_registry: ReferenceRegistry | None = None,
 ) -> list[FHIRResourceDict]:
@@ -146,14 +144,12 @@ def convert_careteam_organizer(
     Args:
         organizer: The Care Team Organizer
         code_system_mapper: Optional code system mapper
-        metadata_callback: Optional callback for storing metadata
         section: The C-CDA Section containing this care team (for narrative)
         reference_registry: Reference registry for patient reference
 
     Returns:
         List of FHIR resources: CareTeam, Practitioner, PractitionerRole, Organization
     """
-    # Get patient reference from registry
     if not reference_registry:
         raise ValueError("Reference registry required for CareTeam conversion")
 
@@ -168,17 +164,6 @@ def convert_careteam_organizer(
     try:
         careteam = converter.convert(organizer)
 
-        # Store metadata if callback provided
-        careteam_id = careteam.get("id")
-        if metadata_callback and isinstance(careteam_id, str):
-            metadata_callback(
-                resource_type="CareTeam",
-                resource_id=careteam_id,
-                ccda_element=organizer,
-                concern_act=None,
-            )
-
-        # Collect all resources (CareTeam + related resources)
         resources = [careteam]
         resources.extend(converter.get_related_resources())
 
@@ -191,7 +176,7 @@ def convert_careteam_organizer(
 def convert_medication(
     substance_admin: SubstanceAdministration,
     code_system_mapper: CodeSystemMapper | None = None,
-    metadata_callback: MetadataCallback | None = None,
+    metadata_callback: SubstanceAdminMetadataCallback | None = None,
     section: Section | None = None,
     reference_registry: ReferenceRegistry | None = None,
     seen_medication_ids: set[tuple[str, str | None]] | None = None,
@@ -202,16 +187,6 @@ def convert_medication(
     - moodCode="EVN" (event/historical) → MedicationStatement
     - moodCode="INT", "RQO", "PRMS", "PRP" → MedicationRequest
     - negationInd="true" → Always MedicationRequest (with doNotPerform)
-
-    Args:
-        substance_admin: The SubstanceAdministration (Medication Activity)
-        code_system_mapper: Optional code system mapper
-        metadata_callback: Optional callback for storing author metadata
-        section: The C-CDA Section containing this medication (for narrative)
-        seen_medication_ids: Set to track medication IDs and detect duplicates within a document
-
-    Returns:
-        FHIR MedicationRequest or MedicationStatement resource
     """
     mood_code = substance_admin.mood_code
     negation_ind = substance_admin.negation_ind or False
@@ -1179,7 +1154,7 @@ class DocumentConverter:
                     act,
                     section_code=section_code,
                     code_system_mapper=self.code_system_mapper,
-                    metadata_callback=self._store_author_metadata,
+                    metadata_callback=self._concern_act_metadata_callback,
                     reference_registry=self.reference_registry,
                     seen_observation_ids=self._seen_observation_ids,
                     section=section,
@@ -1201,7 +1176,7 @@ class DocumentConverter:
                 result = convert_allergy_concern_act(
                     act,
                     code_system_mapper=self.code_system_mapper,
-                    metadata_callback=self._store_author_metadata,
+                    metadata_callback=self._concern_act_metadata_callback,
                     reference_registry=self.reference_registry,
                     seen_allergy_ids=self._seen_allergy_ids,
                     section=section,
@@ -1223,7 +1198,7 @@ class DocumentConverter:
                 result = convert_medication(
                     sa,
                     code_system_mapper=self.code_system_mapper,
-                    metadata_callback=self._store_author_metadata,
+                    metadata_callback=self._substance_admin_metadata_callback,
                     reference_registry=self.reference_registry,
                     seen_medication_ids=self._seen_medication_ids,
                     section=section,
@@ -1245,7 +1220,7 @@ class DocumentConverter:
                 result = convert_immunization_activity(
                     sa,
                     code_system_mapper=self.code_system_mapper,
-                    metadata_callback=self._store_author_metadata,
+                    metadata_callback=self._substance_admin_metadata_callback,
                     reference_registry=self.reference_registry,
                     seen_immunization_ids=self._seen_immunization_ids,
                     section=section,
@@ -1325,23 +1300,14 @@ class DocumentConverter:
                 vital_signs.extend(individuals)
 
                 # Store author metadata for panel and individual observations
+                organizer_authors = self.author_extractor.extract_from_organizer(organizer)
                 panel_id = panel.get("id")
                 if isinstance(panel_id, str):
-                    self._store_author_metadata(
-                        resource_type="Observation",
-                        resource_id=panel_id,
-                        ccda_element=organizer,
-                        concern_act=None,
-                    )
+                    self._store_authors("Observation", panel_id, organizer_authors)
                 for individual in individuals:
                     ind_id = individual.get("id")
                     if isinstance(ind_id, str):
-                        self._store_author_metadata(
-                            resource_type="Observation",
-                            resource_id=ind_id,
-                            ccda_element=organizer,
-                            concern_act=None,
-                        )
+                        self._store_authors("Observation", ind_id, organizer_authors)
         return vital_signs
 
     def _extract_results(
@@ -1362,23 +1328,14 @@ class DocumentConverter:
                 resources.extend(observations)
 
                 # Store author metadata for DiagnosticReport and observations
+                organizer_authors = self.author_extractor.extract_from_organizer(organizer)
                 report_id = report.get("id")
                 if isinstance(report_id, str):
-                    self._store_author_metadata(
-                        resource_type="DiagnosticReport",
-                        resource_id=report_id,
-                        ccda_element=organizer,
-                        concern_act=None,
-                    )
+                    self._store_authors("DiagnosticReport", report_id, organizer_authors)
                 for observation in observations:
                     obs_id = observation.get("id")
                     if isinstance(obs_id, str):
-                        self._store_author_metadata(
-                            resource_type="Observation",
-                            resource_id=obs_id,
-                            ccda_element=organizer,
-                            concern_act=None,
-                        )
+                        self._store_authors("Observation", obs_id, organizer_authors)
         return resources
 
     def _extract_patient_extensions_from_social_history(
@@ -1838,13 +1795,10 @@ class DocumentConverter:
                                         observations.append(observation)
 
                                         # Store author metadata
-                                        if observation.get("id"):
-                                            self._store_author_metadata(
-                                                resource_type="Observation",
-                                                resource_id=observation["id"],
-                                                ccda_element=entry.observation,
-                                                concern_act=None,
-                                            )
+                                        obs_id = observation.get("id")
+                                        if isinstance(obs_id, str) and entry.observation:
+                                            authors = self.author_extractor.extract_from_observation(entry.observation)
+                                            self._store_authors("Observation", obs_id, authors)
                                     except Exception:
                                         logger.error("Error converting social history observation", exc_info=True)
                                     break
@@ -1877,7 +1831,11 @@ class DocumentConverter:
                 result = self.procedure_converter.convert(proc, section=section)
                 collect_results(procedures, result)
                 performer_resources.extend(self.procedure_converter.get_pending_resources())
-                self._store_procedure_author_metadata(proc, procedures)
+                if procedures:
+                    proc_id = procedures[-1].get("id")
+                    if isinstance(proc_id, str):
+                        authors = self.author_extractor.extract_from_procedure(proc)
+                        self._store_authors("Procedure", proc_id, authors)
 
         # Procedure Activity Observations (also map to FHIR Procedure)
         for obs, section, _section_code in iter_matching_observations(
@@ -1887,7 +1845,11 @@ class DocumentConverter:
                 result = self.procedure_converter.convert(obs, section=section)
                 collect_results(procedures, result)
                 performer_resources.extend(self.procedure_converter.get_pending_resources())
-                self._store_procedure_author_metadata(obs, procedures)
+                if procedures:
+                    proc_id = procedures[-1].get("id")
+                    if isinstance(proc_id, str):
+                        authors = self.author_extractor.extract_from_observation(obs)
+                        self._store_authors("Procedure", proc_id, authors)
 
         # Procedure Activity Acts (also map to FHIR Procedure)
         for act, section, _section_code in iter_matching_acts(
@@ -1897,26 +1859,13 @@ class DocumentConverter:
                 result = self.procedure_converter.convert(act, section=section)
                 collect_results(procedures, result)
                 performer_resources.extend(self.procedure_converter.get_pending_resources())
-                self._store_procedure_author_metadata(act, procedures)
+                if procedures:
+                    proc_id = procedures[-1].get("id")
+                    if isinstance(proc_id, str):
+                        authors = self.author_extractor.extract_from_concern_act(act)
+                        self._store_authors("Procedure", proc_id, authors)
 
         return procedures + performer_resources
-
-    def _store_procedure_author_metadata(
-        self,
-        element: CDAProcedure | CDAObservation | Act,
-        procedures: list[FHIRResourceDict],
-    ) -> None:
-        """Store author metadata for the most recently added procedure resource."""
-        if not procedures:
-            return
-        resource_id = procedures[-1].get("id")
-        if isinstance(resource_id, str):
-            self._store_author_metadata(
-                resource_type="Procedure",
-                resource_id=resource_id,
-                ccda_element=element,
-                concern_act=None,
-            )
 
     def _process_interventions_section(
         self, structured_body: StructuredBody
@@ -2107,12 +2056,8 @@ class DocumentConverter:
                 if encounters:
                     enc_resource_id = encounters[-1].get("id")
                     if isinstance(enc_resource_id, str):
-                        self._store_author_metadata(
-                            resource_type="Encounter",
-                            resource_id=enc_resource_id,
-                            ccda_element=enc,
-                            concern_act=None,
-                        )
+                        authors = self.author_extractor.extract_from_encounter(enc)
+                        self._store_authors("Encounter", enc_resource_id, authors)
 
         participant_resources = self.encounter_converter.get_pending_resources()
         return encounters + participant_resources
@@ -2952,12 +2897,8 @@ class DocumentConverter:
                 if notes:
                     note_resource_id = notes[-1].get("id")
                     if isinstance(note_resource_id, str):
-                        self._store_author_metadata(
-                            resource_type="DocumentReference",
-                            resource_id=note_resource_id,
-                            ccda_element=act,
-                            concern_act=None,
-                        )
+                        authors = self.author_extractor.extract_from_concern_act(act)
+                        self._store_authors("DocumentReference", note_resource_id, authors)
         return notes
 
     def _extract_practitioners_and_organizations(
@@ -3301,42 +3242,38 @@ class DocumentConverter:
 
         return (provenances, devices, practitioners, organizations)
 
-    def _store_author_metadata(
+    def _store_authors(
+        self,
+        resource_type: str,
+        resource_id: str,
+        authors: list[AuthorInfo],
+    ) -> None:
+        """Store pre-extracted author metadata for later Provenance generation."""
+        if authors:
+            self._author_metadata[f"{resource_type}/{resource_id}"] = authors
+
+    def _concern_act_metadata_callback(
         self,
         *,
         resource_type: str,
         resource_id: str,
-        ccda_element: ClinicalStatement,
-        concern_act: Act | None = None,
+        ccda_element: CcdaObservation,
+        concern_act: CcdaAct,
     ) -> None:
-        """Store author metadata for later Provenance generation."""
-        from ccda_to_fhir.ccda.models.act import Act
-        from ccda_to_fhir.ccda.models.encounter import Encounter as CDAEncounter
-        from ccda_to_fhir.ccda.models.observation import Observation
-        from ccda_to_fhir.ccda.models.procedure import Procedure
+        """MetadataCallback for concern-act converters (allergy, condition)."""
+        authors = self.author_extractor.extract_combined(concern_act, ccda_element)
+        self._store_authors(resource_type, resource_id, authors)
 
-        authors: list[AuthorInfo] = []
-
-        if concern_act:
-            authors = self.author_extractor.extract_combined(concern_act, ccda_element)
-        elif isinstance(ccda_element, Observation):
-            authors = self.author_extractor.extract_from_observation(ccda_element)
-        elif isinstance(ccda_element, SubstanceAdministration):
-            authors = self.author_extractor.extract_from_substance_administration(
-                ccda_element
-            )
-        elif isinstance(ccda_element, Procedure):
-            authors = self.author_extractor.extract_from_procedure(ccda_element)
-        elif isinstance(ccda_element, CDAEncounter):
-            authors = self.author_extractor.extract_from_encounter(ccda_element)
-        elif isinstance(ccda_element, Organizer):
-            authors = self.author_extractor.extract_from_organizer(ccda_element)
-        elif isinstance(ccda_element, Act):
-            authors = self.author_extractor.extract_from_concern_act(ccda_element)
-
-        if authors:
-            key = f"{resource_type}/{resource_id}"
-            self._author_metadata[key] = authors
+    def _substance_admin_metadata_callback(
+        self,
+        *,
+        resource_type: str,
+        resource_id: str,
+        ccda_element: SubstanceAdministration,
+    ) -> None:
+        """MetadataCallback for substance-admin converters (medication, immunization)."""
+        authors = self.author_extractor.extract_from_substance_administration(ccda_element)
+        self._store_authors(resource_type, resource_id, authors)
 
     def _generate_informant_resources(
         self

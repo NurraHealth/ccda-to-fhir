@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.section import Section
     from ccda_to_fhir.converters.code_systems import CodeSystemMapper
     from ccda_to_fhir.converters.references import ReferenceRegistry
-    from ccda_to_fhir.types import MetadataCallback
+    from ccda_to_fhir.types import ConcernActMetadataCallback
 
 from ccda_to_fhir.constants import (
     ALLERGY_TYPE_CATEGORY_MAP,
@@ -766,7 +766,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
 def convert_allergy_concern_act(
     act: Act,
     code_system_mapper: CodeSystemMapper | None = None,
-    metadata_callback: MetadataCallback | None = None,
+    metadata_callback: ConcernActMetadataCallback | None = None,
     section: Section | None = None,
     reference_registry: ReferenceRegistry | None = None,
     seen_allergy_ids: set[tuple[str, str | None]] | None = None,
@@ -803,10 +803,11 @@ def convert_allergy_concern_act(
                 allergies.append(allergy)
 
                 # Store author metadata if callback provided
-                if metadata_callback and allergy.get("id"):
+                allergy_id = allergy.get("id")
+                if metadata_callback and isinstance(allergy_id, str):
                     metadata_callback(
                         resource_type="AllergyIntolerance",
-                        resource_id=allergy["id"],
+                        resource_id=allergy_id,
                         ccda_element=rel.observation,
                         concern_act=act,
                     )

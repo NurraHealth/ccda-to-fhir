@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.procedure import Procedure
     from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 
-# Union of all C-CDA clinical statement types that appear as entry elements
+# Union of all C-CDA clinical statement types that appear as section entries.
 ClinicalStatement: TypeAlias = (
     "Act | Observation | Organizer | Procedure | CDAEncounter | SubstanceAdministration"
 )
@@ -118,14 +118,33 @@ class ConversionResult(TypedDict):
     """Metadata about the conversion process"""
 
 
-class MetadataCallback(Protocol):
-    """Callback signature for storing author metadata during conversion."""
+class ConcernActMetadataCallback(Protocol):
+    """Callback for concern-act converters (allergy, condition).
+
+    These converters extract an Observation from a concern Act and need
+    to pass both elements for combined author extraction.
+    """
 
     def __call__(
         self,
         *,
         resource_type: str,
         resource_id: str,
-        ccda_element: ClinicalStatement,
-        concern_act: Act | None,
+        ccda_element: Observation,
+        concern_act: Act,
+    ) -> None: ...
+
+
+class SubstanceAdminMetadataCallback(Protocol):
+    """Callback for substance-administration converters (medication, immunization).
+
+    These converters always pass a SubstanceAdministration with no concern act.
+    """
+
+    def __call__(
+        self,
+        *,
+        resource_type: str,
+        resource_id: str,
+        ccda_element: SubstanceAdministration,
     ) -> None: ...

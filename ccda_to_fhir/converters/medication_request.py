@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.section import Section
     from ccda_to_fhir.converters.code_systems import CodeSystemMapper
     from ccda_to_fhir.converters.references import ReferenceRegistry
-    from ccda_to_fhir.types import MetadataCallback
+    from ccda_to_fhir.types import SubstanceAdminMetadataCallback
 from ccda_to_fhir.constants import (
     EIVL_EVENT_TO_FHIR_WHEN,
     MEDICATION_MOOD_TO_INTENT,
@@ -940,7 +940,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 def convert_medication_activity(
     substance_admin: SubstanceAdministration,
     code_system_mapper: CodeSystemMapper | None = None,
-    metadata_callback: MetadataCallback | None = None,
+    metadata_callback: SubstanceAdminMetadataCallback | None = None,
     section: Section | None = None,
     reference_registry: ReferenceRegistry | None = None,
 ) -> FHIRResourceDict:
@@ -966,12 +966,12 @@ def convert_medication_activity(
         medication_request = converter.convert(substance_admin, section=section)
 
         # Store author metadata if callback provided
-        if metadata_callback and medication_request.get("id"):
+        med_req_id = medication_request.get("id")
+        if metadata_callback and isinstance(med_req_id, str):
             metadata_callback(
                 resource_type="MedicationRequest",
-                resource_id=medication_request["id"],
+                resource_id=med_req_id,
                 ccda_element=substance_admin,
-                concern_act=None,
             )
 
         # Extract nested medication dispenses
