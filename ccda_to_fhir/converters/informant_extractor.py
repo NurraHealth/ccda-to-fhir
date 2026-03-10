@@ -7,7 +7,7 @@ related persons (relatedEntity).
 
 from __future__ import annotations
 
-from ccda_to_fhir.ccda.models.clinical_document import Informant
+from ccda_to_fhir.ccda.models.clinical_document import Informant, RelatedEntity
 from ccda_to_fhir.converters.base_extractor import BaseParticipantExtractor
 
 
@@ -35,7 +35,7 @@ class InformantInfo:
 
         self._extract_from_informant()
 
-    def _extract_from_informant(self):
+    def _extract_from_informant(self) -> None:
         """Extract fields from C-CDA Informant element."""
         if not self.informant:
             return
@@ -76,7 +76,7 @@ class InformantInfo:
 
         return generate_id_from_identifiers("Practitioner", root, extension)
 
-    def _generate_related_person_id(self, related_entity) -> str:
+    def _generate_related_person_id(self, related_entity: RelatedEntity) -> str:
         """Generate a FHIR RelatedPerson ID using UUID v4.
 
         Builds a cache key from available identifiers to ensure same

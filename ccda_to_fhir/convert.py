@@ -53,7 +53,9 @@ from ccda_to_fhir.validation import FHIRValidator
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.act import Act as CcdaAct
+    from ccda_to_fhir.ccda.models.author import Author
     from ccda_to_fhir.ccda.models.observation import Observation as CcdaObservation
+    from ccda_to_fhir.converters.informant_extractor import InformantInfo
 
 from .converters.allergy_intolerance import convert_allergy_concern_act
 from .converters.author_extractor import AuthorExtractor, AuthorInfo
@@ -268,9 +270,16 @@ class DocumentConverter:
         self._seen_diagnostic_report_ids: set[tuple[str, str | None]] = set()
 
         # Informant metadata storage for RelatedPerson/Practitioner generation
-        self._informant_metadata: dict[str, list] = {}
+        self._informant_metadata: dict[str, list[InformantInfo]] = {}
         from .converters.informant_extractor import InformantExtractor
         self.informant_extractor = InformantExtractor()
+
+        # Patient ID set during patient conversion, used by informant/RelatedPerson generation
+        self._patient_id: str | None = None
+
+        # Temporary storage for header encounter participant resources
+        self._temp_header_practitioners: list[FHIRResourceDict] = []
+        self._temp_header_locations: list[FHIRResourceDict] = []
 
         # Initialize individual resource converters
         self.patient_converter = PatientConverter(
@@ -611,7 +620,7 @@ class DocumentConverter:
 
                 elif informant_info.is_related_person and informant_info.informant.related_entity:
                     try:
-                        if not hasattr(self, "_patient_id") or not isinstance(self._patient_id, str):
+                        if self._patient_id is None:
                             raise ValueError(
                                 "Cannot create RelatedPerson: patient_id is required. "
                                 "Patient must be processed before informants."
@@ -826,12 +835,12 @@ class DocumentConverter:
             if header_encounter:
                 # Collect participant and location resources created during header encounter conversion
                 # Add them to the main resources list, NOT to encounters list
-                if hasattr(self, '_temp_header_practitioners'):
+                if self._temp_header_practitioners:
                     resources.extend(self._temp_header_practitioners)
-                    self._temp_header_practitioners = []  # Clear for next conversion
-                if hasattr(self, '_temp_header_locations'):
+                    self._temp_header_practitioners = []
+                if self._temp_header_locations:
                     resources.extend(self._temp_header_locations)
-                    self._temp_header_locations = []  # Clear for next conversion
+                    self._temp_header_locations = []
 
                 # Check if header encounter duplicates any body encounter
                 # Per mapping docs: check by ID, same-day match, or identifier overlap
@@ -1420,11 +1429,11 @@ class DocumentConverter:
                             and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
                         ):
                             # Gender Identity Extension
-                            if obs.value:
+                            if isinstance(obs.value, CD):
                                 gender_identity_codeable = self.observation_converter.create_codeable_concept(
-                                    code=getattr(obs.value, "code", None),
-                                    code_system=getattr(obs.value, "code_system", None),
-                                    display_name=getattr(obs.value, "display_name", None),
+                                    code=obs.value.code,
+                                    code_system=obs.value.code_system,
+                                    display_name=obs.value.display_name,
                                 )
                                 if gender_identity_codeable:
                                     gender_identity_ext = {
@@ -1454,7 +1463,7 @@ class DocumentConverter:
                             and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
                         ):
                             # Sex Parameter for Clinical Use Extension (FHIR Core)
-                            if obs.value:
+                            if isinstance(obs.value, CD):
                                 spcu_ext = {
                                     "url": FHIRSystems.PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE,
                                     "extension": []
@@ -1462,9 +1471,9 @@ class DocumentConverter:
 
                                 # value sub-extension (required)
                                 value_concept = self.observation_converter.create_codeable_concept(
-                                    code=getattr(obs.value, "code", None),
-                                    code_system=getattr(obs.value, "code_system", None),
-                                    display_name=getattr(obs.value, "display_name", None),
+                                    code=obs.value.code,
+                                    code_system=obs.value.code_system,
+                                    display_name=obs.value.display_name,
                                 )
                                 spcu_ext["extension"].append({
                                     "url": "value",
@@ -1497,7 +1506,7 @@ class DocumentConverter:
 
                                     # Try to resolve reference first
                                     if obs.text.reference:
-                                        ref_value = getattr(obs.text.reference, 'value', None) or obs.text.reference
+                                        ref_value = obs.text.reference.value
 
                                         if ref_value and isinstance(ref_value, str) and ref_value.startswith('#'):
                                             content_id = ref_value[1:]
@@ -1556,11 +1565,11 @@ class DocumentConverter:
                             # Per FHIR: Extension has two sub-extensions:
                             # - tribalAffiliation (1..1, CodeableConcept, Must-Support)
                             # - isEnrolled (0..1, boolean, optional - not available in C-CDA)
-                            if obs.value:
+                            if isinstance(obs.value, CD):
                                 tribal_affiliation_codeable = self.observation_converter.create_codeable_concept(
-                                    code=getattr(obs.value, "code", None),
-                                    code_system=getattr(obs.value, "code_system", None),
-                                    display_name=getattr(obs.value, "display_name", None),
+                                    code=obs.value.code,
+                                    code_system=obs.value.code_system,
+                                    display_name=obs.value.display_name,
                                 )
                                 if tribal_affiliation_codeable:
                                     tribal_affiliation_ext = {
@@ -1581,11 +1590,11 @@ class DocumentConverter:
                             # Tribal Affiliation observation
                             if template.root == TemplateIds.TRIBAL_AFFILIATION_OBSERVATION:
                                 # Tribal Affiliation Extension (US Core)
-                                if obs.value:
+                                if isinstance(obs.value, CD):
                                     tribal_affiliation_codeable = self.observation_converter.create_codeable_concept(
-                                        code=getattr(obs.value, "code", None),
-                                        code_system=getattr(obs.value, "code_system", None),
-                                        display_name=getattr(obs.value, "display_name", None),
+                                        code=obs.value.code,
+                                        code_system=obs.value.code_system,
+                                        display_name=obs.value.display_name,
                                     )
                                     if tribal_affiliation_codeable:
                                         tribal_affiliation_ext = {
@@ -1604,7 +1613,7 @@ class DocumentConverter:
                             # Sex Parameter for Clinical Use observation
                             if template.root == TemplateIds.SEX_PARAMETER_FOR_CLINICAL_USE_OBSERVATION:
                                 # Sex Parameter for Clinical Use Extension (FHIR Core)
-                                if obs.value:
+                                if isinstance(obs.value, CD):
                                     spcu_ext = {
                                         "url": FHIRSystems.PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE,
                                         "extension": []
@@ -1612,9 +1621,9 @@ class DocumentConverter:
 
                                     # value sub-extension (required)
                                     value_concept = self.observation_converter.create_codeable_concept(
-                                        code=getattr(obs.value, "code", None),
-                                        code_system=getattr(obs.value, "code_system", None),
-                                        display_name=getattr(obs.value, "display_name", None),
+                                        code=obs.value.code,
+                                        code_system=obs.value.code_system,
+                                        display_name=obs.value.display_name,
                                     )
                                     spcu_ext["extension"].append({
                                         "url": "value",
@@ -1645,7 +1654,7 @@ class DocumentConverter:
 
                                         # Try to resolve reference first
                                         if obs.text.reference:
-                                            ref_value = getattr(obs.text.reference, 'value', None) or obs.text.reference
+                                            ref_value = obs.text.reference.value
 
                                             if ref_value and isinstance(ref_value, str) and ref_value.startswith('#'):
                                                 content_id = ref_value[1:]
@@ -2524,14 +2533,14 @@ class DocumentConverter:
             # Handle range with low/high
             elif encompassing_encounter.effective_time.low or encompassing_encounter.effective_time.high:
                 if encompassing_encounter.effective_time.low:
-                    low_value = getattr(encompassing_encounter.effective_time.low, 'value', None) or str(encompassing_encounter.effective_time.low)
+                    low_value = encompassing_encounter.effective_time.low.value
                     if low_value:
                         converted = self.encounter_converter.convert_date(str(low_value))
                         if converted:
                             period["start"] = converted
 
                 if encompassing_encounter.effective_time.high:
-                    high_value = getattr(encompassing_encounter.effective_time.high, 'value', None) or str(encompassing_encounter.effective_time.high)
+                    high_value = encompassing_encounter.effective_time.high.value
                     if high_value:
                         converted = self.encounter_converter.convert_date(str(high_value))
                         if converted:
@@ -2650,8 +2659,6 @@ class DocumentConverter:
                     self.reference_registry.register_resource(practitioner)
 
                     # Store temporarily to add to bundle later
-                    if not hasattr(self, '_temp_header_practitioners'):
-                        self._temp_header_practitioners = []
                     self._temp_header_practitioners.append(practitioner)
 
                 # Add participant reference
@@ -2851,8 +2858,6 @@ class DocumentConverter:
                         self.reference_registry.register_resource(location_resource)
 
                         # Store temporarily to add to bundle later
-                        if not hasattr(self, '_temp_header_locations'):
-                            self._temp_header_locations = []
                         self._temp_header_locations.append(location_resource)
 
                 if location_id:
@@ -2902,7 +2907,7 @@ class DocumentConverter:
         return notes
 
     def _extract_practitioners_and_organizations(
-        self, authors: list
+        self, authors: list[Author]
     ) -> list[FHIRResourceDict]:
         """Extract and convert Practitioners, Devices, Organizations, and PractitionerRoles from authors.
 
@@ -3307,7 +3312,7 @@ class DocumentConverter:
                         if related_person_id and related_person_id not in seen_related_persons:
                             # Get patient_id from the first patient resource in the bundle
                             # (All informants will reference the same patient)
-                            if not hasattr(self, "_patient_id"):
+                            if self._patient_id is None:
                                 raise ValueError(
                                     "Cannot create RelatedPerson: patient_id is required. "
                                     "Patient must be processed before informants."
