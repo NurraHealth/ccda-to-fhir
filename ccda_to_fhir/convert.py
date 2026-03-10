@@ -73,6 +73,7 @@ from .converters.medication_request import (
     get_medication_resources,
 )
 from .converters.medication_statement import convert_medication_statement
+from .converters.narrative_section import extract_narrative_sections
 from .converters.note_activity import convert_note_activity
 from .converters.observation import ObservationConverter
 from .converters.organization import OrganizationConverter
@@ -929,6 +930,15 @@ class DocumentConverter:
                 self.reference_registry.register_resource(note)
             if notes:
                 section_resource_map[TemplateIds.NOTES_SECTION] = notes
+
+            # Narrative-only sections (HPI, Physical Exam, ROS, Assessment, Reason for Visit)
+            narrative_doc_refs = extract_narrative_sections(
+                ccda_doc.component.structured_body,
+                reference_registry=self.reference_registry,
+            )
+            resources.extend(narrative_doc_refs)
+            for doc_ref in narrative_doc_refs:
+                self.reference_registry.register_resource(doc_ref)
 
             # Coverage (from Payers sections)
             coverage_resources = self._extract_coverages(ccda_doc.component.structured_body, metadata)
