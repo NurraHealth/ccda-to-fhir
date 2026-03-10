@@ -36,15 +36,12 @@ NARRATIVE_SECTIONS: dict[str, str] = {
 }
 
 # Placeholder-like text that should be treated as empty.
+# Compared after stripping whitespace, lowercasing, and removing trailing periods.
 _EMPTY_PATTERNS = frozenset({
     "no assessment recorded",
-    "no assessment recorded.",
     "no data recorded",
-    "no data recorded.",
     "no information",
-    "no information.",
     "none",
-    "none.",
     "n/a",
 })
 
@@ -54,7 +51,7 @@ def _is_empty_narrative(plain_text: str) -> bool:
     stripped = plain_text.strip()
     if not stripped:
         return True
-    return stripped.lower() in _EMPTY_PATTERNS
+    return stripped.lower().rstrip(".") in _EMPTY_PATTERNS
 
 
 def extract_narrative_sections(
@@ -78,14 +75,10 @@ def extract_narrative_sections(
     results: list[FHIRResourceDict] = []
 
     for section, section_code in _iter_sections(structured_body):
-        if not section_code:
+        if not section_code or section_code not in NARRATIVE_SECTIONS:
             continue
 
-        loinc_code = section_code
-        if loinc_code not in NARRATIVE_SECTIONS:
-            continue
-
-        display = NARRATIVE_SECTIONS[loinc_code]
+        display = NARRATIVE_SECTIONS[section_code]
 
         # Skip if no narrative
         if not section.text:
@@ -99,7 +92,7 @@ def extract_narrative_sections(
 
         doc_ref = _build_document_reference(
             section=section,
-            loinc_code=loinc_code,
+            loinc_code=section_code,
             display=display,
             plain_text=plain_text,
             reference_registry=reference_registry,
@@ -108,7 +101,7 @@ def extract_narrative_sections(
         logger.info(
             "Extracted narrative section as DocumentReference",
             section=display,
-            loinc_code=loinc_code,
+            loinc_code=section_code,
             text_length=len(plain_text),
         )
 
