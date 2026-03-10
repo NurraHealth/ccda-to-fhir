@@ -41,13 +41,25 @@ class TestNoClinicalDocumentDocumentReference:
         doc_refs = _find_all_resources(bundle, "DocumentReference")
         assert len(doc_refs) == 0
 
-    def test_no_document_reference_from_real_fixture(self) -> None:
-        """Real C-CDA fixture (athena CCD) should not produce a ClinicalDocument DR."""
+    def test_no_clinical_document_document_reference_from_real_fixture(self) -> None:
+        """Real C-CDA fixture (athena CCD) should not produce a ClinicalDocument DR.
+
+        The athena CCD has a Note Activity entry, so we expect exactly one
+        NoteActivity-level DocumentReference but no ClinicalDocument-level one.
+        """
         with open("tests/integration/fixtures/documents/athena_ccd.xml") as f:
             xml = f.read()
         bundle = convert_document(xml)["bundle"]
 
         doc_refs = _find_all_resources(bundle, "DocumentReference")
-        # Only NoteActivity DRs may exist, not ClinicalDocument-level ones.
-        # The athena CCD has no NoteActivity entries, so expect zero.
-        assert len(doc_refs) == 0
+        # Only NoteActivity DRs should exist, not ClinicalDocument-level ones.
+        assert len(doc_refs) == 1
+        # Verify it's a NoteActivity DR (clinical-note category), not a ClinicalDocument DR
+        dr = doc_refs[0]
+        categories = dr.get("category", [])
+        category_codes = [
+            coding.get("code")
+            for cat in categories
+            for coding in cat.get("coding", [])
+        ]
+        assert "clinical-note" in category_codes

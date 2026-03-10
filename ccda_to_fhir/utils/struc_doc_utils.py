@@ -275,6 +275,8 @@ def _extract_cell_text(cell: TableDataCell | TableHeaderCell) -> str:
     Returns:
         Plain text
     """
+    from ccda_to_fhir.ccda.models.struc_doc import TableDataCell as _TableDataCell
+
     parts = []
     if cell.text:
         parts.append(cell.text)
@@ -283,7 +285,7 @@ def _extract_cell_text(cell: TableDataCell | TableHeaderCell) -> str:
             if content.text:
                 parts.append(content.text)
     # TableDataCell can have paragraphs, TableHeaderCell cannot
-    if isinstance(cell, TableDataCell) and cell.paragraph:
+    if isinstance(cell, _TableDataCell) and cell.paragraph:
         for para in cell.paragraph:
             parts.append(para.get_plain_text())
     # Both cell types have footnotes
