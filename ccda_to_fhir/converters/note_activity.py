@@ -2,22 +2,29 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import base64
 
-from ccda_to_fhir.ccda.models.act import Act
-from ccda_to_fhir.ccda.models.datatypes import CD
-
-if TYPE_CHECKING:
-    from ccda_to_fhir.ccda.models.section import Section
-    from ccda_to_fhir.converters.code_systems import CodeSystemMapper
-    from ccda_to_fhir.converters.references import ReferenceRegistry
+from ccda_to_fhir.ccda.models.act import Act, Reference
+from ccda_to_fhir.ccda.models.author import Author
+from ccda_to_fhir.ccda.models.datatypes import CD, ED, II, IVL_TS, TEL, TS
+from ccda_to_fhir.ccda.models.section import Section
 from ccda_to_fhir.constants import (
     DOCUMENT_REFERENCE_STATUS_TO_FHIR,
     FHIRCodes,
 )
+from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
+from .code_systems import CodeSystemMapper
+from .references import ReferenceRegistry
+
+
+# C-CDA statusCode → FHIR DocumentReference.docStatus
+_DOC_STATUS_MAP: dict[str, str] = {
+    "completed": "final",
+    "active": "preliminary",
+}
 
 
 class NoteActivityConverter(BaseConverter[Act]):
@@ -25,12 +32,12 @@ class NoteActivityConverter(BaseConverter[Act]):
 
     Note Activity (2.16.840.1.113883.10.20.22.4.202) represents embedded clinical
     notes within a C-CDA document. These are converted to DocumentReference resources
-    to represent the metadata and content of each note.
+    per US Core DocumentReference profile.
 
     Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-NoteActivity.html
     """
 
-    def convert(self, ccda_model: Act, section=None) -> FHIRResourceDict:
+    def convert(self, ccda_model: Act, section: Section | None = None) -> FHIRResourceDict:
         """Convert a C-CDA Note Activity Act to a FHIR DocumentReference resource.
 
         Args:
@@ -41,47 +48,38 @@ class NoteActivityConverter(BaseConverter[Act]):
             FHIR DocumentReference resource as a dictionary
 
         Raises:
-            ValueError: If conversion fails due to missing required fields
+            ValueError: If reference_registry is not set
         """
-        note_act = ccda_model  # Alias for readability
-        if not note_act:
-            raise ValueError("Note Activity Act is required")
+        note_act = ccda_model
+
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create DocumentReference without patient reference."
+            )
 
         doc_ref: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.DOCUMENT_REFERENCE,
         }
 
-        # Generate ID from note activity identifiers
-        doc_ref["id"] = self._generate_note_id(
-            note_act.id[0] if (note_act.id and len(note_act.id) > 0) else None
+        # ID
+        first_id = note_act.id[0] if note_act.id else None
+        doc_ref["id"] = _generate_note_id(first_id)
+
+        # Status (required)
+        doc_ref["status"] = self.map_status_code(
+            note_act.status_code,
+            DOCUMENT_REFERENCE_STATUS_TO_FHIR,
+            FHIRCodes.DocumentReferenceStatus.CURRENT,
         )
 
-        # Status (required) - map from statusCode
-        status = self._extract_status(note_act)
-        doc_ref["status"] = status
-
-        # DocStatus - document completion status from statusCode
-        doc_status = self._extract_doc_status(note_act)
+        # DocStatus
+        doc_status = _extract_doc_status(note_act)
         if doc_status:
             doc_ref["docStatus"] = doc_status
 
-        # Type (required) - note type from code - REQUIRED by US Core
-        if note_act.code:
-            doc_type = self._convert_type(note_act.code)
-            if doc_type:
-                doc_ref["type"] = doc_type
-
-        # US Core requires DocumentReference.type (1..1)
-        # Use default if not set from note_act.code
-        if "type" not in doc_ref:
-            doc_ref["type"] = {
-                "coding": [{
-                    "system": "http://loinc.org",
-                    "code": "34133-9",
-                    "display": "Summarization of Episode Note"
-                }],
-                "text": "Clinical Note"
-            }
+        # Type (required by US Core)
+        doc_ref["type"] = _convert_type(note_act.code, self.code_system_mapper)
 
         # Category - fixed to "clinical-note" for Note Activities
         doc_ref["category"] = [
@@ -96,543 +94,293 @@ class NoteActivityConverter(BaseConverter[Act]):
             }
         ]
 
-        # Subject (patient reference) - placeholder that will be resolved later
-        # Patient reference (from recordTarget in document header)
-        if not self.reference_registry:
-            raise ValueError(
-                "reference_registry is required. "
-                "Cannot create DocumentReference without patient reference."
-            )
+        # Subject
         doc_ref["subject"] = self.reference_registry.get_patient_reference()
 
-        # Date - from author/time (first author's time)
-        if note_act.author and len(note_act.author) > 0:
-            first_author = note_act.author[0]
-            if first_author.time:
-                date = self.convert_date(first_author.time.value)
-                if date:
-                    doc_ref["date"] = date
+        # Date - from first author's time
+        if note_act.author:
+            date = _extract_author_date(note_act.author, self.convert_date)
+            if date:
+                doc_ref["date"] = date
 
         # Author references
         if note_act.author:
-            authors = self._convert_author_references(note_act.author)
+            authors = _convert_author_references(note_act.author)
             if authors:
                 doc_ref["author"] = authors
 
-        # Content (required) - from text element
-        # Note: Can have multiple content items (inline + reference)
+        # Content (required by US Core)
         if note_act.text:
-            content_list = self._create_content_list(note_act.text, section)
+            content_list = _create_content_list(note_act.text, section)
             if content_list:
                 doc_ref["content"] = content_list
             else:
-                # Content is required but text has no extractable data
-                # Use data-absent-reason extension per FHIR R4 spec
-                doc_ref["content"] = self._create_missing_content()
+                doc_ref["content"] = _create_missing_content(self)
         else:
-            # Content is required but no text element present
-            # Use data-absent-reason extension per FHIR R4 spec
-            doc_ref["content"] = self._create_missing_content()
+            doc_ref["content"] = _create_missing_content(self)
 
         # Context - encounter and period
-        context = self._create_context(note_act)
+        context = _create_context(note_act, self.convert_date)
         if context:
             doc_ref["context"] = context
 
         # RelatesTo - from reference to externalDocument
         if note_act.reference:
-            relates_to = self._convert_relates_to(note_act.reference)
+            relates_to = _convert_relates_to(note_act.reference)
             if relates_to:
                 doc_ref["relatesTo"] = relates_to
 
-        # Narrative (from entry text reference, per C-CDA on FHIR IG)
+        # Narrative
         narrative = self._generate_narrative(entry=note_act, section=section)
         if narrative:
             doc_ref["text"] = narrative
 
         return doc_ref
 
-    def _generate_note_id(self, identifier) -> str:
-        """Generate a FHIR resource ID from the note identifier.
 
-        Args:
-            identifier: Note II identifier
+# ---------------------------------------------------------------------------
+# Pure helper functions (no self, fully typed)
+# ---------------------------------------------------------------------------
 
-        Returns:
-            Generated ID string (never None - generates UUID fallback if needed)
-        """
-        if not identifier:
-            # No identifier - generate UUID fallback
-            from ccda_to_fhir.id_generator import generate_id
-            return generate_id()
 
-        # Use ID generator with caching for consistency
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-        root = identifier.root if identifier.root else None
-        extension = identifier.extension if identifier.extension else None
+def _generate_note_id(identifier: II | None) -> str:
+    """Generate a FHIR resource ID from the note identifier."""
+    if not identifier:
+        return generate_id()
+    return generate_id_from_identifiers(
+        "DocumentReference",
+        identifier.root or None,
+        identifier.extension or None,
+    )
 
-        return generate_id_from_identifiers("DocumentReference", root, extension)
 
-    def _extract_status(self, note_act: Act) -> str:
-        """Extract FHIR status from C-CDA note activity statusCode.
+def _extract_doc_status(note_act: Act) -> str | None:
+    """Map C-CDA statusCode to FHIR docStatus (completed→final, active→preliminary)."""
+    if note_act.status_code and note_act.status_code.code:
+        return _DOC_STATUS_MAP.get(note_act.status_code.code.lower())
+    return None
 
-        Args:
-            note_act: The Note Activity Act
 
-        Returns:
-            FHIR DocumentReference status code
-        """
-        return self.map_status_code(
-            note_act.status_code,
-            DOCUMENT_REFERENCE_STATUS_TO_FHIR,
-            FHIRCodes.DocumentReferenceStatus.CURRENT,
-        )
+def _convert_type(code: CD | None, mapper: CodeSystemMapper) -> JSONObject:
+    """Convert note type code to FHIR CodeableConcept, with US Core fallback."""
+    if code and code.code:
+        codings: list[JSONObject] = []
 
-    def _extract_doc_status(self, note_act: Act) -> str | None:
-        """Extract FHIR docStatus from C-CDA note activity statusCode.
+        primary = _make_coding(code.code, code.code_system, code.display_name, mapper)
+        if primary:
+            codings.append(primary)
 
-        Maps C-CDA status to FHIR document completion status:
-        - completed → final
-        - active → preliminary
-        - Others → None (omit docStatus)
-
-        Args:
-            note_act: The Note Activity Act
-
-        Returns:
-            FHIR DocumentReference docStatus code or None
-        """
-        if note_act.status_code and note_act.status_code.code:
-            status_code = note_act.status_code.code.lower()
-            if status_code == "completed":
-                return "final"
-            elif status_code == "active":
-                return "preliminary"
-
-        return None
-
-    def _convert_type(self, code: CD) -> JSONObject | None:
-        """Convert note type code to FHIR CodeableConcept.
-
-        Includes the primary code and all translation codes.
-
-        Args:
-            code: Note type code (usually LOINC)
-
-        Returns:
-            FHIR CodeableConcept or None
-        """
-        if not code:
-            return None
-
-        type_concept: JSONObject = {
-            "coding": [],
-        }
-
-        # Add primary code
-        if code.code:
-            primary_coding = self._create_coding(
-                code=code.code,
-                system=code.code_system,
-                display=code.display_name,
-            )
-            if primary_coding:
-                type_concept["coding"].append(primary_coding)
-
-        # Add translation codes
         if code.translation:
             for trans in code.translation:
-                trans_coding = self._create_coding(
-                    code=trans.code,
-                    system=trans.code_system,
-                    display=trans.display_name,
-                )
-                if trans_coding:
-                    type_concept["coding"].append(trans_coding)
+                coding = _make_coding(trans.code, trans.code_system, trans.display_name, mapper)
+                if coding:
+                    codings.append(coding)
 
-        # Add text from display name
-        if code.display_name:
-            type_concept["text"] = code.display_name
+        if codings:
+            result: JSONObject = {"coding": codings}
+            if code.display_name:
+                result["text"] = code.display_name
+            return result
 
-        return type_concept if type_concept["coding"] else None
+    # US Core fallback
+    return {
+        "coding": [{
+            "system": "http://loinc.org",
+            "code": "34133-9",
+            "display": "Summarization of Episode Note",
+        }],
+        "text": "Clinical Note",
+    }
 
-    def _create_coding(self, code: str | None, system: str | None, display: str | None) -> JSONObject | None:
-        """Create a FHIR Coding element.
 
-        Args:
-            code: Code value
-            system: Code system OID or URI
-            display: Display name
+def _make_coding(
+    code: str | None,
+    system: str | None,
+    display: str | None,
+    mapper: CodeSystemMapper,
+) -> JSONObject | None:
+    """Create a FHIR Coding element, mapping OID to URI."""
+    if not code:
+        return None
+    coding: JSONObject = {"code": code}
+    if system:
+        uri = mapper.oid_to_uri(system)
+        if uri:
+            coding["system"] = uri
+    if display:
+        coding["display"] = display
+    return coding
 
-        Returns:
-            FHIR Coding or None
-        """
-        if not code:
-            return None
 
-        coding: JSONObject = {"code": code}
+def _extract_author_date(
+    authors: list[Author],
+    convert_date_fn: object,
+) -> str | None:
+    """Extract date from first author's time element."""
+    first_author = authors[0]
+    if first_author.time and first_author.time.value:
+        result: str | None = convert_date_fn(first_author.time.value)  # type: ignore[operator]
+        return result
+    return None
 
-        # Convert OID to URI if needed
-        if system:
-            system_uri = self.code_system_mapper.oid_to_uri(system)
-            if system_uri:
-                coding["system"] = system_uri
 
-        if display:
-            coding["display"] = display
+def _convert_author_references(authors: list[Author]) -> list[JSONObject]:
+    """Convert note authors to FHIR Practitioner references."""
+    refs: list[JSONObject] = []
+    for author in authors:
+        if not author.assigned_author:
+            continue
+        assigned = author.assigned_author
+        if assigned.assigned_person and assigned.id:
+            first_id = assigned.id[0]
+            prac_id = generate_id_from_identifiers(
+                "Practitioner",
+                first_id.root or None,
+                first_id.extension or None,
+            )
+            refs.append({"reference": f"urn:uuid:{prac_id}"})
+    return refs
 
-        return coding
 
-    def _convert_author_references(self, authors: list) -> list[JSONObject]:
-        """Convert note authors to FHIR references.
+def _create_content_list(
+    text: ED,
+    section: Section | None,
+) -> list[JSONObject]:
+    """Create content elements from note text (inline and/or reference)."""
+    content_list: list[JSONObject] = []
 
-        Args:
-            authors: List of Author elements
+    inline = _create_inline_content(text)
+    if inline:
+        content_list.append(inline)
 
-        Returns:
-            List of FHIR References to Practitioner resources
-        """
-        author_refs = []
+    if text.reference and section:
+        ref_content = _create_reference_content(text.reference, section)
+        if ref_content:
+            content_list.append(ref_content)
 
-        for author in authors:
-            if not author.assigned_author:
-                continue
+    return content_list
 
-            assigned_author = author.assigned_author
 
-            # Create reference to practitioner if person present
-            if assigned_author.assigned_person:
-                # Generate practitioner ID from identifiers
-                if assigned_author.id and len(assigned_author.id) > 0:
-                    first_id = assigned_author.id[0]
-                    prac_id = self._generate_practitioner_id(first_id)
-                    author_refs.append(
-                        {"reference": f"urn:uuid:{prac_id}"}
-                    )
-
-        return author_refs
-
-    def _generate_practitioner_id(self, identifier) -> str:
-        """Generate FHIR Practitioner ID using cached UUID v4 from C-CDA identifier.
-
-        Args:
-            identifier: Practitioner identifier (C-CDA II type)
-
-        Returns:
-            Generated UUID v4 string (cached for consistency)
-        """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
-        root = identifier.root if identifier.root else None
-        extension = identifier.extension if identifier.extension else None
-
-        return generate_id_from_identifiers("Practitioner", root, extension)
-
-    def _create_content_list(self, text, section=None) -> list[JSONObject]:
-        """Create list of content elements with attachments from note text.
-
-        C-CDA Note Activity text can contain multiple representations:
-        1. Inline content (base64 encoded or plain text)
-        2. Reference to section narrative
-
-        When both are present, create separate content items for each.
-
-        Args:
-            text: ED (Encapsulated Data) element containing note content
-            section: Optional containing section (for reference resolution)
-
-        Returns:
-            List of FHIR content objects (may be empty)
-        """
-        if not text:
-            return []
-
-        content_list: list[JSONObject] = []
-
-        # Check for inline content (base64 or plain text)
-        inline_content = self._create_inline_content(text)
-        if inline_content:
-            content_list.append(inline_content)
-
-        # Check for reference to section narrative
-        if text.reference and section:
-            reference_content = self._create_reference_content(text.reference, section)
-            if reference_content:
-                content_list.append(reference_content)
-
-        return content_list
-
-    def _create_missing_content(self) -> list[JSONObject]:
-        """Create content element for missing attachment data with data-absent-reason.
-
-        When a Note Activity has no text content, US Core DocumentReference requires
-        at least one content element. Use data-absent-reason extension to indicate
-        the attachment data is missing.
-
-        Reference: http://hl7.org/fhir/R4/extension-data-absent-reason.html
-
-        Returns:
-            List with single content object containing data-absent-reason extension
-        """
-        return [
-            {
-                "attachment": {
-                    "contentType": "text/plain",
-                    "_data": {
-                        "extension": [
-                            self.create_data_absent_reason_extension(None, default_reason="unknown")
-                        ]
-                    },
-                }
+def _create_inline_content(text: ED) -> JSONObject | None:
+    """Create content element from inline text (base64 or plain)."""
+    if text.representation == "B64" and text.value:
+        data = text.value.replace("\n", "").replace(" ", "").strip()
+        return {
+            "attachment": {
+                "contentType": text.media_type or "text/plain",
+                "data": data,
             }
-        ]
+        }
 
-    def _create_inline_content(self, text) -> JSONObject | None:
-        """Create content element from inline text content.
+    if text.value:
+        encoded = base64.b64encode(text.value.encode("utf-8")).decode("ascii")
+        return {
+            "attachment": {
+                "contentType": text.media_type or "text/plain",
+                "data": encoded,
+            }
+        }
 
-        Args:
-            text: ED (Encapsulated Data) element containing note content
+    return None
 
-        Returns:
-            FHIR content object or None
-        """
-        if not text:
-            return None
 
-        content: JSONObject = {"attachment": {}}
-        attachment = content["attachment"]
+def _create_reference_content(reference: TEL, section: Section) -> JSONObject | None:
+    """Create content element from reference to section narrative."""
+    ref_value = reference.value
+    if not ref_value or not section.text:
+        return None
 
-        # Content type from mediaType attribute
-        if text.media_type:
-            attachment["contentType"] = text.media_type
-        else:
-            # Default to text/plain if not specified
-            attachment["contentType"] = "text/plain"
+    from ccda_to_fhir.utils.struc_doc_utils import extract_text_by_id
 
-        # Data - base64 encoded content
-        # In C-CDA, text content can be:
-        # 1. Direct text content
-        # 2. Base64 encoded (representation="B64")
-        # Note: ED model stores text in 'value' attribute
-        has_data = False
-        if text.representation == "B64":
-            # Already base64 encoded
-            if text.value:
-                # Remove whitespace from base64 data
-                attachment["data"] = text.value.replace("\n", "").replace(" ", "").strip()
-                has_data = True
-        elif text.value:
-            # Plain text - need to base64 encode it
-            import base64
-            text_bytes = text.value.encode("utf-8")
-            attachment["data"] = base64.b64encode(text_bytes).decode("ascii")
-            has_data = True
+    ref_id = ref_value.lstrip("#")
+    resolved_text = extract_text_by_id(section.text, ref_id)
+    if not resolved_text:
+        return None
 
-        # Only return content if we have data
-        return content if has_data else None
+    is_html = "<" in resolved_text and ">" in resolved_text
+    content_type = "text/html" if is_html else "text/plain"
+    encoded = base64.b64encode(resolved_text.encode("utf-8")).decode("ascii")
 
-    def _create_reference_content(self, reference, section) -> JSONObject | None:
-        """Create content element from reference to section narrative.
+    return {
+        "attachment": {
+            "contentType": content_type,
+            "data": encoded,
+        }
+    }
 
-        Args:
-            reference: Reference element with value attribute (e.g., value="#note-1")
-            section: Section containing the narrative text
 
-        Returns:
-            FHIR content object or None
-        """
-        if not reference or not section:
-            return None
+def _create_missing_content(converter: NoteActivityConverter) -> list[JSONObject]:
+    """Create content with data-absent-reason extension when text is missing."""
+    return [
+        {
+            "attachment": {
+                "contentType": "text/plain",
+                "_data": {
+                    "extension": [
+                        converter.create_data_absent_reason_extension(None, default_reason="unknown")
+                    ]
+                },
+            }
+        }
+    ]
 
-        # Resolve the reference to get the actual text
-        resolved_text = self._resolve_text_reference(reference, section)
-        if not resolved_text:
-            return None
 
-        content: JSONObject = {"attachment": {}}
-        attachment = content["attachment"]
+def _create_context(
+    note_act: Act,
+    convert_date_fn: object,
+) -> JSONObject | None:
+    """Create document context (period, encounter references) from note activity."""
+    context: JSONObject = {}
 
-        # Determine content type based on markup presence
-        if "<" in resolved_text and ">" in resolved_text:
-            attachment["contentType"] = "text/html"
-        else:
-            attachment["contentType"] = "text/plain"
+    if note_act.effective_time:
+        effective = note_act.effective_time
+        ts_value: str | None = None
+        if isinstance(effective, IVL_TS):
+            if effective.value:
+                ts_value = effective.value
+            elif effective.low and effective.low.value:
+                ts_value = str(effective.low.value)
+        elif isinstance(effective, TS) and effective.value:
+            ts_value = effective.value
 
-        # Base64 encode the resolved text
-        import base64
-        text_bytes = resolved_text.encode("utf-8")
-        attachment["data"] = base64.b64encode(text_bytes).decode("ascii")
+        if ts_value:
+            start = convert_date_fn(ts_value)  # type: ignore[operator]
+            if start:
+                context["period"] = {"start": start}
 
-        return content
+    if note_act.entry_relationship:
+        encounter_refs: list[JSONObject] = []
+        for entry_rel in note_act.entry_relationship:
+            if entry_rel.encounter and entry_rel.encounter.id:
+                first_id = entry_rel.encounter.id[0]
+                enc_id = generate_id_from_identifiers(
+                    "encounter",
+                    first_id.root or None,
+                    first_id.extension or None,
+                )
+                encounter_refs.append({"reference": f"urn:uuid:{enc_id}"})
+        if encounter_refs:
+            context["encounter"] = encounter_refs
 
-    def _resolve_text_reference(self, reference, section) -> str | None:
-        """Resolve a text reference to section narrative content.
+    return context if context else None
 
-        Args:
-            reference: Reference element with value attribute (e.g., value="#note-1")
-            section: Section containing the narrative text
 
-        Returns:
-            Resolved text content as string or None
-        """
-        if not reference or not section:
-            return None
+def _convert_relates_to(references: list[Reference]) -> list[JSONObject]:
+    """Convert reference to externalDocument to relatesTo."""
+    relates_to: list[JSONObject] = []
+    for ref in references:
+        if ref.external_document and ref.external_document.id:
+            first_id = ref.external_document.id[0]
+            relates_to.append({
+                "code": "appends",
+                "target": {"reference": f"urn:uuid:{first_id.root}"},
+            })
+    return relates_to
 
-        # Get reference value
-        ref_value = None
-        if reference.value:
-            ref_value = reference.value
-        elif isinstance(reference, str):
-            ref_value = reference
 
-        if not ref_value:
-            return None
-
-        # Parse reference ID (remove # prefix if present)
-        ref_id = ref_value.lstrip("#")
-
-        # Access section text/narrative
-        if not section.text:
-            return None
-
-        # Use utility to extract text by ID from StrucDocText narrative
-        from ccda_to_fhir.utils.struc_doc_utils import extract_text_by_id
-
-        return extract_text_by_id(section.text, ref_id)
-
-    def _extract_text_from_element(self, element) -> str:
-        """Extract all text content from an element.
-
-        Args:
-            element: Element to extract text from
-
-        Returns:
-            Concatenated text content
-        """
-        texts = []
-
-        if element.content:
-            if isinstance(element.content, str):
-                texts.append(element.content)
-            elif isinstance(element.content, list):
-                for item in element.content:
-                    if isinstance(item, str):
-                        texts.append(item)
-                    else:
-                        texts.append(self._extract_text_from_element(item))
-
-        # Check for direct text content
-        for attr_name in ["text", "value", "_value"]:
-            attr_value = getattr(element, attr_name, None)
-            if isinstance(attr_value, str):
-                texts.append(attr_value)
-
-        # Recursively extract from children (C-CDA models are Pydantic BaseModel subclasses)
-        from pydantic import BaseModel
-        for attr_value in vars(element).values():
-            if isinstance(attr_value, list):
-                for item in attr_value:
-                    # Only recurse into Pydantic models (C-CDA structured elements)
-                    if isinstance(item, BaseModel):
-                        child_text = self._extract_text_from_element(item)
-                        if child_text:
-                            texts.append(child_text)
-
-        return " ".join(texts).strip()
-
-    def _create_context(self, note_act: Act) -> JSONObject | None:
-        """Create document context from note activity.
-
-        Args:
-            note_act: The Note Activity Act
-
-        Returns:
-            FHIR context object or None
-        """
-        context: JSONObject = {}
-
-        # Period from effectiveTime
-        if note_act.effective_time:
-            # Note Activity uses IVL_TS for effectiveTime
-            # But it's often just a single timestamp, treat as start
-            from ccda_to_fhir.ccda.models.datatypes import IVL_TS, TS
-            if isinstance(note_act.effective_time, IVL_TS):
-                # Check for point-in-time (IVL_TS with direct value attribute)
-                if note_act.effective_time.value:
-                    start = self.convert_date(note_act.effective_time.value)
-                    if start:
-                        context["period"] = {"start": start}
-                elif note_act.effective_time.low and note_act.effective_time.low.value:
-                    start = self.convert_date(note_act.effective_time.low.value)
-                    if start:
-                        context["period"] = {"start": start}
-            elif isinstance(note_act.effective_time, TS) and note_act.effective_time.value:
-                # Single timestamp
-                start = self.convert_date(note_act.effective_time.value)
-                if start:
-                    context["period"] = {"start": start}
-
-        # Encounter reference from entryRelationship
-        if note_act.entry_relationship:
-            for entry_rel in note_act.entry_relationship:
-                # Look for encounter in entryRelationship (typeCode="COMP")
-                if entry_rel.encounter:
-                    encounter = entry_rel.encounter
-                    if encounter.id and len(encounter.id) > 0:
-                        first_id = encounter.id[0]
-                        encounter_id = self._generate_encounter_id(first_id)
-                        if "encounter" not in context:
-                            context["encounter"] = []
-                        context["encounter"].append(
-                            {"reference": f"urn:uuid:{encounter_id}"}
-                        )
-
-        return context if context else None
-
-    def _generate_encounter_id(self, identifier) -> str:
-        """Generate encounter ID from identifier.
-
-        Uses base class generate_resource_id for consistency with EncounterConverter.
-
-        Args:
-            identifier: Encounter identifier
-
-        Returns:
-            Generated ID string
-        """
-        return self.generate_resource_id(
-            root=identifier.root,
-            extension=identifier.extension,
-            resource_type="encounter",
-            fallback_context="",
-        )
-
-    def _convert_relates_to(self, references: list) -> list[JSONObject]:
-        """Convert reference to externalDocument to relatesTo.
-
-        Args:
-            references: List of Reference elements
-
-        Returns:
-            List of FHIR relatesTo elements
-        """
-        relates_to = []
-
-        for ref in references:
-            if ref.external_document:
-                ext_doc = ref.external_document
-                if ext_doc.id and len(ext_doc.id) > 0:
-                    first_id = ext_doc.id[0]
-                    relates_to.append(
-                        {
-                            "code": "appends",  # This note appends to the referenced document
-                            "target": {
-                                "reference": f"urn:uuid:{first_id.root}"
-                            },
-                        }
-                    )
-
-        return relates_to
+# ---------------------------------------------------------------------------
+# Public convenience function
+# ---------------------------------------------------------------------------
 
 
 def convert_note_activity(
@@ -642,8 +390,6 @@ def convert_note_activity(
     reference_registry: ReferenceRegistry | None = None,
 ) -> FHIRResourceDict:
     """Convert a C-CDA Note Activity Act to a FHIR DocumentReference resource.
-
-    Convenience function for converting a single note activity.
 
     Args:
         note_act: The C-CDA Note Activity Act
