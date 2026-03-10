@@ -1,7 +1,7 @@
 """Tests for struc_doc_utils — narrative text extraction and HTML conversion.
 
 Covers the runtime bug where TableDataCell was only imported under TYPE_CHECKING,
-causing _extract_cell_text to fail with NameError at runtime.
+causing extract_cell_text to fail with NameError at runtime.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from ccda_to_fhir.ccda.models.struc_doc import (
     TableRow,
 )
 from ccda_to_fhir.utils.struc_doc_utils import (
-    _extract_cell_text,
+    extract_cell_text,
     _extract_row_text,
     _extract_table_text,
     _extract_tbody_text,
@@ -30,33 +30,33 @@ from ccda_to_fhir.utils.struc_doc_utils import (
 
 
 # ---------------------------------------------------------------------------
-# _extract_cell_text — the function that was broken by the missing import
+# extract_cell_text — the function that was broken by the missing import
 # ---------------------------------------------------------------------------
 
 
 class TestExtractCellText:
-    """Tests for _extract_cell_text with both TableDataCell and TableHeaderCell."""
+    """Tests for extract_cell_text with both TableDataCell and TableHeaderCell."""
 
     def test_table_data_cell_with_text(self) -> None:
         cell = TableDataCell(text="simple text")
-        assert _extract_cell_text(cell) == "simple text"
+        assert extract_cell_text(cell) == "simple text"
 
     def test_table_header_cell_with_text(self) -> None:
         cell = TableHeaderCell(text="header text")
-        assert _extract_cell_text(cell) == "header text"
+        assert extract_cell_text(cell) == "header text"
 
     def test_table_data_cell_with_content(self) -> None:
         cell = TableDataCell(
             content=[Content(text="first"), Content(text="second")]
         )
-        assert _extract_cell_text(cell) == "first second"
+        assert extract_cell_text(cell) == "first second"
 
     def test_table_data_cell_with_paragraphs(self) -> None:
         """This is the case that triggered the NameError — paragraphs only exist on TableDataCell."""
         cell = TableDataCell(
             paragraph=[Paragraph(text="para 1"), Paragraph(text="para 2")]
         )
-        result = _extract_cell_text(cell)
+        result = extract_cell_text(cell)
         assert "para 1" in result
         assert "para 2" in result
 
@@ -66,7 +66,7 @@ class TestExtractCellText:
             content=[Content(text="inline")],
             paragraph=[Paragraph(text="block")],
         )
-        result = _extract_cell_text(cell)
+        result = extract_cell_text(cell)
         assert "prefix" in result
         assert "inline" in result
         assert "block" in result
@@ -74,11 +74,11 @@ class TestExtractCellText:
     def test_table_header_cell_ignores_paragraph_attr(self) -> None:
         """TableHeaderCell does not have paragraphs — isinstance check prevents access."""
         cell = TableHeaderCell(text="header only")
-        assert _extract_cell_text(cell) == "header only"
+        assert extract_cell_text(cell) == "header only"
 
     def test_empty_cell(self) -> None:
         cell = TableDataCell()
-        assert _extract_cell_text(cell) == ""
+        assert extract_cell_text(cell) == ""
 
 
 # ---------------------------------------------------------------------------

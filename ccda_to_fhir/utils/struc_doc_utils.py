@@ -155,12 +155,12 @@ def _search_table_section_for_id(
         if row.td:
             for cell in row.td:
                 if cell.id_attr == target_id:
-                    return _extract_cell_text(cell)
+                    return extract_cell_text(cell)
 
         if row.th:
             for cell in row.th:
                 if cell.id_attr == target_id:
-                    return _extract_cell_text(cell)
+                    return extract_cell_text(cell)
 
     return None
 
@@ -255,18 +255,18 @@ def _extract_row_text(row: TableRow) -> str:
     parts = []
     if row.th:
         for cell in row.th:
-            text = _extract_cell_text(cell)
+            text = extract_cell_text(cell)
             if text:
                 parts.append(text)
     if row.td:
         for cell in row.td:
-            text = _extract_cell_text(cell)
+            text = extract_cell_text(cell)
             if text:
                 parts.append(text)
     return " ".join(parts)
 
 
-def _extract_cell_text(cell: TableDataCell | TableHeaderCell) -> str:
+def extract_cell_text(cell: TableDataCell | TableHeaderCell) -> str:
     """Extract text from table cell.
 
     Args:

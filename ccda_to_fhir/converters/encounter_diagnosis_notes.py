@@ -25,7 +25,7 @@ from ccda_to_fhir.ccda.models.struc_doc import (
 )
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRResourceDict
-from ccda_to_fhir.utils.struc_doc_utils import _extract_cell_text
+from ccda_to_fhir.utils.struc_doc_utils import extract_cell_text
 
 from .references import ReferenceRegistry
 
@@ -99,6 +99,10 @@ def _extract_from_table(table: Table) -> list[DiagnosisNote]:
         return []
 
     results: list[DiagnosisNote] = []
+    # Athena-specific: the first row for each encounter has a content ID in the
+    # encounter ID cell; subsequent diagnosis rows for the same encounter leave
+    # this cell empty ("continuation rows"). We track the most recent encounter
+    # content ID so continuation rows inherit it.
     current_encounter_id: str | None = None
 
     for tbody in table.tbody:
@@ -169,13 +173,13 @@ def _get_cell_text(cells: list[TableDataCell], col_idx: int) -> str:
     """Get trimmed text from a cell at the given index."""
     if col_idx >= len(cells):
         return ""
-    return _extract_cell_text(cells[col_idx]).strip()
+    return extract_cell_text(cells[col_idx]).strip()
 
 
 def create_diagnosis_note_doc_refs(
     notes: list[DiagnosisNote],
     encounter_map: dict[str, str],
-    condition_snomed_map: dict[str, str],
+    condition_snomed_map: dict[str, list[str]],
     reference_registry: ReferenceRegistry,
     encounter_date_map: dict[str, str] | None = None,
 ) -> list[FHIRResourceDict]:
@@ -184,7 +188,7 @@ def create_diagnosis_note_doc_refs(
     Args:
         notes: Diagnosis notes extracted from the narrative table
         encounter_map: Maps encounter content ID -> FHIR Encounter resource ID
-        condition_snomed_map: Maps SNOMED code -> FHIR Condition resource ID
+        condition_snomed_map: Maps SNOMED code -> list of FHIR Condition resource IDs
         reference_registry: Reference registry (for patient reference)
         encounter_date_map: Maps FHIR Encounter resource ID -> date string
 
@@ -213,7 +217,7 @@ def create_diagnosis_note_doc_refs(
 def _build_doc_ref(
     note: DiagnosisNote,
     encounter_resource_id: str | None,
-    condition_snomed_map: dict[str, str],
+    condition_snomed_map: dict[str, list[str]],
     reference_registry: ReferenceRegistry,
     encounter_date: str | None,
 ) -> FHIRResourceDict:
@@ -228,6 +232,7 @@ def _build_doc_ref(
         "resourceType": "DocumentReference",
         "id": doc_ref_id,
         "status": "current",
+        "description": f"Diagnosis Note - {note.diagnosis_display}",
         "type": {
             "coding": [
                 {
@@ -263,15 +268,15 @@ def _build_doc_ref(
     if encounter_date:
         doc_ref["date"] = encounter_date
 
-    # Context: link to Encounter and optionally Condition
+    # Context: link to Encounter and optionally Condition(s)
     context: dict = {}
 
     if encounter_resource_id:
         context["encounter"] = [{"reference": f"urn:uuid:{encounter_resource_id}"}]
 
     if note.snomed_code and note.snomed_code in condition_snomed_map:
-        condition_id = condition_snomed_map[note.snomed_code]
-        context["related"] = [{"reference": f"urn:uuid:{condition_id}"}]
+        condition_ids = condition_snomed_map[note.snomed_code]
+        context["related"] = [{"reference": f"urn:uuid:{cid}"} for cid in condition_ids]
 
     if context:
         doc_ref["context"] = context
@@ -301,6 +306,12 @@ def extract_encounter_content_id_map(
     if not section.entry:
         return content_id_map
 
+    encounter_ids: set[str] = set()
+    for enc in encounters:
+        eid = enc.get("id")
+        if isinstance(eid, str):
+            encounter_ids.add(eid)
+
     for entry in section.entry:
         enc = entry.encounter
         if not enc:
@@ -324,11 +335,8 @@ def extract_encounter_content_id_map(
                     fhir_enc_id = generate_id_from_identifiers(
                         "Encounter", id_elem.root, id_elem.extension
                     )
-                    # Verify this encounter exists in our list
-                    for fhir_enc in encounters:
-                        if fhir_enc.get("id") == fhir_enc_id:
-                            content_id_map[content_id] = fhir_enc_id
-                            break
+                    if fhir_enc_id in encounter_ids:
+                        content_id_map[content_id] = fhir_enc_id
                     break
 
     return content_id_map
@@ -336,16 +344,19 @@ def extract_encounter_content_id_map(
 
 def build_condition_snomed_map(
     conditions: list[FHIRResourceDict],
-) -> dict[str, str]:
+) -> dict[str, list[str]]:
     """Build a map from SNOMED codes to Condition resource IDs.
+
+    Multiple Conditions may share the same SNOMED code (e.g. recurring diagnoses
+    across encounters), so each code maps to a list of Condition IDs.
 
     Args:
         conditions: List of Condition FHIR resources
 
     Returns:
-        Dict mapping SNOMED code to Condition resource ID
+        Dict mapping SNOMED code to list of Condition resource IDs
     """
-    snomed_map: dict[str, str] = {}
+    snomed_map: dict[str, list[str]] = {}
 
     for condition in conditions:
         condition_id = condition.get("id")
@@ -369,7 +380,7 @@ def build_condition_snomed_map(
                 "http://snomed.info/sct",
                 "http://snomed.info/sct/731000124108",
             ):
-                snomed_map[code_val] = condition_id
+                snomed_map.setdefault(code_val, []).append(condition_id)
                 break
 
     return snomed_map
@@ -450,6 +461,4 @@ def _build_encounter_date_map(encounters: list[FHIRResourceDict]) -> dict[str, s
 
 def _is_encounters_section(section: Section) -> bool:
     """Check if section is an Encounters section (LOINC 46240-8)."""
-    if section.code and section.code.code == _ENCOUNTERS_SECTION_CODE:
-        return True
-    return False
+    return bool(section.code and section.code.code == _ENCOUNTERS_SECTION_CODE)

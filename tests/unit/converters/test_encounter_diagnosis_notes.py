@@ -252,7 +252,31 @@ class TestBuildConditionSnomedMap:
             },
         ]
         result = build_condition_snomed_map(conditions)
-        assert result == {"59621000": "cond-1", "44054006": "cond-2"}
+        assert result == {"59621000": ["cond-1"], "44054006": ["cond-2"]}
+
+    def test_duplicate_snomed_codes(self) -> None:
+        conditions = [
+            {
+                "resourceType": "Condition",
+                "id": "cond-1",
+                "code": {
+                    "coding": [
+                        {"system": "http://snomed.info/sct", "code": "59621000"},
+                    ]
+                },
+            },
+            {
+                "resourceType": "Condition",
+                "id": "cond-2",
+                "code": {
+                    "coding": [
+                        {"system": "http://snomed.info/sct", "code": "59621000"},
+                    ]
+                },
+            },
+        ]
+        result = build_condition_snomed_map(conditions)
+        assert result == {"59621000": ["cond-1", "cond-2"]}
 
     def test_empty_conditions(self) -> None:
         assert build_condition_snomed_map([]) == {}
@@ -292,7 +316,7 @@ class TestCreateDiagnosisNoteDocRefs:
             ),
         ]
         encounter_map = {"enc1": "encounter-uuid-1"}
-        condition_map = {"59621000": "condition-uuid-1"}
+        condition_map: dict[str, list[str]] = {"59621000": ["condition-uuid-1"]}
 
         doc_refs = create_diagnosis_note_doc_refs(
             notes=notes,
@@ -322,11 +346,37 @@ class TestCreateDiagnosisNoteDocRefs:
         assert context["encounter"] == [{"reference": "urn:uuid:encounter-uuid-1"}]
         assert context["related"] == [{"reference": "urn:uuid:condition-uuid-1"}]
 
-        # Type
+        # Type and description
         assert dr["type"]["text"] == "Diagnosis Note - Hypertension"
+        assert dr["description"] == "Diagnosis Note - Hypertension"
 
         # Category
         assert dr["category"][0]["coding"][0]["code"] == "clinical-note"
+
+    def test_multiple_conditions_same_snomed(self, registry: ReferenceRegistry) -> None:
+        notes = [
+            DiagnosisNote(
+                encounter_content_id="enc1",
+                diagnosis_display="Hypertension",
+                snomed_code="59621000",
+                note_text="BP note.",
+            ),
+        ]
+        condition_map: dict[str, list[str]] = {"59621000": ["cond-1", "cond-2"]}
+
+        doc_refs = create_diagnosis_note_doc_refs(
+            notes=notes,
+            encounter_map={},
+            condition_snomed_map=condition_map,
+            reference_registry=registry,
+        )
+
+        assert len(doc_refs) == 1
+        related = doc_refs[0]["context"]["related"]
+        assert related == [
+            {"reference": "urn:uuid:cond-1"},
+            {"reference": "urn:uuid:cond-2"},
+        ]
 
     def test_no_encounter_link(self, registry: ReferenceRegistry) -> None:
         notes = [
@@ -360,7 +410,7 @@ class TestCreateDiagnosisNoteDocRefs:
         doc_refs = create_diagnosis_note_doc_refs(
             notes=notes,
             encounter_map={},
-            condition_snomed_map={"44054006": "cond-1"},
+            condition_snomed_map={"44054006": ["cond-1"]},
             reference_registry=registry,
         )
 
@@ -467,6 +517,7 @@ class TestExtractEncounterDiagnosisNotesIntegration:
         dr = result[0]
         assert dr["resourceType"] == "DocumentReference"
         assert dr["status"] == "current"
+        assert dr["description"] == "Diagnosis Note - Hypertension"
 
         # Content is base64-encoded note text
         decoded = base64.b64decode(dr["content"][0]["attachment"]["data"]).decode()
@@ -475,3 +526,58 @@ class TestExtractEncounterDiagnosisNotesIntegration:
         # Condition link via SNOMED matching
         context = dr["context"]
         assert context["related"] == [{"reference": "urn:uuid:cond-fhir-1"}]
+
+    def test_full_pipeline_with_encounter_linking(self, registry: ReferenceRegistry) -> None:
+        """Test encounter linking via section entries with text references."""
+        from ccda_to_fhir.ccda.models.datatypes import ED, II, TEL
+        from ccda_to_fhir.ccda.models.encounter import Encounter as CDAEncounter
+        from ccda_to_fhir.ccda.models.section import Entry
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        enc_root = "2.16.840.1.113883.19.5"
+        enc_ext = "4068"
+        fhir_enc_id = generate_id_from_identifiers("Encounter", enc_root, enc_ext)
+
+        table = _make_encounter_table(
+            headers=[
+                "Encounter ID",
+                "Diagnosis/Indication",
+                "Diagnosis SNOMED-CT Code",
+                "Diagnosis Note",
+            ],
+            rows=[
+                [
+                    ("4068", "encounter4068"),
+                    "Hypertension",
+                    "59621000",
+                    "BP above goal.",
+                ],
+            ],
+        )
+
+        cda_encounter = CDAEncounter(
+            id=[II(root=enc_root, extension=enc_ext)],
+            text=ED(reference=TEL(value="#encounter4068")),
+        )
+        entry = Entry(encounter=cda_encounter)
+        section = _make_encounters_section(table, entries=[entry])
+        body = StructuredBody(component=[SectionComponent(section=section)])
+
+        encounters = [
+            {
+                "resourceType": "Encounter",
+                "id": fhir_enc_id,
+                "period": {"start": "2024-01-22T12:02:39-05:00"},
+            }
+        ]
+        conditions: list[dict] = []
+
+        result = extract_encounter_diagnosis_notes(
+            body, encounters, conditions, registry
+        )
+
+        assert len(result) == 1
+        dr = result[0]
+        context = dr["context"]
+        assert context["encounter"] == [{"reference": f"urn:uuid:{fhir_enc_id}"}]
+        assert dr["date"] == "2024-01-22T12:02:39-05:00"
