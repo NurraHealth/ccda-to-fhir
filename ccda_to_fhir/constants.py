@@ -192,6 +192,17 @@ class TypeCodes:
     MFST = "MFST"  # Alternative name for MANIFESTATION
     SPRT = "SPRT"  # Alternative name for SUPPORT
     COMP = "COMP"  # Alternative name for COMPONENT
+    REPLACE = "RPLC"  # Replaces
+    APPEND = "APND"  # Appends
+    TRANSFORM = "XFRM"  # Transforms
+
+
+# C-CDA reference/@typeCode → FHIR DocumentReference.relatesTo.code
+CCDA_TYPECODE_TO_FHIR_RELATES_TO: dict[str, str] = {
+    "RPLC": "replaces",
+    "APND": "appends",
+    "XFRM": "transforms",
+}
 
 
 # =============================================================================

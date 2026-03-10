@@ -17,6 +17,7 @@ from .location import LocationConverter
 from .medication_dispense import MedicationDispenseConverter
 from .medication_request import MedicationRequestConverter, convert_medication_activity
 from .medication_statement import MedicationStatementConverter, convert_medication_statement
+from .note_activity import NoteActivityConverter, convert_note_activity
 from .observation import ObservationConverter
 from .organization import OrganizationConverter
 from .patient import PatientConverter
@@ -37,6 +38,8 @@ __all__ = [
     "convert_medication_activity",
     "MedicationStatementConverter",
     "convert_medication_statement",
+    "NoteActivityConverter",
+    "convert_note_activity",
     "MedicationDispenseConverter",
     "ImmunizationConverter",
     "ObservationConverter",
