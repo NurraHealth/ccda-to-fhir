@@ -10,6 +10,7 @@ from ccda_to_fhir.ccda.models.author import Author
 from ccda_to_fhir.ccda.models.datatypes import CD, ED, II, IVL_TS, TEL, TS
 from ccda_to_fhir.ccda.models.section import Section
 from ccda_to_fhir.constants import (
+    CCDA_TYPECODE_TO_FHIR_RELATES_TO,
     DOCUMENT_REFERENCE_STATUS_TO_FHIR,
     FHIRCodes,
 )
@@ -98,14 +99,12 @@ class NoteActivityConverter(BaseConverter[Act]):
         # Subject
         doc_ref["subject"] = self.reference_registry.get_patient_reference()
 
-        # Date - from first author's time
+        # Date and author references
         if note_act.author:
             date = _extract_author_date(note_act.author, self.convert_date)
             if date:
                 doc_ref["date"] = date
 
-        # Author references
-        if note_act.author:
             authors = _convert_author_references(note_act.author)
             if authors:
                 doc_ref["author"] = authors
@@ -116,9 +115,13 @@ class NoteActivityConverter(BaseConverter[Act]):
             if content_list:
                 doc_ref["content"] = content_list
             else:
-                doc_ref["content"] = _create_missing_content(self)
+                doc_ref["content"] = _create_missing_content(
+                    self.create_data_absent_reason_extension
+                )
         else:
-            doc_ref["content"] = _create_missing_content(self)
+            doc_ref["content"] = _create_missing_content(
+                self.create_data_absent_reason_extension
+            )
 
         # Context - encounter and period
         context = _create_context(note_act, self.convert_date)
@@ -218,6 +221,8 @@ def _extract_author_date(
     convert_date_fn: Callable[[str], str | None],
 ) -> str | None:
     """Extract date from first author's time element."""
+    if not authors:
+        return None
     first_author = authors[0]
     if first_author.time and first_author.time.value:
         return convert_date_fn(first_author.time.value)
@@ -309,7 +314,9 @@ def _create_reference_content(reference: TEL, section: Section) -> JSONObject | 
     }
 
 
-def _create_missing_content(converter: NoteActivityConverter) -> list[JSONObject]:
+def _create_missing_content(
+    create_absent_reason_fn: Callable[[str | None], JSONObject],
+) -> list[JSONObject]:
     """Create content with data-absent-reason extension when text is missing."""
     return [
         {
@@ -317,7 +324,7 @@ def _create_missing_content(converter: NoteActivityConverter) -> list[JSONObject
                 "contentType": "text/plain",
                 "_data": {
                     "extension": [
-                        converter.create_data_absent_reason_extension(None, default_reason="unknown")
+                        create_absent_reason_fn(None)
                     ]
                 },
             }
@@ -339,7 +346,7 @@ def _create_context(
             if effective.value:
                 ts_value = effective.value
             elif effective.low and effective.low.value:
-                ts_value = str(effective.low.value)
+                ts_value = effective.low.value
         elif isinstance(effective, TS) and effective.value:
             ts_value = effective.value
 
@@ -366,15 +373,29 @@ def _create_context(
 
 
 def _convert_relates_to(references: list[Reference]) -> list[JSONObject]:
-    """Convert reference to externalDocument to relatesTo."""
+    """Convert reference to externalDocument to FHIR relatesTo.
+
+    Maps C-CDA typeCode to FHIR relatesTo.code:
+      RPLC → replaces, APND → appends, XFRM → transforms.
+    REFR and unmapped typeCodes are skipped (no FHIR relatesTo equivalent).
+    """
     relates_to: list[JSONObject] = []
     for ref in references:
-        if ref.external_document and ref.external_document.id:
-            first_id = ref.external_document.id[0]
-            relates_to.append({
-                "code": "appends",
-                "target": {"reference": f"urn:uuid:{first_id.root}"},
-            })
+        if not ref.external_document or not ref.external_document.id:
+            continue
+        fhir_code = CCDA_TYPECODE_TO_FHIR_RELATES_TO.get(ref.type_code or "")
+        if not fhir_code:
+            continue
+        first_id = ref.external_document.id[0]
+        doc_id = generate_id_from_identifiers(
+            "DocumentReference",
+            first_id.root or None,
+            first_id.extension or None,
+        )
+        relates_to.append({
+            "code": fhir_code,
+            "target": {"reference": f"urn:uuid:{doc_id}"},
+        })
     return relates_to
 
 
