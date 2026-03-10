@@ -8,7 +8,6 @@ from ccda_to_fhir.ccda.models.section import SectionComponent, Section, Structur
 from ccda_to_fhir.ccda.models.struc_doc import Content, Paragraph, StrucDocText
 from ccda_to_fhir.ccda.models.datatypes import CE
 from ccda_to_fhir.converters.narrative_section import (
-    NARRATIVE_SECTIONS,
     _is_empty_narrative,
     extract_narrative_sections,
 )

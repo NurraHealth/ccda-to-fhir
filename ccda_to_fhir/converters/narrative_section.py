@@ -20,6 +20,7 @@ from ccda_to_fhir.types import FHIRResourceDict
 from ccda_to_fhir.utils.struc_doc_utils import narrative_to_html, narrative_to_plain_text
 
 from .references import ReferenceRegistry
+from .section_traversal import _iter_sections
 
 logger = get_logger(__name__)
 
@@ -76,15 +77,11 @@ def extract_narrative_sections(
     """
     results: list[FHIRResourceDict] = []
 
-    if not structured_body.component:
-        return results
-
-    for comp in structured_body.component:
-        section = comp.section
-        if not section or not section.code:
+    for section, section_code in _iter_sections(structured_body):
+        if not section_code:
             continue
 
-        loinc_code = section.code.code
+        loinc_code = section_code
         if loinc_code not in NARRATIVE_SECTIONS:
             continue
 
