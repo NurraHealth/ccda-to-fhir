@@ -413,6 +413,10 @@ class Content(CDAModel):
                 if elem.text:
                     parts.append(elem.text)
 
+        # Include tail text (mixed content after this element's closing tag)
+        if self.tail_text:
+            parts.append(self.tail_text)
+
         return "".join(parts)
 
 

@@ -282,8 +282,7 @@ def _extract_cell_text(cell: TableDataCell | TableHeaderCell) -> str:
         parts.append(cell.text)
     if cell.content:
         for content in cell.content:
-            if content.text:
-                parts.append(content.text)
+            parts.append(content.get_plain_text())
     # TableDataCell can have paragraphs, TableHeaderCell cannot
     if isinstance(cell, _TableDataCell) and cell.paragraph:
         for para in cell.paragraph:
