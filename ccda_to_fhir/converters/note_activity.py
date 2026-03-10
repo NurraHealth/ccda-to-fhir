@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Callable
 
 from ccda_to_fhir.ccda.models.act import Act, Reference
 from ccda_to_fhir.ccda.models.author import Author
@@ -214,13 +215,12 @@ def _make_coding(
 
 def _extract_author_date(
     authors: list[Author],
-    convert_date_fn: object,
+    convert_date_fn: Callable[[str], str | None],
 ) -> str | None:
     """Extract date from first author's time element."""
     first_author = authors[0]
     if first_author.time and first_author.time.value:
-        result: str | None = convert_date_fn(first_author.time.value)  # type: ignore[operator]
-        return result
+        return convert_date_fn(first_author.time.value)
     return None
 
 
@@ -327,7 +327,7 @@ def _create_missing_content(converter: NoteActivityConverter) -> list[JSONObject
 
 def _create_context(
     note_act: Act,
-    convert_date_fn: object,
+    convert_date_fn: Callable[[str], str | None],
 ) -> JSONObject | None:
     """Create document context (period, encounter references) from note activity."""
     context: JSONObject = {}
@@ -344,7 +344,7 @@ def _create_context(
             ts_value = effective.value
 
         if ts_value:
-            start = convert_date_fn(ts_value)  # type: ignore[operator]
+            start = convert_date_fn(ts_value)
             if start:
                 context["period"] = {"start": start}
 
