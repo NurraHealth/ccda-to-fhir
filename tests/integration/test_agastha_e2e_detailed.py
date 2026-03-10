@@ -69,7 +69,7 @@ class TestAgasthaE2E:
     def test_bundle_structure(self, agastha_bundle):
         """Validate Bundle has expected structure."""
         assert agastha_bundle.type == "document"
-        assert len(agastha_bundle.entry) == 45, "Bundle must contain exactly 45 resources"
+        assert len(agastha_bundle.entry) == 46, "Bundle must contain exactly 46 resources"
 
         # Verify has Patient and Composition
         has_patient = any(e.resource.get_resource_type() == "Patient" for e in agastha_bundle.entry)
