@@ -60,6 +60,7 @@ from .converters.coverage import convert_coverage_activity
 from .converters.device import DeviceConverter
 from .converters.diagnostic_report import DiagnosticReportConverter
 from .converters.encounter import EncounterConverter
+from .converters.encounter_diagnosis_notes import extract_encounter_diagnosis_notes
 from .converters.goal import GoalConverter
 from .converters.immunization import convert_immunization_activity
 from .converters.medication_dispense import (
@@ -902,6 +903,18 @@ class DocumentConverter:
             resources.extend(encounter_diagnoses)
             for diagnosis in encounter_diagnoses:
                 self.reference_registry.register_resource(diagnosis)
+
+            # Extract per-diagnosis notes from encounter narrative tables
+            all_conditions = conditions + encounter_diagnoses
+            diagnosis_note_doc_refs = extract_encounter_diagnosis_notes(
+                ccda_doc.component.structured_body,
+                encounters,
+                all_conditions,
+                self.reference_registry,
+            )
+            resources.extend(diagnosis_note_doc_refs)
+            for doc_ref in diagnosis_note_doc_refs:
+                self.reference_registry.register_resource(doc_ref)
 
             # Extract and convert Location resources from encounter participants
             locations = self._extract_locations(ccda_doc.component.structured_body)
