@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from fhir.resources.R4B.allergyintolerance import AllergyIntolerance
 from fhir.resources.R4B.careplan import CarePlan
@@ -42,12 +42,20 @@ from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP, TemplateIds
 from ccda_to_fhir.exceptions import CCDAConversionError
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import (
+    ConcernActMetadataCallback,
     ConversionMetadata,
     ConversionResult,
     FHIRResourceDict,
     JSONObject,
+    SubstanceAdminMetadataCallback,
 )
 from ccda_to_fhir.validation import FHIRValidator
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.act import Act as CcdaAct
+    from ccda_to_fhir.ccda.models.author import Author
+    from ccda_to_fhir.ccda.models.observation import Observation as CcdaObservation
+    from ccda_to_fhir.converters.informant_extractor import InformantInfo
 
 from .converters.allergy_intolerance import convert_allergy_concern_act
 from .converters.author_extractor import AuthorExtractor, AuthorInfo
@@ -82,7 +90,6 @@ from .converters.procedure import ProcedureConverter
 from .converters.provenance import ProvenanceConverter
 from .converters.references import ReferenceRegistry
 from .converters.section_traversal import (
-    ClinicalStatement,
     collect_results,
     converting,
     iter_matching_acts,
@@ -131,7 +138,6 @@ RESOURCE_TYPE_MAPPING: dict[str, type[FHIRAbstractModel]] = {
 def convert_careteam_organizer(
     organizer: Organizer,
     code_system_mapper: CodeSystemMapper | None = None,
-    metadata_callback: Callable[..., None] | None = None,
     section: Section | None = None,
     reference_registry: ReferenceRegistry | None = None,
 ) -> list[FHIRResourceDict]:
@@ -140,14 +146,12 @@ def convert_careteam_organizer(
     Args:
         organizer: The Care Team Organizer
         code_system_mapper: Optional code system mapper
-        metadata_callback: Optional callback for storing metadata
         section: The C-CDA Section containing this care team (for narrative)
         reference_registry: Reference registry for patient reference
 
     Returns:
         List of FHIR resources: CareTeam, Practitioner, PractitionerRole, Organization
     """
-    # Get patient reference from registry
     if not reference_registry:
         raise ValueError("Reference registry required for CareTeam conversion")
 
@@ -162,16 +166,6 @@ def convert_careteam_organizer(
     try:
         careteam = converter.convert(organizer)
 
-        # Store metadata if callback provided
-        if metadata_callback and careteam.get("id"):
-            metadata_callback(
-                resource_type="CareTeam",
-                resource_id=careteam["id"],
-                ccda_element=organizer,
-                concern_act=None,
-            )
-
-        # Collect all resources (CareTeam + related resources)
         resources = [careteam]
         resources.extend(converter.get_related_resources())
 
@@ -184,7 +178,7 @@ def convert_careteam_organizer(
 def convert_medication(
     substance_admin: SubstanceAdministration,
     code_system_mapper: CodeSystemMapper | None = None,
-    metadata_callback: Callable[..., None] | None = None,
+    metadata_callback: SubstanceAdminMetadataCallback | None = None,
     section: Section | None = None,
     reference_registry: ReferenceRegistry | None = None,
     seen_medication_ids: set[tuple[str, str | None]] | None = None,
@@ -195,16 +189,6 @@ def convert_medication(
     - moodCode="EVN" (event/historical) → MedicationStatement
     - moodCode="INT", "RQO", "PRMS", "PRP" → MedicationRequest
     - negationInd="true" → Always MedicationRequest (with doNotPerform)
-
-    Args:
-        substance_admin: The SubstanceAdministration (Medication Activity)
-        code_system_mapper: Optional code system mapper
-        metadata_callback: Optional callback for storing author metadata
-        section: The C-CDA Section containing this medication (for narrative)
-        seen_medication_ids: Set to track medication IDs and detect duplicates within a document
-
-    Returns:
-        FHIR MedicationRequest or MedicationStatement resource
     """
     mood_code = substance_admin.mood_code
     negation_ind = substance_admin.negation_ind or False
@@ -286,9 +270,16 @@ class DocumentConverter:
         self._seen_diagnostic_report_ids: set[tuple[str, str | None]] = set()
 
         # Informant metadata storage for RelatedPerson/Practitioner generation
-        self._informant_metadata: dict[str, list] = {}
+        self._informant_metadata: dict[str, list[InformantInfo]] = {}
         from .converters.informant_extractor import InformantExtractor
         self.informant_extractor = InformantExtractor()
+
+        # Patient ID set during patient conversion, used by informant/RelatedPerson generation
+        self._patient_id: str | None = None
+
+        # Temporary storage for header encounter participant resources
+        self._temp_header_practitioners: list[FHIRResourceDict] = []
+        self._temp_header_locations: list[FHIRResourceDict] = []
 
         # Initialize individual resource converters
         self.patient_converter = PatientConverter(
@@ -629,7 +620,7 @@ class DocumentConverter:
 
                 elif informant_info.is_related_person and informant_info.informant.related_entity:
                     try:
-                        if not hasattr(self, "_patient_id") or not isinstance(self._patient_id, str):
+                        if self._patient_id is None:
                             raise ValueError(
                                 "Cannot create RelatedPerson: patient_id is required. "
                                 "Patient must be processed before informants."
@@ -844,12 +835,12 @@ class DocumentConverter:
             if header_encounter:
                 # Collect participant and location resources created during header encounter conversion
                 # Add them to the main resources list, NOT to encounters list
-                if hasattr(self, '_temp_header_practitioners'):
+                if self._temp_header_practitioners:
                     resources.extend(self._temp_header_practitioners)
-                    self._temp_header_practitioners = []  # Clear for next conversion
-                if hasattr(self, '_temp_header_locations'):
+                    self._temp_header_practitioners = []
+                if self._temp_header_locations:
                     resources.extend(self._temp_header_locations)
-                    self._temp_header_locations = []  # Clear for next conversion
+                    self._temp_header_locations = []
 
                 # Check if header encounter duplicates any body encounter
                 # Per mapping docs: check by ID, same-day match, or identifier overlap
@@ -870,16 +861,6 @@ class DocumentConverter:
                 if not duplicate_found:
                     encounters.append(header_encounter)
                     logger.debug(f"Added header encounter {header_id} to bundle (no body duplicate)")
-
-                    # Store author metadata for header encounter
-                    # Header encounters use document-level authors from the encompassingEncounter
-                    if isinstance(header_id, str) and ccda_doc.component_of and ccda_doc.component_of.encompassing_encounter:
-                        self._store_author_metadata(
-                            resource_type="Encounter",
-                            resource_id=header_id,
-                            ccda_element=ccda_doc.component_of.encompassing_encounter,
-                            concern_act=None,
-                        )
 
             resources.extend(encounters)
             for encounter in encounters:
@@ -1182,7 +1163,7 @@ class DocumentConverter:
                     act,
                     section_code=section_code,
                     code_system_mapper=self.code_system_mapper,
-                    metadata_callback=self._store_author_metadata,
+                    metadata_callback=self._concern_act_metadata_callback,
                     reference_registry=self.reference_registry,
                     seen_observation_ids=self._seen_observation_ids,
                     section=section,
@@ -1204,7 +1185,7 @@ class DocumentConverter:
                 result = convert_allergy_concern_act(
                     act,
                     code_system_mapper=self.code_system_mapper,
-                    metadata_callback=self._store_author_metadata,
+                    metadata_callback=self._concern_act_metadata_callback,
                     reference_registry=self.reference_registry,
                     seen_allergy_ids=self._seen_allergy_ids,
                     section=section,
@@ -1226,7 +1207,7 @@ class DocumentConverter:
                 result = convert_medication(
                     sa,
                     code_system_mapper=self.code_system_mapper,
-                    metadata_callback=self._store_author_metadata,
+                    metadata_callback=self._substance_admin_metadata_callback,
                     reference_registry=self.reference_registry,
                     seen_medication_ids=self._seen_medication_ids,
                     section=section,
@@ -1248,7 +1229,7 @@ class DocumentConverter:
                 result = convert_immunization_activity(
                     sa,
                     code_system_mapper=self.code_system_mapper,
-                    metadata_callback=self._store_author_metadata,
+                    metadata_callback=self._substance_admin_metadata_callback,
                     reference_registry=self.reference_registry,
                     seen_immunization_ids=self._seen_immunization_ids,
                     section=section,
@@ -1328,65 +1309,15 @@ class DocumentConverter:
                 vital_signs.extend(individuals)
 
                 # Store author metadata for panel and individual observations
-                if panel.get("id"):
-                    self._store_author_metadata(
-                        resource_type="Observation",
-                        resource_id=panel["id"],
-                        ccda_element=organizer,
-                        concern_act=None,
-                    )
+                organizer_authors = self.author_extractor.extract_from_organizer(organizer)
+                panel_id = panel.get("id")
+                if isinstance(panel_id, str):
+                    self._store_authors("Observation", panel_id, organizer_authors)
                 for individual in individuals:
-                    if individual.get("id"):
-                        self._store_author_metadata(
-                            resource_type="Observation",
-                            resource_id=individual["id"],
-                            ccda_element=organizer,
-                            concern_act=None,
-                        )
+                    ind_id = individual.get("id")
+                    if isinstance(ind_id, str):
+                        self._store_authors("Observation", ind_id, organizer_authors)
         return vital_signs
-
-    def _store_diagnostic_report_metadata(
-        self, structured_body: StructuredBody, reports: list[FHIRResourceDict]
-    ):
-        """Store author metadata for DiagnosticReport resources."""
-        report_ids_needing_metadata = {r.get("id") for r in reports if r.get("id")}
-
-        for organizer, _section, _section_code in iter_matching_organizers(
-            structured_body, TemplateIds.RESULT_ORGANIZER
-        ):
-            if organizer.id and len(organizer.id) > 0:
-                first_id = organizer.id[0]
-                report_id = self._generate_report_id_from_identifier(
-                    first_id.root, first_id.extension
-                )
-                if report_id and report_id in report_ids_needing_metadata:
-                    self._store_author_metadata(
-                        resource_type="DiagnosticReport",
-                        resource_id=report_id,
-                        ccda_element=organizer,
-                        concern_act=None,
-                    )
-                    report_ids_needing_metadata.discard(report_id)
-
-    def _generate_report_id_from_identifier(
-        self, root: str | None, extension: str | None
-    ) -> str | None:
-        """Generate a report ID matching DiagnosticReportConverter logic.
-
-        Args:
-            root: The OID or UUID root
-            extension: The extension value
-
-        Returns:
-            Generated ID string or None
-        """
-        if extension:
-            # Use extension as ID (removing any invalid characters)
-            return extension.replace(".", "-").replace(":", "-")
-        elif root:
-            # Use root as ID
-            return root.replace(".", "-").replace(":", "-")
-        return None
 
     def _extract_results(
         self,
@@ -1406,21 +1337,14 @@ class DocumentConverter:
                 resources.extend(observations)
 
                 # Store author metadata for DiagnosticReport and observations
-                if report.get("id"):
-                    self._store_author_metadata(
-                        resource_type="DiagnosticReport",
-                        resource_id=report["id"],
-                        ccda_element=organizer,
-                        concern_act=None,
-                    )
+                organizer_authors = self.author_extractor.extract_from_organizer(organizer)
+                report_id = report.get("id")
+                if isinstance(report_id, str):
+                    self._store_authors("DiagnosticReport", report_id, organizer_authors)
                 for observation in observations:
-                    if observation.get("id"):
-                        self._store_author_metadata(
-                            resource_type="Observation",
-                            resource_id=observation["id"],
-                            ccda_element=organizer,
-                            concern_act=None,
-                        )
+                    obs_id = observation.get("id")
+                    if isinstance(obs_id, str):
+                        self._store_authors("Observation", obs_id, organizer_authors)
         return resources
 
     def _extract_patient_extensions_from_social_history(
@@ -1505,11 +1429,11 @@ class DocumentConverter:
                             and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
                         ):
                             # Gender Identity Extension
-                            if obs.value:
+                            if isinstance(obs.value, CD):
                                 gender_identity_codeable = self.observation_converter.create_codeable_concept(
-                                    code=getattr(obs.value, "code", None),
-                                    code_system=getattr(obs.value, "code_system", None),
-                                    display_name=getattr(obs.value, "display_name", None),
+                                    code=obs.value.code,
+                                    code_system=obs.value.code_system,
+                                    display_name=obs.value.display_name,
                                 )
                                 if gender_identity_codeable:
                                     gender_identity_ext = {
@@ -1539,7 +1463,7 @@ class DocumentConverter:
                             and obs.code.code_system == "2.16.840.1.113883.6.1"  # LOINC
                         ):
                             # Sex Parameter for Clinical Use Extension (FHIR Core)
-                            if obs.value:
+                            if isinstance(obs.value, CD):
                                 spcu_ext = {
                                     "url": FHIRSystems.PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE,
                                     "extension": []
@@ -1547,9 +1471,9 @@ class DocumentConverter:
 
                                 # value sub-extension (required)
                                 value_concept = self.observation_converter.create_codeable_concept(
-                                    code=getattr(obs.value, "code", None),
-                                    code_system=getattr(obs.value, "code_system", None),
-                                    display_name=getattr(obs.value, "display_name", None),
+                                    code=obs.value.code,
+                                    code_system=obs.value.code_system,
+                                    display_name=obs.value.display_name,
                                 )
                                 spcu_ext["extension"].append({
                                     "url": "value",
@@ -1582,7 +1506,7 @@ class DocumentConverter:
 
                                     # Try to resolve reference first
                                     if obs.text.reference:
-                                        ref_value = getattr(obs.text.reference, 'value', None) or obs.text.reference
+                                        ref_value = obs.text.reference.value
 
                                         if ref_value and isinstance(ref_value, str) and ref_value.startswith('#'):
                                             content_id = ref_value[1:]
@@ -1641,11 +1565,11 @@ class DocumentConverter:
                             # Per FHIR: Extension has two sub-extensions:
                             # - tribalAffiliation (1..1, CodeableConcept, Must-Support)
                             # - isEnrolled (0..1, boolean, optional - not available in C-CDA)
-                            if obs.value:
+                            if isinstance(obs.value, CD):
                                 tribal_affiliation_codeable = self.observation_converter.create_codeable_concept(
-                                    code=getattr(obs.value, "code", None),
-                                    code_system=getattr(obs.value, "code_system", None),
-                                    display_name=getattr(obs.value, "display_name", None),
+                                    code=obs.value.code,
+                                    code_system=obs.value.code_system,
+                                    display_name=obs.value.display_name,
                                 )
                                 if tribal_affiliation_codeable:
                                     tribal_affiliation_ext = {
@@ -1666,11 +1590,11 @@ class DocumentConverter:
                             # Tribal Affiliation observation
                             if template.root == TemplateIds.TRIBAL_AFFILIATION_OBSERVATION:
                                 # Tribal Affiliation Extension (US Core)
-                                if obs.value:
+                                if isinstance(obs.value, CD):
                                     tribal_affiliation_codeable = self.observation_converter.create_codeable_concept(
-                                        code=getattr(obs.value, "code", None),
-                                        code_system=getattr(obs.value, "code_system", None),
-                                        display_name=getattr(obs.value, "display_name", None),
+                                        code=obs.value.code,
+                                        code_system=obs.value.code_system,
+                                        display_name=obs.value.display_name,
                                     )
                                     if tribal_affiliation_codeable:
                                         tribal_affiliation_ext = {
@@ -1689,7 +1613,7 @@ class DocumentConverter:
                             # Sex Parameter for Clinical Use observation
                             if template.root == TemplateIds.SEX_PARAMETER_FOR_CLINICAL_USE_OBSERVATION:
                                 # Sex Parameter for Clinical Use Extension (FHIR Core)
-                                if obs.value:
+                                if isinstance(obs.value, CD):
                                     spcu_ext = {
                                         "url": FHIRSystems.PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE,
                                         "extension": []
@@ -1697,9 +1621,9 @@ class DocumentConverter:
 
                                     # value sub-extension (required)
                                     value_concept = self.observation_converter.create_codeable_concept(
-                                        code=getattr(obs.value, "code", None),
-                                        code_system=getattr(obs.value, "code_system", None),
-                                        display_name=getattr(obs.value, "display_name", None),
+                                        code=obs.value.code,
+                                        code_system=obs.value.code_system,
+                                        display_name=obs.value.display_name,
                                     )
                                     spcu_ext["extension"].append({
                                         "url": "value",
@@ -1730,7 +1654,7 @@ class DocumentConverter:
 
                                         # Try to resolve reference first
                                         if obs.text.reference:
-                                            ref_value = getattr(obs.text.reference, 'value', None) or obs.text.reference
+                                            ref_value = obs.text.reference.value
 
                                             if ref_value and isinstance(ref_value, str) and ref_value.startswith('#'):
                                                 content_id = ref_value[1:]
@@ -1880,13 +1804,10 @@ class DocumentConverter:
                                         observations.append(observation)
 
                                         # Store author metadata
-                                        if observation.get("id"):
-                                            self._store_author_metadata(
-                                                resource_type="Observation",
-                                                resource_id=observation["id"],
-                                                ccda_element=entry.observation,
-                                                concern_act=None,
-                                            )
+                                        obs_id = observation.get("id")
+                                        if isinstance(obs_id, str):
+                                            authors = self.author_extractor.extract_from_observation(obs)
+                                            self._store_authors("Observation", obs_id, authors)
                                     except Exception:
                                         logger.error("Error converting social history observation", exc_info=True)
                                     break
@@ -1919,6 +1840,11 @@ class DocumentConverter:
                 result = self.procedure_converter.convert(proc, section=section)
                 collect_results(procedures, result)
                 performer_resources.extend(self.procedure_converter.get_pending_resources())
+                if procedures:
+                    proc_id = procedures[-1].get("id")
+                    if isinstance(proc_id, str):
+                        authors = self.author_extractor.extract_from_procedure(proc)
+                        self._store_authors("Procedure", proc_id, authors)
 
         # Procedure Activity Observations (also map to FHIR Procedure)
         for obs, section, _section_code in iter_matching_observations(
@@ -1928,6 +1854,11 @@ class DocumentConverter:
                 result = self.procedure_converter.convert(obs, section=section)
                 collect_results(procedures, result)
                 performer_resources.extend(self.procedure_converter.get_pending_resources())
+                if procedures:
+                    proc_id = procedures[-1].get("id")
+                    if isinstance(proc_id, str):
+                        authors = self.author_extractor.extract_from_observation(obs)
+                        self._store_authors("Procedure", proc_id, authors)
 
         # Procedure Activity Acts (also map to FHIR Procedure)
         for act, section, _section_code in iter_matching_acts(
@@ -1937,51 +1868,13 @@ class DocumentConverter:
                 result = self.procedure_converter.convert(act, section=section)
                 collect_results(procedures, result)
                 performer_resources.extend(self.procedure_converter.get_pending_resources())
+                if procedures:
+                    proc_id = procedures[-1].get("id")
+                    if isinstance(proc_id, str):
+                        authors = self.author_extractor.extract_from_concern_act(act)
+                        self._store_authors("Procedure", proc_id, authors)
 
-        self._store_procedure_metadata(structured_body, procedures)
         return procedures + performer_resources
-
-    def _store_procedure_metadata(
-        self, structured_body: StructuredBody, procedures: list[FHIRResourceDict]
-    ):
-        """Store author metadata for procedure resources."""
-        procedure_ids_needing_metadata = {p.get("id") for p in procedures if p.get("id")}
-
-        def _find_procedure_id(element: ClinicalStatement) -> str | None:
-            if not element.id:
-                return None
-            for id_elem in element.id:
-                if id_elem.root and not id_elem.null_flavor:
-                    return self.procedure_converter._generate_procedure_id(
-                        id_elem.root, id_elem.extension
-                    )
-            return None
-
-        def _try_store(element: ClinicalStatement) -> None:
-            procedure_id = _find_procedure_id(element)
-            if procedure_id and procedure_id in procedure_ids_needing_metadata:
-                self._store_author_metadata(
-                    resource_type="Procedure",
-                    resource_id=procedure_id,
-                    ccda_element=element,
-                    concern_act=None,
-                )
-                procedure_ids_needing_metadata.discard(procedure_id)
-
-        for proc, _section, _code in iter_matching_procedures(
-            structured_body, TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE
-        ):
-            _try_store(proc)
-
-        for obs, _section, _code in iter_matching_observations(
-            structured_body, TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION
-        ):
-            _try_store(obs)
-
-        for act, _section, _code in iter_matching_acts(
-            structured_body, TemplateIds.PROCEDURE_ACTIVITY_ACT
-        ):
-            _try_store(act)
 
     def _process_interventions_section(
         self, structured_body: StructuredBody
@@ -2168,36 +2061,15 @@ class DocumentConverter:
             with converting(metadata, TemplateIds.ENCOUNTER_ACTIVITY, enc.id, "encounter"):
                 result = self.encounter_converter.convert(enc, section=section)
                 collect_results(encounters, result)
+                # Store author metadata inline using the resource ID from conversion
+                if encounters:
+                    enc_resource_id = encounters[-1].get("id")
+                    if isinstance(enc_resource_id, str):
+                        authors = self.author_extractor.extract_from_encounter(enc)
+                        self._store_authors("Encounter", enc_resource_id, authors)
 
         participant_resources = self.encounter_converter.get_pending_resources()
-        self._store_encounter_metadata(structured_body, encounters)
         return encounters + participant_resources
-
-    def _store_encounter_metadata(
-        self, structured_body: StructuredBody, encounters: list[FHIRResourceDict]
-    ):
-        """Store author metadata for encounter resources."""
-        encounter_ids_needing_metadata = {e.get("id") for e in encounters if e.get("id")}
-
-        for enc, _section, _code in iter_matching_encounters(
-            structured_body, TemplateIds.ENCOUNTER_ACTIVITY
-        ):
-            encounter_id = None
-            if enc.id:
-                for id_elem in enc.id:
-                    if not id_elem.null_flavor and (id_elem.root or id_elem.extension):
-                        encounter_id = self.encounter_converter._generate_encounter_id(
-                            id_elem.root, id_elem.extension
-                        )
-                        break
-            if encounter_id and encounter_id in encounter_ids_needing_metadata:
-                self._store_author_metadata(
-                    resource_type="Encounter",
-                    resource_id=encounter_id,
-                    ccda_element=enc,
-                    concern_act=None,
-                )
-                encounter_ids_needing_metadata.discard(encounter_id)
 
     def _extract_encounter_diagnosis_conditions(
         self, structured_body: StructuredBody
@@ -2661,14 +2533,14 @@ class DocumentConverter:
             # Handle range with low/high
             elif encompassing_encounter.effective_time.low or encompassing_encounter.effective_time.high:
                 if encompassing_encounter.effective_time.low:
-                    low_value = getattr(encompassing_encounter.effective_time.low, 'value', None) or str(encompassing_encounter.effective_time.low)
+                    low_value = encompassing_encounter.effective_time.low.value
                     if low_value:
                         converted = self.encounter_converter.convert_date(str(low_value))
                         if converted:
                             period["start"] = converted
 
                 if encompassing_encounter.effective_time.high:
-                    high_value = getattr(encompassing_encounter.effective_time.high, 'value', None) or str(encompassing_encounter.effective_time.high)
+                    high_value = encompassing_encounter.effective_time.high.value
                     if high_value:
                         converted = self.encounter_converter.convert_date(str(high_value))
                         if converted:
@@ -2787,8 +2659,6 @@ class DocumentConverter:
                     self.reference_registry.register_resource(practitioner)
 
                     # Store temporarily to add to bundle later
-                    if not hasattr(self, '_temp_header_practitioners'):
-                        self._temp_header_practitioners = []
                     self._temp_header_practitioners.append(practitioner)
 
                 # Add participant reference
@@ -2988,8 +2858,6 @@ class DocumentConverter:
                         self.reference_registry.register_resource(location_resource)
 
                         # Store temporarily to add to bundle later
-                        if not hasattr(self, '_temp_header_locations'):
-                            self._temp_header_locations = []
                         self._temp_header_locations.append(location_resource)
 
                 if location_id:
@@ -3012,47 +2880,6 @@ class DocumentConverter:
 
         return fhir_encounter
 
-    def _store_note_metadata(
-        self, structured_body: StructuredBody, notes: list[FHIRResourceDict]
-    ):
-        """Store author metadata for note (DocumentReference) resources."""
-        note_ids_needing_metadata = {n.get("id") for n in notes if n.get("id")}
-
-        for act, _section, _code in iter_matching_acts(
-            structured_body, TemplateIds.NOTE_ACTIVITY
-        ):
-            if act.id and len(act.id) > 0:
-                first_id = act.id[0]
-                note_id = self._generate_note_id_from_identifier(first_id)
-                if note_id and note_id in note_ids_needing_metadata:
-                    self._store_author_metadata(
-                        resource_type="DocumentReference",
-                        resource_id=note_id,
-                        ccda_element=act,
-                        concern_act=None,
-                    )
-                    note_ids_needing_metadata.discard(note_id)
-
-    def _generate_note_id_from_identifier(self, identifier) -> str:
-        """Generate a note ID matching NoteActivityConverter logic.
-
-        Args:
-            identifier: Note II identifier
-
-        Returns:
-            Generated ID string (matches NoteActivityConverter._generate_note_id)
-        """
-        # Must match the exact logic in NoteActivityConverter._generate_note_id
-        from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
-
-        if not identifier:
-            return generate_id()
-
-        root = getattr(identifier, 'root', None) or None
-        extension = getattr(identifier, 'extension', None) or None
-
-        return generate_id_from_identifiers("DocumentReference", root, extension)
-
     def _extract_notes(
         self,
         structured_body: StructuredBody,
@@ -3071,12 +2898,16 @@ class DocumentConverter:
                     section=section,
                 )
                 collect_results(notes, result)
-
-        self._store_note_metadata(structured_body, notes)
+                # Store author metadata inline using the resource ID from conversion
+                if notes:
+                    note_resource_id = notes[-1].get("id")
+                    if isinstance(note_resource_id, str):
+                        authors = self.author_extractor.extract_from_concern_act(act)
+                        self._store_authors("DocumentReference", note_resource_id, authors)
         return notes
 
     def _extract_practitioners_and_organizations(
-        self, authors: list
+        self, authors: list[Author]
     ) -> list[FHIRResourceDict]:
         """Extract and convert Practitioners, Devices, Organizations, and PractitionerRoles from authors.
 
@@ -3416,53 +3247,38 @@ class DocumentConverter:
 
         return (provenances, devices, practitioners, organizations)
 
-    def _store_author_metadata(
+    def _store_authors(
         self,
         resource_type: str,
         resource_id: str,
-        ccda_element,
-        concern_act=None,
-    ):
-        """Store author metadata for later Provenance generation.
-
-        Args:
-            resource_type: FHIR resource type (e.g., "Condition", "AllergyIntolerance")
-            resource_id: FHIR resource ID
-            ccda_element: The C-CDA element containing author information
-            concern_act: Optional concern act (for combined author extraction)
-        """
-        from ccda_to_fhir.ccda.models.act import Act
-        from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
-        from ccda_to_fhir.ccda.models.observation import Observation
-        from ccda_to_fhir.ccda.models.organizer import Organizer
-        from ccda_to_fhir.ccda.models.procedure import Procedure
-        from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
-
-        authors = []
-
-        if concern_act:
-            # Extract from both concern act and entry element
-            authors = self.author_extractor.extract_combined(concern_act, ccda_element)
-        else:
-            # Extract based on element type
-            if isinstance(ccda_element, Observation):
-                authors = self.author_extractor.extract_from_observation(ccda_element)
-            elif isinstance(ccda_element, SubstanceAdministration):
-                authors = self.author_extractor.extract_from_substance_administration(
-                    ccda_element
-                )
-            elif isinstance(ccda_element, Procedure):
-                authors = self.author_extractor.extract_from_procedure(ccda_element)
-            elif isinstance(ccda_element, CCDAEncounter):
-                authors = self.author_extractor.extract_from_encounter(ccda_element)
-            elif isinstance(ccda_element, Organizer):
-                authors = self.author_extractor.extract_from_organizer(ccda_element)
-            elif isinstance(ccda_element, Act):
-                authors = self.author_extractor.extract_from_concern_act(ccda_element)
-
+        authors: list[AuthorInfo],
+    ) -> None:
+        """Store pre-extracted author metadata for later Provenance generation."""
         if authors:
-            key = f"{resource_type}/{resource_id}"
-            self._author_metadata[key] = authors
+            self._author_metadata[f"{resource_type}/{resource_id}"] = authors
+
+    def _concern_act_metadata_callback(
+        self,
+        *,
+        resource_type: str,
+        resource_id: str,
+        ccda_element: CcdaObservation,
+        concern_act: CcdaAct,
+    ) -> None:
+        """MetadataCallback for concern-act converters (allergy, condition)."""
+        authors = self.author_extractor.extract_combined(concern_act, ccda_element)
+        self._store_authors(resource_type, resource_id, authors)
+
+    def _substance_admin_metadata_callback(
+        self,
+        *,
+        resource_type: str,
+        resource_id: str,
+        ccda_element: SubstanceAdministration,
+    ) -> None:
+        """MetadataCallback for substance-admin converters (medication, immunization)."""
+        authors = self.author_extractor.extract_from_substance_administration(ccda_element)
+        self._store_authors(resource_type, resource_id, authors)
 
     def _generate_informant_resources(
         self
@@ -3496,7 +3312,7 @@ class DocumentConverter:
                         if related_person_id and related_person_id not in seen_related_persons:
                             # Get patient_id from the first patient resource in the bundle
                             # (All informants will reference the same patient)
-                            if not hasattr(self, "_patient_id"):
+                            if self._patient_id is None:
                                 raise ValueError(
                                     "Cannot create RelatedPerson: patient_id is required. "
                                     "Patient must be processed before informants."

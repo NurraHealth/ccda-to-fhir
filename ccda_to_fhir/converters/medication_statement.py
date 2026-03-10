@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, EIVL_TS, IVL_PQ, IVL_TS, PIVL_TS, PQ
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.section import Section
+    from ccda_to_fhir.converters.code_systems import CodeSystemMapper
+    from ccda_to_fhir.converters.references import ReferenceRegistry
+    from ccda_to_fhir.types import SubstanceAdminMetadataCallback
+
 from ccda_to_fhir.constants import (
     EIVL_EVENT_TO_FHIR_WHEN,
     MEDICATION_STATUS_TO_FHIR_STATEMENT,
@@ -711,11 +720,11 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
 
 def convert_medication_statement(
     substance_admin: SubstanceAdministration,
-    code_system_mapper=None,
-    metadata_callback=None,
-    section=None,
-    reference_registry=None,
-    seen_medication_ids=None,
+    code_system_mapper: CodeSystemMapper | None = None,
+    metadata_callback: SubstanceAdminMetadataCallback | None = None,
+    section: Section | None = None,
+    reference_registry: ReferenceRegistry | None = None,
+    seen_medication_ids: set[tuple[str, str | None]] | None = None,
 ) -> FHIRResourceDict:
     """Convert a Medication Activity to a FHIR MedicationStatement resource.
 
@@ -740,12 +749,12 @@ def convert_medication_statement(
         medication_statement = converter.convert(substance_admin, section=section)
 
         # Store author metadata if callback provided
-        if metadata_callback and medication_statement.get("id"):
+        med_stmt_id = medication_statement.get("id")
+        if metadata_callback and isinstance(med_stmt_id, str):
             metadata_callback(
                 resource_type="MedicationStatement",
-                resource_id=medication_statement["id"],
+                resource_id=med_stmt_id,
                 ccda_element=substance_admin,
-                concern_act=None,
             )
 
         # Extract nested medication dispenses
