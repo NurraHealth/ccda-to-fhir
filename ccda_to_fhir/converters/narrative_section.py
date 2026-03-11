@@ -59,6 +59,7 @@ def extract_narrative_sections(
     reference_registry: ReferenceRegistry,
     encounter_reference: str | None = None,
     encounter_date: str | None = None,
+    encounter_display: str | None = None,
     author_references: list[JSONObject] | None = None,
 ) -> list[FHIRResourceDict]:
     """Walk sections and create DocumentReferences for narrative-only clinical sections.
@@ -74,6 +75,8 @@ def extract_narrative_sections(
         encounter_reference: Optional encounter reference (e.g. "urn:uuid:abc-123")
             from the document header's encompassingEncounter
         encounter_date: Optional date from the encompassingEncounter's effectiveTime
+        encounter_display: Optional display text for the encounter reference,
+            derived from the encompassingEncounter's code.displayName
         author_references: Optional list of author references (e.g. from document
             header authors) to set on each DocumentReference
 
@@ -106,6 +109,7 @@ def extract_narrative_sections(
             reference_registry=reference_registry,
             encounter_reference=encounter_reference,
             encounter_date=encounter_date,
+            encounter_display=encounter_display,
             author_references=author_references,
         )
         results.append(doc_ref)
@@ -128,6 +132,7 @@ def _build_document_reference(
     reference_registry: ReferenceRegistry,
     encounter_reference: str | None = None,
     encounter_date: str | None = None,
+    encounter_display: str | None = None,
     author_references: list[JSONObject] | None = None,
 ) -> FHIRResourceDict:
     """Build a FHIR DocumentReference for a narrative section."""
@@ -164,8 +169,11 @@ def _build_document_reference(
         doc_ref["date"] = encounter_date
 
     if encounter_reference:
+        enc_ref_obj: JSONObject = {"reference": encounter_reference}
+        if encounter_display:
+            enc_ref_obj["display"] = encounter_display
         doc_ref["context"] = {
-            "encounter": [{"reference": encounter_reference}],
+            "encounter": [enc_ref_obj],
         }
 
     if author_references:

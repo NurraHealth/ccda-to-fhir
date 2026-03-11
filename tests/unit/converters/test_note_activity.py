@@ -1049,6 +1049,62 @@ class TestFallbackEncounterReference:
         assert result is None
 
 
+class TestFallbackEncounterDisplay:
+    """Tests for encounter display text on fallback encounter references."""
+
+    def test_display_set_on_fallback(self) -> None:
+        act = _make_note_act()
+        result = _create_context(
+            act, lambda v: v,
+            fallback_encounter_reference="urn:uuid:enc-fb",
+            fallback_encounter_display="Pnuemonia",
+        )
+        assert result is not None
+        enc_ref = result["encounter"][0]
+        assert enc_ref["reference"] == "urn:uuid:enc-fb"
+        assert enc_ref["display"] == "Pnuemonia"
+
+    def test_no_display_when_none(self) -> None:
+        act = _make_note_act()
+        result = _create_context(
+            act, lambda v: v,
+            fallback_encounter_reference="urn:uuid:enc-fb",
+            fallback_encounter_display=None,
+        )
+        assert result is not None
+        enc_ref = result["encounter"][0]
+        assert enc_ref == {"reference": "urn:uuid:enc-fb"}
+        assert "display" not in enc_ref
+
+    def test_display_not_applied_to_explicit_encounter(self) -> None:
+        act = _make_note_act()
+        act.entry_relationship = [
+            EntryRelationship(
+                type_code="COMP",
+                encounter=CDAEncounter(id=[II(root="enc-explicit")]),
+            )
+        ]
+        result = _create_context(
+            act, lambda v: v,
+            fallback_encounter_reference="urn:uuid:enc-fb",
+            fallback_encounter_display="Office visit",
+        )
+        assert result is not None
+        enc_ref = result["encounter"][0]
+        assert "display" not in enc_ref
+
+    def test_display_combined_with_period(self) -> None:
+        act = _make_note_act(effective_time=IVL_TS(value="20260115"))
+        result = _create_context(
+            act, lambda v: f"converted-{v}",
+            fallback_encounter_reference="urn:uuid:enc-fb",
+            fallback_encounter_display="Checkup",
+        )
+        assert result is not None
+        assert result["period"]["start"] == "converted-20260115"
+        assert result["encounter"][0]["display"] == "Checkup"
+
+
 class TestFallbackEncounterIntegration:
     """Integration tests for fallback encounter via converter.convert()."""
 
@@ -1085,6 +1141,37 @@ class TestFallbackEncounterIntegration:
             fallback_encounter_reference="urn:uuid:enc-conv",
         )
         assert result["context"]["encounter"][0]["reference"] == "urn:uuid:enc-conv"
+
+    def test_display_on_convert(self, converter: NoteActivityConverter) -> None:
+        act = _make_note_act()
+        result = converter.convert(
+            act,
+            fallback_encounter_reference="urn:uuid:enc-123",
+            fallback_encounter_display="Pnuemonia",
+        )
+        enc_ref = result["context"]["encounter"][0]
+        assert enc_ref["reference"] == "urn:uuid:enc-123"
+        assert enc_ref["display"] == "Pnuemonia"
+
+    def test_no_display_on_convert_when_none(self, converter: NoteActivityConverter) -> None:
+        act = _make_note_act()
+        result = converter.convert(
+            act,
+            fallback_encounter_reference="urn:uuid:enc-123",
+        )
+        enc_ref = result["context"]["encounter"][0]
+        assert enc_ref == {"reference": "urn:uuid:enc-123"}
+
+    def test_convenience_fn_passes_display(self, registry: ReferenceRegistry) -> None:
+        act = _make_note_act()
+        result = convert_note_activity(
+            act,
+            reference_registry=registry,
+            fallback_encounter_reference="urn:uuid:enc-conv",
+            fallback_encounter_display="Office visit",
+        )
+        enc_ref = result["context"]["encounter"][0]
+        assert enc_ref["display"] == "Office visit"
 
 
 class TestConvertNoteActivity:
