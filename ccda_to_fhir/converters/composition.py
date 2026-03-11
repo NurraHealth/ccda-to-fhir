@@ -8,6 +8,7 @@ from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.ccda.models.datatypes import II
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.constants import FHIRCodes
+from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
@@ -917,15 +918,27 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         custodian_org = custodian.assigned_custodian.represented_custodian_organization
 
         # Extract display name from ON object
+        display: str | None = None
         if custodian_org.name:
-            # Handle ON (organization name) object
             if isinstance(custodian_org.name, str):
-                return {"display": custodian_org.name}
+                display = custodian_org.name or None
             elif custodian_org.name.value:
-                # ON has value attribute
-                return {"display": custodian_org.name.value}
+                display = custodian_org.name.value or None
 
-        return None
+        # Build reference URI only when the Organization exists in the registry
+        ref: JSONObject = {}
+        if custodian_org.id and len(custodian_org.id) > 0 and self.reference_registry:
+            first_id = custodian_org.id[0]
+            org_id = generate_id_from_identifiers(
+                "Organization", first_id.root, first_id.extension
+            )
+            if self.reference_registry.has_resource("Organization", org_id):
+                ref["reference"] = f"urn:uuid:{org_id}"
+
+        if display:
+            ref["display"] = display
+
+        return ref if ref else None
 
     def _convert_sections(self, structured_body: StructuredBody) -> list[JSONObject]:
         """Convert C-CDA structured body to FHIR Composition sections.
