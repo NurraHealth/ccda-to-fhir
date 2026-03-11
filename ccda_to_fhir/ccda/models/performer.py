@@ -10,16 +10,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .datatypes import AD, CE, II, IVL_TS, ON, PN, TEL, CDAModel
-
-
-class AssignedPerson(CDAModel):
-    """Person assigned as performer.
-
-    Contains the name of the person who performed the action.
-    """
-
-    name: list[PN] | None = None
+from .datatypes import AD, CE, II, IVL_TS, ON, TEL, AssignedPerson, CDAModel
 
 
 class RepresentedOrganization(CDAModel):

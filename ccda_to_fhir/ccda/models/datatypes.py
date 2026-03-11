@@ -477,6 +477,16 @@ class PN(EN):
     pass
 
 
+class AssignedPerson(CDAModel):
+    """Person assigned to a clinical role (author, performer, etc.).
+
+    Contains the name(s) of the person. Used across C-CDA participation
+    types including Author and Performer.
+    """
+
+    name: list[PN] | None = None
+
+
 class ON(EN):
     """Organization Name (ON).
 

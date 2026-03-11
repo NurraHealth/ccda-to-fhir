@@ -11,16 +11,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .datatypes import AD, CE, II, ON, PN, TEL, TS, CDAModel
-
-
-class AssignedPerson(CDAModel):
-    """Person assigned as author.
-
-    Contains the name of the person who authored the content.
-    """
-
-    name: list[PN] | None = None
+from .datatypes import AD, CE, II, ON, TEL, TS, AssignedPerson, CDAModel
 
 
 class AssignedAuthoringDevice(CDAModel):
