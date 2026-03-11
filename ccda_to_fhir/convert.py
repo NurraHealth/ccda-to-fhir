@@ -923,8 +923,15 @@ class DocumentConverter:
             for location in locations:
                 self.reference_registry.register_resource(location)
 
+            # Build encounter context from encompassingEncounter for DocumentReferences
+            enc_ref, enc_date = self._get_encompassing_encounter_context(ccda_doc)
+
             # Notes (from Notes sections)
-            notes = self._extract_notes(ccda_doc.component.structured_body, metadata)
+            notes = self._extract_notes(
+                ccda_doc.component.structured_body,
+                metadata,
+                fallback_encounter_reference=enc_ref,
+            )
             resources.extend(notes)
             for note in notes:
                 self.reference_registry.register_resource(note)
@@ -935,6 +942,8 @@ class DocumentConverter:
             narrative_doc_refs = extract_narrative_sections(
                 ccda_doc.component.structured_body,
                 reference_registry=self.reference_registry,
+                encounter_reference=enc_ref,
+                encounter_date=enc_date,
             )
             resources.extend(narrative_doc_refs)
             for doc_ref in narrative_doc_refs:
@@ -2562,6 +2571,51 @@ class DocumentConverter:
             f"Merged header encounter data into body encounter {body_encounter.get('id')}"
         )
 
+    def _get_encompassing_encounter_context(
+        self, ccda_doc: ClinicalDocument
+    ) -> tuple[str | None, str | None]:
+        """Extract encounter reference and date from encompassingEncounter.
+
+        Returns a (encounter_reference, encounter_date) tuple for use in
+        DocumentReference resources. The encounter reference is formatted as
+        ``urn:uuid:<id>`` using the same ID generation as the encounter converter,
+        so it will match the Encounter resource in the bundle.
+
+        Returns:
+            Tuple of (encounter_reference, encounter_date). Either or both may be None.
+        """
+        if not ccda_doc.component_of:
+            return None, None
+
+        enc = ccda_doc.component_of.encompassing_encounter
+        if not enc:
+            return None, None
+
+        # Build encounter reference using same ID generation as _extract_header_encounter
+        enc_reference: str | None = None
+        if enc.id and len(enc.id) > 0:
+            first_id = enc.id[0]
+            enc_id = self.encounter_converter._generate_encounter_id(
+                root=first_id.root,
+                extension=first_id.extension,
+            )
+            enc_reference = f"urn:uuid:{enc_id}"
+
+        # Extract date from effectiveTime
+        enc_date: str | None = None
+        if enc.effective_time:
+            raw_date: str | None = None
+            if enc.effective_time.value:
+                raw_date = str(enc.effective_time.value)
+            elif enc.effective_time.low:
+                low_value = getattr(enc.effective_time.low, "value", None)
+                if low_value:
+                    raw_date = str(low_value)
+            if raw_date:
+                enc_date = self.encounter_converter.convert_date(raw_date)
+
+        return enc_reference, enc_date
+
     def _extract_header_encounter(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict | None:
         """Extract and convert encompassingEncounter from document header.
 
@@ -3080,6 +3134,7 @@ class DocumentConverter:
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
+        fallback_encounter_reference: str | None = None,
     ) -> list[FHIRResourceDict]:
         """Extract and convert Note Activities from the structured body."""
         notes: list[FHIRResourceDict] = []
@@ -3092,6 +3147,7 @@ class DocumentConverter:
                     code_system_mapper=self.code_system_mapper,
                     reference_registry=self.reference_registry,
                     section=section,
+                    fallback_encounter_reference=fallback_encounter_reference,
                 )
                 collect_results(notes, result)
 

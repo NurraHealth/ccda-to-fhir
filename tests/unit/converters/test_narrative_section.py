@@ -177,3 +177,80 @@ class TestExtractNarrativeSections:
         body = StructuredBody(component=None)
         results = extract_narrative_sections(body, _make_registry())
         assert len(results) == 0
+
+
+class TestEncounterContext:
+    """Tests for encounter reference and date from encompassingEncounter."""
+
+    def test_encounter_reference_set(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        results = extract_narrative_sections(
+            body,
+            _make_registry(),
+            encounter_reference="urn:uuid:enc-123",
+        )
+        assert len(results) == 1
+        assert results[0]["context"]["encounter"][0]["reference"] == "urn:uuid:enc-123"
+
+    def test_encounter_date_set(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        results = extract_narrative_sections(
+            body,
+            _make_registry(),
+            encounter_date="2026-01-20",
+        )
+        assert len(results) == 1
+        assert results[0]["date"] == "2026-01-20"
+
+    def test_both_encounter_reference_and_date(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        results = extract_narrative_sections(
+            body,
+            _make_registry(),
+            encounter_reference="urn:uuid:enc-123",
+            encounter_date="2026-01-20",
+        )
+        dr = results[0]
+        assert dr["date"] == "2026-01-20"
+        assert dr["context"]["encounter"][0]["reference"] == "urn:uuid:enc-123"
+
+    def test_all_narrative_sections_share_encounter(self) -> None:
+        body = _make_body([
+            _make_section("10164-2", "HPI content."),
+            _make_section("29545-1", "PE content."),
+            _make_section("10187-3", "ROS content."),
+        ])
+        results = extract_narrative_sections(
+            body,
+            _make_registry(),
+            encounter_reference="urn:uuid:enc-shared",
+            encounter_date="2026-01-20",
+        )
+        assert len(results) == 3
+        enc_refs = {
+            r["context"]["encounter"][0]["reference"] for r in results
+        }
+        assert enc_refs == {"urn:uuid:enc-shared"}
+        dates = {r["date"] for r in results}
+        assert dates == {"2026-01-20"}
+
+    def test_no_encounter_reference_omits_context(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        results = extract_narrative_sections(body, _make_registry())
+        assert "context" not in results[0]
+
+    def test_no_encounter_date_omits_date(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        results = extract_narrative_sections(body, _make_registry())
+        assert "date" not in results[0]
+
+    def test_none_encounter_reference_omits_context(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        results = extract_narrative_sections(
+            body,
+            _make_registry(),
+            encounter_reference=None,
+            encounter_date=None,
+        )
+        assert "context" not in results[0]
+        assert "date" not in results[0]

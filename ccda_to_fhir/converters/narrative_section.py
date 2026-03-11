@@ -57,6 +57,8 @@ def _is_empty_narrative(plain_text: str) -> bool:
 def extract_narrative_sections(
     structured_body: StructuredBody,
     reference_registry: ReferenceRegistry,
+    encounter_reference: str | None = None,
+    encounter_date: str | None = None,
 ) -> list[FHIRResourceDict]:
     """Walk sections and create DocumentReferences for narrative-only clinical sections.
 
@@ -68,6 +70,9 @@ def extract_narrative_sections(
     Args:
         structured_body: Parsed C-CDA structured body
         reference_registry: Registry for patient reference resolution
+        encounter_reference: Optional encounter reference (e.g. "urn:uuid:abc-123")
+            from the document header's encompassingEncounter
+        encounter_date: Optional date from the encompassingEncounter's effectiveTime
 
     Returns:
         List of FHIR DocumentReference dicts
@@ -96,6 +101,8 @@ def extract_narrative_sections(
             display=display,
             plain_text=plain_text,
             reference_registry=reference_registry,
+            encounter_reference=encounter_reference,
+            encounter_date=encounter_date,
         )
         results.append(doc_ref)
         logger.info(
@@ -115,6 +122,8 @@ def _build_document_reference(
     display: str,
     plain_text: str,
     reference_registry: ReferenceRegistry,
+    encounter_reference: str | None = None,
+    encounter_date: str | None = None,
 ) -> FHIRResourceDict:
     """Build a FHIR DocumentReference for a narrative section."""
     doc_ref: FHIRResourceDict = {
@@ -145,6 +154,14 @@ def _build_document_reference(
         "subject": reference_registry.get_patient_reference(),
         "content": [],
     }
+
+    if encounter_date:
+        doc_ref["date"] = encounter_date
+
+    if encounter_reference:
+        doc_ref["context"] = {
+            "encounter": [{"reference": encounter_reference}],
+        }
 
     # Plain text attachment
     plain_b64 = base64.b64encode(plain_text.encode("utf-8")).decode("ascii")

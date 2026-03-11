@@ -39,12 +39,20 @@ class NoteActivityConverter(BaseConverter[Act]):
     Reference: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-NoteActivity.html
     """
 
-    def convert(self, ccda_model: Act, section: Section | None = None) -> FHIRResourceDict:
+    def convert(
+        self,
+        ccda_model: Act,
+        section: Section | None = None,
+        fallback_encounter_reference: str | None = None,
+    ) -> FHIRResourceDict:
         """Convert a C-CDA Note Activity Act to a FHIR DocumentReference resource.
 
         Args:
             ccda_model: The C-CDA Note Activity Act element
             section: Optional containing section (for text reference resolution)
+            fallback_encounter_reference: Optional encounter reference from
+                encompassingEncounter, used when the note has no explicit
+                entryRelationship/encounter
 
         Returns:
             FHIR DocumentReference resource as a dictionary
@@ -124,7 +132,9 @@ class NoteActivityConverter(BaseConverter[Act]):
             )
 
         # Context - encounter and period
-        context = _create_context(note_act, self.convert_date)
+        context = _create_context(
+            note_act, self.convert_date, fallback_encounter_reference
+        )
         if context:
             doc_ref["context"] = context
 
@@ -335,8 +345,14 @@ def _create_missing_content(
 def _create_context(
     note_act: Act,
     convert_date_fn: Callable[[str], str | None],
+    fallback_encounter_reference: str | None = None,
 ) -> JSONObject | None:
-    """Create document context (period, encounter references) from note activity."""
+    """Create document context (period, encounter references) from note activity.
+
+    Encounter references are extracted from entryRelationship/encounter elements.
+    When none are found, falls back to ``fallback_encounter_reference`` (typically
+    derived from the document header's encompassingEncounter).
+    """
     context: JSONObject = {}
 
     if note_act.effective_time:
@@ -368,6 +384,10 @@ def _create_context(
                 encounter_refs.append({"reference": f"urn:uuid:{enc_id}"})
         if encounter_refs:
             context["encounter"] = encounter_refs
+
+    # Fallback to encompassingEncounter when no explicit encounter refs
+    if "encounter" not in context and fallback_encounter_reference:
+        context["encounter"] = [{"reference": fallback_encounter_reference}]
 
     return context if context else None
 
@@ -409,6 +429,7 @@ def convert_note_activity(
     code_system_mapper: CodeSystemMapper | None = None,
     section: Section | None = None,
     reference_registry: ReferenceRegistry | None = None,
+    fallback_encounter_reference: str | None = None,
 ) -> FHIRResourceDict:
     """Convert a C-CDA Note Activity Act to a FHIR DocumentReference resource.
 
@@ -417,6 +438,8 @@ def convert_note_activity(
         code_system_mapper: Optional code system mapper
         section: Optional containing section (for text reference resolution)
         reference_registry: Optional reference registry for resource references
+        fallback_encounter_reference: Optional encounter reference from
+            encompassingEncounter, used when note has no explicit encounter ref
 
     Returns:
         FHIR DocumentReference resource
@@ -425,4 +448,8 @@ def convert_note_activity(
         code_system_mapper=code_system_mapper,
         reference_registry=reference_registry,
     )
-    return converter.convert(note_act, section=section)
+    return converter.convert(
+        note_act,
+        section=section,
+        fallback_encounter_reference=fallback_encounter_reference,
+    )

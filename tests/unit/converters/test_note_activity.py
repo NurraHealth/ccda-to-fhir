@@ -1002,6 +1002,87 @@ class TestRelatesToIntegration:
 # ============================================================================
 
 
+class TestFallbackEncounterReference:
+    """Tests for encompassingEncounter fallback in _create_context."""
+
+    def test_fallback_used_when_no_explicit_encounter(self) -> None:
+        act = _make_note_act()
+        result = _create_context(act, lambda v: v, fallback_encounter_reference="urn:uuid:enc-fallback")
+        assert result is not None
+        assert result["encounter"][0]["reference"] == "urn:uuid:enc-fallback"
+
+    def test_explicit_encounter_takes_precedence(self) -> None:
+        act = _make_note_act()
+        act.entry_relationship = [
+            EntryRelationship(
+                type_code="COMP",
+                encounter=CDAEncounter(id=[II(root="enc-explicit")]),
+            )
+        ]
+        result = _create_context(act, lambda v: v, fallback_encounter_reference="urn:uuid:enc-fallback")
+        assert result is not None
+        # Should use explicit encounter, not fallback
+        assert len(result["encounter"]) == 1
+        ref = result["encounter"][0]["reference"]
+        assert ref != "urn:uuid:enc-fallback"
+        assert ref.startswith("urn:uuid:")
+
+    def test_no_fallback_no_encounter_returns_none(self) -> None:
+        act = _make_note_act()
+        result = _create_context(act, lambda v: v)
+        assert result is None
+
+    def test_fallback_combined_with_period(self) -> None:
+        act = _make_note_act(effective_time=IVL_TS(value="20260115"))
+        result = _create_context(act, lambda v: f"converted-{v}", fallback_encounter_reference="urn:uuid:enc-fb")
+        assert result is not None
+        assert result["period"]["start"] == "converted-20260115"
+        assert result["encounter"][0]["reference"] == "urn:uuid:enc-fb"
+
+    def test_none_fallback_ignored(self) -> None:
+        act = _make_note_act()
+        result = _create_context(act, lambda v: v, fallback_encounter_reference=None)
+        assert result is None
+
+
+class TestFallbackEncounterIntegration:
+    """Integration tests for fallback encounter via converter.convert()."""
+
+    def test_fallback_encounter_on_convert(self, converter: NoteActivityConverter) -> None:
+        act = _make_note_act()
+        result = converter.convert(act, fallback_encounter_reference="urn:uuid:enc-123")
+        assert result["context"]["encounter"][0]["reference"] == "urn:uuid:enc-123"
+
+    def test_explicit_encounter_not_overridden_on_convert(
+        self, converter: NoteActivityConverter
+    ) -> None:
+        act = _make_note_act()
+        act.entry_relationship = [
+            EntryRelationship(
+                type_code="COMP",
+                encounter=CDAEncounter(id=[II(root="enc-explicit")]),
+            )
+        ]
+        result = converter.convert(act, fallback_encounter_reference="urn:uuid:enc-fallback")
+        enc_ref = result["context"]["encounter"][0]["reference"]
+        assert enc_ref != "urn:uuid:enc-fallback"
+        assert enc_ref.startswith("urn:uuid:")
+
+    def test_no_fallback_no_context(self, converter: NoteActivityConverter) -> None:
+        act = _make_note_act()
+        result = converter.convert(act)
+        assert "context" not in result
+
+    def test_convenience_fn_passes_fallback(self, registry: ReferenceRegistry) -> None:
+        act = _make_note_act()
+        result = convert_note_activity(
+            act,
+            reference_registry=registry,
+            fallback_encounter_reference="urn:uuid:enc-conv",
+        )
+        assert result["context"]["encounter"][0]["reference"] == "urn:uuid:enc-conv"
+
+
 class TestConvertNoteActivity:
     def test_convenience_function(self, registry: ReferenceRegistry) -> None:
         act = _make_note_act()
