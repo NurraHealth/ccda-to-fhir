@@ -12,11 +12,10 @@ from typing import NamedTuple
 from ccda_to_fhir.ccda.models.author import (
     AssignedAuthor,
     AssignedAuthoringDevice,
-    AssignedPerson,
     Author,
     RepresentedOrganization,
 )
-from ccda_to_fhir.ccda.models.datatypes import ON, PN
+from ccda_to_fhir.ccda.models.datatypes import ON, PN, AssignedPerson
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import JSONObject
 

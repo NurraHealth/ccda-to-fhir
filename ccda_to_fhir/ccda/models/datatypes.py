@@ -496,6 +496,21 @@ class TN(EN):
 
 
 # -----------------------------------------------------------------------------
+# Participation types shared across modules
+# -----------------------------------------------------------------------------
+
+
+class AssignedPerson(CDAModel):
+    """Person assigned to a clinical role (author, performer, etc.).
+
+    Contains the name(s) of the person. Used across C-CDA participation
+    types including Author and Performer.
+    """
+
+    name: list[PN] | None = None
+
+
+# -----------------------------------------------------------------------------
 # Update forward references
 # -----------------------------------------------------------------------------
 

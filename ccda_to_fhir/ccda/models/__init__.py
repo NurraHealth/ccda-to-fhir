@@ -19,7 +19,6 @@ from .act import (
 from .author import (
     AssignedAuthor,
     AssignedAuthoringDevice,
-    AssignedPerson,
     Author,
     MaintainedEntity,
     RepresentedOrganization,
@@ -92,6 +91,7 @@ from .datatypes import (
     TEL,
     TN,
     TS,
+    AssignedPerson,
     CDAModel,
     TELReference,
 )
@@ -243,10 +243,11 @@ __all__ = [
     "PatientRole",
     "Place",
     "RecordTarget",
+    # Author / Performer shared
+    "AssignedPerson",
     # Author
     "AssignedAuthor",
     "AssignedAuthoringDevice",
-    "AssignedPerson",
     "Author",
     "MaintainedEntity",
     "RepresentedOrganization",
