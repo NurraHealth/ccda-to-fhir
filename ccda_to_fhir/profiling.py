@@ -13,6 +13,7 @@ from functools import wraps
 from typing import ParamSpec, TypedDict, TypeVar
 
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import OperationStats
 
 logger = get_logger(__name__)
 
@@ -42,45 +43,45 @@ class PerformanceMetrics:
         self.metrics[operation].append(duration)
         self.counts[operation] += 1
 
-    def get_stats(self, operation: str) -> dict[str, float]:
+    def get_stats(self, operation: str) -> OperationStats | None:
         """Get statistics for an operation.
 
         Args:
             operation: Name of the operation
 
         Returns:
-            Dictionary with min, max, avg, total, and count
+            OperationStats or None if operation not found
         """
         if operation not in self.metrics:
-            return {}
+            return None
 
         durations = self.metrics[operation]
-        return {
-            "count": self.counts[operation],
-            "total": sum(durations),
-            "avg": sum(durations) / len(durations) if durations else 0,
-            "min": min(durations) if durations else 0,
-            "max": max(durations) if durations else 0,
-        }
+        return OperationStats(
+            count=self.counts[operation],
+            total=sum(durations),
+            avg=sum(durations) / len(durations) if durations else 0,
+            min=min(durations) if durations else 0,
+            max=max(durations) if durations else 0,
+        )
 
-    def get_all_stats(self) -> dict[str, dict[str, float]]:
+    def get_all_stats(self) -> dict[str, OperationStats]:
         """Get statistics for all operations.
 
         Returns:
             Dictionary mapping operation names to their statistics
         """
-        return {op: self.get_stats(op) for op in self.metrics}
+        return {op: stats for op in self.metrics if (stats := self.get_stats(op)) is not None}
 
     def report(self) -> None:
         """Log a summary of all performance metrics."""
         logger.info("=== Performance Metrics Summary ===")
         for operation, stats in self.get_all_stats().items():
             logger.info(
-                f"{operation}: {stats['count']} calls, "
-                f"avg={stats['avg']:.3f}s, "
-                f"min={stats['min']:.3f}s, "
-                f"max={stats['max']:.3f}s, "
-                f"total={stats['total']:.3f}s"
+                f"{operation}: {stats.count} calls, "
+                f"avg={stats.avg:.3f}s, "
+                f"min={stats.min:.3f}s, "
+                f"max={stats.max:.3f}s, "
+                f"total={stats.total:.3f}s"
             )
 
     def reset(self) -> None:

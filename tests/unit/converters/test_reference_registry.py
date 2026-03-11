@@ -380,7 +380,7 @@ class TestRegistryStatistics:
         registry.register_resource(practitioner)
 
         stats = registry.get_stats()
-        assert stats["registered"] == 2
+        assert stats.registered == 2
 
     def test_tracks_resolved_count(self, mock_reference_registry):
         """Test that registry tracks successful reference resolutions."""
@@ -394,7 +394,7 @@ class TestRegistryStatistics:
         registry.resolve_reference("Patient", "p1")
 
         stats = registry.get_stats()
-        assert stats["resolved"] == 2
+        assert stats.resolved == 2
 
     def test_tracks_failed_count(self, mock_reference_registry):
         """Test that registry tracks failed reference resolutions."""
@@ -412,7 +412,7 @@ class TestRegistryStatistics:
             pass
 
         stats = registry.get_stats()
-        assert stats["failed"] == 2
+        assert stats.failed == 2
 
     def test_clear_resets_registry(self, mock_reference_registry):
         """Test that clear() removes all resources and resets stats."""
@@ -426,8 +426,8 @@ class TestRegistryStatistics:
 
         assert not registry.has_resource("Patient", "p1")
         stats = registry.get_stats()
-        assert stats["registered"] == 0
-        assert stats["resolved"] == 0
+        assert stats.registered == 0
+        assert stats.resolved == 0
 
 
 class TestGetAllResources:
@@ -551,4 +551,4 @@ class TestEncounterReference:
 
         stats = registry.get_stats()
         # Should have 2 resolutions (one from each call)
-        assert stats["resolved"] == 2
+        assert stats.resolved == 2

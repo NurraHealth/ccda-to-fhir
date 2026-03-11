@@ -10,7 +10,7 @@ from fhir_core.fhirabstractmodel import FHIRAbstractModel
 from pydantic import ValidationError as PydanticValidationError
 
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict
+from ccda_to_fhir.types import FHIRResourceDict, ValidationStats
 
 logger = get_logger(__name__)
 
@@ -176,13 +176,13 @@ class FHIRValidator:
 
         return errors
 
-    def get_stats(self) -> dict[str, int]:
+    def get_stats(self) -> ValidationStats:
         """Get validation statistics.
 
         Returns:
-            Dictionary with validation stats (validated, passed, failed, warnings)
+            ValidationStats with validated, passed, failed, warnings counts
         """
-        return self._validation_stats.copy()
+        return ValidationStats(**self._validation_stats)
 
     def reset_stats(self) -> None:
         """Reset validation statistics."""

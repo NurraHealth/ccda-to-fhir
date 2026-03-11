@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from ccda_to_fhir.exceptions import MissingReferenceError
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import RegistryStats
 
 if TYPE_CHECKING:
     from ccda_to_fhir.types import FHIRResourceDict, JSONObject
@@ -195,13 +196,13 @@ class ReferenceRegistry:
             all_resources.extend(resource_type_dict.values())
         return all_resources
 
-    def get_stats(self) -> dict[str, int]:
+    def get_stats(self) -> RegistryStats:
         """Get registry statistics.
 
         Returns:
-            Dictionary with stats: registered, resolved, failed
+            RegistryStats with registered, resolved, failed counts
         """
-        return self._stats.copy()
+        return RegistryStats(**self._stats)
 
     def has_patient(self) -> bool:
         """Check if a patient has been registered.

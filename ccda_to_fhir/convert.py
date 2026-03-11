@@ -48,6 +48,7 @@ from ccda_to_fhir.types import (
     EncounterContext,
     FHIRResourceDict,
     JSONObject,
+    ValidationStats,
 )
 from ccda_to_fhir.validation import FHIRValidator
 
@@ -478,15 +479,15 @@ class DocumentConverter:
         validated = self.validator.validate_resource(resource, resource_class)
         return validated is not None
 
-    def get_validation_stats(self) -> dict[str, int]:
+    def get_validation_stats(self) -> ValidationStats:
         """Get validation statistics.
 
         Returns:
-            Dictionary with validation stats (validated, passed, failed, warnings)
+            ValidationStats with validated, passed, failed, warnings counts
         """
         if self.validator:
             return self.validator.get_stats()
-        return {"validated": 0, "passed": 0, "failed": 0, "warnings": 0}
+        return ValidationStats()
 
     def convert(self, ccda_doc: ClinicalDocument) -> ConversionResult:
         """Convert a C-CDA document to a FHIR Bundle with metadata.

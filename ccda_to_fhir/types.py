@@ -29,6 +29,106 @@ JSONObject: TypeAlias = dict[str, JSONValue]
 JSONArray: TypeAlias = list[JSONValue]
 
 
+# ============================================================================
+# FHIR element models
+#
+# Pydantic representations of common FHIR R4 data types.  These are used
+# inside typed return values (e.g. ReasonResult) so the converters carry
+# structured data instead of raw dicts.  Call `.to_dict()` when you need
+# to embed the value in a FHIRResourceDict.
+# ============================================================================
+
+
+class FHIRCoding(BaseModel, frozen=True):
+    """FHIR Coding element (system + code + display)."""
+
+    system: str | None = None
+    code: str | None = None
+    display: str | None = None
+
+    def to_dict(self) -> dict[str, str]:
+        d: dict[str, str] = {}
+        if self.system is not None:
+            d["system"] = self.system
+        if self.code is not None:
+            d["code"] = self.code
+        if self.display is not None:
+            d["display"] = self.display
+        return d
+
+
+class FHIRCodeableConcept(BaseModel, frozen=True):
+    """FHIR CodeableConcept element (coding list + text)."""
+
+    coding: list[FHIRCoding] = []
+    text: str | None = None
+
+    def to_dict(self) -> dict[str, str | list[dict[str, str]]]:
+        d: dict[str, str | list[dict[str, str]]] = {}
+        if self.coding:
+            d["coding"] = [c.to_dict() for c in self.coding]
+        if self.text is not None:
+            d["text"] = self.text
+        return d
+
+
+class FHIRReference(BaseModel, frozen=True):
+    """FHIR Reference element (reference URI + optional display)."""
+
+    reference: str
+    display: str | None = None
+
+    def to_dict(self) -> dict[str, str]:
+        d: dict[str, str] = {"reference": self.reference}
+        if self.display is not None:
+            d["display"] = self.display
+        return d
+
+
+class ReasonResult(BaseModel, frozen=True):
+    """Result of extracting reason codes and references from C-CDA entry relationships."""
+
+    codes: list[FHIRCodeableConcept] = []
+    """FHIR CodeableConcept elements for reason codes."""
+
+    references: list[FHIRReference] = []
+    """FHIR Reference elements for reason references."""
+
+
+class DiagnosisRole(BaseModel, frozen=True):
+    """Diagnosis role code/display for encounter diagnosis use element."""
+
+    code: str
+    display: str
+
+
+class OperationStats(BaseModel, frozen=True):
+    """Performance statistics for a single profiled operation."""
+
+    count: float
+    total: float
+    avg: float
+    min: float
+    max: float
+
+
+class ValidationStats(BaseModel, frozen=True):
+    """Validation statistics from FHIRValidator."""
+
+    validated: int = 0
+    passed: int = 0
+    failed: int = 0
+    warnings: int = 0
+
+
+class RegistryStats(BaseModel, frozen=True):
+    """Statistics from ReferenceRegistry."""
+
+    registered: int = 0
+    resolved: int = 0
+    failed: int = 0
+
+
 class EncounterContext(BaseModel, frozen=True):
     """Encounter context from encompassingEncounter for DocumentReference creation."""
 

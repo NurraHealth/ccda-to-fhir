@@ -11,7 +11,13 @@ from ccda_to_fhir.constants import FHIRSystems
 from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
 from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import (
+    FHIRCodeableConcept,
+    FHIRReference,
+    FHIRResourceDict,
+    JSONObject,
+    ReasonResult,
+)
 
 from .author_references import format_organization_display, format_person_display, make_ref
 from .code_systems import CodeSystemMapper
@@ -1147,7 +1153,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         self,
         entry_relationships: list,
         problem_template_id: str = "2.16.840.1.113883.10.20.22.4.4",
-    ) -> dict[str, list]:
+    ) -> ReasonResult:
         """Extract reason codes and references from C-CDA entry relationships.
 
         Looks for RSON (reason) type relationships and extracts:
@@ -1165,15 +1171,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 (default: standard C-CDA template 2.16.840.1.113883.10.20.22.4.4)
 
         Returns:
-            Dict with "codes" (list of CodeableConcept) and "references" (list of Reference)
+            ReasonResult with codes (list of CodeableConcept) and references (list of Reference)
         """
         from ccda_to_fhir.constants import FHIRCodes
 
-        reason_codes: list[JSONObject] = []
-        reason_refs: list[JSONObject] = []
+        reason_codes: list[FHIRCodeableConcept] = []
+        reason_refs: list[FHIRReference] = []
 
         if not entry_relationships:
-            return {"codes": reason_codes, "references": reason_refs}
+            return ReasonResult(codes=reason_codes, references=reason_refs)
 
         for entry_rel in entry_relationships:
             # Look for RSON (reason) relationships
@@ -1212,22 +1218,22 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     FHIRCodes.ResourceTypes.CONDITION, condition_id
                 ):
                     # Condition exists - use reasonReference
-                    reason_refs.append({
-                        "reference": f"urn:uuid:{condition_id}"
-                    })
+                    reason_refs.append(
+                        FHIRReference(reference=f"urn:uuid:{condition_id}")
+                    )
                 else:
                     # Inline Problem Observation not converted - use reasonCode
-                    codes = self._extract_codes_from_observation_value(obs)
+                    codes = self._extract_reason_codes_from_observation(obs)
                     reason_codes.extend(codes)
             else:
                 # Extract reason code from observation.value (non-Problem observation)
-                codes = self._extract_codes_from_observation_value(obs)
+                codes = self._extract_reason_codes_from_observation(obs)
                 reason_codes.extend(codes)
 
-        return {"codes": reason_codes, "references": reason_refs}
+        return ReasonResult(codes=reason_codes, references=reason_refs)
 
-    def _extract_codes_from_observation_value(self, obs) -> list[JSONObject]:
-        """Extract CodeableConcepts from an observation's value field.
+    def _extract_reason_codes_from_observation(self, obs) -> list[FHIRCodeableConcept]:
+        """Extract FHIRCodeableConcept models from an observation's value field.
 
         Handles both single value objects and lists of values, as C-CDA allows both.
 
@@ -1235,30 +1241,42 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             obs: C-CDA Observation element
 
         Returns:
-            List of FHIR CodeableConcept dicts
+            List of FHIRCodeableConcept models
         """
-        codes: list[JSONObject] = []
+        from ccda_to_fhir.types import FHIRCoding
+        from ccda_to_fhir.utils.terminology import get_display_for_code
+
+        results: list[FHIRCodeableConcept] = []
 
         if not obs.value:
-            return codes
+            return results
 
-        # Handle both single value and list of values
         values = obs.value if isinstance(obs.value, list) else [obs.value]
 
         for value in values:
-            # Use getattr since value can be various types (CD, CE, PQ, ST, etc.)
-            # and not all have code/code_system/display_name attributes
             code = getattr(value, "code", None)
-            if code:
-                codeable = self.create_codeable_concept(
-                    code=code,
-                    code_system=getattr(value, "code_system", None),
-                    display_name=getattr(value, "display_name", None),
-                )
-                if codeable:
-                    codes.append(codeable)
+            if not code:
+                continue
 
-        return codes
+            code = code.strip()
+            code_system: str | None = getattr(value, "code_system", None)
+            display_name: str | None = getattr(value, "display_name", None)
+
+            if not code_system:
+                continue
+
+            system_uri = self.map_oid_to_uri(code_system)
+
+            # Resolve display: explicit > terminology lookup
+            display = display_name.strip() if display_name else None
+            if not display:
+                display = get_display_for_code(system_uri, code)
+
+            coding = FHIRCoding(system=system_uri, code=code, display=display)
+            text = display_name.strip() if display_name else display
+            results.append(FHIRCodeableConcept(coding=[coding], text=text))
+
+        return results
 
     def convert_telecom(self, telecoms) -> list[JSONObject]:
         """Convert C-CDA TEL elements to FHIR ContactPoint objects.

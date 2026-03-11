@@ -12,7 +12,7 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject, ReasonResult
 
 from .base import BaseConverter
 
@@ -198,10 +198,10 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         # Reason codes and references - from entryRelationship
         if procedure.entry_relationship:
             reasons = self._extract_reasons(procedure.entry_relationship)
-            if reasons.get("codes"):
-                fhir_service_request["reasonCode"] = reasons["codes"]
-            if reasons.get("references"):
-                fhir_service_request["reasonReference"] = reasons["references"]
+            if reasons.codes:
+                fhir_service_request["reasonCode"] = [c.to_dict() for c in reasons.codes]
+            if reasons.references:
+                fhir_service_request["reasonReference"] = [r.to_dict() for r in reasons.references]
 
         # Patient instruction - from entryRelationship with Instruction template
         if procedure.entry_relationship:
@@ -519,7 +519,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         return None
 
-    def _extract_reasons(self, entry_relationships: list) -> dict[str, list]:
+    def _extract_reasons(self, entry_relationships: list) -> ReasonResult:
         """Extract reason codes and references from entryRelationships.
 
         Delegates to base class method for consistent handling across converters.
@@ -528,7 +528,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             entry_relationships: List of C-CDA entry relationship elements
 
         Returns:
-            Dict with "codes" and "references" lists
+            ReasonResult with codes and references lists
         """
         return self.extract_reasons_from_entry_relationships(
             entry_relationships,
