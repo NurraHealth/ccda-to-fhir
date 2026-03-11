@@ -619,7 +619,14 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # Check if observation resource exists with generated ID
         if self.reference_registry.has_resource("Observation", resource_id):
-            return {"reference": f"urn:uuid:{resource_id}"}
+            ref: JSONObject = {"reference": f"urn:uuid:{resource_id}"}
+
+            # Add display from outcome observation code
+            if hasattr(outcome_entry, "code") and outcome_entry.code:
+                if hasattr(outcome_entry.code, "display_name") and outcome_entry.code.display_name:
+                    ref["display"] = outcome_entry.code.display_name
+
+            return ref
 
         return None
 

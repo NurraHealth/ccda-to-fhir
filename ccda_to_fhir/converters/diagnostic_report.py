@@ -187,9 +187,24 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
 
                     # Add reference to this observation
                     if "id" in observation:
-                        result_refs.append({
+                        result_ref: JSONObject = {
                             "reference": f"urn:uuid:{observation['id']}"
-                        })
+                        }
+
+                        # Add display from observation code
+                        obs_code = observation.get("code")
+                        if isinstance(obs_code, dict):
+                            display = obs_code.get("text")
+                            if not display:
+                                codings = obs_code.get("coding")
+                                if isinstance(codings, list) and codings:
+                                    first = codings[0]
+                                    if isinstance(first, dict):
+                                        display = first.get("display")
+                            if display:
+                                result_ref["display"] = display
+
+                        result_refs.append(result_ref)
 
         if result_refs:
             report["result"] = result_refs
