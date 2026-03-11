@@ -17,6 +17,56 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
+def _extract_patient_display(resource: FHIRResourceDict) -> str | None:
+    """Extract a display string from a FHIR Patient resource.
+
+    Builds "given family" from the first HumanName entry.
+
+    Args:
+        resource: FHIR Patient resource dictionary.
+
+    Returns:
+        Formatted patient name or None if unavailable.
+    """
+    names = resource.get("name")
+    if not isinstance(names, list) or not names:
+        return None
+
+    name = names[0]
+    if not isinstance(name, dict):
+        return None
+
+    parts: list[str] = []
+
+    # Prefix
+    prefix = name.get("prefix")
+    if isinstance(prefix, list):
+        for p in prefix:
+            if isinstance(p, str) and p:
+                parts.append(p)
+
+    # Given names
+    given = name.get("given")
+    if isinstance(given, list):
+        for g in given:
+            if isinstance(g, str) and g:
+                parts.append(g)
+
+    # Family name
+    family = name.get("family")
+    if isinstance(family, str) and family:
+        parts.append(family)
+
+    # Suffix
+    suffix = name.get("suffix")
+    if isinstance(suffix, list):
+        for s in suffix:
+            if isinstance(s, str) and s:
+                parts.append(s)
+
+    return " ".join(parts) if parts else None
+
+
 class ReferenceRegistry:
     """Registry for tracking and resolving FHIR resource references.
 
@@ -40,6 +90,7 @@ class ReferenceRegistry:
     def __init__(self) -> None:
         """Initialize empty registry."""
         self._resources: dict[str, dict[str, FHIRResourceDict]] = {}
+        self._patient_display: str | None = None
         self._stats: dict[str, int] = {
             "registered": 0,
             "resolved": 0,
@@ -93,6 +144,7 @@ class ReferenceRegistry:
 
         # Enhanced logging for Patient resources to help debug reference issues
         if resource_type == "Patient":
+            self._patient_display = _extract_patient_display(resource)
             logger.info(
                 f"Registered Patient resource with ID: {resource_id}",
                 extra={
@@ -265,7 +317,15 @@ class ReferenceRegistry:
             )
 
         self._stats["resolved"] += 1
-        return {"reference": f"urn:uuid:{patient_id}"}
+        ref: JSONObject = {"reference": f"urn:uuid:{patient_id}"}
+        if self._patient_display:
+            ref["display"] = self._patient_display
+        return ref
+
+    @property
+    def patient_display(self) -> str | None:
+        """The display name extracted from the registered Patient resource."""
+        return self._patient_display
 
     def has_encounter(self) -> bool:
         """Check if an encounter has been registered.
@@ -305,6 +365,7 @@ class ReferenceRegistry:
     def clear(self) -> None:
         """Clear all registered resources and reset stats."""
         self._resources.clear()
+        self._patient_display = None
         self._stats = {
             "registered": 0,
             "resolved": 0,

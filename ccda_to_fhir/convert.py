@@ -640,7 +640,10 @@ class DocumentConverter:
                             )
                         patient_id: str = self._patient_id
                         from .converters.related_person import RelatedPersonConverter
-                        related_person_converter = RelatedPersonConverter(patient_id=patient_id)
+                        related_person_converter = RelatedPersonConverter(
+                            patient_id=patient_id,
+                            patient_display=self.reference_registry.patient_display,
+                        )
                         related_person = related_person_converter.convert(
                             informant_info.informant.related_entity
                         )
@@ -3618,7 +3621,10 @@ class DocumentConverter:
                             patient_id = self._patient_id
 
                             from .converters.related_person import RelatedPersonConverter
-                            related_person_converter = RelatedPersonConverter(patient_id=patient_id)
+                            related_person_converter = RelatedPersonConverter(
+                                patient_id=patient_id,
+                                patient_display=self.reference_registry.patient_display,
+                            )
                             related_person = related_person_converter.convert(
                                 informant_info.informant.related_entity
                             )
