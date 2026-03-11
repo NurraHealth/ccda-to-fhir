@@ -139,6 +139,43 @@ class RegistryStats(BaseModel):
     failed: int = 0
 
 
+class HumanName(TypedDict, total=False):
+    """FHIR R4 HumanName element (all fields optional)."""
+
+    use: str
+    text: str
+    family: str
+    given: list[str]
+    prefix: list[str]
+    suffix: list[str]
+    period: JSONObject
+    extension: list[JSONObject]
+
+
+def format_human_name_display(name: HumanName) -> str | None:
+    """Build a display string from a FHIR HumanName.
+
+    Per FHIR R4, HumanName.text is "the entire name as it should be displayed"
+    and is preferred when present. Falls back to "prefix given family suffix".
+
+    Returns None if no meaningful parts are present.
+    """
+    text = name.get("text")
+    if text and text.strip():
+        return text.strip()
+
+    parts: list[str] = [
+        *name.get("prefix", []),
+        *name.get("given", []),
+    ]
+    family = name.get("family")
+    if family:
+        parts.append(family)
+    parts.extend(name.get("suffix", []))
+
+    return " ".join(p for p in parts if p) or None
+
+
 class EncounterContext(BaseModel, frozen=True):
     """Encounter context from encompassingEncounter for DocumentReference creation."""
 

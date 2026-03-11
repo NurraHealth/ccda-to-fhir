@@ -39,14 +39,16 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
     sources of information (family members, caregivers, patient).
     """
 
-    def __init__(self, patient_id: str):
+    def __init__(self, patient_id: str, patient_display: str | None = None):
         """Initialize RelatedPersonConverter.
 
         Args:
             patient_id: The FHIR Patient ID to reference
+            patient_display: Optional patient display name for Reference.display
         """
         super().__init__()
         self.patient_id = patient_id
+        self.patient_display = patient_display
 
     def convert(self, ccda_model: RelatedEntity) -> FHIRResourceDict:
         """Convert RelatedEntity to RelatedPerson resource.
@@ -66,7 +68,10 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         related_person["id"] = self._generate_related_person_id(related_entity)
 
         # Patient reference (required)
-        related_person["patient"] = {"reference": f"urn:uuid:{self.patient_id}"}
+        patient_ref: JSONObject = {"reference": f"urn:uuid:{self.patient_id}"}
+        if self.patient_display:
+            patient_ref["display"] = self.patient_display
+        related_person["patient"] = patient_ref
 
         # Map relationship code
         if related_entity.code:

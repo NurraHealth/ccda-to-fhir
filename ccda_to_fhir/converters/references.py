@@ -41,6 +41,7 @@ class ReferenceRegistry:
     def __init__(self) -> None:
         """Initialize empty registry."""
         self._resources: dict[str, dict[str, FHIRResourceDict]] = {}
+        self._patient_display: str | None = None
         self._stats = RegistryStats()
 
     def register_resource(self, resource: FHIRResourceDict) -> None:
@@ -262,7 +263,19 @@ class ReferenceRegistry:
             )
 
         self._stats.resolved += 1
-        return {"reference": f"urn:uuid:{patient_id}"}
+        ref: JSONObject = {"reference": f"urn:uuid:{patient_id}"}
+        if self._patient_display:
+            ref["display"] = self._patient_display
+        return ref
+
+    @property
+    def patient_display(self) -> str | None:
+        """The display name for the patient, used in Reference.display."""
+        return self._patient_display
+
+    @patient_display.setter
+    def patient_display(self, value: str | None) -> None:
+        self._patient_display = value
 
     def has_encounter(self) -> bool:
         """Check if an encounter has been registered.
@@ -302,4 +315,5 @@ class ReferenceRegistry:
     def clear(self) -> None:
         """Clear all registered resources and reset stats."""
         self._resources.clear()
+        self._patient_display = None
         self._stats = RegistryStats()
