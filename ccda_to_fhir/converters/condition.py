@@ -320,13 +320,19 @@ class ConditionConverter(BaseConverter[Observation]):
         if authors_with_time:
             latest_author = max(authors_with_time, key=lambda a: a.time)
             if latest_author.practitioner_id:
-                condition["recorder"] = {
+                recorder: JSONObject = {
                     "reference": f"urn:uuid:{latest_author.practitioner_id}"
                 }
+                if latest_author.display:
+                    recorder["display"] = latest_author.display
+                condition["recorder"] = recorder
             elif latest_author.device_id:
-                condition["recorder"] = {
+                recorder = {
                     "reference": f"urn:uuid:{latest_author.device_id}"
                 }
+                if latest_author.display:
+                    recorder["display"] = latest_author.display
+                condition["recorder"] = recorder
 
         # Evidence (from related observations)
         if observation.entry_relationship:

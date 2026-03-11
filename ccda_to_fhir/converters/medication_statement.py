@@ -156,9 +156,14 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                             for id_elem in assigned.id:
                                 if id_elem.root:
                                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                                    med_statement["informationSource"] = {
+                                    info_src: JSONObject = {
                                         "reference": f"urn:uuid:{pract_id}"
                                     }
+                                    from ccda_to_fhir.converters.author_references import format_person_display
+                                    display = format_person_display(assigned.assigned_person)
+                                    if display:
+                                        info_src["display"] = display
+                                    med_statement["informationSource"] = info_src
                                     break
                     # Check for device
                     elif assigned.assigned_authoring_device:
@@ -166,9 +171,14 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                             for id_elem in assigned.id:
                                 if id_elem.root:
                                     device_id = self._generate_device_id(id_elem.root, id_elem.extension)
-                                    med_statement["informationSource"] = {
+                                    info_src = {
                                         "reference": f"urn:uuid:{device_id}"
                                     }
+                                    from ccda_to_fhir.converters.author_references import format_device_display
+                                    display = format_device_display(assigned.assigned_authoring_device)
+                                    if display:
+                                        info_src["display"] = display
+                                    med_statement["informationSource"] = info_src
                                     break
 
         # 9. ReasonCode (from indication entry relationship)

@@ -136,19 +136,28 @@ class ProvenanceConverter(BaseConverter[None]):
 
         # Who - reference to Practitioner or Device
         if author_info.practitioner_id:
-            agent["who"] = {
+            who: JSONObject = {
                 "reference": f"urn:uuid:{author_info.practitioner_id}"
             }
+            if author_info.display:
+                who["display"] = author_info.display
+            agent["who"] = who
         elif author_info.device_id:
-            agent["who"] = {
+            who = {
                 "reference": f"urn:uuid:{author_info.device_id}"
             }
+            if author_info.display:
+                who["display"] = author_info.display
+            agent["who"] = who
 
         # OnBehalfOf - reference to Organization (optional)
         if author_info.organization_id:
-            agent["onBehalfOf"] = {
+            on_behalf: JSONObject = {
                 "reference": f"urn:uuid:{author_info.organization_id}"
             }
+            if author_info.organization_display:
+                on_behalf["display"] = author_info.organization_display
+            agent["onBehalfOf"] = on_behalf
 
         return agent
 

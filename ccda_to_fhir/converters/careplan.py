@@ -412,12 +412,17 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             # If assignedPerson exists, reference Practitioner
             if assigned_author.assigned_person:
                 from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                from ccda_to_fhir.converters.author_references import format_person_display
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner",
                     first_id.root,
                     first_id.extension,
                 )
-                return {"reference": f"urn:uuid:{practitioner_id}"}
+                ref: JSONObject = {"reference": f"urn:uuid:{practitioner_id}"}
+                display = format_person_display(assigned_author.assigned_person)
+                if display:
+                    ref["display"] = display
+                return ref
             else:
                 # Could be patient as author
                 if not self.reference_registry:

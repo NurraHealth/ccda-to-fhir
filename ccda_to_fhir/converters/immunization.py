@@ -972,19 +972,33 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         Returns:
             FHIR Reference dict or None
         """
+        from ccda_to_fhir.converters.author_references import (
+            format_organization_display,
+            format_person_display,
+        )
+
         # Try to find a practitioner ID
         if assigned_entity.id:
+            person = getattr(assigned_entity, "assigned_person", None)
+            display = format_person_display(person)
+
             # First pass: prefer non-nullFlavor IDs
             for id_elem in assigned_entity.id:
                 if id_elem.root and not getattr(id_elem, "null_flavor", None):
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                    return {"reference": f"urn:uuid:{pract_id}"}
+                    ref: JSONObject = {"reference": f"urn:uuid:{pract_id}"}
+                    if display:
+                        ref["display"] = display
+                    return ref
 
             # Second pass: use first ID with root (including nullFlavor)
             for id_elem in assigned_entity.id:
                 if id_elem.root:
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                    return {"reference": f"urn:uuid:{pract_id}"}
+                    ref = {"reference": f"urn:uuid:{pract_id}"}
+                    if display:
+                        ref["display"] = display
+                    return ref
 
         # Fallback: try represented organization
         org = getattr(assigned_entity, "represented_organization", None)
@@ -993,7 +1007,11 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             root, extension = self.select_preferred_identifier(org_ids, prefer_npi=False)
             if root:
                 org_id = self._generate_organization_id(root, extension)
-                return {"reference": f"urn:uuid:{org_id}"}
+                ref = {"reference": f"urn:uuid:{org_id}"}
+                display = format_organization_display(org)
+                if display:
+                    ref["display"] = display
+                return ref
 
         return None
 

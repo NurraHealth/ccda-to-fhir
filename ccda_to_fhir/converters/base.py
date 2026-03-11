@@ -1625,7 +1625,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Register with reference registry
                 self.reference_registry.register_resource(practitioner)
 
-        return {"reference": f"urn:uuid:{pract_id}"}
+        from ccda_to_fhir.converters.author_references import format_person_display
+
+        display = format_person_display(assigned_entity.assigned_person)
+        ref: JSONObject = {"reference": f"urn:uuid:{pract_id}"}
+        if display:
+            ref["display"] = display
+        return ref
 
     def create_organization_reference_from_entity(
         self,
@@ -1677,7 +1683,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Register with reference registry
                 self.reference_registry.register_resource(organization)
 
-        return {"reference": f"urn:uuid:{org_id}"}
+        from ccda_to_fhir.converters.author_references import format_organization_display
+
+        display = format_organization_display(represented_organization)
+        ref: JSONObject = {"reference": f"urn:uuid:{org_id}"}
+        if display:
+            ref["display"] = display
+        return ref
 
     def extract_performer_function(
         self,
@@ -1801,7 +1813,18 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             )
             if root:
                 practitioner_id = self._generate_practitioner_id(root, extension)
-                references.append({"reference": f"urn:uuid:{practitioner_id}"})
+                ref: JSONObject = {"reference": f"urn:uuid:{practitioner_id}"}
+
+                # Add display from assigned person name
+                from ccda_to_fhir.converters.author_references import format_person_display
+
+                display = format_person_display(
+                    getattr(performer.assigned_entity, "assigned_person", None)
+                )
+                if display:
+                    ref["display"] = display
+
+                references.append(ref)
 
         return references
 

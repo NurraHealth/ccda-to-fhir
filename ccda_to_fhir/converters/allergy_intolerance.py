@@ -267,13 +267,19 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         if authors_with_time:
             latest_author = max(authors_with_time, key=lambda a: a.time)
             if latest_author.practitioner_id:
-                allergy["recorder"] = {
+                recorder: JSONObject = {
                     "reference": f"urn:uuid:{latest_author.practitioner_id}"
                 }
+                if latest_author.display:
+                    recorder["display"] = latest_author.display
+                allergy["recorder"] = recorder
             elif latest_author.device_id:
-                allergy["recorder"] = {
+                recorder = {
                     "reference": f"urn:uuid:{latest_author.device_id}"
                 }
+                if latest_author.display:
+                    recorder["display"] = latest_author.display
+                allergy["recorder"] = recorder
 
         # Extract allergy-level severity (if present)
         allergy_level_severity = self._extract_allergy_level_severity(observation)

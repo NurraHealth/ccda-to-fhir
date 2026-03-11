@@ -7,6 +7,11 @@ element types and convert it into a standardized format for Provenance generatio
 from __future__ import annotations
 
 from ccda_to_fhir.ccda.models.author import Author
+from ccda_to_fhir.converters.author_references import (
+    format_device_display,
+    format_organization_display,
+    format_person_display,
+)
 from ccda_to_fhir.converters.base_extractor import BaseParticipantExtractor
 
 
@@ -32,6 +37,8 @@ class AuthorInfo:
         self.device_id: str | None = None
         self.organization_id: str | None = None
         self.role_code: str | None = None
+        self.display: str | None = None
+        self.organization_display: str | None = None
 
         self._extract_from_author()
 
@@ -71,6 +78,8 @@ class AuthorInfo:
                         selected_id.root, selected_id.extension
                     )
 
+                self.display = format_person_display(assigned.assigned_person)
+
             # Extract device ID (from assignedAuthoringDevice)
             elif assigned.assigned_authoring_device and assigned.id:
                 for id_elem in assigned.id:
@@ -79,6 +88,8 @@ class AuthorInfo:
                             id_elem.root, id_elem.extension
                         )
                         break
+
+                self.display = format_device_display(assigned.assigned_authoring_device)
 
             # Extract organization ID
             # Prefer NPI (2.16.840.1.113883.4.6) over other identifiers for consistency
@@ -101,6 +112,10 @@ class AuthorInfo:
                     self.organization_id = self._generate_organization_id(
                         selected_id.root, selected_id.extension
                     )
+
+                self.organization_display = format_organization_display(
+                    assigned.represented_organization
+                )
 
             # Extract role code from assignedAuthor.code
             if assigned.code:
