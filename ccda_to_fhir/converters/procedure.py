@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
 from ccda_to_fhir.ccda.models.observation import Observation as CCDAObservation
@@ -14,6 +16,9 @@ from ccda_to_fhir.constants import (
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject, ReasonResult
 
 from .base import BaseConverter
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
 
 
 class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct]):
@@ -627,7 +632,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         return None
 
-    def _extract_reasons(self, entry_relationships: list) -> ReasonResult:
+    def _extract_reasons(self, entry_relationships: list[EntryRelationship]) -> ReasonResult:
         """Extract FHIR reason codes and references from C-CDA entry relationships.
 
         Delegates to base class method for consistent handling across converters.

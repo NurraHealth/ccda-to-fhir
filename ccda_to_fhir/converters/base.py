@@ -26,6 +26,8 @@ logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.datatypes import CS, II
+    from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
+    from ccda_to_fhir.ccda.models.observation import Observation
     from ccda_to_fhir.ccda.models.performer import Performer
 
     from .references import ReferenceRegistry
@@ -1151,7 +1153,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
     def extract_reasons_from_entry_relationships(
         self,
-        entry_relationships: list,
+        entry_relationships: list[EntryRelationship] | None,
         problem_template_id: str = "2.16.840.1.113883.10.20.22.4.4",
     ) -> ReasonResult:
         """Extract reason codes and references from C-CDA entry relationships.
@@ -1232,7 +1234,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return ReasonResult(codes=reason_codes, references=reason_refs)
 
-    def _extract_reason_codes_from_observation(self, obs) -> list[FHIRCodeableConcept]:
+    def _extract_reason_codes_from_observation(self, obs: Observation) -> list[FHIRCodeableConcept]:
         """Extract CodeableConcepts from an observation's value field.
 
         Handles both single value objects and lists of values, as C-CDA allows both.

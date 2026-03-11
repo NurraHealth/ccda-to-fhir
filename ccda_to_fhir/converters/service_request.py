@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
@@ -15,6 +17,9 @@ from ccda_to_fhir.constants import (
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject, ReasonResult
 
 from .base import BaseConverter
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
 
 
 class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
@@ -519,7 +524,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         return None
 
-    def _extract_reasons(self, entry_relationships: list) -> ReasonResult:
+    def _extract_reasons(self, entry_relationships: list[EntryRelationship]) -> ReasonResult:
         """Extract reason codes and references from entryRelationships.
 
         Delegates to base class method for consistent handling across converters.
