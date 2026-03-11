@@ -1262,19 +1262,20 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             code_system: str | None = getattr(value, "code_system", None)
             display_name: str | None = getattr(value, "display_name", None)
 
-            if not code_system:
-                continue
+            codings: list[FHIRCoding] = []
+            display: str | None = display_name.strip() if display_name else None
 
-            system_uri = self.map_oid_to_uri(code_system)
+            if code_system:
+                system_uri = self.map_oid_to_uri(code_system)
+                if not display:
+                    display = get_display_for_code(system_uri, code)
+                codings.append(FHIRCoding(system=system_uri, code=code, display=display))
 
-            # Resolve display: explicit > terminology lookup
-            display = display_name.strip() if display_name else None
-            if not display:
-                display = get_display_for_code(system_uri, code)
-
-            coding = FHIRCoding(system=system_uri, code=code, display=display)
+            # text fallback: display_name > coding display
             text = display_name.strip() if display_name else display
-            results.append(FHIRCodeableConcept(coding=[coding], text=text))
+
+            if codings or text:
+                results.append(FHIRCodeableConcept(coding=codings, text=text))
 
         return results
 

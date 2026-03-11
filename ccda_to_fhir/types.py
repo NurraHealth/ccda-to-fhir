@@ -105,7 +105,7 @@ class DiagnosisRole(BaseModel, frozen=True):
 class OperationStats(BaseModel, frozen=True):
     """Performance statistics for a single profiled operation."""
 
-    count: float
+    count: int
     total: float
     avg: float
     min: float
