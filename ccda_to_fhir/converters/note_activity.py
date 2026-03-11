@@ -17,6 +17,7 @@ from ccda_to_fhir.constants import (
 from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
+from .author_references import build_author_references
 from .base import BaseConverter
 from .code_systems import CodeSystemMapper
 from .references import ReferenceRegistry
@@ -113,7 +114,7 @@ class NoteActivityConverter(BaseConverter[Act]):
             if date:
                 doc_ref["date"] = date
 
-            authors = _convert_author_references(note_act.author)
+            authors = build_author_references(note_act.author)
             if authors:
                 doc_ref["author"] = authors
 
@@ -238,23 +239,6 @@ def _extract_author_date(
         return convert_date_fn(first_author.time.value)
     return None
 
-
-def _convert_author_references(authors: list[Author]) -> list[JSONObject]:
-    """Convert note authors to FHIR Practitioner references."""
-    refs: list[JSONObject] = []
-    for author in authors:
-        if not author.assigned_author:
-            continue
-        assigned = author.assigned_author
-        if assigned.assigned_person and assigned.id:
-            first_id = assigned.id[0]
-            prac_id = generate_id_from_identifiers(
-                "Practitioner",
-                first_id.root or None,
-                first_id.extension or None,
-            )
-            refs.append({"reference": f"urn:uuid:{prac_id}"})
-    return refs
 
 
 def _create_content_list(

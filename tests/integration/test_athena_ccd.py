@@ -229,6 +229,36 @@ def test_athena_ccd_comprehensive() -> None:
     assert "subscriber" in coverage
     assert coverage["subscriber"]["reference"] in resources_by_id
 
+    # === DOCUMENT REFERENCE AUTHOR VALIDATION ===
+    # Athena CCD has a device-only document author (no assignedPerson).
+    # All narrative-section DocumentReferences should have author references
+    # pointing to Device and/or Organization resources.
+    doc_refs = resources_by_type.get("DocumentReference", [])
+    assert len(doc_refs) >= 1, "Expected at least one DocumentReference"
+    for dr in doc_refs:
+        if "author" in dr:
+            for author_ref in dr["author"]:
+                ref = author_ref["reference"]
+                assert ref in resources_by_id, (
+                    f"DocumentReference author ref {ref} not found in bundle"
+                )
+                target_type = resources_by_id[ref]["resourceType"]
+                assert target_type in (
+                    "Practitioner", "Device", "Organization",
+                    "PractitionerRole", "Patient", "RelatedPerson",
+                ), f"Unexpected author resource type: {target_type}"
+
+    # Narrative-section DocumentReferences (non-NoteActivity) should now have
+    # author populated from the document-level device/org author
+    narrative_doc_refs = [
+        dr for dr in doc_refs
+        if "author" in dr
+    ]
+    assert len(narrative_doc_refs) >= 1, (
+        "Expected at least one DocumentReference with author references "
+        "(device/org fallback should populate author for Athena CCD)"
+    )
+
     print("\n✓ athena_ccd comprehensive validation passed!")
     print(f"  Resources validated: {len(resources_by_id)}")
     print(f"  Resource types: {sorted(resources_by_type.keys())}")

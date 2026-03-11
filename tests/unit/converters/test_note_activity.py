@@ -11,14 +11,18 @@ import base64
 import pytest
 
 from ccda_to_fhir.ccda.models.act import Act, ExternalDocument, Reference
-from ccda_to_fhir.ccda.models.author import AssignedAuthor, AssignedPerson, Author
+from ccda_to_fhir.ccda.models.author import (
+    AssignedAuthor,
+    AssignedPerson,
+    Author,
+)
 from ccda_to_fhir.ccda.models.datatypes import CD, CS, ED, ENXP, II, IVL_TS, PN, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CDAEncounter
 from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
 from ccda_to_fhir.constants import CCDA_TYPECODE_TO_FHIR_RELATES_TO, FHIRCodes
+from ccda_to_fhir.converters.author_references import build_author_references
 from ccda_to_fhir.converters.note_activity import (
     NoteActivityConverter,
-    _convert_author_references,
     _convert_relates_to,
     _convert_type,
     _create_context,
@@ -278,40 +282,40 @@ class TestExtractAuthorDate:
 
 
 # ============================================================================
-# _convert_author_references
+# build_author_references
 # ============================================================================
 
 
 class TestConvertAuthorReferences:
     def test_single_author(self) -> None:
-        refs = _convert_author_references([_make_author()])
+        refs = build_author_references([_make_author()])
         assert len(refs) == 1
         assert refs[0]["reference"].startswith("urn:uuid:")
 
     def test_multiple_authors(self) -> None:
-        refs = _convert_author_references([_make_author("111"), _make_author("222")])
+        refs = build_author_references([_make_author("111"), _make_author("222")])
         assert len(refs) == 2
 
     def test_skip_without_assigned_author(self) -> None:
         author = Author(time=TS(value="20260101"))
-        assert _convert_author_references([author]) == []
+        assert build_author_references([author]) == []
 
     def test_skip_without_assigned_person(self) -> None:
         author = _make_author()
         author.assigned_author.assigned_person = None
-        assert _convert_author_references([author]) == []
+        assert build_author_references([author]) == []
 
     def test_skip_without_id(self) -> None:
         author = _make_author()
         author.assigned_author.id = None
-        assert _convert_author_references([author]) == []
+        assert build_author_references([author]) == []
 
     def test_empty_list(self) -> None:
-        assert _convert_author_references([]) == []
+        assert build_author_references([]) == []
 
     def test_deterministic_ids(self) -> None:
-        refs1 = _convert_author_references([_make_author()])
-        refs2 = _convert_author_references([_make_author()])
+        refs1 = build_author_references([_make_author()])
+        refs2 = build_author_references([_make_author()])
         assert refs1[0]["reference"] == refs2[0]["reference"]
 
 

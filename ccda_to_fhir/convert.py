@@ -2627,31 +2627,19 @@ class DocumentConverter:
     ) -> list[JSONObject]:
         """Build author references from document-level authors.
 
-        Uses the same ID generation as the practitioner converter, so the
-        references will match Practitioner resources already in the bundle.
+        Uses the same ID generation as the resource converters, so the
+        references will match resources already in the bundle.
+
+        Delegates to the shared ``build_author_references`` helper.
 
         Returns:
             List of FHIR Reference objects (e.g. [{"reference": "urn:uuid:..."}])
         """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        from ccda_to_fhir.converters.author_references import build_author_references
 
-        refs: list[JSONObject] = []
         if not ccda_doc.author:
-            return refs
-
-        for author in ccda_doc.author:
-            if not author.assigned_author:
-                continue
-            assigned = author.assigned_author
-            if assigned.assigned_person and assigned.id:
-                first_id = assigned.id[0]
-                prac_id = generate_id_from_identifiers(
-                    "Practitioner",
-                    first_id.root or None,
-                    first_id.extension or None,
-                )
-                refs.append({"reference": f"urn:uuid:{prac_id}"})
-        return refs
+            return []
+        return build_author_references(ccda_doc.author)
 
     def _extract_header_encounter(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict | None:
         """Extract and convert encompassingEncounter from document header.
