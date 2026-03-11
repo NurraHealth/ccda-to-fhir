@@ -1,8 +1,7 @@
 """Unit tests for encounter display fallback in _get_encompassing_encounter_context.
 
 When encompassingEncounter has no code element, the display should fall back
-to the first encounterParticipant's assignedEntity/code/@displayName,
-rendered as "{specialty} visit".
+to the first encounterParticipant's assignedEntity/code/@displayName.
 """
 
 from __future__ import annotations

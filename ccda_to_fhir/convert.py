@@ -2587,7 +2587,7 @@ class DocumentConverter:
 
         1. ``encompassingEncounter/code/@displayName`` — the encounter type
         2. First ``encounterParticipant/assignedEntity/code/@displayName`` —
-           the participant specialty, rendered as ``"{specialty} visit"``
+           the participant specialty
         """
         if not ccda_doc.component_of:
             return EncounterContext()
