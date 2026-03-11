@@ -26,7 +26,8 @@ def _extract_enxp_values(parts: list | None) -> list[str]:
     result: list[str] = []
     for part in parts:
         if isinstance(part, str):
-            result.append(part)
+            if part:
+                result.append(part)
         elif part.value:
             result.append(part.value)
     return result
@@ -107,7 +108,7 @@ def format_organization_display(org: RepresentedOrganization | None) -> str | No
     return None
 
 
-def _make_ref(reference: str, display: str | None) -> JSONObject:
+def make_ref(reference: str, display: str | None) -> JSONObject:
     """Build a FHIR Reference dict, including display when available."""
     ref: JSONObject = {"reference": reference}
     if display:
@@ -135,7 +136,7 @@ def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[JSONObject
             first_id.extension or None,
         )
         display = format_device_display(assigned.assigned_authoring_device)
-        refs.append(_make_ref(f"urn:uuid:{device_id}", display))
+        refs.append(make_ref(f"urn:uuid:{device_id}", display))
     # Organization uses its own identifier
     if assigned.represented_organization and assigned.represented_organization.id:
         org_first_id = assigned.represented_organization.id[0]
@@ -145,7 +146,7 @@ def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[JSONObject
             org_first_id.extension or None,
         )
         display = format_organization_display(assigned.represented_organization)
-        refs.append(_make_ref(f"urn:uuid:{org_id}", display))
+        refs.append(make_ref(f"urn:uuid:{org_id}", display))
     return refs
 
 
@@ -170,7 +171,7 @@ def build_author_references(authors: list[Author]) -> list[JSONObject]:
                 first_id.extension or None,
             )
             display = format_person_display(assigned.assigned_person)
-            refs.append(_make_ref(f"urn:uuid:{prac_id}", display))
+            refs.append(make_ref(f"urn:uuid:{prac_id}", display))
         else:
             refs.extend(_build_device_org_fallback_refs(assigned))
     return refs

@@ -266,20 +266,16 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         authors_with_time = [a for a in all_authors_info if a.time]
         if authors_with_time:
             latest_author = max(authors_with_time, key=lambda a: a.time)
+            from ccda_to_fhir.converters.author_references import make_ref
+
             if latest_author.practitioner_id:
-                recorder: JSONObject = {
-                    "reference": f"urn:uuid:{latest_author.practitioner_id}"
-                }
-                if latest_author.display:
-                    recorder["display"] = latest_author.display
-                allergy["recorder"] = recorder
+                allergy["recorder"] = make_ref(
+                    f"urn:uuid:{latest_author.practitioner_id}", latest_author.display
+                )
             elif latest_author.device_id:
-                recorder = {
-                    "reference": f"urn:uuid:{latest_author.device_id}"
-                }
-                if latest_author.display:
-                    recorder["display"] = latest_author.display
-                allergy["recorder"] = recorder
+                allergy["recorder"] = make_ref(
+                    f"urn:uuid:{latest_author.device_id}", latest_author.display
+                )
 
         # Extract allergy-level severity (if present)
         allergy_level_severity = self._extract_allergy_level_severity(observation)

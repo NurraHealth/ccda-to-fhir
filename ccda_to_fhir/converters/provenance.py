@@ -134,30 +134,23 @@ class ProvenanceConverter(BaseConverter[None]):
             ]
         }
 
+        from ccda_to_fhir.converters.author_references import make_ref
+
         # Who - reference to Practitioner or Device
         if author_info.practitioner_id:
-            who: JSONObject = {
-                "reference": f"urn:uuid:{author_info.practitioner_id}"
-            }
-            if author_info.display:
-                who["display"] = author_info.display
-            agent["who"] = who
+            agent["who"] = make_ref(
+                f"urn:uuid:{author_info.practitioner_id}", author_info.display
+            )
         elif author_info.device_id:
-            who = {
-                "reference": f"urn:uuid:{author_info.device_id}"
-            }
-            if author_info.display:
-                who["display"] = author_info.display
-            agent["who"] = who
+            agent["who"] = make_ref(
+                f"urn:uuid:{author_info.device_id}", author_info.display
+            )
 
         # OnBehalfOf - reference to Organization (optional)
         if author_info.organization_id:
-            on_behalf: JSONObject = {
-                "reference": f"urn:uuid:{author_info.organization_id}"
-            }
-            if author_info.organization_display:
-                on_behalf["display"] = author_info.organization_display
-            agent["onBehalfOf"] = on_behalf
+            agent["onBehalfOf"] = make_ref(
+                f"urn:uuid:{author_info.organization_id}", author_info.organization_display
+            )
 
         return agent
 

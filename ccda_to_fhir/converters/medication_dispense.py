@@ -342,6 +342,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             - performer list: List of FHIR performer objects or None
             - location reference: Location reference (e.g., "urn:uuid:12345678-abcd-1234-abcd-123456789abc") or None
         """
+        from ccda_to_fhir.converters.author_references import format_organization_display, format_person_display, make_ref
+
         performers = []
         location_ref = None
 
@@ -361,12 +363,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
                     if root:
                         pract_id = self._generate_practitioner_id(root, extension)
-                        from ccda_to_fhir.converters.author_references import format_person_display
-                        actor_ref: JSONObject = {"reference": f"urn:uuid:{pract_id}"}
                         display = format_person_display(assigned.assigned_person)
-                        if display:
-                            actor_ref["display"] = display
-                        performer_obj["actor"] = actor_ref
+                        performer_obj["actor"] = make_ref(f"urn:uuid:{pract_id}", display)
 
                     # Determine function from C-CDA functionCode or use context-based default
                     performer_obj["function"] = self._determine_performer_function(perf, context="performer")
@@ -379,12 +377,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     org = assigned.represented_organization
                     org_id = self._create_pharmacy_organization(org)
                     if org_id:
-                        from ccda_to_fhir.converters.author_references import format_organization_display
-                        actor_ref = {"reference": f"urn:uuid:{org_id}"}
                         display = format_organization_display(org)
-                        if display:
-                            actor_ref["display"] = display
-                        performer_obj["actor"] = actor_ref
+                        performer_obj["actor"] = make_ref(f"urn:uuid:{org_id}", display)
                         # Determine function from C-CDA functionCode or use context-based default
                         performer_obj["function"] = self._determine_performer_function(perf, context="performer")
                         performers.append(performer_obj)
@@ -406,14 +400,10 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
                     if root:
                         pract_id = self._generate_practitioner_id(root, extension)
-                        from ccda_to_fhir.converters.author_references import format_person_display
-                        author_actor: JSONObject = {"reference": f"urn:uuid:{pract_id}"}
                         display = format_person_display(assigned.assigned_person)
-                        if display:
-                            author_actor["display"] = display
                         performer_obj = {
                             "function": self._determine_performer_function(author, context="author"),
-                            "actor": author_actor,
+                            "actor": make_ref(f"urn:uuid:{pract_id}", display),
                         }
                         performers.append(performer_obj)
 

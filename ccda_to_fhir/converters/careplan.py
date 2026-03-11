@@ -194,6 +194,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                     for performer in doc_of.service_event.performer:
                         if performer.assigned_entity and performer.assigned_entity.id:
                             from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                            from ccda_to_fhir.converters.author_references import format_person_display, make_ref
                             performer_id = performer.assigned_entity.id[0]
                             practitioner_id = generate_id_from_identifiers(
                                 "Practitioner",
@@ -203,7 +204,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                             ref_uri = f"urn:uuid:{practitioner_id}"
                             if ref_uri not in seen_contributor_refs:
                                 seen_contributor_refs.add(ref_uri)
-                                contributors.append({"reference": ref_uri})
+                                display = format_person_display(performer.assigned_entity.assigned_person)
+                                contributors.append(make_ref(ref_uri, display))
 
         if contributors:
             careplan["contributor"] = contributors
@@ -417,17 +419,14 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             # If assignedPerson exists, reference Practitioner
             if assigned_author.assigned_person:
                 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                from ccda_to_fhir.converters.author_references import format_person_display
+                from ccda_to_fhir.converters.author_references import format_person_display, make_ref
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner",
                     first_id.root,
                     first_id.extension,
                 )
-                ref: JSONObject = {"reference": f"urn:uuid:{practitioner_id}"}
                 display = format_person_display(assigned_author.assigned_person)
-                if display:
-                    ref["display"] = display
-                return ref
+                return make_ref(f"urn:uuid:{practitioner_id}", display)
             else:
                 # Could be patient as author
                 if not self.reference_registry:

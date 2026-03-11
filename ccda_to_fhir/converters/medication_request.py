@@ -179,19 +179,15 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
                     # Check for practitioner
                     # Only create reference if we have an explicit ID with root
+                    from ccda_to_fhir.converters.author_references import format_device_display, format_person_display, make_ref
+
                     if assigned.assigned_person:
                         if assigned.id:
                             for id_elem in assigned.id:
                                 if id_elem.root:
                                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                                    requester: JSONObject = {
-                                        "reference": f"urn:uuid:{pract_id}"
-                                    }
-                                    from ccda_to_fhir.converters.author_references import format_person_display
                                     display = format_person_display(assigned.assigned_person)
-                                    if display:
-                                        requester["display"] = display
-                                    med_request["requester"] = requester
+                                    med_request["requester"] = make_ref(f"urn:uuid:{pract_id}", display)
                                     break
                     # Check for device
                     elif assigned.assigned_authoring_device:
@@ -199,14 +195,8 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                             for id_elem in assigned.id:
                                 if id_elem.root:
                                     device_id = self._generate_device_id(id_elem.root, id_elem.extension)
-                                    requester = {
-                                        "reference": f"urn:uuid:{device_id}"
-                                    }
-                                    from ccda_to_fhir.converters.author_references import format_device_display
                                     display = format_device_display(assigned.assigned_authoring_device)
-                                    if display:
-                                        requester["display"] = display
-                                    med_request["requester"] = requester
+                                    med_request["requester"] = make_ref(f"urn:uuid:{device_id}", display)
                                     break
 
         # 8. ReasonCode (from indication entry relationship)

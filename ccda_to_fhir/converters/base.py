@@ -13,6 +13,7 @@ from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
+from .author_references import format_organization_display, format_person_display, make_ref
 from .code_systems import CodeSystemMapper
 
 logger = get_logger(__name__)
@@ -1625,13 +1626,8 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Register with reference registry
                 self.reference_registry.register_resource(practitioner)
 
-        from ccda_to_fhir.converters.author_references import format_person_display
-
         display = format_person_display(assigned_entity.assigned_person)
-        ref: JSONObject = {"reference": f"urn:uuid:{pract_id}"}
-        if display:
-            ref["display"] = display
-        return ref
+        return make_ref(f"urn:uuid:{pract_id}", display)
 
     def create_organization_reference_from_entity(
         self,
@@ -1683,13 +1679,8 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Register with reference registry
                 self.reference_registry.register_resource(organization)
 
-        from ccda_to_fhir.converters.author_references import format_organization_display
-
         display = format_organization_display(represented_organization)
-        ref: JSONObject = {"reference": f"urn:uuid:{org_id}"}
-        if display:
-            ref["display"] = display
-        return ref
+        return make_ref(f"urn:uuid:{org_id}", display)
 
     def extract_performer_function(
         self,
@@ -1813,18 +1804,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             )
             if root:
                 practitioner_id = self._generate_practitioner_id(root, extension)
-                ref: JSONObject = {"reference": f"urn:uuid:{practitioner_id}"}
-
-                # Add display from assigned person name
-                from ccda_to_fhir.converters.author_references import format_person_display
-
                 display = format_person_display(
-                    getattr(performer.assigned_entity, "assigned_person", None)
+                    performer.assigned_entity.assigned_person
                 )
-                if display:
-                    ref["display"] = display
-
-                references.append(ref)
+                references.append(make_ref(f"urn:uuid:{practitioner_id}", display))
 
         return references
 
