@@ -1064,13 +1064,14 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         if code_elem.original_text:
             original_text = self.extract_original_text(code_elem.original_text, section=None)
 
-        return self.create_codeable_concept(
+        result = self.create_codeable_concept(
             code=primary_code,
             code_system=primary_system,
             display_name=primary_display,
             original_text=original_text,
             translations=translations,
         )
+        return result.to_dict() if result else None
 
 
 def convert_immunization_activity(

@@ -498,7 +498,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     display_name=type_code.display_name,
                 )
                 if category:
-                    categories.append(category)
+                    categories.append(category.to_dict())
 
         return categories
 
@@ -720,7 +720,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 display_name=performer.function_code.display_name,
             )
             if role:
-                participant["role"] = [role]
+                participant["role"] = [role.to_dict()]
 
         # Create member reference (required) - prefer PractitionerRole
         if assigned_entity.id and len(assigned_entity.id) > 0:

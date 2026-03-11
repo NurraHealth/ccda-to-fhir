@@ -255,11 +255,11 @@ class TestReferenceResolution:
         patient_ref = registry.resolve_reference("Patient", "patient-newman")
 
         assert patient_ref is not None
-        # Update the condition's subject with validated reference
-        condition["subject"] = patient_ref
+        # Update the condition's subject with validated reference (serialized)
+        condition["subject"] = patient_ref.to_dict()
 
         # Verify the reference is correct
-        assert condition["subject"].reference == "urn:uuid:patient-newman"
+        assert condition["subject"]["reference"] == "urn:uuid:patient-newman"
 
     def test_realistic_observation_to_practitioner_reference(self, mock_reference_registry):
         """Test realistic scenario: Observation references Practitioner as performer.

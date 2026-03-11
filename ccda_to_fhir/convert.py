@@ -1549,7 +1549,7 @@ class DocumentConverter:
                                 if gender_identity_codeable:
                                     gender_identity_ext = {
                                         "url": FHIRSystems.US_CORE_GENDER_IDENTITY,
-                                        "valueCodeableConcept": gender_identity_codeable,
+                                        "valueCodeableConcept": gender_identity_codeable.to_dict(),
                                     }
                                     extensions.append(gender_identity_ext)
                             processed = True
@@ -1586,10 +1586,11 @@ class DocumentConverter:
                                     code_system=getattr(obs.value, "code_system", None),
                                     display_name=getattr(obs.value, "display_name", None),
                                 )
-                                spcu_ext["extension"].append({
-                                    "url": "value",
-                                    "valueCodeableConcept": value_concept
-                                })
+                                if value_concept:
+                                    spcu_ext["extension"].append({
+                                        "url": "value",
+                                        "valueCodeableConcept": value_concept.to_dict()
+                                    })
 
                                 # period sub-extension (optional)
                                 # C-CDA effectiveTime is a snapshot, map to period.start
@@ -1688,7 +1689,7 @@ class DocumentConverter:
                                         "extension": [
                                             {
                                                 "url": "tribalAffiliation",
-                                                "valueCodeableConcept": tribal_affiliation_codeable,
+                                                "valueCodeableConcept": tribal_affiliation_codeable.to_dict(),
                                             }
                                         ]
                                     }
@@ -1713,7 +1714,7 @@ class DocumentConverter:
                                             "extension": [
                                                 {
                                                     "url": "tribalAffiliation",
-                                                    "valueCodeableConcept": tribal_affiliation_codeable,
+                                                    "valueCodeableConcept": tribal_affiliation_codeable.to_dict(),
                                                 }
                                             ]
                                         }
@@ -1736,10 +1737,11 @@ class DocumentConverter:
                                         code_system=getattr(obs.value, "code_system", None),
                                         display_name=getattr(obs.value, "display_name", None),
                                     )
-                                    spcu_ext["extension"].append({
-                                        "url": "value",
-                                        "valueCodeableConcept": value_concept
-                                    })
+                                    if value_concept:
+                                        spcu_ext["extension"].append({
+                                            "url": "value",
+                                            "valueCodeableConcept": value_concept.to_dict()
+                                        })
 
                                     # period sub-extension (optional)
                                     if obs.effective_time:

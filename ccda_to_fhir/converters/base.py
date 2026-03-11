@@ -228,7 +228,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return identifier
 
-    def create_codeable_concept_model(
+    def create_codeable_concept(
         self,
         code: str | None,
         code_system: str | None,
@@ -236,7 +236,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         original_text: str | None = None,
         translations: list[JSONObject] | None = None,
     ) -> FHIRCodeableConcept | None:
-        """Create a FHIR CodeableConcept model from C-CDA code elements.
+        """Create a FHIR CodeableConcept from C-CDA code elements.
+
+        Returns the Pydantic model. Callers embedding into FHIRResourceDict
+        should call ``.to_dict()`` on the result.
 
         Args:
             code: The code value
@@ -309,38 +312,6 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return None
 
         return FHIRCodeableConcept(coding=codings, text=text)
-
-    def create_codeable_concept(
-        self,
-        code: str | None,
-        code_system: str | None,
-        display_name: str | None = None,
-        original_text: str | None = None,
-        translations: list[JSONObject] | None = None,
-    ) -> JSONObject | None:
-        """Create a FHIR CodeableConcept dict from C-CDA code elements.
-
-        Thin wrapper around create_codeable_concept_model that returns a dict
-        for callers that embed the result directly in FHIRResourceDict.
-
-        Args:
-            code: The code value
-            code_system: The code system OID
-            display_name: Display name for the code
-            original_text: Original text from the document
-            translations: List of translation codes
-
-        Returns:
-            FHIR CodeableConcept as a dict, or None if no content available
-        """
-        model = self.create_codeable_concept_model(
-            code=code,
-            code_system=code_system,
-            display_name=display_name,
-            original_text=original_text,
-            translations=translations,
-        )
-        return model.to_dict() if model else None
 
     def create_quantity(
         self, value: float | int | None, unit: str | None = None
@@ -1269,7 +1240,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         """Extract CodeableConcepts from an observation's value field.
 
         Handles both single value objects and lists of values, as C-CDA allows both.
-        Delegates to create_codeable_concept_model for consistent FHIR output.
+        Delegates to create_codeable_concept for consistent FHIR output.
 
         Args:
             obs: C-CDA Observation element
@@ -1290,7 +1261,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             # and not all have code/code_system/display_name attributes
             code = getattr(value, "code", None)
             if code:
-                codeable = self.create_codeable_concept_model(
+                codeable = self.create_codeable_concept(
                     code=code,
                     code_system=getattr(value, "code_system", None),
                     display_name=getattr(value, "display_name", None),
@@ -1932,7 +1903,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if not original_text and code.display_name:
                 original_text = code.display_name
 
-        return self.create_codeable_concept_model(
+        return self.create_codeable_concept(
             code=code.code,
             code_system=code.code_system,
             display_name=code.display_name,

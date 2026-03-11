@@ -196,7 +196,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
             return []
 
         # PractitionerRole.specialty is an array of CodeableConcept
-        return [codeable_concept]
+        return [codeable_concept.to_dict()]
 
     def _convert_identifiers(self, identifiers: list) -> list[JSONObject]:
         """Convert C-CDA identifiers to FHIR identifiers.

@@ -190,7 +190,7 @@ class CoverageConverter(BaseConverter["Act"]):
                 display_name=policy.code.display_name,
             )
             if coverage_type:
-                coverage["type"] = coverage_type
+                coverage["type"] = coverage_type.to_dict()
 
         # Order from sequenceNumber
         if sequence_number is not None:

@@ -323,13 +323,14 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                         "display_name": trans.display_name,
                     })
 
-        return self.create_codeable_concept(
+        concept = self.create_codeable_concept(
             code=med_code.code if med_code else None,
             code_system=med_code.code_system if med_code else None,
             display_name=med_code.display_name if med_code else None,
             original_text=original_text,
             translations=translations,
         )
+        return concept.to_dict() if concept else None
 
     def _extract_effective_time(self, substance_admin: SubstanceAdministration) -> JSONObject | None:
         """Extract effective time from effectiveTime elements.
@@ -404,7 +405,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                         display_name=value.display_name,
                     )
                     if reason_code:
-                        reason_codes.append(reason_code)
+                        reason_codes.append(reason_code.to_dict())
 
         return reason_codes
 
@@ -442,7 +443,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                 display_name=substance_admin.route_code.display_name,
             )
             if route:
-                dosage["route"] = route
+                dosage["route"] = route.to_dict()
 
         # 5. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)
@@ -622,11 +623,13 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             if precondition.criterion and precondition.criterion.value:
                 criterion_value = precondition.criterion.value
                 if isinstance(criterion_value, (CD, CE)):
-                    return self.create_codeable_concept(
+                    concept = self.create_codeable_concept(
                         code=criterion_value.code,
                         code_system=criterion_value.code_system,
                         display_name=criterion_value.display_name,
                     )
+                    if concept:
+                        return concept.to_dict()
 
         return None
 

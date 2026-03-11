@@ -278,7 +278,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
                 original_text=original_text
             )
             if device_type:
-                device["type"] = device_type
+                device["type"] = device_type.to_dict()
 
         # Map device names
         if participant_role.playing_device:

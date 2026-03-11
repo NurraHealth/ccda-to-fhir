@@ -668,11 +668,12 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     if obs.value:
                         value = obs.value
                         if value.code:
-                            return self.create_codeable_concept(
+                            result = self.create_codeable_concept(
                                 code=value.code,
                                 code_system=value.code_system,
                                 display_name=value.display_name,
                             )
+                            return result.to_dict() if result else None
 
         return None
 
@@ -701,7 +702,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                                 display_name=value.display_name,
                             )
                             if complication:
-                                complications.append(complication)
+                                complications.append(complication.to_dict())
 
         return complications
 
@@ -728,7 +729,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                             display_name=act.code.display_name,
                         )
                         if followup:
-                            followups.append(followup)
+                            followups.append(followup.to_dict())
 
         return followups
 
@@ -805,7 +806,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if not original_text and code.display_name:
             original_text = code.display_name
 
-        codeable_concept = self.create_codeable_concept(
+        codeable_concept_model = self.create_codeable_concept(
             code=code.code,
             code_system=code.code_system,
             display_name=code.display_name,
@@ -813,8 +814,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             translations=translations,
         )
 
-        if not codeable_concept:
+        if not codeable_concept_model:
             return None
+
+        codeable_concept = codeable_concept_model.to_dict()
 
         # Check for laterality qualifiers
         # Per C-CDA: laterality is specified using qualifier with name code 272741003 or 78615007

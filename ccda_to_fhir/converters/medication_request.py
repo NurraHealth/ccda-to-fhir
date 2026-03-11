@@ -394,10 +394,10 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
             # Check if codeable_concept is empty (no codings, no text)
             # This can happen when all codings are skipped due to unmapped OIDs
-            if not codeable_concept or (not codeable_concept.get("coding") and not codeable_concept.get("text")):
+            if not codeable_concept or (not codeable_concept.coding and not codeable_concept.text):
                 return None
 
-            return {"medicationCodeableConcept": codeable_concept}
+            return {"medicationCodeableConcept": codeable_concept.to_dict()}
 
     def _has_complex_medication_info(
         self, substance_admin: SubstanceAdministration, manufactured_product
@@ -473,7 +473,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                         display_name=value.display_name,
                     )
                     if reason_code:
-                        reason_codes.append(reason_code)
+                        reason_codes.append(reason_code.to_dict())
 
         return reason_codes
 
@@ -529,7 +529,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 display_name=substance_admin.route_code.display_name,
             )
             if route:
-                dosage["route"] = route
+                dosage["route"] = route.to_dict()
 
         # 7. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)
@@ -584,7 +584,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                     display_name=rel.act.code.display_name,
                                 )
                                 if instruction:
-                                    instructions.append(instruction)
+                                    instructions.append(instruction.to_dict())
 
         return instructions
 
@@ -788,11 +788,14 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             if precondition.criterion and precondition.criterion.value:
                 criterion_value = precondition.criterion.value
                 if isinstance(criterion_value, (CD, CE)):
-                    return self.create_codeable_concept(
+                    concept = self.create_codeable_concept(
                         code=criterion_value.code,
                         code_system=criterion_value.code_system,
                         display_name=criterion_value.display_name,
                     )
+                    if concept:
+                        return concept.to_dict()
+                    return None
 
         return None
 

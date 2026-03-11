@@ -321,7 +321,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                         }
                     )
 
-        return self.create_codeable_concept(
+        concept = self.create_codeable_concept(
             code=med_code.code,
             code_system=med_code.code_system,
             display_name=med_code.display_name,
@@ -332,6 +332,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             ),
             translations=translations,
         )
+        return concept.to_dict() if concept else None
 
     def _extract_performers_and_location(self, supply: Supply) -> tuple[list[JSONObject] | None, str | None]:
         """Extract performers (pharmacy/pharmacist) and location (pharmacy) from supply.

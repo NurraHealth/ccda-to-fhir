@@ -267,13 +267,14 @@ class GoalConverter(BaseConverter[Observation]):
                         "display_name": trans.display_name,
                     })
 
-        return self.create_codeable_concept(
+        result = self.create_codeable_concept(
             code=code_element.code,
             code_system=code_element.code_system,
             display_name=code_element.display_name,
             original_text=original_text,
             translations=translations,
         )
+        return result.to_dict() if result else None
 
     def _convert_component_goal_to_target(self, component_obs: Observation) -> JSONObject | None:
         """Convert a component Goal Observation to a FHIR target.
