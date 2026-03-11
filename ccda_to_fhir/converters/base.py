@@ -1233,9 +1233,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         return ReasonResult(codes=reason_codes, references=reason_refs)
 
     def _extract_reason_codes_from_observation(self, obs) -> list[FHIRCodeableConcept]:
-        """Extract FHIRCodeableConcept models from an observation's value field.
+        """Extract CodeableConcepts from an observation's value field.
 
         Handles both single value objects and lists of values, as C-CDA allows both.
+        Delegates to create_codeable_concept for consistent FHIR output.
 
         Args:
             obs: C-CDA Observation element
@@ -1243,41 +1244,28 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         Returns:
             List of FHIRCodeableConcept models
         """
-        from ccda_to_fhir.types import FHIRCoding
-        from ccda_to_fhir.utils.terminology import get_display_for_code
-
-        results: list[FHIRCodeableConcept] = []
+        codes: list[FHIRCodeableConcept] = []
 
         if not obs.value:
-            return results
+            return codes
 
+        # Handle both single value and list of values
         values = obs.value if isinstance(obs.value, list) else [obs.value]
 
         for value in values:
+            # Use getattr since value can be various types (CD, CE, PQ, ST, etc.)
+            # and not all have code/code_system/display_name attributes
             code = getattr(value, "code", None)
-            if not code:
-                continue
+            if code:
+                codeable = self.create_codeable_concept(
+                    code=code,
+                    code_system=getattr(value, "code_system", None),
+                    display_name=getattr(value, "display_name", None),
+                )
+                if codeable:
+                    codes.append(FHIRCodeableConcept.model_validate(codeable))
 
-            code = code.strip()
-            code_system: str | None = getattr(value, "code_system", None)
-            display_name: str | None = getattr(value, "display_name", None)
-
-            codings: list[FHIRCoding] = []
-            display: str | None = display_name.strip() if display_name else None
-
-            if code_system:
-                system_uri = self.map_oid_to_uri(code_system)
-                if not display:
-                    display = get_display_for_code(system_uri, code)
-                codings.append(FHIRCoding(system=system_uri, code=code, display=display))
-
-            # text fallback: display_name > coding display
-            text = display_name.strip() if display_name else display
-
-            if codings or text:
-                results.append(FHIRCodeableConcept(coding=codings, text=text))
-
-        return results
+        return codes
 
     def convert_telecom(self, telecoms) -> list[JSONObject]:
         """Convert C-CDA TEL elements to FHIR ContactPoint objects.

@@ -43,17 +43,17 @@ class PerformanceMetrics:
         self.metrics[operation].append(duration)
         self.counts[operation] += 1
 
-    def get_stats(self, operation: str) -> OperationStats | None:
+    def get_stats(self, operation: str) -> OperationStats:
         """Get statistics for an operation.
 
         Args:
             operation: Name of the operation
 
         Returns:
-            OperationStats or None if operation not found
+            OperationStats (zero-valued if operation not found)
         """
         if operation not in self.metrics:
-            return None
+            return OperationStats()
 
         durations = self.metrics[operation]
         return OperationStats(
@@ -70,7 +70,7 @@ class PerformanceMetrics:
         Returns:
             Dictionary mapping operation names to their statistics
         """
-        return {op: stats for op in self.metrics if (stats := self.get_stats(op)) is not None}
+        return {op: self.get_stats(op) for op in self.metrics}
 
     def report(self) -> None:
         """Log a summary of all performance metrics."""

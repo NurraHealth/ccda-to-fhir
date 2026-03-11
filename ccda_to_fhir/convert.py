@@ -1174,11 +1174,11 @@ class DocumentConverter:
             stats = self.get_validation_stats()
             logger.info(
                 "FHIR validation complete",
-                validated=stats["validated"],
-                passed=stats["passed"],
-                failed=stats["failed"],
-                warnings=stats["warnings"],
-                pass_rate=f"{(stats['passed'] / stats['validated'] * 100):.1f}%" if stats["validated"] > 0 else "N/A"
+                validated=stats.validated,
+                passed=stats.passed,
+                failed=stats.failed,
+                warnings=stats.warnings,
+                pass_rate=f"{(stats.passed / stats.validated * 100):.1f}%" if stats.validated > 0 else "N/A"
             )
 
         return {

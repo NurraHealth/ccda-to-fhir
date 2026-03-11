@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # JSON primitive types
 JSONPrimitive: TypeAlias = str | int | float | bool | None
@@ -47,23 +47,17 @@ class FHIRCoding(BaseModel, frozen=True):
     display: str | None = None
 
     def to_dict(self) -> dict[str, str]:
-        d: dict[str, str] = {}
-        if self.system is not None:
-            d["system"] = self.system
-        if self.code is not None:
-            d["code"] = self.code
-        if self.display is not None:
-            d["display"] = self.display
-        return d
+        return self.model_dump(exclude_none=True)
 
 
 class FHIRCodeableConcept(BaseModel, frozen=True):
     """FHIR CodeableConcept element (coding list + text)."""
 
-    coding: list[FHIRCoding] = []
+    coding: list[FHIRCoding] = Field(default_factory=list)
     text: str | None = None
 
     def to_dict(self) -> dict[str, str | list[dict[str, str]]]:
+        # Can't use model_dump alone: need to skip empty coding list
         d: dict[str, str | list[dict[str, str]]] = {}
         if self.coding:
             d["coding"] = [c.to_dict() for c in self.coding]
@@ -79,19 +73,16 @@ class FHIRReference(BaseModel, frozen=True):
     display: str | None = None
 
     def to_dict(self) -> dict[str, str]:
-        d: dict[str, str] = {"reference": self.reference}
-        if self.display is not None:
-            d["display"] = self.display
-        return d
+        return self.model_dump(exclude_none=True)
 
 
 class ReasonResult(BaseModel, frozen=True):
     """Result of extracting reason codes and references from C-CDA entry relationships."""
 
-    codes: list[FHIRCodeableConcept] = []
+    codes: list[FHIRCodeableConcept] = Field(default_factory=list)
     """FHIR CodeableConcept elements for reason codes."""
 
-    references: list[FHIRReference] = []
+    references: list[FHIRReference] = Field(default_factory=list)
     """FHIR Reference elements for reason references."""
 
 
@@ -105,11 +96,11 @@ class DiagnosisRole(BaseModel, frozen=True):
 class OperationStats(BaseModel, frozen=True):
     """Performance statistics for a single profiled operation."""
 
-    count: int
-    total: float
-    avg: float
-    min: float
-    max: float
+    count: int = 0
+    total: float = 0.0
+    avg: float = 0.0
+    min: float = 0.0
+    max: float = 0.0
 
 
 class ValidationStats(BaseModel, frozen=True):
