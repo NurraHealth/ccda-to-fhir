@@ -85,6 +85,8 @@ class FHIRReference(BaseModel, frozen=True):
 class ReasonResult(BaseModel, frozen=True):
     """Result of extracting reason codes and references from C-CDA entry relationships."""
 
+    model_config = ConfigDict(extra="forbid")
+
     codes: list[FHIRCodeableConcept] = Field(default_factory=list)
     """FHIR CodeableConcept elements for reason codes."""
 
@@ -98,6 +100,8 @@ class ReasonResult(BaseModel, frozen=True):
 class DiagnosisRole(BaseModel, frozen=True):
     """Diagnosis role code/display for encounter diagnosis use element."""
 
+    model_config = ConfigDict(extra="forbid")
+
     code: str
     display: str
 
@@ -105,15 +109,19 @@ class DiagnosisRole(BaseModel, frozen=True):
 class OperationStats(BaseModel, frozen=True):
     """Performance statistics for a single profiled operation."""
 
+    model_config = ConfigDict(extra="forbid")
+
     count: int = 0
     total: float = 0.0
     avg: float = 0.0
-    min: float = 0.0
-    max: float = 0.0
+    min_duration: float = 0.0
+    max_duration: float = 0.0
 
 
-class ValidationStats(BaseModel, frozen=True):
+class ValidationStats(BaseModel):
     """Validation statistics from FHIRValidator."""
+
+    model_config = ConfigDict(extra="forbid")
 
     validated: int = 0
     passed: int = 0
@@ -121,8 +129,10 @@ class ValidationStats(BaseModel, frozen=True):
     warnings: int = 0
 
 
-class RegistryStats(BaseModel, frozen=True):
+class RegistryStats(BaseModel):
     """Statistics from ReferenceRegistry."""
+
+    model_config = ConfigDict(extra="forbid")
 
     registered: int = 0
     resolved: int = 0

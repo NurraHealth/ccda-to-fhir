@@ -41,9 +41,7 @@ class ReferenceRegistry:
     def __init__(self) -> None:
         """Initialize empty registry."""
         self._resources: dict[str, dict[str, FHIRResourceDict]] = {}
-        self._stat_registered: int = 0
-        self._stat_resolved: int = 0
-        self._stat_failed: int = 0
+        self._stats = RegistryStats()
 
     def register_resource(self, resource: FHIRResourceDict) -> None:
         """Register a resource in the registry.
@@ -88,7 +86,7 @@ class ReferenceRegistry:
 
         # Register the resource
         self._resources[resource_type][resource_id] = resource
-        self._stat_registered += 1
+        self._stats.registered += 1
 
         # Enhanced logging for Patient resources to help debug reference issues
         if resource_type == "Patient":
@@ -128,7 +126,7 @@ class ReferenceRegistry:
         """
         # Check if resource type exists
         if resource_type not in self._resources:
-            self._stat_failed += 1
+            self._stats.failed += 1
             raise MissingReferenceError(
                 resource_type=resource_type,
                 resource_id=resource_id,
@@ -137,7 +135,7 @@ class ReferenceRegistry:
 
         # Check if resource ID exists
         if resource_id not in self._resources[resource_type]:
-            self._stat_failed += 1
+            self._stats.failed += 1
             available_ids = list(self._resources[resource_type].keys())[:5]
             raise MissingReferenceError(
                 resource_type=resource_type,
@@ -146,7 +144,7 @@ class ReferenceRegistry:
             )
 
         # Resource exists - return reference using urn:uuid format for transaction bundles
-        self._stat_resolved += 1
+        self._stats.resolved += 1
         return {"reference": f"urn:uuid:{resource_id}"}
 
     def has_resource(self, resource_type: str, resource_id: str) -> bool:
@@ -200,11 +198,7 @@ class ReferenceRegistry:
         Returns:
             RegistryStats with registered, resolved, failed counts
         """
-        return RegistryStats(
-            registered=self._stat_registered,
-            resolved=self._stat_resolved,
-            failed=self._stat_failed,
-        )
+        return self._stats.model_copy()
 
     def has_patient(self) -> bool:
         """Check if a patient has been registered.
@@ -267,7 +261,7 @@ class ReferenceRegistry:
                 }
             )
 
-        self._stat_resolved += 1
+        self._stats.resolved += 1
         return {"reference": f"urn:uuid:{patient_id}"}
 
     def has_encounter(self) -> bool:
@@ -302,12 +296,10 @@ class ReferenceRegistry:
 
         # Get first encounter
         encounter_id = next(iter(self._resources["Encounter"].keys()))
-        self._stat_resolved += 1
+        self._stats.resolved += 1
         return {"reference": f"urn:uuid:{encounter_id}"}
 
     def clear(self) -> None:
         """Clear all registered resources and reset stats."""
         self._resources.clear()
-        self._stat_registered = 0
-        self._stat_resolved = 0
-        self._stat_failed = 0
+        self._stats = RegistryStats()

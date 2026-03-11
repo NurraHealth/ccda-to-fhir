@@ -60,8 +60,8 @@ class PerformanceMetrics:
             count=self.counts[operation],
             total=sum(durations),
             avg=sum(durations) / len(durations) if durations else 0,
-            min=min(durations) if durations else 0,
-            max=max(durations) if durations else 0,
+            min_duration=min(durations) if durations else 0,
+            max_duration=max(durations) if durations else 0,
         )
 
     def get_all_stats(self) -> dict[str, OperationStats]:
@@ -79,8 +79,8 @@ class PerformanceMetrics:
             logger.info(
                 f"{operation}: {stats.count} calls, "
                 f"avg={stats.avg:.3f}s, "
-                f"min={stats.min:.3f}s, "
-                f"max={stats.max:.3f}s, "
+                f"min={stats.min_duration:.3f}s, "
+                f"max={stats.max_duration:.3f}s, "
                 f"total={stats.total:.3f}s"
             )
 

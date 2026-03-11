@@ -13,6 +13,7 @@ from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import (
     FHIRCodeableConcept,
+    FHIRCoding,
     FHIRReference,
     FHIRResourceDict,
     JSONObject,
@@ -226,15 +227,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return identifier
 
-    def create_codeable_concept(
+    def create_codeable_concept_model(
         self,
         code: str | None,
         code_system: str | None,
         display_name: str | None = None,
         original_text: str | None = None,
         translations: list[JSONObject] | None = None,
-    ) -> JSONObject | None:
-        """Create a FHIR CodeableConcept from C-CDA code elements.
+    ) -> FHIRCodeableConcept | None:
+        """Create a FHIR CodeableConcept model from C-CDA code elements.
 
         Args:
             code: The code value
@@ -244,31 +245,29 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             translations: List of translation codes
 
         Returns:
-            FHIR CodeableConcept as a dict, or None if no content available
+            FHIRCodeableConcept, or None if no content available
         """
         if not code and not original_text:
-            return None  # Return None instead of empty dict for proper truthiness checks
+            return None
 
-        codeable_concept: JSONObject = {}
-        codings: list[JSONObject] = []
+        codings: list[FHIRCoding] = []
 
         # Primary coding
         if code and code_system:
             system_uri = self.map_oid_to_uri(code_system)
-            coding: JSONObject = {
-                "system": system_uri,
-                "code": code.strip(),  # Sanitize: remove leading/trailing whitespace
-            }
+            sanitized_code = code.strip()
             # ENHANCEMENT: Add display from terminology map if not provided from C-CDA
+            resolved_display: str | None = None
             if display_name:
-                coding["display"] = display_name.strip()  # Sanitize display name too
+                resolved_display = display_name.strip()
             else:
-                # Look up display from terminology maps for known systems
                 from ccda_to_fhir.utils.terminology import get_display_for_code
-                looked_up_display = get_display_for_code(system_uri, code.strip())
-                if looked_up_display:
-                    coding["display"] = looked_up_display
-            codings.append(coding)
+                resolved_display = get_display_for_code(system_uri, sanitized_code)
+            codings.append(FHIRCoding(
+                system=system_uri,
+                code=sanitized_code,
+                display=resolved_display,
+            ))
 
         # Translation codings
         if translations:
@@ -282,40 +281,65 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 if not trans_code or not trans_code_system:
                     continue
                 trans_system_uri = self.map_oid_to_uri(trans_code_system)
-                trans_coding: JSONObject = {
-                    "system": trans_system_uri,
-                    "code": trans_code,
-                }
                 # Add display from translation or look up from terminology map
-                trans_display = trans.get("display_name")
-                if isinstance(trans_display, str):
-                    trans_coding["display"] = trans_display.strip()
+                trans_display_raw = trans.get("display_name")
+                resolved_trans_display: str | None = None
+                if isinstance(trans_display_raw, str):
+                    resolved_trans_display = trans_display_raw.strip()
                 else:
                     from ccda_to_fhir.utils.terminology import get_display_for_code
-                    looked_up_display = get_display_for_code(trans_system_uri, trans_code)
-                    if looked_up_display:
-                        trans_coding["display"] = looked_up_display
-                codings.append(trans_coding)
+                    resolved_trans_display = get_display_for_code(trans_system_uri, trans_code)
+                codings.append(FHIRCoding(
+                    system=trans_system_uri,
+                    code=trans_code,
+                    display=resolved_trans_display,
+                ))
 
-        if codings:
-            codeable_concept["coding"] = codings
-
-        # Original text (preferred)
+        # Determine text
+        text: str | None = None
         if original_text:
-            codeable_concept["text"] = original_text
-        # Fallback: Use display_name from primary coding if available
+            text = original_text
         elif display_name:
-            codeable_concept["text"] = display_name.strip()
-        # Fallback: Use first coding's display if available
-        elif codings and codings[0].get("display"):
-            codeable_concept["text"] = codings[0]["display"]
+            text = display_name.strip()
+        elif codings and codings[0].display:
+            text = codings[0].display
 
-        # If codeable_concept is empty (no coding and no text), return None
-        # This can happen when code exists but code_system is missing/None
-        if not codeable_concept:
+        if not codings and text is None:
             return None
 
-        return codeable_concept
+        return FHIRCodeableConcept(coding=codings, text=text)
+
+    def create_codeable_concept(
+        self,
+        code: str | None,
+        code_system: str | None,
+        display_name: str | None = None,
+        original_text: str | None = None,
+        translations: list[JSONObject] | None = None,
+    ) -> JSONObject | None:
+        """Create a FHIR CodeableConcept dict from C-CDA code elements.
+
+        Thin wrapper around create_codeable_concept_model that returns a dict
+        for callers that embed the result directly in FHIRResourceDict.
+
+        Args:
+            code: The code value
+            code_system: The code system OID
+            display_name: Display name for the code
+            original_text: Original text from the document
+            translations: List of translation codes
+
+        Returns:
+            FHIR CodeableConcept as a dict, or None if no content available
+        """
+        model = self.create_codeable_concept_model(
+            code=code,
+            code_system=code_system,
+            display_name=display_name,
+            original_text=original_text,
+            translations=translations,
+        )
+        return model.to_dict() if model else None
 
     def create_quantity(
         self, value: float | int | None, unit: str | None = None
@@ -1238,7 +1262,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         """Extract CodeableConcepts from an observation's value field.
 
         Handles both single value objects and lists of values, as C-CDA allows both.
-        Delegates to create_codeable_concept for consistent FHIR output.
+        Delegates to create_codeable_concept_model for consistent FHIR output.
 
         Args:
             obs: C-CDA Observation element
@@ -1259,13 +1283,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             # and not all have code/code_system/display_name attributes
             code = getattr(value, "code", None)
             if code:
-                codeable = self.create_codeable_concept(
+                codeable = self.create_codeable_concept_model(
                     code=code,
                     code_system=getattr(value, "code_system", None),
                     display_name=getattr(value, "display_name", None),
                 )
                 if codeable:
-                    codes.append(FHIRCodeableConcept.model_validate(codeable))
+                    codes.append(codeable)
 
         return codes
 
