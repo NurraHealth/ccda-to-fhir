@@ -23,7 +23,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ccda_to_fhir.constants import FHIRCodes, FHIRSystems
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -68,10 +68,7 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         related_person["id"] = self._generate_related_person_id(related_entity)
 
         # Patient reference (required)
-        patient_ref: JSONObject = {"reference": f"urn:uuid:{self.patient_id}"}
-        if self.patient_display:
-            patient_ref["display"] = self.patient_display
-        related_person["patient"] = patient_ref
+        related_person["patient"] = FHIRReference(reference=f"urn:uuid:{self.patient_id}", display=self.patient_display).to_dict()
 
         # Map relationship code
         if related_entity.code:

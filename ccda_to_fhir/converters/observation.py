@@ -275,7 +275,7 @@ class ObservationConverter(BaseConverter[Observation]):
         if observation.performer:
             performers = self.extract_performer_references(observation.performer)
             if performers:
-                fhir_obs["performer"] = performers
+                fhir_obs["performer"] = [p.to_dict() for p in performers]
 
         # 14. Pregnancy observation special handling
         if observation.template_id:

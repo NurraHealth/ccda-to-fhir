@@ -21,7 +21,7 @@ from ccda_to_fhir.constants import (
     TypeCodes,
     V2ParticipationFunctionCodes,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 from .medication_request import MedicationRequestConverter
@@ -975,7 +975,6 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         from ccda_to_fhir.converters.author_references import (
             format_organization_display,
             format_person_display,
-            make_ref,
         )
 
         # Try to find a practitioner ID
@@ -986,13 +985,13 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             for id_elem in assigned_entity.id:
                 if id_elem.root and not getattr(id_elem, "null_flavor", None):
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                    return make_ref(f"urn:uuid:{pract_id}", display)
+                    return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
 
             # Second pass: use first ID with root (including nullFlavor)
             for id_elem in assigned_entity.id:
                 if id_elem.root:
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                    return make_ref(f"urn:uuid:{pract_id}", display)
+                    return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
 
         # Fallback: try represented organization
         org = assigned_entity.represented_organization
@@ -1002,7 +1001,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             if root:
                 org_id = self._generate_organization_id(root, extension)
                 display = format_organization_display(org)
-                return make_ref(f"urn:uuid:{org_id}", display)
+                return FHIRReference(reference=f"urn:uuid:{org_id}", display=display).to_dict()
 
         return None
 

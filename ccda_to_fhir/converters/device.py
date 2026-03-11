@@ -26,10 +26,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ccda_to_fhir.constants import FHIRCodes, FHIRSystems
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.udi_parser import parse_udi
 
-from .author_references import format_organization_display, make_ref
+from .author_references import format_organization_display
 from .base import BaseConverter
 
 if TYPE_CHECKING:
@@ -475,7 +475,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             return None
 
         display = scoping_entity.desc or None
-        return make_ref(f"urn:uuid:{org_id}", display)
+        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display).to_dict()
 
     def _extract_ehr_device_owner(self, assigned: AssignedAuthor) -> dict | None:
         """Extract device owner organization reference from EHR device.
@@ -507,7 +507,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             return None
 
         display = format_organization_display(represented_org)
-        return make_ref(f"urn:uuid:{org_id}", display)
+        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display).to_dict()
 
     def _generate_organization_id(self, identifiers: list[II]) -> str:
         """Generate FHIR Organization ID using cached UUID v4 from C-CDA identifiers.

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -145,7 +145,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                         patient_id.root,
                         patient_id.extension,
                     )
-                    careplan["subject"] = {"reference": f"urn:uuid:{patient_ref_id}"}
+                    careplan["subject"] = FHIRReference(reference=f"urn:uuid:{patient_ref_id}").to_dict()
                 else:
                     raise ValueError(
                         "Cannot create CarePlan: patient identifier has no root"
@@ -194,7 +194,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                     for performer in doc_of.service_event.performer:
                         if performer.assigned_entity and performer.assigned_entity.id:
                             from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                            from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                            from ccda_to_fhir.converters.author_references import format_person_display
+                            from ccda_to_fhir.types import FHIRReference
                             performer_id = performer.assigned_entity.id[0]
                             practitioner_id = generate_id_from_identifiers(
                                 "Practitioner",
@@ -205,7 +206,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                             if ref_uri not in seen_contributor_refs:
                                 seen_contributor_refs.add(ref_uri)
                                 display = format_person_display(performer.assigned_entity.assigned_person)
-                                contributors.append(make_ref(ref_uri, display))
+                                contributors.append(FHIRReference(reference=ref_uri, display=display).to_dict())
 
         if contributors:
             careplan["contributor"] = contributors
@@ -419,14 +420,15 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             # If assignedPerson exists, reference Practitioner
             if assigned_author.assigned_person:
                 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                from ccda_to_fhir.converters.author_references import format_person_display
+                from ccda_to_fhir.types import FHIRReference
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner",
                     first_id.root,
                     first_id.extension,
                 )
                 display = format_person_display(assigned_author.assigned_person)
-                return make_ref(f"urn:uuid:{practitioner_id}", display)
+                return FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display).to_dict()
             else:
                 # Could be patient as author
                 if not self.reference_registry:
@@ -464,7 +466,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 continue
 
             # CarePlan.activity.reference is a Reference type, not a string
-            activity_detail: JSONObject = {"reference": {"reference": activity_ref}}
+            activity_detail: JSONObject = {"reference": FHIRReference(reference=activity_ref).to_dict()}
 
             # Find outcomes linked to this intervention via entryRelationship
             linked_outcomes = []
@@ -619,13 +621,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # Check if observation resource exists with generated ID
         if self.reference_registry.has_resource("Observation", resource_id):
-            ref: JSONObject = {"reference": f"urn:uuid:{resource_id}"}
-
-            # Add display from outcome observation code
+            display: str | None = None
             if outcome_entry.code and outcome_entry.code.display_name:
-                ref["display"] = outcome_entry.code.display_name
+                display = outcome_entry.code.display_name
 
-            return ref
+            return FHIRReference(reference=f"urn:uuid:{resource_id}", display=display).to_dict()
 
         return None
 

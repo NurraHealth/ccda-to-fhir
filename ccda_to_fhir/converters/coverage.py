@@ -31,9 +31,9 @@ from typing import TYPE_CHECKING
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict
 
-from .author_references import format_organization_display, make_ref
+from .author_references import format_organization_display
 from .base import BaseConverter
 from .organization import OrganizationConverter
 
@@ -289,7 +289,7 @@ class CoverageConverter(BaseConverter["Act"]):
                 related.append(org)
                 display = format_organization_display(assigned.represented_organization)
                 coverage["payor"] = [
-                    make_ref(f"urn:uuid:{org['id']}", display)
+                    FHIRReference(reference=f"urn:uuid:{org['id']}", display=display).to_dict()
                 ]
         elif assigned.id:
             # Create minimal Organization from assignedEntity
@@ -309,7 +309,7 @@ class CoverageConverter(BaseConverter["Act"]):
             related.append(minimal_org)
             # Minimal org built from identifiers only — no name available for display
             coverage["payor"] = [
-                {"reference": f"urn:uuid:{org_id}"}
+                FHIRReference(reference=f"urn:uuid:{org_id}").to_dict()
             ]
 
     @staticmethod

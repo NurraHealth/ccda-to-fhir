@@ -15,7 +15,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 from .medication import MedicationConverter
@@ -179,7 +179,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
                     # Check for practitioner
                     # Only create reference if we have an explicit ID with root
-                    from ccda_to_fhir.converters.author_references import format_device_display, format_person_display, make_ref
+                    from ccda_to_fhir.converters.author_references import format_device_display, format_person_display
 
                     if assigned.assigned_person:
                         if assigned.id:
@@ -187,7 +187,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                                     display = format_person_display(assigned.assigned_person)
-                                    med_request["requester"] = make_ref(f"urn:uuid:{pract_id}", display)
+                                    med_request["requester"] = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
                                     break
                     # Check for device
                     elif assigned.assigned_authoring_device:
@@ -196,7 +196,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     device_id = self._generate_device_id(id_elem.root, id_elem.extension)
                                     display = format_device_display(assigned.assigned_authoring_device)
-                                    med_request["requester"] = make_ref(f"urn:uuid:{device_id}", display)
+                                    med_request["requester"] = FHIRReference(reference=f"urn:uuid:{device_id}", display=display).to_dict()
                                     break
 
         # 8. ReasonCode (from indication entry relationship)
@@ -357,11 +357,10 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             medication_id = medication["id"]
             _medication_registry[medication_id] = medication
 
-            med_ref: JSONObject = {"reference": f"urn:uuid:{medication_id}"}
-
-            # Add display from medication code
+            display: str | None = None
             if manufactured_material.code and manufactured_material.code.display_name:
-                med_ref["display"] = manufactured_material.code.display_name
+                display = manufactured_material.code.display_name
+            med_ref: JSONObject = FHIRReference(reference=f"urn:uuid:{medication_id}", display=display).to_dict()
 
             return {"medicationReference": med_ref}
         else:

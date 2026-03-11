@@ -10,7 +10,7 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     FHIRSystems,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -68,7 +68,7 @@ class ProvenanceConverter(BaseConverter[None]):
         )
 
         # Target - reference to the resource(s) this Provenance is about
-        provenance["target"] = [{"reference": f"urn:uuid:{resource_id}"}]
+        provenance["target"] = [FHIRReference(reference=f"urn:uuid:{resource_id}").to_dict()]
 
         # Recorded - when the provenance was recorded (use earliest author time)
         recorded_date = self._get_earliest_author_time(authors)
@@ -134,23 +134,23 @@ class ProvenanceConverter(BaseConverter[None]):
             ]
         }
 
-        from ccda_to_fhir.converters.author_references import make_ref
+        from ccda_to_fhir.types import FHIRReference
 
         # Who - reference to Practitioner or Device
         if author_info.practitioner_id:
-            agent["who"] = make_ref(
-                f"urn:uuid:{author_info.practitioner_id}", author_info.display
-            )
+            agent["who"] = FHIRReference(
+                reference=f"urn:uuid:{author_info.practitioner_id}", display=author_info.display
+            ).to_dict()
         elif author_info.device_id:
-            agent["who"] = make_ref(
-                f"urn:uuid:{author_info.device_id}", author_info.display
-            )
+            agent["who"] = FHIRReference(
+                reference=f"urn:uuid:{author_info.device_id}", display=author_info.display
+            ).to_dict()
 
         # OnBehalfOf - reference to Organization (optional)
         if author_info.organization_id:
-            agent["onBehalfOf"] = make_ref(
-                f"urn:uuid:{author_info.organization_id}", author_info.organization_display
-            )
+            agent["onBehalfOf"] = FHIRReference(
+                reference=f"urn:uuid:{author_info.organization_id}", display=author_info.organization_display
+            ).to_dict()
 
         return agent
 

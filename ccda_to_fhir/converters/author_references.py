@@ -7,8 +7,6 @@ entry-level author reference builders.
 
 from __future__ import annotations
 
-from typing import NamedTuple
-
 from ccda_to_fhir.ccda.models.author import (
     AssignedAuthor,
     AssignedAuthoringDevice,
@@ -18,7 +16,7 @@ from ccda_to_fhir.ccda.models.author import (
 )
 from ccda_to_fhir.ccda.models.datatypes import ON, PN
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import JSONObject
+from ccda_to_fhir.types import FHIRReference
 
 
 def _extract_enxp_values(parts: list | None) -> list[str]:
@@ -110,31 +108,16 @@ def format_organization_display(org: RepresentedOrganization | None) -> str | No
     return None
 
 
-class OrgRef(NamedTuple):
-    """Organization reference with optional display text."""
-
-    id: str
-    display: str | None = None
-
-
-def make_ref(reference: str, display: str | None = None) -> JSONObject:
-    """Build a FHIR Reference dict, including display when available."""
-    ref: JSONObject = {"reference": reference}
-    if display:
-        ref["display"] = display
-    return ref
-
-
-def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[JSONObject]:
+def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[FHIRReference]:
     """Build Device and/or Organization refs when no assignedPerson exists.
 
     Args:
         assigned: The AssignedAuthor element (already confirmed to lack assignedPerson).
 
     Returns:
-        List of FHIR Reference objects for Device and/or Organization.
+        List of FHIRReference objects for Device and/or Organization.
     """
-    refs: list[JSONObject] = []
+    refs: list[FHIRReference] = []
     # Device uses the author-level assigned.id (not a device-specific ID)
     # because C-CDA assigns the identifier to the author role, not the device itself
     if assigned.assigned_authoring_device and assigned.id:
@@ -145,7 +128,7 @@ def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[JSONObject
             first_id.extension or None,
         )
         display = format_device_display(assigned.assigned_authoring_device)
-        refs.append(make_ref(f"urn:uuid:{device_id}", display))
+        refs.append(FHIRReference(reference=f"urn:uuid:{device_id}", display=display))
     # Organization uses its own identifier
     if assigned.represented_organization and assigned.represented_organization.id:
         org_first_id = assigned.represented_organization.id[0]
@@ -155,11 +138,11 @@ def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[JSONObject
             org_first_id.extension or None,
         )
         display = format_organization_display(assigned.represented_organization)
-        refs.append(make_ref(f"urn:uuid:{org_id}", display))
+        refs.append(FHIRReference(reference=f"urn:uuid:{org_id}", display=display))
     return refs
 
 
-def build_author_references(authors: list[Author]) -> list[JSONObject]:
+def build_author_references(authors: list[Author]) -> list[FHIRReference]:
     """Convert C-CDA authors to FHIR references (Practitioner, Device, or Organization).
 
     When an author has an assignedPerson, a Practitioner reference is created.
@@ -167,7 +150,7 @@ def build_author_references(authors: list[Author]) -> list[JSONObject]:
     Organization (from representedOrganization) per FHIR DocumentReference.author
     which accepts Practitioner | Device | Organization.
     """
-    refs: list[JSONObject] = []
+    refs: list[FHIRReference] = []
     for author in authors:
         if not author.assigned_author:
             continue
@@ -180,7 +163,7 @@ def build_author_references(authors: list[Author]) -> list[JSONObject]:
                 first_id.extension or None,
             )
             display = format_person_display(assigned.assigned_person)
-            refs.append(make_ref(f"urn:uuid:{prac_id}", display))
+            refs.append(FHIRReference(reference=f"urn:uuid:{prac_id}", display=display))
         else:
             refs.extend(_build_device_org_fallback_refs(assigned))
     return refs

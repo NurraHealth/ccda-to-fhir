@@ -13,7 +13,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -150,7 +150,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                 if latest_author.assigned_author:
                     assigned = latest_author.assigned_author
 
-                    from ccda_to_fhir.converters.author_references import format_device_display, format_person_display, make_ref
+                    from ccda_to_fhir.converters.author_references import format_device_display, format_person_display
 
                     # Check for practitioner
                     if assigned.assigned_person:
@@ -159,7 +159,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                                     display = format_person_display(assigned.assigned_person)
-                                    med_statement["informationSource"] = make_ref(f"urn:uuid:{pract_id}", display)
+                                    med_statement["informationSource"] = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
                                     break
                     # Check for device
                     elif assigned.assigned_authoring_device:
@@ -168,7 +168,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     device_id = self._generate_device_id(id_elem.root, id_elem.extension)
                                     display = format_device_display(assigned.assigned_authoring_device)
-                                    med_statement["informationSource"] = make_ref(f"urn:uuid:{device_id}", display)
+                                    med_statement["informationSource"] = FHIRReference(reference=f"urn:uuid:{device_id}", display=display).to_dict()
                                     break
 
         # 9. ReasonCode (from indication entry relationship)

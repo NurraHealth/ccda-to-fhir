@@ -46,6 +46,7 @@ from ccda_to_fhir.types import (
     ConversionMetadata,
     ConversionResult,
     EncounterContext,
+    FHIRReference,
     FHIRResourceDict,
     JSONObject,
     ValidationStats,
@@ -1074,13 +1075,13 @@ class DocumentConverter:
                 if TemplateIds.GOALS_SECTION in section_resource_map:
                     for goal in section_resource_map[TemplateIds.GOALS_SECTION]:
                         if goal.get("id"):
-                            goal_refs.append({"reference": f"urn:uuid:{goal['id']}"})
+                            goal_refs.append(FHIRReference(reference=f"urn:uuid:{goal['id']}").to_dict())
 
                 health_concern_refs = []
                 if TemplateIds.HEALTH_CONCERNS_SECTION in section_resource_map:
                     for condition in section_resource_map[TemplateIds.HEALTH_CONCERNS_SECTION]:
                         if condition.get("id"):
-                            health_concern_refs.append({"reference": f"urn:uuid:{condition['id']}"})
+                            health_concern_refs.append(FHIRReference(reference=f"urn:uuid:{condition['id']}").to_dict())
 
                 # Extract intervention and outcome entries from sections for CarePlan linking
                 # NOTE: Intervention/outcome resources have already been processed and registered
@@ -2635,16 +2636,13 @@ class DocumentConverter:
 
     def _build_document_author_references(
         self, ccda_doc: ClinicalDocument
-    ) -> list[JSONObject]:
+    ) -> list[FHIRReference]:
         """Build author references from document-level authors.
-
-        Uses the same ID generation as the resource converters, so the
-        references will match resources already in the bundle.
 
         Delegates to the shared ``build_author_references`` helper.
 
         Returns:
-            List of FHIR Reference objects (e.g. [{"reference": "urn:uuid:..."}])
+            List of FHIRReference objects.
         """
         from ccda_to_fhir.converters.author_references import build_author_references
 
@@ -3106,9 +3104,7 @@ class DocumentConverter:
                         self._temp_header_locations.append(location_resource)
 
                 if location_id:
-                    location_dict = {"reference": f"urn:uuid:{location_id}"}
-                    if location_display:
-                        location_dict["display"] = location_display
+                    location_dict = FHIRReference(reference=f"urn:uuid:{location_id}", display=location_display).to_dict()
 
                     fhir_encounter["location"] = [{
                         "location": location_dict,

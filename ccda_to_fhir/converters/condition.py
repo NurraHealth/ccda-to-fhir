@@ -29,7 +29,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.terminology import (
     get_display_for_code,
     get_display_for_condition_clinical_status,
@@ -321,16 +321,15 @@ class ConditionConverter(BaseConverter[Observation]):
         authors_with_time = [a for a in all_authors_info if a.time]
         if authors_with_time:
             latest_author = max(authors_with_time, key=lambda a: a.time)
-            from ccda_to_fhir.converters.author_references import make_ref
 
             if latest_author.practitioner_id:
-                condition["recorder"] = make_ref(
-                    f"urn:uuid:{latest_author.practitioner_id}", latest_author.display
-                )
+                condition["recorder"] = FHIRReference(
+                    reference=f"urn:uuid:{latest_author.practitioner_id}", display=latest_author.display
+                ).to_dict()
             elif latest_author.device_id:
-                condition["recorder"] = make_ref(
-                    f"urn:uuid:{latest_author.device_id}", latest_author.display
-                )
+                condition["recorder"] = FHIRReference(
+                    reference=f"urn:uuid:{latest_author.device_id}", display=latest_author.display
+                ).to_dict()
 
         # Evidence (from related observations)
         if observation.entry_relationship:

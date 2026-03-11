@@ -6,7 +6,7 @@ from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, PQ
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -368,7 +368,7 @@ class GoalConverter(BaseConverter[Observation]):
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner", first_id.root, first_id.extension
                 )
-                return {"reference": f"urn:uuid:{practitioner_id}"}
+                return FHIRReference(reference=f"urn:uuid:{practitioner_id}").to_dict()
             else:
                 # Assume it's the patient
                 if not self.reference_registry:
@@ -465,13 +465,11 @@ class GoalConverter(BaseConverter[Observation]):
                 "Condition", first_id.root, first_id.extension
             )
 
-            reference: JSONObject = {"reference": f"urn:uuid:{condition_id}"}
-
-            # Add display if we have the value
+            display: str | None = None
             if entry_ref_obs.value:
                 if isinstance(entry_ref_obs.value, (CD, CE)) and entry_ref_obs.value.display_name:
-                    reference["display"] = entry_ref_obs.value.display_name
+                    display = entry_ref_obs.value.display_name
 
-            return reference
+            return FHIRReference(reference=f"urn:uuid:{condition_id}", display=display).to_dict()
 
         return None

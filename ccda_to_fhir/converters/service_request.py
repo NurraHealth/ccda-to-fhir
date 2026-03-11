@@ -176,7 +176,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if procedure.performer:
             performers = self.extract_performer_references(procedure.performer)
             if performers:
-                fhir_service_request["performer"] = performers
+                fhir_service_request["performer"] = [p.to_dict() for p in performers]
 
         # PerformerType - from performer/functionCode
         if procedure.performer:
@@ -504,9 +504,10 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                             pract_id = self._generate_practitioner_id(
                                 id_elem.root, id_elem.extension
                             )
-                            from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                            from ccda_to_fhir.converters.author_references import format_person_display
+                            from ccda_to_fhir.types import FHIRReference
                             display = format_person_display(assigned_author.assigned_person)
-                            return make_ref(f"urn:uuid:{pract_id}", display)
+                            return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
 
         return None
 

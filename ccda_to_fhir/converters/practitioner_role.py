@@ -22,9 +22,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ccda_to_fhir.constants import FHIRCodes
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
-from .author_references import format_organization_display, make_ref
+from .author_references import format_organization_display
 from .base import BaseConverter
 
 if TYPE_CHECKING:
@@ -162,7 +162,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
         Returns:
             FHIR Reference object
         """
-        return make_ref(f"urn:uuid:{organization_id}", display)
+        return FHIRReference(reference=f"urn:uuid:{organization_id}", display=display).to_dict()
 
     def _convert_specialty(self, code: CE) -> list[JSONObject]:
         """Convert specialty code to FHIR PractitionerRole.specialty.

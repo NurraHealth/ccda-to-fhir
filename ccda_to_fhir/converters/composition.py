@@ -9,7 +9,7 @@ from ccda_to_fhir.ccda.models.datatypes import II
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -496,9 +496,10 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if assigned.id:
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
-                    from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                    from ccda_to_fhir.converters.author_references import format_person_display
+                    from ccda_to_fhir.types import FHIRReference
                     display = format_person_display(assigned.assigned_person)
-                    party_ref = make_ref(f"urn:uuid:{practitioner_id}", display)
+                    party_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display).to_dict()
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
         if not party_ref:
@@ -554,9 +555,10 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if assigned.id:
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
-                    from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                    from ccda_to_fhir.converters.author_references import format_person_display
+                    from ccda_to_fhir.types import FHIRReference
                     display = format_person_display(assigned.assigned_person)
-                    party_ref = make_ref(f"urn:uuid:{practitioner_id}", display)
+                    party_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display).to_dict()
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
         if not party_ref:
@@ -1126,7 +1128,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                         # Only add if not already added (deduplicate)
                         if reference not in seen_references:
                             seen_references.add(reference)
-                            entries.append({"reference": reference})
+                            entries.append(FHIRReference(reference=reference).to_dict())
 
         return entries
 
