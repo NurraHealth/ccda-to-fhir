@@ -32,7 +32,7 @@ from fhir.resources.R4B.relatedperson import RelatedPerson
 from fhir.resources.R4B.servicerequest import ServiceRequest
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 
-from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
+from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument, RelatedEntity
 from ccda_to_fhir.utils import fhir_date_to_instant
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II, ON
 from ccda_to_fhir.ccda.models.organizer import Organizer
@@ -48,6 +48,7 @@ from ccda_to_fhir.types import (
     EncounterContext,
     FHIRResourceDict,
     JSONObject,
+    format_human_name_display,
 )
 from ccda_to_fhir.validation import FHIRValidator
 
@@ -544,6 +545,11 @@ class DocumentConverter:
                         # Store patient ID for RelatedPerson references
                         if "id" in patient:
                             self._patient_id = patient["id"]
+                        # Extract display from converted name (first patient only)
+                        if self.reference_registry.patient_display is None:
+                            names = patient.get("name")
+                            if names and isinstance(names, list) and isinstance(names[0], dict):
+                                self.reference_registry.patient_display = format_human_name_display(names[0])  # type: ignore[arg-type]
 
                         # Convert providerOrganization to Organization resource
                         if (record_target.patient_role and
@@ -633,15 +639,7 @@ class DocumentConverter:
 
                 elif informant_info.is_related_person and informant_info.informant.related_entity:
                     try:
-                        if not hasattr(self, "_patient_id") or not isinstance(self._patient_id, str):
-                            raise ValueError(
-                                "Cannot create RelatedPerson: patient_id is required. "
-                                "Patient must be processed before informants."
-                            )
-                        patient_id: str = self._patient_id
-                        from .converters.related_person import RelatedPersonConverter
-                        related_person_converter = RelatedPersonConverter(patient_id=patient_id)
-                        related_person = related_person_converter.convert(
+                        related_person = self._convert_related_person(
                             informant_info.informant.related_entity
                         )
                         resources.append(related_person)
@@ -3578,6 +3576,30 @@ class DocumentConverter:
             key = f"{resource_type}/{resource_id}"
             self._author_metadata[key] = authors
 
+    def _convert_related_person(self, related_entity: RelatedEntity) -> FHIRResourceDict:
+        """Convert a C-CDA RelatedEntity to a FHIR RelatedPerson resource.
+
+        Args:
+            related_entity: The RelatedEntity from a C-CDA informant.
+
+        Returns:
+            FHIR RelatedPerson resource dictionary.
+
+        Raises:
+            ValueError: If patient_id is not available.
+        """
+        if not hasattr(self, "_patient_id") or not isinstance(self._patient_id, str):
+            raise ValueError(
+                "Cannot create RelatedPerson: patient_id is required. "
+                "Patient must be processed before informants."
+            )
+        from .converters.related_person import RelatedPersonConverter
+        converter = RelatedPersonConverter(
+            patient_id=self._patient_id,
+            patient_display=self.reference_registry.patient_display,
+        )
+        return converter.convert(related_entity)
+
     def _generate_informant_resources(
         self
     ) -> tuple[list[FHIRResourceDict], list[FHIRResourceDict]]:
@@ -3608,18 +3630,7 @@ class DocumentConverter:
                     elif informant_info.is_related_person and informant_info.informant.related_entity:
                         related_person_id = informant_info.related_person_id
                         if related_person_id and related_person_id not in seen_related_persons:
-                            # Get patient_id from the first patient resource in the bundle
-                            # (All informants will reference the same patient)
-                            if not hasattr(self, "_patient_id"):
-                                raise ValueError(
-                                    "Cannot create RelatedPerson: patient_id is required. "
-                                    "Patient must be processed before informants."
-                                )
-                            patient_id = self._patient_id
-
-                            from .converters.related_person import RelatedPersonConverter
-                            related_person_converter = RelatedPersonConverter(patient_id=patient_id)
-                            related_person = related_person_converter.convert(
+                            related_person = self._convert_related_person(
                                 informant_info.informant.related_entity
                             )
                             related_persons.append(related_person)
