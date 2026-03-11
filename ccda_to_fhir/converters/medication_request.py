@@ -357,7 +357,13 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             medication_id = medication["id"]
             _medication_registry[medication_id] = medication
 
-            return {"medicationReference": {"reference": f"urn:uuid:{medication_id}"}}
+            med_ref: JSONObject = {"reference": f"urn:uuid:{medication_id}"}
+
+            # Add display from medication code
+            if manufactured_material.code and manufactured_material.code.display_name:
+                med_ref["display"] = manufactured_material.code.display_name
+
+            return {"medicationReference": med_ref}
         else:
             # Simple case - use medicationCodeableConcept
             med_code = manufactured_material.code

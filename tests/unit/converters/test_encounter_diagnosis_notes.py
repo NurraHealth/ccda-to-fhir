@@ -344,7 +344,7 @@ class TestCreateDiagnosisNoteDocRefs:
         # Context
         context = dr["context"]
         assert context["encounter"] == [{"reference": "urn:uuid:encounter-uuid-1"}]
-        assert context["related"] == [{"reference": "urn:uuid:condition-uuid-1"}]
+        assert context["related"] == [{"reference": "urn:uuid:condition-uuid-1", "display": "Hypertension"}]
 
         # Type and description
         assert dr["type"]["text"] == "Diagnosis Note - Hypertension"
@@ -374,8 +374,8 @@ class TestCreateDiagnosisNoteDocRefs:
         assert len(doc_refs) == 1
         related = doc_refs[0]["context"]["related"]
         assert related == [
-            {"reference": "urn:uuid:cond-1"},
-            {"reference": "urn:uuid:cond-2"},
+            {"reference": "urn:uuid:cond-1", "display": "Hypertension"},
+            {"reference": "urn:uuid:cond-2", "display": "Hypertension"},
         ]
 
     def test_no_encounter_link(self, registry: ReferenceRegistry) -> None:
@@ -417,7 +417,7 @@ class TestCreateDiagnosisNoteDocRefs:
         assert len(doc_refs) == 1
         context = doc_refs[0]["context"]
         assert "encounter" not in context
-        assert context["related"] == [{"reference": "urn:uuid:cond-1"}]
+        assert context["related"] == [{"reference": "urn:uuid:cond-1", "display": "Diabetes"}]
 
     def test_deterministic_ids(self, registry: ReferenceRegistry) -> None:
         notes = [
@@ -525,7 +525,7 @@ class TestExtractEncounterDiagnosisNotesIntegration:
 
         # Condition link via SNOMED matching
         context = dr["context"]
-        assert context["related"] == [{"reference": "urn:uuid:cond-fhir-1"}]
+        assert context["related"] == [{"reference": "urn:uuid:cond-fhir-1", "display": "Hypertension"}]
 
     def test_full_pipeline_with_encounter_linking(self, registry: ReferenceRegistry) -> None:
         """Test encounter linking via section entries with text references."""

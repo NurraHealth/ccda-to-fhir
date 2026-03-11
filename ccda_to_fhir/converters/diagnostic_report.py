@@ -187,9 +187,15 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
 
                     # Add reference to this observation
                     if "id" in observation:
-                        result_refs.append({
+                        result_ref: JSONObject = {
                             "reference": f"urn:uuid:{observation['id']}"
-                        })
+                        }
+
+                        # Add display from C-CDA observation code
+                        if component.observation.code and component.observation.code.display_name:
+                            result_ref["display"] = component.observation.code.display_name
+
+                        result_refs.append(result_ref)
 
         if result_refs:
             report["result"] = result_refs

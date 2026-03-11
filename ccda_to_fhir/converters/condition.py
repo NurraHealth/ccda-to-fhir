@@ -821,10 +821,16 @@ class ConditionConverter(BaseConverter[Observation]):
                         continue
 
                     # Add evidence detail reference
+                    detail_ref: JSONObject = {
+                        "reference": f"urn:uuid:{obs_id}"
+                    }
+
+                    # Add display from supporting observation code
+                    if supporting_obs.code and supporting_obs.code.display_name:
+                        detail_ref["display"] = supporting_obs.code.display_name
+
                     evidence_list.append({
-                        "detail": [{
-                            "reference": f"urn:uuid:{obs_id}"
-                        }]
+                        "detail": [detail_ref]
                     })
 
         return evidence_list if evidence_list else None

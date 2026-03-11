@@ -285,7 +285,14 @@ def _build_doc_ref(
 
     if note.snomed_code and note.snomed_code in condition_snomed_map:
         condition_ids = condition_snomed_map[note.snomed_code]
-        context["related"] = [{"reference": f"urn:uuid:{cid}"} for cid in condition_ids]
+        related_refs: list[JSONObject] = []
+        for cid in condition_ids:
+            ref: JSONObject = {"reference": f"urn:uuid:{cid}"}
+            # Add display from diagnosis note display text
+            if note.diagnosis_display:
+                ref["display"] = note.diagnosis_display
+            related_refs.append(ref)
+        context["related"] = related_refs
 
     if context:
         doc_ref["context"] = context
