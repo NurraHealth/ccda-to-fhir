@@ -18,6 +18,7 @@ from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
+from .author_references import OrgRef, format_organization_display, make_ref
 from .base import BaseConverter
 from .organization import OrganizationConverter
 from .practitioner import PractitionerConverter
@@ -206,9 +207,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         careteam["participant"] = participants
 
         # Extract managing organization from first member's organization
-        managing_org_id = self._extract_managing_organization(organizer)
-        if managing_org_id:
-            careteam["managingOrganization"] = [{"reference": f"urn:uuid:{managing_org_id}"}]
+        managing_org = self._extract_managing_organization(organizer)
+        if managing_org:
+            careteam["managingOrganization"] = [
+                make_ref(f"urn:uuid:{managing_org.id}", managing_org.display)
+            ]
 
         # Extract narrative text from code originalText or generate from data
         narrative = self._generate_narrative(organizer, categories, participants)
@@ -499,16 +502,16 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return categories
 
-    def _extract_managing_organization(self, organizer: Organizer) -> str | None:
+    def _extract_managing_organization(self, organizer: Organizer) -> OrgRef | None:
         """Extract managing organization from Care Team Member Acts.
 
-        Returns the organization ID from the first member who has one.
+        Returns the organization ID and display name from the first member who has one.
 
         Args:
             organizer: Care Team Organizer
 
         Returns:
-            Organization ID or None if not found
+            OrgRef with id and display, or None if not found
         """
         if not organizer.component:
             return None
@@ -557,15 +560,16 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 org = assigned_entity.represented_organization
                 if org.id and len(org.id) > 0:
                     org_oid = org.id[0].root
+                    display = format_organization_display(org)
                     # Check if we already created this organization
                     if org_oid in self.organization_registry:
-                        return self.organization_registry[org_oid]
+                        return OrgRef(id=self.organization_registry[org_oid], display=display)
                     # Try to convert it
                     try:
                         organization = self.organization_converter.convert(org)
                         organization_id = organization.get("id", f"org-{org_oid.replace('.', '-')}")
                         self.organization_registry[org_oid] = organization_id
-                        return organization_id
+                        return OrgRef(id=organization_id, display=display)
                     except Exception:
                         # Organization conversion failed, continue to next member
                         continue

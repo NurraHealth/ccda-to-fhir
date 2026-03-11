@@ -7,6 +7,8 @@ entry-level author reference builders.
 
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from ccda_to_fhir.ccda.models.author import (
     AssignedAuthor,
     AssignedAuthoringDevice,
@@ -108,7 +110,14 @@ def format_organization_display(org: RepresentedOrganization | None) -> str | No
     return None
 
 
-def make_ref(reference: str, display: str | None) -> JSONObject:
+class OrgRef(NamedTuple):
+    """Organization reference with optional display text."""
+
+    id: str
+    display: str | None = None
+
+
+def make_ref(reference: str, display: str | None = None) -> JSONObject:
     """Build a FHIR Reference dict, including display when available."""
     ref: JSONObject = {"reference": reference}
     if display:

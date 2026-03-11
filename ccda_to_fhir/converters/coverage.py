@@ -33,6 +33,7 @@ from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict
 
+from .author_references import format_organization_display, make_ref
 from .base import BaseConverter
 from .organization import OrganizationConverter
 
@@ -286,8 +287,9 @@ class CoverageConverter(BaseConverter["Act"]):
                     logger.warning("Organization converter produced no id; generating fallback")
                     org["id"] = generate_id()
                 related.append(org)
+                display = format_organization_display(assigned.represented_organization)
                 coverage["payor"] = [
-                    {"reference": f"urn:uuid:{org['id']}"}
+                    make_ref(f"urn:uuid:{org['id']}", display)
                 ]
         elif assigned.id:
             # Create minimal Organization from assignedEntity
@@ -305,6 +307,7 @@ class CoverageConverter(BaseConverter["Act"]):
             if identifiers:
                 minimal_org["identifier"] = identifiers
             related.append(minimal_org)
+            # Minimal org built from identifiers only — no name available for display
             coverage["payor"] = [
                 {"reference": f"urn:uuid:{org_id}"}
             ]

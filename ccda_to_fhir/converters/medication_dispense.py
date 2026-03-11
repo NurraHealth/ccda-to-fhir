@@ -11,6 +11,11 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
+from ccda_to_fhir.converters.author_references import (
+    format_organization_display,
+    format_person_display,
+    make_ref,
+)
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
@@ -342,8 +347,6 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             - performer list: List of FHIR performer objects or None
             - location reference: Location reference (e.g., "urn:uuid:12345678-abcd-1234-abcd-123456789abc") or None
         """
-        from ccda_to_fhir.converters.author_references import format_organization_display, format_person_display, make_ref
-
         performers = []
         location_ref = None
 
@@ -633,7 +636,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         # Per US Core: "Must be supported if the data is present in the sending system"
         org_id = self._create_pharmacy_organization(organization)
         if org_id:
-            location["managingOrganization"] = {"reference": f"urn:uuid:{org_id}"}
+            display = format_organization_display(organization)
+            location["managingOrganization"] = make_ref(f"urn:uuid:{org_id}", display)
 
         # Register Location resource
         self.reference_registry.register_resource(location)
