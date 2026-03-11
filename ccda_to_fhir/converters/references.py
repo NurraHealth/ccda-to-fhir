@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from ccda_to_fhir.exceptions import MissingReferenceError
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import format_human_name_display
 
 if TYPE_CHECKING:
     from ccda_to_fhir.types import FHIRResourceDict, JSONObject
@@ -20,7 +21,7 @@ logger = get_logger(__name__)
 def _extract_patient_display(resource: FHIRResourceDict) -> str | None:
     """Extract a display string from a FHIR Patient resource.
 
-    Builds "prefix given family suffix" from the first HumanName entry.
+    Uses HumanName.text when available, otherwise builds from name parts.
 
     Args:
         resource: FHIR Patient resource dictionary.
@@ -28,8 +29,6 @@ def _extract_patient_display(resource: FHIRResourceDict) -> str | None:
     Returns:
         Formatted patient name or None if unavailable.
     """
-    from ccda_to_fhir.types import format_human_name_display
-
     names = resource.get("name")
     if not isinstance(names, list) or not names:
         return None

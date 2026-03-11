@@ -91,6 +91,23 @@ class TestExtractPatientDisplay:
         }
         assert _extract_patient_display(patient) == "John Smith"
 
+    def test_prefers_text_over_parts(self):
+        """Per FHIR R4, HumanName.text is preferred when present."""
+        patient: FHIRResourceDict = {
+            "resourceType": "Patient",
+            "id": "p1",
+            "name": [{"text": "Dr. John H. Smith III", "family": "Smith", "given": ["John"]}],
+        }
+        assert _extract_patient_display(patient) == "Dr. John H. Smith III"
+
+    def test_falls_back_to_parts_when_text_empty(self):
+        patient: FHIRResourceDict = {
+            "resourceType": "Patient",
+            "id": "p1",
+            "name": [{"text": "  ", "family": "Doe", "given": ["Jane"]}],
+        }
+        assert _extract_patient_display(patient) == "Jane Doe"
+
 
 class TestGetPatientReferenceDisplay:
     """Test that get_patient_reference() includes display."""

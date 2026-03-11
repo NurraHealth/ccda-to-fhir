@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from ccda_to_fhir.convert import convert_document
-from ccda_to_fhir.converters.references import _extract_patient_display
+from ccda_to_fhir.types import format_human_name_display
 
 DOCUMENTS_DIR = Path(__file__).parent / "fixtures" / "documents"
 
@@ -38,7 +38,9 @@ def _get_patient_display(resources: list[dict]) -> str | None:
     """Get the expected display from the Patient resource name."""
     for r in resources:
         if r["resourceType"] == "Patient":
-            return _extract_patient_display(r)
+            names = r.get("name")
+            if isinstance(names, list) and names and isinstance(names[0], dict):
+                return format_human_name_display(names[0])
     return None
 
 
@@ -72,5 +74,12 @@ def test_subject_references_have_display(fixture: str) -> None:
             ref = r["patient"]
             assert "display" in ref, (
                 f"{rt}/{r.get('id')}: patient reference missing display"
+            )
+            assert ref["display"] == patient_display
+
+        if rt == "RelatedPerson" and "patient" in r:
+            ref = r["patient"]
+            assert "display" in ref, (
+                f"RelatedPerson/{r.get('id')}: patient reference missing display"
             )
             assert ref["display"] == patient_display

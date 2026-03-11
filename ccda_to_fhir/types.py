@@ -43,10 +43,17 @@ class HumanName(TypedDict, total=False):
 
 
 def format_human_name_display(name: HumanName) -> str | None:
-    """Build a display string from a FHIR HumanName: "prefix given family suffix".
+    """Build a display string from a FHIR HumanName.
+
+    Per FHIR R4, HumanName.text is "the entire name as it should be displayed"
+    and is preferred when present. Falls back to "prefix given family suffix".
 
     Returns None if no meaningful parts are present.
     """
+    text = name.get("text")
+    if isinstance(text, str) and text.strip():
+        return text.strip()
+
     parts: list[str] = []
     for p in name.get("prefix", []):
         if isinstance(p, str) and p:
