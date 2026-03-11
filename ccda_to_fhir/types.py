@@ -51,23 +51,19 @@ def format_human_name_display(name: HumanName) -> str | None:
     Returns None if no meaningful parts are present.
     """
     text = name.get("text")
-    if isinstance(text, str) and text.strip():
+    if text and text.strip():
         return text.strip()
 
-    parts: list[str] = []
-    for p in name.get("prefix", []):
-        if isinstance(p, str) and p:
-            parts.append(p)
-    for g in name.get("given", []):
-        if isinstance(g, str) and g:
-            parts.append(g)
+    parts: list[str] = [
+        *name.get("prefix", []),
+        *name.get("given", []),
+    ]
     family = name.get("family")
-    if isinstance(family, str) and family:
+    if family:
         parts.append(family)
-    for s in name.get("suffix", []):
-        if isinstance(s, str) and s:
-            parts.append(s)
-    return " ".join(parts) if parts else None
+    parts.extend(name.get("suffix", []))
+
+    return " ".join(p for p in parts if p) or None
 
 
 class EncounterContext(BaseModel, frozen=True):

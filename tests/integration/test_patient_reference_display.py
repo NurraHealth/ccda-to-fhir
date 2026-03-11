@@ -37,10 +37,8 @@ def _extract_resources(bundle: dict) -> list[dict]:
 def _get_patient_display(resources: list[dict]) -> str | None:
     """Get the expected display from the Patient resource name."""
     for r in resources:
-        if r["resourceType"] == "Patient":
-            names = r.get("name")
-            if isinstance(names, list) and names and isinstance(names[0], dict):
-                return format_human_name_display(names[0])
+        if r["resourceType"] == "Patient" and r.get("name"):
+            return format_human_name_display(r["name"][0])
     return None
 
 

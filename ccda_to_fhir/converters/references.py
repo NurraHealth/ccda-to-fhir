@@ -19,25 +19,12 @@ logger = get_logger(__name__)
 
 
 def _extract_patient_display(resource: FHIRResourceDict) -> str | None:
-    """Extract a display string from a FHIR Patient resource.
-
-    Uses HumanName.text when available, otherwise builds from name parts.
-
-    Args:
-        resource: FHIR Patient resource dictionary.
-
-    Returns:
-        Formatted patient name or None if unavailable.
-    """
+    """Extract a display string from the first HumanName on a Patient resource."""
     names = resource.get("name")
-    if not isinstance(names, list) or not names:
+    if not names:
         return None
 
-    name = names[0]
-    if not isinstance(name, dict):
-        return None
-
-    return format_human_name_display(name)
+    return format_human_name_display(names[0])  # type: ignore[arg-type]
 
 
 class ReferenceRegistry:
