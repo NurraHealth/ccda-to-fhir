@@ -309,7 +309,7 @@ class CoverageConverter(BaseConverter["Act"]):
             related.append(minimal_org)
             # Minimal org built from identifiers only — no name available for display
             coverage["payor"] = [
-                make_ref(f"urn:uuid:{org_id}", None)
+                {"reference": f"urn:uuid:{org_id}"}
             ]
 
     @staticmethod

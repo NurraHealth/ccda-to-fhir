@@ -46,13 +46,23 @@ def registry() -> ReferenceRegistry:
 class TestCustodianReferenceDisplay:
     """Tests for display text on Composition.custodian reference."""
 
-    def _make_converter(self):
+    def _make_converter(self, registry: ReferenceRegistry | None = None):
         from ccda_to_fhir.converters.composition import CompositionConverter
 
-        return CompositionConverter()
+        return CompositionConverter(reference_registry=registry)
+
+    def _registry_with_org(self, root: str, extension: str | None = None) -> ReferenceRegistry:
+        """Create a registry with a pre-registered Organization matching the given IDs."""
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        reg = _make_registry()
+        org_id = generate_id_from_identifiers("Organization", root, extension)
+        reg.register_resource({"resourceType": "Organization", "id": org_id})
+        return reg
 
     def test_custodian_includes_display_from_on(self) -> None:
-        converter = self._make_converter()
+        registry = self._registry_with_org("2.16.840.1.113883.4.6", "1234567890")
+        converter = self._make_converter(registry)
         custodian = Custodian(
             assigned_custodian=AssignedCustodian(
                 represented_custodian_organization=CustodianOrganization(
@@ -67,7 +77,8 @@ class TestCustodianReferenceDisplay:
         assert "reference" in ref
 
     def test_custodian_includes_display_from_string_name(self) -> None:
-        converter = self._make_converter()
+        registry = self._registry_with_org("1.2.3")
+        converter = self._make_converter(registry)
         custodian = Custodian(
             assigned_custodian=AssignedCustodian(
                 represented_custodian_organization=CustodianOrganization(
@@ -81,7 +92,8 @@ class TestCustodianReferenceDisplay:
         assert ref["display"] == "Community Hospital"
 
     def test_custodian_no_display_when_name_missing(self) -> None:
-        converter = self._make_converter()
+        registry = self._registry_with_org("1.2.3")
+        converter = self._make_converter(registry)
         custodian = Custodian(
             assigned_custodian=AssignedCustodian(
                 represented_custodian_organization=CustodianOrganization(
@@ -95,7 +107,8 @@ class TestCustodianReferenceDisplay:
         assert "reference" in ref
 
     def test_custodian_reference_uri_from_ids(self) -> None:
-        converter = self._make_converter()
+        registry = self._registry_with_org("2.16.840.1.113883.4.6", "9876543210")
+        converter = self._make_converter(registry)
         custodian = Custodian(
             assigned_custodian=AssignedCustodian(
                 represented_custodian_organization=CustodianOrganization(
@@ -107,6 +120,56 @@ class TestCustodianReferenceDisplay:
         ref = converter._create_custodian_reference(custodian)
         assert ref is not None
         assert ref["reference"].startswith("urn:uuid:")
+
+    def test_custodian_no_reference_when_org_not_in_registry(self) -> None:
+        """Reference URI should be omitted when Organization is not in the registry."""
+        registry = _make_registry()  # no Organization registered
+        converter = self._make_converter(registry)
+        custodian = Custodian(
+            assigned_custodian=AssignedCustodian(
+                represented_custodian_organization=CustodianOrganization(
+                    id=[II(root="9.9.9.9")],
+                    name=ON(value="Unknown Org"),
+                )
+            )
+        )
+        ref = converter._create_custodian_reference(custodian)
+        assert ref is not None
+        assert "reference" not in ref
+        assert ref["display"] == "Unknown Org"
+
+    def test_custodian_no_reference_without_registry(self) -> None:
+        """Reference URI should be omitted when no registry is available."""
+        converter = self._make_converter()  # no registry
+        custodian = Custodian(
+            assigned_custodian=AssignedCustodian(
+                represented_custodian_organization=CustodianOrganization(
+                    id=[II(root="1.2.3")],
+                    name=ON(value="Display Only Org"),
+                )
+            )
+        )
+        ref = converter._create_custodian_reference(custodian)
+        assert ref is not None
+        assert "reference" not in ref
+        assert ref["display"] == "Display Only Org"
+
+    def test_custodian_empty_on_value_yields_no_display(self) -> None:
+        """Empty ON.value should not produce a display field."""
+        registry = self._registry_with_org("1.2.3")
+        converter = self._make_converter(registry)
+        custodian = Custodian(
+            assigned_custodian=AssignedCustodian(
+                represented_custodian_organization=CustodianOrganization(
+                    id=[II(root="1.2.3")],
+                    name=ON(value=""),
+                )
+            )
+        )
+        ref = converter._create_custodian_reference(custodian)
+        assert ref is not None
+        assert "display" not in ref
+        assert "reference" in ref
 
 
 # ============================================================================

@@ -108,7 +108,7 @@ def format_organization_display(org: RepresentedOrganization | None) -> str | No
     return None
 
 
-def make_ref(reference: str, display: str | None) -> JSONObject:
+def make_ref(reference: str, display: str | None = None) -> JSONObject:
     """Build a FHIR Reference dict, including display when available."""
     ref: JSONObject = {"reference": reference}
     if display:

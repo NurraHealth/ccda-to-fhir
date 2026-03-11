@@ -923,16 +923,17 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if isinstance(custodian_org.name, str):
                 display = custodian_org.name or None
             elif custodian_org.name.value:
-                display = custodian_org.name.value
+                display = custodian_org.name.value or None
 
-        # Build reference with both URI and display when org has identifiers
+        # Build reference URI only when the Organization exists in the registry
         ref: JSONObject = {}
-        if custodian_org.id:
+        if custodian_org.id and self.reference_registry:
             first_id = custodian_org.id[0]
             org_id = generate_id_from_identifiers(
                 "Organization", first_id.root, first_id.extension
             )
-            ref["reference"] = f"urn:uuid:{org_id}"
+            if self.reference_registry.has_resource("Organization", org_id):
+                ref["reference"] = f"urn:uuid:{org_id}"
 
         if display:
             ref["display"] = display
