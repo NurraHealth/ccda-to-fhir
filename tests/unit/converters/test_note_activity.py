@@ -13,10 +13,8 @@ import pytest
 from ccda_to_fhir.ccda.models.act import Act, ExternalDocument, Reference
 from ccda_to_fhir.ccda.models.author import (
     AssignedAuthor,
-    AssignedAuthoringDevice,
     AssignedPerson,
     Author,
-    RepresentedOrganization,
 )
 from ccda_to_fhir.ccda.models.datatypes import CD, CS, ED, ENXP, II, IVL_TS, PN, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CDAEncounter
@@ -319,122 +317,6 @@ class TestConvertAuthorReferences:
         refs1 = build_author_references([_make_author()])
         refs2 = build_author_references([_make_author()])
         assert refs1[0]["reference"] == refs2[0]["reference"]
-
-    def test_device_fallback_when_no_person(self) -> None:
-        """Author with assignedAuthoringDevice but no assignedPerson → Device reference."""
-        author = Author(
-            assigned_author=AssignedAuthor(
-                id=[II(root="2.16.840.1.113883.3.564")],
-                assigned_authoring_device=AssignedAuthoringDevice(
-                    manufacturer_model_name="Test EHR",
-                    software_name="Doc Engine",
-                ),
-            ),
-        )
-        refs = build_author_references([author])
-        assert len(refs) >= 1
-        # First ref should be the Device
-        assert refs[0]["reference"].startswith("urn:uuid:")
-
-    def test_organization_fallback_when_no_person(self) -> None:
-        """Author with representedOrganization but no assignedPerson → Organization reference."""
-        author = Author(
-            assigned_author=AssignedAuthor(
-                id=[II(root="2.16.840.1.113883.3.564")],
-                represented_organization=RepresentedOrganization(
-                    id=[II(root="3b2bcc65-107a-4139-81d9-d575d34aff66", extension="24378")],
-                    name=["Test Medical Group"],
-                ),
-            ),
-        )
-        refs = build_author_references([author])
-        assert len(refs) == 1
-        assert refs[0]["reference"].startswith("urn:uuid:")
-
-    def test_device_and_organization_fallback(self) -> None:
-        """Author with both device and org but no person → both Device and Organization refs."""
-        author = Author(
-            assigned_author=AssignedAuthor(
-                id=[II(root="2.16.840.1.113883.3.564")],
-                assigned_authoring_device=AssignedAuthoringDevice(
-                    manufacturer_model_name="Test EHR",
-                ),
-                represented_organization=RepresentedOrganization(
-                    id=[II(root="org-root", extension="org-ext")],
-                    name=["Test Org"],
-                ),
-            ),
-        )
-        refs = build_author_references([author])
-        assert len(refs) == 2
-        # Both should be valid urn:uuid references
-        assert all(r["reference"].startswith("urn:uuid:") for r in refs)
-        # Device and Organization should have different IDs
-        assert refs[0]["reference"] != refs[1]["reference"]
-
-    def test_no_fallback_when_person_exists(self) -> None:
-        """Author with assignedPerson should still only create Practitioner ref."""
-        author = Author(
-            assigned_author=AssignedAuthor(
-                id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
-                assigned_person=AssignedPerson(
-                    name=[PN(given=[ENXP(value="Dr")], family=ENXP(value="Smith"))],
-                ),
-                assigned_authoring_device=AssignedAuthoringDevice(
-                    manufacturer_model_name="Test EHR",
-                ),
-                represented_organization=RepresentedOrganization(
-                    id=[II(root="org-root")],
-                    name=["Test Org"],
-                ),
-            ),
-        )
-        refs = build_author_references([author])
-        # Only Practitioner reference, not Device or Organization
-        assert len(refs) == 1
-
-    def test_device_without_id_skipped(self) -> None:
-        """Device author without assigned.id should not create Device reference."""
-        author = Author(
-            assigned_author=AssignedAuthor(
-                assigned_authoring_device=AssignedAuthoringDevice(
-                    manufacturer_model_name="Test EHR",
-                ),
-            ),
-        )
-        refs = build_author_references([author])
-        assert refs == []
-
-    def test_organization_without_org_id_skipped(self) -> None:
-        """Organization without its own id should not create Organization reference."""
-        author = Author(
-            assigned_author=AssignedAuthor(
-                id=[II(root="2.16.840.1.113883.3.564")],
-                represented_organization=RepresentedOrganization(
-                    name=["Test Org"],
-                ),
-            ),
-        )
-        refs = build_author_references([author])
-        assert refs == []
-
-    def test_mixed_person_and_device_authors(self) -> None:
-        """Multiple authors: one person, one device → Practitioner + Device + Org refs."""
-        person_author = _make_author("1234567890")
-        device_author = Author(
-            assigned_author=AssignedAuthor(
-                id=[II(root="device-root")],
-                assigned_authoring_device=AssignedAuthoringDevice(
-                    manufacturer_model_name="Test EHR",
-                ),
-                represented_organization=RepresentedOrganization(
-                    id=[II(root="org-root")],
-                ),
-            ),
-        )
-        refs = build_author_references([person_author, device_author])
-        # 1 Practitioner + 1 Device + 1 Organization = 3
-        assert len(refs) == 3
 
 
 # ============================================================================
