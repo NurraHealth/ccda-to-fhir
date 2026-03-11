@@ -162,7 +162,7 @@ def _build_document_reference(
 
     enc_fhir_ref = encounter_context.to_fhir_reference()
     if enc_fhir_ref:
-        doc_ref["context"] = {"encounter": [enc_fhir_ref]}
+        doc_ref["context"] = {"encounter": [enc_fhir_ref.to_dict()]}
 
     if author_references:
         doc_ref["author"] = author_references

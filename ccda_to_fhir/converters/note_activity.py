@@ -375,7 +375,7 @@ def _create_context(
     if "encounter" not in context:
         fallback_ref = fallback_encounter_context.to_fhir_reference()
         if fallback_ref:
-            context["encounter"] = [fallback_ref]
+            context["encounter"] = [fallback_ref.to_dict()]
 
     return context if context else None
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # JSON primitive types
 JSONPrimitive: TypeAlias = str | int | float | bool | None
@@ -40,13 +40,28 @@ JSONArray: TypeAlias = list[JSONValue]
 
 
 class FHIRCoding(BaseModel, frozen=True):
-    """FHIR Coding element (system + code + display)."""
+    """FHIR Coding element (system + code + display).
+
+    Per FHIR R4, ``system`` is required when ``code`` is present and vice-versa.
+    A FHIRCoding with only ``display`` (no system/code) is permitted by the spec.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     system: str | None = None
     code: str | None = None
     display: str | None = None
+
+    @model_validator(mode="after")
+    def _system_and_code_must_co_occur(self) -> FHIRCoding:
+        has_system = self.system is not None
+        has_code = self.code is not None
+        if has_system != has_code:
+            raise ValueError(
+                "system and code must both be provided or both omitted; "
+                f"got system={self.system!r}, code={self.code!r}"
+            )
+        return self
 
     def to_dict(self) -> JSONObject:
         return self.model_dump(exclude_none=True)
@@ -119,7 +134,11 @@ class OperationStats(BaseModel, frozen=True):
 
 
 class ValidationStats(BaseModel):
-    """Validation statistics from FHIRValidator."""
+    """Validation statistics from FHIRValidator.
+
+    Not frozen: mutated in-place by FHIRValidator during validation.
+    Callers receive an immutable snapshot via ``model_copy()``.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -130,7 +149,11 @@ class ValidationStats(BaseModel):
 
 
 class RegistryStats(BaseModel):
-    """Statistics from ReferenceRegistry."""
+    """Statistics from ReferenceRegistry.
+
+    Not frozen: mutated in-place by ReferenceRegistry during resolution.
+    Callers receive an immutable snapshot via ``model_copy()``.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -188,14 +211,11 @@ class EncounterContext(BaseModel, frozen=True):
     display: str | None = None
     """Human-readable label from encompassingEncounter code.displayName."""
 
-    def to_fhir_reference(self) -> JSONObject | None:
-        """Build a FHIR Reference object, or None if no reference is set."""
+    def to_fhir_reference(self) -> FHIRReference | None:
+        """Build a FHIRReference, or None if no reference is set."""
         if not self.reference:
             return None
-        ref: JSONObject = {"reference": self.reference}
-        if self.display:
-            ref["display"] = self.display
-        return ref
+        return FHIRReference(reference=self.reference, display=self.display)
 
 
 # =============================================================================

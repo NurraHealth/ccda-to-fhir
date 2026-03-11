@@ -14,12 +14,13 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject, ReasonResult
+from ccda_to_fhir.types import FHIRCodeableConcept, FHIRResourceDict, JSONObject, ReasonResult
 
 from .base import BaseConverter
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
+    from ccda_to_fhir.ccda.models.performer import Performer
 
 
 class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
@@ -392,14 +393,14 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             ]
         }
 
-    def _convert_code(self, code: CD) -> JSONObject | None:
-        """Convert C-CDA code to FHIR CodeableConcept.
+    def _convert_code(self, code: CD) -> FHIRCodeableConcept | None:
+        """Convert C-CDA code to FHIR CodeableConcept model.
 
         Args:
             code: The C-CDA code
 
         Returns:
-            FHIR CodeableConcept
+            FHIRCodeableConcept or None
         """
         return self.convert_code_to_codeable_concept(code)
 
@@ -509,14 +510,14 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         return None
 
-    def _extract_performer_type(self, performers: list) -> JSONObject | None:
+    def _extract_performer_type(self, performers: list[Performer]) -> FHIRCodeableConcept | None:
         """Extract performerType from C-CDA performer functionCode.
 
         Args:
             performers: List of C-CDA performer elements
 
         Returns:
-            FHIR CodeableConcept or None
+            FHIRCodeableConcept or None
         """
         for performer in performers:
             if performer.function_code:

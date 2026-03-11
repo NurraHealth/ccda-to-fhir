@@ -31,7 +31,7 @@ from ccda_to_fhir.ccda.models.record_target import Patient, PatientRole, RecordT
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.converters.careplan import CarePlanConverter
 from ccda_to_fhir.converters.references import ReferenceRegistry
-from ccda_to_fhir.types import FHIRReference  # noqa: F811
+from ccda_to_fhir.types import FHIRReference
 
 # ============================================================================
 # Fixtures - Realistic C-CDA Care Plan Document Data

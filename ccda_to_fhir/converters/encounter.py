@@ -19,7 +19,7 @@ from ccda_to_fhir.constants import (
     TemplateIds,
     map_cpt_to_actcode,
 )
-from ccda_to_fhir.types import DiagnosisRole, FHIRResourceDict, JSONObject, ReasonResult
+from ccda_to_fhir.types import DiagnosisRole, FHIRCodeableConcept, FHIRResourceDict, JSONObject, ReasonResult
 
 from .base import BaseConverter
 
@@ -293,7 +293,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             "code": FHIRCodes.EncounterClass.AMBULATORY,
         }
 
-    def _extract_type(self, encounter: CCDAEncounter) -> JSONObject | None:
+    def _extract_type(self, encounter: CCDAEncounter) -> FHIRCodeableConcept | None:
         """Extract FHIR type from C-CDA encounter code.
 
         If the encounter code is NOT from V3 ActCode (since that's used for class),
@@ -314,14 +314,14 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         return self._convert_code(encounter.code)
 
-    def _convert_code(self, code) -> JSONObject | None:
-        """Convert C-CDA encounter code to FHIR CodeableConcept.
+    def _convert_code(self, code: CD) -> FHIRCodeableConcept | None:
+        """Convert C-CDA encounter code to FHIR CodeableConcept model.
 
         Args:
             code: The C-CDA encounter code
 
         Returns:
-            FHIR CodeableConcept or None
+            FHIRCodeableConcept or None
         """
         return self.convert_code_to_codeable_concept(code)
 

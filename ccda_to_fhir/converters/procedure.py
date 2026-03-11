@@ -13,7 +13,7 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject, ReasonResult
+from ccda_to_fhir.types import FHIRCodeableConcept, FHIRResourceDict, JSONObject, ReasonResult
 
 from .base import BaseConverter
 
@@ -319,14 +319,14 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             FHIRCodes.ProcedureStatus.UNKNOWN,
         )
 
-    def _convert_code(self, code: CD) -> JSONObject:
-        """Convert C-CDA procedure code to FHIR CodeableConcept.
+    def _convert_code(self, code: CD) -> FHIRCodeableConcept | None:
+        """Convert C-CDA procedure code to FHIR CodeableConcept model.
 
         Args:
             code: The C-CDA procedure code
 
         Returns:
-            FHIR CodeableConcept
+            FHIRCodeableConcept or None
         """
         return self.convert_code_to_codeable_concept(code)
 
