@@ -24,7 +24,10 @@ def _extract_patient_display(resource: FHIRResourceDict) -> str | None:
     if not names:
         return None
 
-    return format_human_name_display(names[0])  # type: ignore[arg-type]
+    first = names[0]
+    if not isinstance(first, dict):
+        return None
+    return format_human_name_display(first)  # type: ignore[arg-type]
 
 
 class ReferenceRegistry:
