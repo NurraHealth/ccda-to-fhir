@@ -160,9 +160,11 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
                             practitioner_id = self._generate_practitioner_id(
                                 id_elem.root, id_elem.extension
                             )
-                            interpreters.append({
-                                "reference": f"urn:uuid:{practitioner_id}"
-                            })
+                            from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                            display = format_person_display(
+                                performer.assigned_entity.assigned_person
+                            )
+                            interpreters.append(make_ref(f"urn:uuid:{practitioner_id}", display))
                             break  # Use first valid ID
             if interpreters:
                 report["resultsInterpreter"] = interpreters

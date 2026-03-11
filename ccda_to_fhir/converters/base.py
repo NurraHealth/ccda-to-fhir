@@ -13,6 +13,7 @@ from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
+from .author_references import format_organization_display, format_person_display, make_ref
 from .code_systems import CodeSystemMapper
 
 logger = get_logger(__name__)
@@ -1625,7 +1626,8 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Register with reference registry
                 self.reference_registry.register_resource(practitioner)
 
-        return {"reference": f"urn:uuid:{pract_id}"}
+        display = format_person_display(assigned_entity.assigned_person)
+        return make_ref(f"urn:uuid:{pract_id}", display)
 
     def create_organization_reference_from_entity(
         self,
@@ -1677,7 +1679,8 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Register with reference registry
                 self.reference_registry.register_resource(organization)
 
-        return {"reference": f"urn:uuid:{org_id}"}
+        display = format_organization_display(represented_organization)
+        return make_ref(f"urn:uuid:{org_id}", display)
 
     def extract_performer_function(
         self,
@@ -1801,7 +1804,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             )
             if root:
                 practitioner_id = self._generate_practitioner_id(root, extension)
-                references.append({"reference": f"urn:uuid:{practitioner_id}"})
+                display = format_person_display(
+                    performer.assigned_entity.assigned_person
+                )
+                references.append(make_ref(f"urn:uuid:{practitioner_id}", display))
 
         return references
 

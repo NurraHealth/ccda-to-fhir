@@ -498,9 +498,9 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                             pract_id = self._generate_practitioner_id(
                                 id_elem.root, id_elem.extension
                             )
-                            return {
-                                "reference": f"urn:uuid:{pract_id}"
-                            }
+                            from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                            display = format_person_display(assigned_author.assigned_person)
+                            return make_ref(f"urn:uuid:{pract_id}", display)
 
         return None
 

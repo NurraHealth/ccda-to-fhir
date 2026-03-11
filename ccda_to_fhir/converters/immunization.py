@@ -972,28 +972,37 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         Returns:
             FHIR Reference dict or None
         """
+        from ccda_to_fhir.converters.author_references import (
+            format_organization_display,
+            format_person_display,
+            make_ref,
+        )
+
         # Try to find a practitioner ID
         if assigned_entity.id:
+            display = format_person_display(assigned_entity.assigned_person)
+
             # First pass: prefer non-nullFlavor IDs
             for id_elem in assigned_entity.id:
                 if id_elem.root and not getattr(id_elem, "null_flavor", None):
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                    return {"reference": f"urn:uuid:{pract_id}"}
+                    return make_ref(f"urn:uuid:{pract_id}", display)
 
             # Second pass: use first ID with root (including nullFlavor)
             for id_elem in assigned_entity.id:
                 if id_elem.root:
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                    return {"reference": f"urn:uuid:{pract_id}"}
+                    return make_ref(f"urn:uuid:{pract_id}", display)
 
         # Fallback: try represented organization
-        org = getattr(assigned_entity, "represented_organization", None)
+        org = assigned_entity.represented_organization
         if org:
             org_ids = getattr(org, "id", None)
             root, extension = self.select_preferred_identifier(org_ids, prefer_npi=False)
             if root:
                 org_id = self._generate_organization_id(root, extension)
-                return {"reference": f"urn:uuid:{org_id}"}
+                display = format_organization_display(org)
+                return make_ref(f"urn:uuid:{org_id}", display)
 
         return None
 

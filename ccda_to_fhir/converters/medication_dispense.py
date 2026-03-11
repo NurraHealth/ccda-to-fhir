@@ -342,6 +342,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             - performer list: List of FHIR performer objects or None
             - location reference: Location reference (e.g., "urn:uuid:12345678-abcd-1234-abcd-123456789abc") or None
         """
+        from ccda_to_fhir.converters.author_references import format_organization_display, format_person_display, make_ref
+
         performers = []
         location_ref = None
 
@@ -361,7 +363,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
                     if root:
                         pract_id = self._generate_practitioner_id(root, extension)
-                        performer_obj["actor"] = {"reference": f"urn:uuid:{pract_id}"}
+                        display = format_person_display(assigned.assigned_person)
+                        performer_obj["actor"] = make_ref(f"urn:uuid:{pract_id}", display)
 
                     # Determine function from C-CDA functionCode or use context-based default
                     performer_obj["function"] = self._determine_performer_function(perf, context="performer")
@@ -374,7 +377,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     org = assigned.represented_organization
                     org_id = self._create_pharmacy_organization(org)
                     if org_id:
-                        performer_obj["actor"] = {"reference": f"urn:uuid:{org_id}"}
+                        display = format_organization_display(org)
+                        performer_obj["actor"] = make_ref(f"urn:uuid:{org_id}", display)
                         # Determine function from C-CDA functionCode or use context-based default
                         performer_obj["function"] = self._determine_performer_function(perf, context="performer")
                         performers.append(performer_obj)
@@ -396,9 +400,10 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     root, extension = self.select_preferred_identifier(ids, prefer_npi=False)
                     if root:
                         pract_id = self._generate_practitioner_id(root, extension)
+                        display = format_person_display(assigned.assigned_person)
                         performer_obj = {
                             "function": self._determine_performer_function(author, context="author"),
-                            "actor": {"reference": f"urn:uuid:{pract_id}"},
+                            "actor": make_ref(f"urn:uuid:{pract_id}", display),
                         }
                         performers.append(performer_obj)
 

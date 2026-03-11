@@ -495,9 +495,9 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if assigned.id:
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
-                    party_ref = {
-                        "reference": f"urn:uuid:{practitioner_id}"
-                    }
+                    from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                    display = format_person_display(assigned.assigned_person)
+                    party_ref = make_ref(f"urn:uuid:{practitioner_id}", display)
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
         if not party_ref:
@@ -553,9 +553,9 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if assigned.id:
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
-                    party_ref = {
-                        "reference": f"urn:uuid:{practitioner_id}"
-                    }
+                    from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                    display = format_person_display(assigned.assigned_person)
+                    party_ref = make_ref(f"urn:uuid:{practitioner_id}", display)
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
         if not party_ref:

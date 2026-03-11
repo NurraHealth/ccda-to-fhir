@@ -7,9 +7,113 @@ entry-level author reference builders.
 
 from __future__ import annotations
 
-from ccda_to_fhir.ccda.models.author import AssignedAuthor, Author
+from ccda_to_fhir.ccda.models.author import (
+    AssignedAuthor,
+    AssignedAuthoringDevice,
+    AssignedPerson,
+    Author,
+    RepresentedOrganization,
+)
+from ccda_to_fhir.ccda.models.datatypes import ON, PN
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import JSONObject
+
+
+def _extract_enxp_values(parts: list | None) -> list[str]:
+    """Extract string values from a list of ENXP (or str) name parts."""
+    if not parts:
+        return []
+    result: list[str] = []
+    for part in parts:
+        if isinstance(part, str):
+            if part:
+                result.append(part)
+        elif part.value:
+            result.append(part.value)
+    return result
+
+
+def format_person_display(person: AssignedPerson | None) -> str | None:
+    """Format a person name for FHIR Reference.display.
+
+    Extracts prefix + given + family + suffix from the first PN element.
+
+    Args:
+        person: C-CDA AssignedPerson with name list.
+
+    Returns:
+        Formatted name string or None.
+    """
+    if not person or not person.name:
+        return None
+
+    name: PN = person.name[0]
+    parts: list[str] = []
+
+    parts.extend(_extract_enxp_values(name.prefix))
+    parts.extend(_extract_enxp_values(name.given))
+
+    if name.family:
+        if isinstance(name.family, str):
+            parts.append(name.family)
+        elif name.family.value:
+            parts.append(name.family.value)
+
+    parts.extend(_extract_enxp_values(name.suffix))
+
+    return " ".join(parts) if parts else None
+
+
+def format_device_display(device: AssignedAuthoringDevice | None) -> str | None:
+    """Format a device name for FHIR Reference.display.
+
+    Creates "Manufacturer (Software)" or whichever part is available.
+
+    Args:
+        device: C-CDA AssignedAuthoringDevice element.
+
+    Returns:
+        Formatted device string or None.
+    """
+    if not device:
+        return None
+
+    manufacturer = device.manufacturer_model_name
+    software = device.software_name
+
+    if manufacturer and software:
+        return f"{manufacturer} ({software})"
+    return manufacturer or software or None
+
+
+def format_organization_display(org: RepresentedOrganization | None) -> str | None:
+    """Format an organization name for FHIR Reference.display.
+
+    Extracts the first name from the organization's name list.
+
+    Args:
+        org: C-CDA RepresentedOrganization element.
+
+    Returns:
+        Organization name string or None.
+    """
+    if not org or not org.name:
+        return None
+
+    first_name = org.name[0]
+    if isinstance(first_name, str):
+        return first_name or None
+    if isinstance(first_name, ON):
+        return first_name.value or None
+    return None
+
+
+def make_ref(reference: str, display: str | None) -> JSONObject:
+    """Build a FHIR Reference dict, including display when available."""
+    ref: JSONObject = {"reference": reference}
+    if display:
+        ref["display"] = display
+    return ref
 
 
 def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[JSONObject]:
@@ -31,7 +135,8 @@ def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[JSONObject
             first_id.root or None,
             first_id.extension or None,
         )
-        refs.append({"reference": f"urn:uuid:{device_id}"})
+        display = format_device_display(assigned.assigned_authoring_device)
+        refs.append(make_ref(f"urn:uuid:{device_id}", display))
     # Organization uses its own identifier
     if assigned.represented_organization and assigned.represented_organization.id:
         org_first_id = assigned.represented_organization.id[0]
@@ -40,7 +145,8 @@ def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[JSONObject
             org_first_id.root or None,
             org_first_id.extension or None,
         )
-        refs.append({"reference": f"urn:uuid:{org_id}"})
+        display = format_organization_display(assigned.represented_organization)
+        refs.append(make_ref(f"urn:uuid:{org_id}", display))
     return refs
 
 
@@ -64,7 +170,8 @@ def build_author_references(authors: list[Author]) -> list[JSONObject]:
                 first_id.root or None,
                 first_id.extension or None,
             )
-            refs.append({"reference": f"urn:uuid:{prac_id}"})
+            display = format_person_display(assigned.assigned_person)
+            refs.append(make_ref(f"urn:uuid:{prac_id}", display))
         else:
             refs.extend(_build_device_org_fallback_refs(assigned))
     return refs

@@ -174,14 +174,18 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 careplan["author"] = author_ref
 
         # Contributors - all authors and serviceEvent performers
-        contributors = []
+        contributors: list[JSONObject] = []
+        seen_contributor_refs: set[str] = set()
 
         # Add all authors as contributors
         if clinical_document.author:
             for author in clinical_document.author:
                 contributor_ref = self._convert_author_to_reference(author)
-                if contributor_ref and contributor_ref not in contributors:
-                    contributors.append(contributor_ref)
+                if contributor_ref:
+                    ref_uri = str(contributor_ref.get("reference", ""))
+                    if ref_uri and ref_uri not in seen_contributor_refs:
+                        seen_contributor_refs.add(ref_uri)
+                        contributors.append(contributor_ref)
 
         # Add serviceEvent performers as contributors (US Core Must Support)
         if clinical_document.documentation_of:
@@ -190,15 +194,18 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                     for performer in doc_of.service_event.performer:
                         if performer.assigned_entity and performer.assigned_entity.id:
                             from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                            from ccda_to_fhir.converters.author_references import format_person_display, make_ref
                             performer_id = performer.assigned_entity.id[0]
                             practitioner_id = generate_id_from_identifiers(
                                 "Practitioner",
                                 performer_id.root,
                                 performer_id.extension,
                             )
-                            performer_ref = {"reference": f"urn:uuid:{practitioner_id}"}
-                            if performer_ref not in contributors:
-                                contributors.append(performer_ref)
+                            ref_uri = f"urn:uuid:{practitioner_id}"
+                            if ref_uri not in seen_contributor_refs:
+                                seen_contributor_refs.add(ref_uri)
+                                display = format_person_display(performer.assigned_entity.assigned_person)
+                                contributors.append(make_ref(ref_uri, display))
 
         if contributors:
             careplan["contributor"] = contributors
@@ -412,12 +419,14 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             # If assignedPerson exists, reference Practitioner
             if assigned_author.assigned_person:
                 from ccda_to_fhir.id_generator import generate_id_from_identifiers
+                from ccda_to_fhir.converters.author_references import format_person_display, make_ref
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner",
                     first_id.root,
                     first_id.extension,
                 )
-                return {"reference": f"urn:uuid:{practitioner_id}"}
+                display = format_person_display(assigned_author.assigned_person)
+                return make_ref(f"urn:uuid:{practitioner_id}", display)
             else:
                 # Could be patient as author
                 if not self.reference_registry:
