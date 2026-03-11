@@ -93,5 +93,5 @@ class TestDocumentReferenceAuthorDisplay:
         assert len(note_doc_refs) >= 1
         authors = note_doc_refs[0].get("author", [])
         assert len(authors) >= 1
-        # The note.xml fixture has author "Dr. Specialist" (family only, prefix ignored)
-        assert authors[0]["display"] == "Specialist"
+        # The note.xml fixture has author with prefix "Dr." and family "Specialist"
+        assert authors[0]["display"] == "Dr. Specialist"

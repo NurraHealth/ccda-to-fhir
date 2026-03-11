@@ -174,14 +174,18 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 careplan["author"] = author_ref
 
         # Contributors - all authors and serviceEvent performers
-        contributors = []
+        contributors: list[JSONObject] = []
+        seen_contributor_refs: set[str] = set()
 
         # Add all authors as contributors
         if clinical_document.author:
             for author in clinical_document.author:
                 contributor_ref = self._convert_author_to_reference(author)
-                if contributor_ref and contributor_ref not in contributors:
-                    contributors.append(contributor_ref)
+                if contributor_ref:
+                    ref_uri = str(contributor_ref.get("reference", ""))
+                    if ref_uri and ref_uri not in seen_contributor_refs:
+                        seen_contributor_refs.add(ref_uri)
+                        contributors.append(contributor_ref)
 
         # Add serviceEvent performers as contributors (US Core Must Support)
         if clinical_document.documentation_of:
@@ -196,9 +200,10 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                                 performer_id.root,
                                 performer_id.extension,
                             )
-                            performer_ref = {"reference": f"urn:uuid:{practitioner_id}"}
-                            if performer_ref not in contributors:
-                                contributors.append(performer_ref)
+                            ref_uri = f"urn:uuid:{practitioner_id}"
+                            if ref_uri not in seen_contributor_refs:
+                                seen_contributor_refs.add(ref_uri)
+                                contributors.append({"reference": ref_uri})
 
         if contributors:
             careplan["contributor"] = contributors

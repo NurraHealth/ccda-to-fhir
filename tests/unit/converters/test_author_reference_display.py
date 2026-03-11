@@ -70,6 +70,23 @@ class TestFormatPersonDisplay:
         )
         assert format_person_display(person) is None
 
+    def test_prefix_and_suffix(self) -> None:
+        person = AssignedPerson(
+            name=[PN(
+                prefix=[ENXP(value="Dr.")],
+                given=[ENXP(value="Jane")],
+                family=ENXP(value="Doe"),
+                suffix=[ENXP(value="MD")],
+            )]
+        )
+        assert format_person_display(person) == "Dr. Jane Doe MD"
+
+    def test_prefix_only_with_family(self) -> None:
+        person = AssignedPerson(
+            name=[PN(prefix=[ENXP(value="Dr.")], family=ENXP(value="Smith"))]
+        )
+        assert format_person_display(person) == "Dr. Smith"
+
     def test_uses_first_name_entry(self) -> None:
         person = AssignedPerson(
             name=[

@@ -19,16 +19,29 @@ from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import JSONObject
 
 
+def _extract_enxp_values(parts: list | None) -> list[str]:
+    """Extract string values from a list of ENXP (or str) name parts."""
+    if not parts:
+        return []
+    result: list[str] = []
+    for part in parts:
+        if isinstance(part, str):
+            result.append(part)
+        elif part.value:
+            result.append(part.value)
+    return result
+
+
 def format_person_display(person: AssignedPerson | None) -> str | None:
     """Format a person name for FHIR Reference.display.
 
-    Extracts given + family name parts from the first PN element.
+    Extracts prefix + given + family + suffix from the first PN element.
 
     Args:
         person: C-CDA AssignedPerson with name list.
 
     Returns:
-        Formatted "Given Family" string or None.
+        Formatted name string or None.
     """
     if not person or not person.name:
         return None
@@ -36,18 +49,16 @@ def format_person_display(person: AssignedPerson | None) -> str | None:
     name: PN = person.name[0]
     parts: list[str] = []
 
-    if name.given:
-        for given in name.given:
-            if isinstance(given, str):
-                parts.append(given)
-            elif given.value:
-                parts.append(given.value)
+    parts.extend(_extract_enxp_values(name.prefix))
+    parts.extend(_extract_enxp_values(name.given))
 
     if name.family:
         if isinstance(name.family, str):
             parts.append(name.family)
         elif name.family.value:
             parts.append(name.family.value)
+
+    parts.extend(_extract_enxp_values(name.suffix))
 
     return " ".join(parts) if parts else None
 
