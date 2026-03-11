@@ -48,6 +48,7 @@ from ccda_to_fhir.types import (
     EncounterContext,
     FHIRResourceDict,
     JSONObject,
+    format_human_name_display,
 )
 from ccda_to_fhir.validation import FHIRValidator
 
@@ -544,6 +545,11 @@ class DocumentConverter:
                         # Store patient ID for RelatedPerson references
                         if "id" in patient:
                             self._patient_id = patient["id"]
+                        # Extract display from converted name (first patient only)
+                        if self.reference_registry.patient_display is None:
+                            names = patient.get("name")
+                            if names and isinstance(names, list) and isinstance(names[0], dict):
+                                self.reference_registry.patient_display = format_human_name_display(names[0])  # type: ignore[arg-type]
 
                         # Convert providerOrganization to Organization resource
                         if (record_target.patient_role and

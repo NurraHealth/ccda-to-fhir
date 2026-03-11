@@ -10,24 +10,11 @@ from typing import TYPE_CHECKING
 
 from ccda_to_fhir.exceptions import MissingReferenceError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import format_human_name_display
 
 if TYPE_CHECKING:
     from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 logger = get_logger(__name__)
-
-
-def _extract_patient_display(resource: FHIRResourceDict) -> str | None:
-    """Extract a display string from the first HumanName on a Patient resource."""
-    names = resource.get("name")
-    if not names:
-        return None
-
-    first = names[0]
-    if not isinstance(first, dict):
-        return None
-    return format_human_name_display(first)  # type: ignore[arg-type]
 
 
 class ReferenceRegistry:
@@ -107,10 +94,6 @@ class ReferenceRegistry:
 
         # Enhanced logging for Patient resources to help debug reference issues
         if resource_type == "Patient":
-            # Only store display from the first patient (matches get_patient_reference
-            # which returns the first registered patient).
-            if self._patient_display is None:
-                self._patient_display = _extract_patient_display(resource)
             logger.info(
                 f"Registered Patient resource with ID: {resource_id}",
                 extra={
@@ -290,8 +273,12 @@ class ReferenceRegistry:
 
     @property
     def patient_display(self) -> str | None:
-        """The display name extracted from the registered Patient resource."""
+        """The display name for the patient, used in Reference.display."""
         return self._patient_display
+
+    @patient_display.setter
+    def patient_display(self, value: str | None) -> None:
+        self._patient_display = value
 
     def has_encounter(self) -> bool:
         """Check if an encounter has been registered.
