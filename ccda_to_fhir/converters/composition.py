@@ -927,7 +927,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         # Build reference URI only when the Organization exists in the registry
         ref: JSONObject = {}
-        if custodian_org.id and self.reference_registry:
+        if custodian_org.id and len(custodian_org.id) > 0 and self.reference_registry:
             first_id = custodian_org.id[0]
             org_id = generate_id_from_identifiers(
                 "Organization", first_id.root, first_id.extension

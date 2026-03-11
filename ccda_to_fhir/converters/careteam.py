@@ -12,7 +12,7 @@ Reference:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
@@ -26,6 +26,13 @@ from .practitioner_role import PractitionerRoleConverter
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.organizer import Organizer
+
+
+class OrgRef(NamedTuple):
+    """Organization reference with optional display text."""
+
+    id: str
+    display: str | None = None
 
 
 class CareTeamConverter(BaseConverter["Organizer"]):
@@ -209,9 +216,8 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         # Extract managing organization from first member's organization
         managing_org = self._extract_managing_organization(organizer)
         if managing_org:
-            managing_org_id, managing_org_display = managing_org
             careteam["managingOrganization"] = [
-                make_ref(f"urn:uuid:{managing_org_id}", managing_org_display)
+                make_ref(f"urn:uuid:{managing_org.id}", managing_org.display)
             ]
 
         # Extract narrative text from code originalText or generate from data
@@ -503,7 +509,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return categories
 
-    def _extract_managing_organization(self, organizer: Organizer) -> tuple[str, str | None] | None:
+    def _extract_managing_organization(self, organizer: Organizer) -> OrgRef | None:
         """Extract managing organization from Care Team Member Acts.
 
         Returns the organization ID and display name from the first member who has one.
@@ -512,7 +518,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             organizer: Care Team Organizer
 
         Returns:
-            Tuple of (organization_id, display_name) or None if not found
+            OrgRef with id and display, or None if not found
         """
         if not organizer.component:
             return None
@@ -564,13 +570,13 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     display = format_organization_display(org)
                     # Check if we already created this organization
                     if org_oid in self.organization_registry:
-                        return self.organization_registry[org_oid], display
+                        return OrgRef(id=self.organization_registry[org_oid], display=display)
                     # Try to convert it
                     try:
                         organization = self.organization_converter.convert(org)
                         organization_id = organization.get("id", f"org-{org_oid.replace('.', '-')}")
                         self.organization_registry[org_oid] = organization_id
-                        return organization_id, display
+                        return OrgRef(id=organization_id, display=display)
                     except Exception:
                         # Organization conversion failed, continue to next member
                         continue
