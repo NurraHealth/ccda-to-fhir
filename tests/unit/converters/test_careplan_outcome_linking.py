@@ -278,9 +278,8 @@ class TestCarePlanOutcomeLinking:
         outcome = MockEntry("outcome-456")
 
         ref = converter._create_outcome_reference(outcome)
-        assert isinstance(ref, dict)
-        assert "reference" in ref
-        assert ref["reference"].startswith("urn:uuid:")
+        assert ref is not None
+        assert ref.reference.startswith("urn:uuid:")
 
     def test_create_outcome_reference_not_found(self, converter, mock_reference_registry):
         """Test outcome reference returns None when not in registry."""

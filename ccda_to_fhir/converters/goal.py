@@ -192,7 +192,7 @@ class GoalConverter(BaseConverter[Observation]):
             first_author = observation.author[0]
             expressed_by_ref = self._convert_author_to_reference(first_author)
             if expressed_by_ref:
-                fhir_goal["expressedBy"] = expressed_by_ref
+                fhir_goal["expressedBy"] = expressed_by_ref.to_dict()
 
         # 9. Priority from Priority Preference entry relationship
         if observation.entry_relationship:
@@ -226,7 +226,7 @@ class GoalConverter(BaseConverter[Observation]):
                             entry_rel.observation
                         )
                         if address_ref:
-                            addresses.append(address_ref)
+                            addresses.append(address_ref.to_dict())
             if addresses:
                 fhir_goal["addresses"] = addresses
 
@@ -340,14 +340,14 @@ class GoalConverter(BaseConverter[Observation]):
 
         return target if target else None
 
-    def _convert_author_to_reference(self, author) -> JSONObject | None:
-        """Convert C-CDA author to FHIR Reference.
+    def _convert_author_to_reference(self, author) -> FHIRReference | None:
+        """Convert C-CDA author to FHIRReference.
 
         Args:
             author: C-CDA Author element
 
         Returns:
-            FHIR Reference object or None
+            FHIRReference or None
         """
         if not author or not author.assigned_author:
             return None
@@ -368,7 +368,7 @@ class GoalConverter(BaseConverter[Observation]):
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner", first_id.root, first_id.extension
                 )
-                return FHIRReference(reference=f"urn:uuid:{practitioner_id}").to_dict()
+                return FHIRReference(reference=f"urn:uuid:{practitioner_id}")
             else:
                 # Assume it's the patient
                 if not self.reference_registry:
@@ -376,7 +376,7 @@ class GoalConverter(BaseConverter[Observation]):
                         "reference_registry is required. "
                         "Cannot extract expressedBy reference without registry."
                     )
-                return self.reference_registry.get_patient_reference().to_dict()
+                return self.reference_registry.get_patient_reference()
 
         return None
 
@@ -447,14 +447,14 @@ class GoalConverter(BaseConverter[Observation]):
 
         return None
 
-    def _extract_health_concern_reference(self, entry_ref_obs: Observation) -> JSONObject | None:
+    def _extract_health_concern_reference(self, entry_ref_obs: Observation) -> FHIRReference | None:
         """Extract health concern reference from Entry Reference observation.
 
         Args:
             entry_ref_obs: Entry Reference observation
 
         Returns:
-            FHIR Reference object or None
+            FHIRReference or None
         """
         # Look for the referenced observation's ID
         if entry_ref_obs.id and len(entry_ref_obs.id) > 0:
@@ -470,6 +470,6 @@ class GoalConverter(BaseConverter[Observation]):
                 if isinstance(entry_ref_obs.value, (CD, CE)) and entry_ref_obs.value.display_name:
                     display = entry_ref_obs.value.display_name
 
-            return FHIRReference(reference=f"urn:uuid:{condition_id}", display=display).to_dict()
+            return FHIRReference(reference=f"urn:uuid:{condition_id}", display=display)
 
         return None

@@ -13,7 +13,7 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRCodeableConcept, FHIRResourceDict, JSONObject, ReasonResult
+from ccda_to_fhir.types import FHIRCodeableConcept, FHIRReference, FHIRResourceDict, JSONObject, ReasonResult
 
 from .base import BaseConverter
 
@@ -227,7 +227,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if procedure.author:
             recorder = self._extract_recorder(procedure.author)
             if recorder:
-                fhir_procedure["recorder"] = recorder
+                fhir_procedure["recorder"] = recorder.to_dict()
 
         # Reason codes and references
         if procedure.entry_relationship:
@@ -411,7 +411,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 pending_resources=self._pending_practitioners,
             )
             if pract_ref:
-                performer_obj["actor"] = pract_ref
+                performer_obj["actor"] = pract_ref.to_dict()
 
             # Extract organization reference (with resource creation)
             org = getattr(assigned_entity, "represented_organization", None)
@@ -424,10 +424,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             if org_ref:
                 if pract_ref:
                     # Both practitioner and organization - use onBehalfOf
-                    performer_obj["onBehalfOf"] = org_ref
+                    performer_obj["onBehalfOf"] = org_ref.to_dict()
                 else:
                     # No practitioner - organization is the actor
-                    performer_obj["actor"] = org_ref
+                    performer_obj["actor"] = org_ref.to_dict()
 
             if performer_obj:
                 fhir_performers.append(performer_obj)
@@ -581,7 +581,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             "focal_devices": focal_devices
         }
 
-    def _extract_recorder(self, authors: list) -> JSONObject | None:
+    def _extract_recorder(self, authors: list) -> FHIRReference | None:
         """Extract FHIR recorder from C-CDA authors.
 
         Uses the latest author by timestamp as the recorder.
@@ -590,7 +590,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             authors: List of C-CDA author elements
 
         Returns:
-            FHIR recorder reference or None
+            FHIRReference or None
         """
         if not authors or len(authors) == 0:
             return None
@@ -616,9 +616,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     for id_elem in assigned_author.id:
                         if id_elem.root:
                             pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                            return {
-                                "reference": f"urn:uuid:{pract_id}"
-                            }
+                            return FHIRReference(reference=f"urn:uuid:{pract_id}")
 
             # Check for device (assigned_authoring_device)
             elif assigned_author.assigned_authoring_device:
@@ -626,9 +624,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     for id_elem in assigned_author.id:
                         if id_elem.root:
                             device_id = self._generate_device_id(id_elem.root, id_elem.extension)
-                            return {
-                                "reference": f"urn:uuid:{device_id}"
-                            }
+                            return FHIRReference(reference=f"urn:uuid:{device_id}")
 
         return None
 

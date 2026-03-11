@@ -109,7 +109,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         if self.reference_registry:
             owner_ref = self._extract_ehr_device_owner(assigned)
             if owner_ref:
-                device["owner"] = owner_ref
+                device["owner"] = owner_ref.to_dict()
 
         return device
 
@@ -311,7 +311,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         if self.reference_registry:
             owner_ref = self._extract_device_owner(participant_role)
             if owner_ref:
-                device["owner"] = owner_ref
+                device["owner"] = owner_ref.to_dict()
 
         return device
 
@@ -446,7 +446,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             # Default to active for implanted/used devices
             return "active"
 
-    def _extract_device_owner(self, participant_role: ParticipantRole) -> dict | None:
+    def _extract_device_owner(self, participant_role: ParticipantRole) -> FHIRReference | None:
         """Extract device owner organization reference from Product Instance.
 
         Maps participantRole.scopingEntity to Device.owner.
@@ -456,7 +456,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             participant_role: C-CDA ParticipantRole containing scopingEntity
 
         Returns:
-            Organization reference dict or None
+            FHIRReference or None
         """
         if not participant_role.scoping_entity:
             return None
@@ -475,9 +475,9 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             return None
 
         display = scoping_entity.desc or None
-        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display).to_dict()
+        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
 
-    def _extract_ehr_device_owner(self, assigned: AssignedAuthor) -> dict | None:
+    def _extract_ehr_device_owner(self, assigned: AssignedAuthor) -> FHIRReference | None:
         """Extract device owner organization reference from EHR device.
 
         Maps assignedAuthor.representedOrganization to Device.owner.
@@ -488,7 +488,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             assigned: C-CDA AssignedAuthor containing representedOrganization
 
         Returns:
-            Organization reference dict or None
+            FHIRReference or None
         """
         if not assigned.represented_organization:
             return None
@@ -507,7 +507,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             return None
 
         display = format_organization_display(represented_org)
-        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display).to_dict()
+        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
 
     def _generate_organization_id(self, identifiers: list[II]) -> str:
         """Generate FHIR Organization ID using cached UUID v4 from C-CDA identifiers.

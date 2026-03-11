@@ -14,7 +14,7 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRCodeableConcept, FHIRResourceDict, JSONObject, ReasonResult
+from ccda_to_fhir.types import FHIRCodeableConcept, FHIRReference, FHIRResourceDict, JSONObject, ReasonResult
 
 from .base import BaseConverter
 
@@ -170,7 +170,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if procedure.author:
             requester = self._extract_requester(procedure.author)
             if requester:
-                fhir_service_request["requester"] = requester
+                fhir_service_request["requester"] = requester.to_dict()
 
         # Performer - from performer/assignedEntity
         if procedure.performer:
@@ -471,7 +471,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         latest_author = max(authors_with_time, key=lambda a: a.time.value)
         return self.convert_date(latest_author.time.value)
 
-    def _extract_requester(self, authors: list) -> JSONObject | None:
+    def _extract_requester(self, authors: list) -> FHIRReference | None:
         """Extract requester reference from C-CDA authors.
 
         Uses the latest author.
@@ -480,7 +480,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             authors: List of C-CDA author elements
 
         Returns:
-            FHIR Reference or None
+            FHIRReference or None
         """
         if not authors or len(authors) == 0:
             return None
@@ -505,9 +505,8 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                                 id_elem.root, id_elem.extension
                             )
                             from ccda_to_fhir.converters.author_references import format_person_display
-                            from ccda_to_fhir.types import FHIRReference
                             display = format_person_display(assigned_author.assigned_person)
-                            return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
+                            return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
 
         return None
 

@@ -940,7 +940,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             # Prefer non-nullFlavor IDs, but use nullFlavor ID as fallback
             actor_ref = self._select_performer_actor(assigned_entity)
             if actor_ref:
-                performer_obj["actor"] = actor_ref
+                performer_obj["actor"] = actor_ref.to_dict()
 
             # Set function (who administered the vaccine) - fixed for immunizations
             performer_obj["function"] = {
@@ -958,7 +958,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         return performers
 
-    def _select_performer_actor(self, assigned_entity) -> JSONObject | None:
+    def _select_performer_actor(self, assigned_entity) -> FHIRReference | None:
         """Select the actor reference for a performer, handling nullFlavor and fallbacks.
 
         Priority:
@@ -970,7 +970,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             assigned_entity: C-CDA AssignedEntity element
 
         Returns:
-            FHIR Reference dict or None
+            FHIRReference or None
         """
         from ccda_to_fhir.converters.author_references import (
             format_organization_display,
@@ -985,13 +985,13 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             for id_elem in assigned_entity.id:
                 if id_elem.root and not getattr(id_elem, "null_flavor", None):
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                    return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
+                    return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
 
             # Second pass: use first ID with root (including nullFlavor)
             for id_elem in assigned_entity.id:
                 if id_elem.root:
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                    return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
+                    return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
 
         # Fallback: try represented organization
         org = assigned_entity.represented_organization
@@ -1001,7 +1001,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             if root:
                 org_id = self._generate_organization_id(root, extension)
                 display = format_organization_display(org)
-                return FHIRReference(reference=f"urn:uuid:{org_id}", display=display).to_dict()
+                return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
 
         return None
 

@@ -1588,7 +1588,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         assigned_entity,
         create_resource: bool = False,
         pending_resources: list | None = None,
-    ) -> JSONObject | None:
+    ) -> FHIRReference | None:
         """Create a Practitioner reference from a C-CDA AssignedEntity.
 
         Optionally creates the Practitioner resource if it doesn't already exist
@@ -1600,7 +1600,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             pending_resources: List to append created Practitioner resources to
 
         Returns:
-            FHIR Reference dict or None if no valid identifier found
+            FHIRReference or None if no valid identifier found
         """
         if not assigned_entity:
             return None
@@ -1638,14 +1638,14 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 self.reference_registry.register_resource(practitioner)
 
         display = format_person_display(assigned_entity.assigned_person)
-        return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
+        return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
 
     def create_organization_reference_from_entity(
         self,
         represented_organization,
         create_resource: bool = False,
         pending_resources: list | None = None,
-    ) -> JSONObject | None:
+    ) -> FHIRReference | None:
         """Create an Organization reference from a C-CDA RepresentedOrganization.
 
         Optionally creates the Organization resource if it doesn't already exist
@@ -1657,7 +1657,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             pending_resources: List to append created Organization resources to
 
         Returns:
-            FHIR Reference dict or None if no valid identifier found
+            FHIRReference or None if no valid identifier found
         """
         if not represented_organization:
             return None
@@ -1691,7 +1691,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 self.reference_registry.register_resource(organization)
 
         display = format_organization_display(represented_organization)
-        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display).to_dict()
+        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
 
     def extract_performer_function(
         self,

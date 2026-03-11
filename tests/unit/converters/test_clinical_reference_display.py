@@ -279,7 +279,7 @@ class TestCarePlanOutcomeDisplay:
 
         result = converter._create_outcome_reference(outcome_entry)
         assert result is not None
-        assert result["display"] == "Problem"
+        assert result.display == "Problem"
 
     def test_outcome_reference_no_display_when_code_missing(self, registry: ReferenceRegistry) -> None:
         from ccda_to_fhir.converters.careplan import CarePlanConverter
