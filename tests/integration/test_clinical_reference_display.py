@@ -30,15 +30,16 @@ class TestEncounterDiagnosisConditionDisplay:
         bundle = result["bundle"]
 
         encounters = _find_resources(bundle, "Encounter")
-        # Check encounters that have diagnoses
+        has_diagnosis_display = False
         for enc in encounters:
             for diag in enc.get("diagnosis", []):
                 condition_ref = diag.get("condition", {})
-                # If there's a reference, it should have display when the source had displayName
-                if "reference" in condition_ref and "display" in condition_ref:
-                    # Display should be a non-empty string
+                if "display" in condition_ref:
+                    has_diagnosis_display = True
                     assert isinstance(condition_ref["display"], str)
                     assert len(condition_ref["display"]) > 0
+
+        assert has_diagnosis_display, "Expected at least one encounter diagnosis with display text"
 
     def test_athena_encounter_diagnosis_has_display(self) -> None:
         xml = (DOCUMENTS_DIR / "athena_ccd.xml").read_text()
@@ -126,12 +127,16 @@ class TestMedicationReferenceDisplay:
 class TestReasonReferenceDisplay:
     """Procedure/ServiceRequest reasonReference to Conditions should include display."""
 
-    def test_nist_reason_reference_has_display(self) -> None:
+    def test_nist_reason_reference_display_format(self) -> None:
+        """Validate display format on reasonReference when present.
+
+        NIST ambulatory doc may not have reasonReference with display;
+        unit tests cover this path. This validates no empty/invalid displays leak through.
+        """
         xml = (DOCUMENTS_DIR / "nist_ambulatory.xml").read_text()
         result = convert_document(xml)
         bundle = result["bundle"]
 
-        # Check Procedures and ServiceRequests for reasonReference with display
         for resource_type in ("Procedure", "ServiceRequest"):
             resources = _find_resources(bundle, resource_type)
             for resource in resources:
@@ -144,8 +149,12 @@ class TestReasonReferenceDisplay:
 class TestConditionEvidenceDisplay:
     """Condition.evidence.detail references should include display from supporting observation."""
 
-    def test_conditions_evidence_display(self) -> None:
-        """Check that any Condition with evidence.detail has display on the reference."""
+    def test_conditions_evidence_display_format(self) -> None:
+        """Validate display format on evidence detail when present.
+
+        NIST ambulatory doc may not have condition evidence with display;
+        unit tests cover this path. This validates no empty/invalid displays leak through.
+        """
         xml = (DOCUMENTS_DIR / "nist_ambulatory.xml").read_text()
         result = convert_document(xml)
         bundle = result["bundle"]
@@ -157,3 +166,163 @@ class TestConditionEvidenceDisplay:
                     if "display" in detail:
                         assert isinstance(detail["display"], str)
                         assert len(detail["display"]) > 0
+
+
+class TestCarePlanOutcomeDisplay:
+    """CarePlan outcomeReference should include display from outcome observation code."""
+
+    def test_careplan_outcome_reference_has_display(self) -> None:
+        """Test that outcomeReference includes display when outcome observation has displayName."""
+        ccda_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <realmCode code="US"/>
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1" extension="2015-08-01"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.15" extension="2015-08-01"/>
+  <id root="2.16.840.1.113883.19.5.99999.1" extension="careplan-display-test"/>
+  <code code="52521-2" codeSystem="2.16.840.1.113883.6.1"
+        displayName="Overall plan of care/advance care directives"/>
+  <title>Care Plan with Outcome Display</title>
+  <effectiveTime value="20240115120000-0500"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+
+  <recordTarget>
+    <patientRole>
+      <id root="2.16.840.1.113883.19.5" extension="patient-display-test"/>
+      <patient>
+        <name><given>Test</given><family>Patient</family></name>
+        <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1"/>
+        <birthTime value="19750501"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+
+  <author>
+    <time value="20240115120000-0500"/>
+    <assignedAuthor>
+      <id root="2.16.840.1.113883.4.6" extension="npi-display-test"/>
+      <assignedPerson>
+        <name><given>Test</given><family>Doctor</family><suffix>MD</suffix></name>
+      </assignedPerson>
+    </assignedAuthor>
+  </author>
+
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id root="2.16.840.1.113883.19.5" extension="org-display-test"/>
+        <name>Test Hospital</name>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+
+  <documentationOf>
+    <serviceEvent classCode="PCPR">
+      <effectiveTime>
+        <low value="20240115"/>
+        <high value="20240415"/>
+      </effectiveTime>
+    </serviceEvent>
+  </documentationOf>
+
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.58" extension="2015-08-01"/>
+          <code code="75310-3" codeSystem="2.16.840.1.113883.6.1"/>
+          <title>HEALTH CONCERNS</title>
+          <text><paragraph>Hypertension management</paragraph></text>
+        </section>
+      </component>
+
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.60" extension="2015-08-01"/>
+          <code code="61146-7" codeSystem="2.16.840.1.113883.6.1"/>
+          <title>GOALS</title>
+          <text><paragraph>Blood pressure below 140/90</paragraph></text>
+        </section>
+      </component>
+
+      <!-- Interventions with GEVL link to outcome -->
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.21.2.3" extension="2015-08-01"/>
+          <code code="62387-6" codeSystem="2.16.840.1.113883.6.1"
+                displayName="Interventions Provided"/>
+          <title>INTERVENTIONS</title>
+          <text><paragraph>Blood pressure monitoring</paragraph></text>
+
+          <entry>
+            <act classCode="ACT" moodCode="INT">
+              <templateId root="2.16.840.1.113883.10.20.22.4.131" extension="2015-08-01"/>
+              <id root="intervention-bp-display"/>
+              <code code="362956003" codeSystem="2.16.840.1.113883.6.96"
+                    displayName="Procedure/intervention (procedure)"/>
+              <statusCode code="active"/>
+
+              <entryRelationship typeCode="GEVL">
+                <observation classCode="OBS" moodCode="EVN">
+                  <id root="outcome-bp-display"/>
+                  <code code="85354-9" codeSystem="2.16.840.1.113883.6.1"
+                        displayName="Blood pressure panel with all children optional"/>
+                </observation>
+              </entryRelationship>
+
+              <entryRelationship typeCode="COMP">
+                <procedure classCode="PROC" moodCode="INT">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.41" extension="2014-06-09"/>
+                  <id root="procedure-bp-display"/>
+                  <code code="46973005" codeSystem="2.16.840.1.113883.6.96"
+                        displayName="Blood pressure taking"/>
+                  <statusCode code="active"/>
+                </procedure>
+              </entryRelationship>
+            </act>
+          </entry>
+        </section>
+      </component>
+
+      <!-- Outcomes Section -->
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.61"/>
+          <code code="11383-7" codeSystem="2.16.840.1.113883.6.1"
+                displayName="Patient problem outcome"/>
+          <title>HEALTH STATUS EVALUATIONS AND OUTCOMES</title>
+          <text><paragraph>Blood pressure measured at 130/85</paragraph></text>
+
+          <entry>
+            <observation classCode="OBS" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.144"/>
+              <id root="outcome-bp-display"/>
+              <code code="85354-9" codeSystem="2.16.840.1.113883.6.1"
+                    displayName="Blood pressure panel with all children optional"/>
+              <statusCode code="completed"/>
+              <effectiveTime value="20240120"/>
+              <value xsi:type="PQ" value="130" unit="mm[Hg]"/>
+            </observation>
+          </entry>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>"""
+
+        result = convert_document(ccda_xml)
+        bundle = result["bundle"]
+
+        careplans = _find_resources(bundle, "CarePlan")
+        assert len(careplans) > 0, "Expected CarePlan resource"
+
+        careplan = careplans[0]
+        has_outcome_display = False
+        for activity in careplan.get("activity", []):
+            for outcome_ref in activity.get("outcomeReference", []):
+                if "display" in outcome_ref:
+                    has_outcome_display = True
+                    assert outcome_ref["display"] == "Blood pressure panel with all children optional"
+
+        assert has_outcome_display, "Expected outcomeReference with display text"
