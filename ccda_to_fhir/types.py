@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # JSON primitive types
 JSONPrimitive: TypeAlias = str | int | float | bool | None
@@ -42,23 +42,27 @@ JSONArray: TypeAlias = list[JSONValue]
 class FHIRCoding(BaseModel, frozen=True):
     """FHIR Coding element (system + code + display)."""
 
+    model_config = ConfigDict(extra="forbid")
+
     system: str | None = None
     code: str | None = None
     display: str | None = None
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> JSONObject:
         return self.model_dump(exclude_none=True)
 
 
 class FHIRCodeableConcept(BaseModel, frozen=True):
     """FHIR CodeableConcept element (coding list + text)."""
 
+    model_config = ConfigDict(extra="forbid")
+
     coding: list[FHIRCoding] = Field(default_factory=list)
     text: str | None = None
 
-    def to_dict(self) -> dict[str, str | list[dict[str, str]]]:
+    def to_dict(self) -> JSONObject:
         # Can't use model_dump alone: need to skip empty coding list
-        d: dict[str, str | list[dict[str, str]]] = {}
+        d: JSONObject = {}
         if self.coding:
             d["coding"] = [c.to_dict() for c in self.coding]
         if self.text is not None:
@@ -69,10 +73,12 @@ class FHIRCodeableConcept(BaseModel, frozen=True):
 class FHIRReference(BaseModel, frozen=True):
     """FHIR Reference element (reference URI + optional display)."""
 
+    model_config = ConfigDict(extra="forbid")
+
     reference: str
     display: str | None = None
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> JSONObject:
         return self.model_dump(exclude_none=True)
 
 
@@ -84,6 +90,9 @@ class ReasonResult(BaseModel, frozen=True):
 
     references: list[FHIRReference] = Field(default_factory=list)
     """FHIR Reference elements for reason references."""
+
+    def __bool__(self) -> bool:
+        return bool(self.codes or self.references)
 
 
 class DiagnosisRole(BaseModel, frozen=True):

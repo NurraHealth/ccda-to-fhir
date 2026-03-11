@@ -911,12 +911,8 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                         encounter_class = trans_code
                         break
 
-            # Inpatient encounters → admission diagnosis
-            if encounter_class in ["IMP", "ACUTE", "NONAC"]:
-                return DiagnosisRole(code="AD", display="Admission diagnosis")
-
-            # Emergency encounters → admission diagnosis
-            if encounter_class == "EMER":
+            # Inpatient and emergency encounters → admission diagnosis
+            if encounter_class in ["IMP", "ACUTE", "NONAC", "EMER"]:
                 return DiagnosisRole(code="AD", display="Admission diagnosis")
 
         # Default to billing diagnosis for all other encounters
