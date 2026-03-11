@@ -642,3 +642,192 @@ class TestAuthorReferences:
             notes, {}, {}, registry, author_references=[]
         )
         assert "author" not in result[0]
+
+
+# ============================================================================
+# Fallback to encompassingEncounter
+# ============================================================================
+
+
+class TestFallbackEncounterContext:
+    """Tests for fallback to encompassingEncounter when body encounter mapping fails."""
+
+    def test_fallback_encounter_ref_when_no_body_match(self, registry: ReferenceRegistry) -> None:
+        """When encounter_content_id doesn't map to a body encounter, use fallback ref."""
+        notes = [DiagnosisNote(
+            encounter_content_id="enc-missing",
+            diagnosis_display="Hypertension",
+            snomed_code="59621000",
+            note_text="BP above goal.",
+        )]
+        doc_refs = create_diagnosis_note_doc_refs(
+            notes=notes,
+            encounter_map={},
+            condition_snomed_map={},
+            reference_registry=registry,
+            fallback_encounter_reference="urn:uuid:encompassing-enc-1",
+            fallback_encounter_date="2024-03-15T10:00:00-05:00",
+        )
+
+        assert len(doc_refs) == 1
+        dr = doc_refs[0]
+        assert dr["context"]["encounter"] == [{"reference": "urn:uuid:encompassing-enc-1"}]
+        assert dr["date"] == "2024-03-15T10:00:00-05:00"
+
+    def test_fallback_encounter_ref_when_no_content_id(self, registry: ReferenceRegistry) -> None:
+        """When encounter_content_id is None, use fallback ref."""
+        notes = [DiagnosisNote(
+            encounter_content_id=None,
+            diagnosis_display="Diabetes",
+            snomed_code="44054006",
+            note_text="Monitor HbA1c.",
+        )]
+        doc_refs = create_diagnosis_note_doc_refs(
+            notes=notes,
+            encounter_map={},
+            condition_snomed_map={},
+            reference_registry=registry,
+            fallback_encounter_reference="urn:uuid:encompassing-enc-1",
+            fallback_encounter_date="2024-03-15T10:00:00-05:00",
+        )
+
+        assert len(doc_refs) == 1
+        dr = doc_refs[0]
+        assert dr["context"]["encounter"] == [{"reference": "urn:uuid:encompassing-enc-1"}]
+        assert dr["date"] == "2024-03-15T10:00:00-05:00"
+
+    def test_body_encounter_takes_precedence_over_fallback(self, registry: ReferenceRegistry) -> None:
+        """When body encounter mapping succeeds, fallback is not used."""
+        notes = [DiagnosisNote(
+            encounter_content_id="enc1",
+            diagnosis_display="Hypertension",
+            snomed_code="59621000",
+            note_text="BP above goal.",
+        )]
+        doc_refs = create_diagnosis_note_doc_refs(
+            notes=notes,
+            encounter_map={"enc1": "body-enc-uuid"},
+            condition_snomed_map={},
+            reference_registry=registry,
+            encounter_date_map={"body-enc-uuid": "2024-01-22T12:02:39-05:00"},
+            fallback_encounter_reference="urn:uuid:encompassing-enc-1",
+            fallback_encounter_date="2024-03-15T10:00:00-05:00",
+        )
+
+        assert len(doc_refs) == 1
+        dr = doc_refs[0]
+        # Body encounter ref, not fallback
+        assert dr["context"]["encounter"] == [{"reference": "urn:uuid:body-enc-uuid"}]
+        # Body encounter date, not fallback
+        assert dr["date"] == "2024-01-22T12:02:39-05:00"
+
+    def test_fallback_date_when_body_encounter_has_no_date(self, registry: ReferenceRegistry) -> None:
+        """Body encounter ref is used but fallback date fills in missing date."""
+        notes = [DiagnosisNote(
+            encounter_content_id="enc1",
+            diagnosis_display="Hypertension",
+            snomed_code="59621000",
+            note_text="BP above goal.",
+        )]
+        doc_refs = create_diagnosis_note_doc_refs(
+            notes=notes,
+            encounter_map={"enc1": "body-enc-uuid"},
+            condition_snomed_map={},
+            reference_registry=registry,
+            encounter_date_map={},  # No date for body encounter
+            fallback_encounter_reference="urn:uuid:encompassing-enc-1",
+            fallback_encounter_date="2024-03-15T10:00:00-05:00",
+        )
+
+        assert len(doc_refs) == 1
+        dr = doc_refs[0]
+        # Body encounter ref is used
+        assert dr["context"]["encounter"] == [{"reference": "urn:uuid:body-enc-uuid"}]
+        # Fallback date is used since body encounter has no date
+        assert dr["date"] == "2024-03-15T10:00:00-05:00"
+
+    def test_no_fallback_when_none(self, registry: ReferenceRegistry) -> None:
+        """When no fallback is provided, behavior is unchanged."""
+        notes = [DiagnosisNote(
+            encounter_content_id=None,
+            diagnosis_display="Diabetes",
+            snomed_code=None,
+            note_text="Monitor HbA1c.",
+        )]
+        doc_refs = create_diagnosis_note_doc_refs(
+            notes=notes,
+            encounter_map={},
+            condition_snomed_map={},
+            reference_registry=registry,
+        )
+
+        assert len(doc_refs) == 1
+        assert "context" not in doc_refs[0]
+        assert "date" not in doc_refs[0]
+
+    def test_mixed_notes_some_with_body_some_fallback(self, registry: ReferenceRegistry) -> None:
+        """Notes with body encounter use body; notes without use fallback."""
+        notes = [
+            DiagnosisNote(
+                encounter_content_id="enc1",
+                diagnosis_display="Hypertension",
+                snomed_code="59621000",
+                note_text="BP controlled.",
+            ),
+            DiagnosisNote(
+                encounter_content_id="enc-missing",
+                diagnosis_display="Diabetes",
+                snomed_code="44054006",
+                note_text="HbA1c improving.",
+            ),
+        ]
+        doc_refs = create_diagnosis_note_doc_refs(
+            notes=notes,
+            encounter_map={"enc1": "body-enc-uuid"},
+            condition_snomed_map={},
+            reference_registry=registry,
+            encounter_date_map={"body-enc-uuid": "2024-01-22T12:02:39-05:00"},
+            fallback_encounter_reference="urn:uuid:encompassing-enc-1",
+            fallback_encounter_date="2024-03-15T10:00:00-05:00",
+        )
+
+        assert len(doc_refs) == 2
+        # First note: body encounter
+        assert doc_refs[0]["context"]["encounter"] == [{"reference": "urn:uuid:body-enc-uuid"}]
+        assert doc_refs[0]["date"] == "2024-01-22T12:02:39-05:00"
+        # Second note: fallback
+        assert doc_refs[1]["context"]["encounter"] == [{"reference": "urn:uuid:encompassing-enc-1"}]
+        assert doc_refs[1]["date"] == "2024-03-15T10:00:00-05:00"
+
+    def test_extract_encounter_diagnosis_notes_passes_fallback(self, registry: ReferenceRegistry) -> None:
+        """Integration: extract_encounter_diagnosis_notes passes fallback to doc ref creation."""
+        table = _make_encounter_table(
+            headers=[
+                "Encounter ID",
+                "Diagnosis/Indication",
+                "Diagnosis SNOMED-CT Code",
+                "Diagnosis Note",
+            ],
+            rows=[
+                [
+                    ("4068", "encounter4068"),
+                    "Hypertension",
+                    "59621000",
+                    "BP above goal.",
+                ],
+            ],
+        )
+        section = _make_encounters_section(table)
+        body = StructuredBody(component=[SectionComponent(section=section)])
+
+        # No body encounters, so mapping will fail -> fallback should be used
+        result = extract_encounter_diagnosis_notes(
+            body, [], [], registry,
+            fallback_encounter_reference="urn:uuid:encompassing-enc-1",
+            fallback_encounter_date="2024-03-15T10:00:00-05:00",
+        )
+
+        assert len(result) == 1
+        dr = result[0]
+        assert dr["context"]["encounter"] == [{"reference": "urn:uuid:encompassing-enc-1"}]
+        assert dr["date"] == "2024-03-15T10:00:00-05:00"

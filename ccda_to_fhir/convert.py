@@ -917,6 +917,8 @@ class DocumentConverter:
                 all_conditions,
                 self.reference_registry,
                 author_references=doc_author_refs,
+                fallback_encounter_reference=enc_ctx.reference,
+                fallback_encounter_date=enc_ctx.date,
             )
             resources.extend(diagnosis_note_doc_refs)
             for doc_ref in diagnosis_note_doc_refs:
