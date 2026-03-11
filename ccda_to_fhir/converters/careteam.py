@@ -12,13 +12,13 @@ Reference:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
-from .author_references import format_organization_display, make_ref
+from .author_references import OrgRef, format_organization_display, make_ref
 from .base import BaseConverter
 from .organization import OrganizationConverter
 from .practitioner import PractitionerConverter
@@ -26,13 +26,6 @@ from .practitioner_role import PractitionerRoleConverter
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.organizer import Organizer
-
-
-class OrgRef(NamedTuple):
-    """Organization reference with optional display text."""
-
-    id: str
-    display: str | None = None
 
 
 class CareTeamConverter(BaseConverter["Organizer"]):
