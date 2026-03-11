@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import re
+from datetime import datetime, timezone
 
 
 def fhir_date_to_instant(fhir_date: str | None) -> str | None:
@@ -13,25 +13,23 @@ def fhir_date_to_instant(fhir_date: str | None) -> str | None:
     may return date-only values (``YYYY-MM-DD``) when the C-CDA timestamp
     lacks a timezone.  This helper pads those to a valid instant.
 
-    Already-valid instants (containing ``T``) are returned unchanged.
-
     Returns ``None`` when *fhir_date* is ``None`` or empty.
     """
     if not fhir_date:
         return None
 
-    # Already has a time component — assume it's a valid dateTime/instant
-    if "T" in fhir_date:
+    # Pad partial dates (YYYY, YYYY-MM) to full YYYY-MM-DD so fromisoformat works
+    if len(fhir_date) == 4:
+        fhir_date = f"{fhir_date}-01-01"
+    elif len(fhir_date) == 7:
+        fhir_date = f"{fhir_date}-01"
+
+    try:
+        dt = datetime.fromisoformat(fhir_date)
+    except ValueError:
         return fhir_date
 
-    # Date-only: YYYY-MM-DD, YYYY-MM, or YYYY
-    # Pad to midnight UTC to satisfy the instant type
-    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", fhir_date):
-        return f"{fhir_date}T00:00:00Z"
-    if re.fullmatch(r"\d{4}-\d{2}", fhir_date):
-        return f"{fhir_date}-01T00:00:00Z"
-    if re.fullmatch(r"\d{4}", fhir_date):
-        return f"{fhir_date}-01-01T00:00:00Z"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
 
-    # Unrecognised format — return as-is rather than corrupt
-    return fhir_date
+    return dt.isoformat().replace("+00:00", "Z")

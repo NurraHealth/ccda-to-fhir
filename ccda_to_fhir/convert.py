@@ -33,6 +33,7 @@ from fhir.resources.R4B.servicerequest import ServiceRequest
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
+from ccda_to_fhir.utils import fhir_date_to_instant
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II, ON
 from ccda_to_fhir.ccda.models.organizer import Organizer
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
@@ -2615,8 +2616,6 @@ class DocumentConverter:
                 if low_value:
                     raw_date = str(low_value)
             if raw_date:
-                from ccda_to_fhir.utils import fhir_date_to_instant
-
                 enc_date = fhir_date_to_instant(
                     self.encounter_converter.convert_date(raw_date)
                 )

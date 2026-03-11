@@ -33,9 +33,8 @@ class TestFhirDateToInstant:
             == "2026-01-20T00:00:00Z"
         )
 
-    def test_datetime_without_timezone_unchanged(self) -> None:
-        # Already has T — caller is responsible for timezone
+    def test_datetime_without_timezone_gets_utc(self) -> None:
         assert (
             fhir_date_to_instant("2026-01-20T09:30:00")
-            == "2026-01-20T09:30:00"
+            == "2026-01-20T09:30:00Z"
         )
