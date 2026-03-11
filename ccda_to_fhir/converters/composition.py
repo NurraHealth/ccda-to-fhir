@@ -8,6 +8,7 @@ from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.ccda.models.datatypes import II
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.constants import FHIRCodes
+from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
@@ -908,8 +909,6 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         Returns:
             FHIR Reference or None
         """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
-
         if not custodian or not custodian.assigned_custodian:
             return None
 

@@ -84,9 +84,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
 
         # Create reference to Organization (optional)
         if organization_id:
-            display = format_organization_display(
-                getattr(assigned, "represented_organization", None)
-            )
+            display = format_organization_display(assigned.represented_organization)
             practitioner_role["organization"] = self._create_organization_reference(
                 organization_id, display
             )

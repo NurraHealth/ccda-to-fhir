@@ -307,6 +307,7 @@ class CoverageConverter(BaseConverter["Act"]):
             if identifiers:
                 minimal_org["identifier"] = identifiers
             related.append(minimal_org)
+            # Minimal org built from identifiers only — no name available for display
             coverage["payor"] = [
                 make_ref(f"urn:uuid:{org_id}", None)
             ]

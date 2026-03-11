@@ -474,7 +474,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         if not self.reference_registry.has_resource("Organization", org_id):
             return None
 
-        display = scoping_entity.desc
+        display = scoping_entity.desc or None
         return make_ref(f"urn:uuid:{org_id}", display)
 
     def _extract_ehr_device_owner(self, assigned: AssignedAuthor) -> dict | None:
