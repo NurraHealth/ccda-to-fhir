@@ -131,7 +131,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create Immunization without patient reference."
             )
-        immunization["patient"] = self.reference_registry.get_patient_reference()
+        immunization["patient"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 6. OccurrenceDateTime - from effectiveTime (required field)
         occurrence_date = self._extract_occurrence_date(substance_admin)
@@ -648,7 +648,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create Observation without patient reference."
             )
-        observation_resource["subject"] = self.reference_registry.get_patient_reference()
+        observation_resource["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Extract effectiveDateTime if available
         if observation.effective_time:
@@ -753,7 +753,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create Observation without patient reference."
             )
-        observation_resource["subject"] = self.reference_registry.get_patient_reference()
+        observation_resource["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Extract effectiveDateTime if available
         if observation.effective_time:
@@ -893,7 +893,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create Observation without patient reference."
             )
-        observation_resource["subject"] = self.reference_registry.get_patient_reference()
+        observation_resource["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Extract effectiveDateTime if available (usually has low value for when complication started)
         if observation.effective_time:

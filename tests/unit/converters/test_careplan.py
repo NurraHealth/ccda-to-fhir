@@ -31,6 +31,7 @@ from ccda_to_fhir.ccda.models.record_target import Patient, PatientRole, RecordT
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.converters.careplan import CarePlanConverter
 from ccda_to_fhir.converters.references import ReferenceRegistry
+from ccda_to_fhir.types import FHIRReference  # noqa: F811
 
 # ============================================================================
 # Fixtures - Realistic C-CDA Care Plan Document Data
@@ -204,7 +205,7 @@ def mock_reference_registry() -> ReferenceRegistry:
     """Create a mock reference registry."""
     registry = Mock(spec=ReferenceRegistry)
     registry.get_patient_reference = Mock(
-        return_value={"reference": "urn:uuid:12345678-1234-5678-1234-567812345678"}
+        return_value=FHIRReference(reference="urn:uuid:12345678-1234-5678-1234-567812345678")
     )
     registry.has_resource = Mock(return_value=True)
     return registry

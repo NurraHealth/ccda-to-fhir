@@ -155,7 +155,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create MedicationRequest without patient reference."
             )
-        med_request["subject"] = self.reference_registry.get_patient_reference()
+        med_request["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 7. AuthoredOn (from author time)
         authored_on = self._extract_authored_on(substance_admin)

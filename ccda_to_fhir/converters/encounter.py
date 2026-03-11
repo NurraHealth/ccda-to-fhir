@@ -122,12 +122,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                 "reference_registry is required. "
                 "Cannot create Encounter without patient reference."
             )
-        fhir_encounter["subject"] = self.reference_registry.get_patient_reference()
+        fhir_encounter["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Type - Convert encounter code to type (if not used for class)
         encounter_type = self._extract_type(encounter)
         if encounter_type:
-            fhir_encounter["type"] = [encounter_type]
+            fhir_encounter["type"] = [encounter_type.to_dict()]
 
         # Participant - Extract performers and their roles
         participants = self._extract_participants(encounter)

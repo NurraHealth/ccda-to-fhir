@@ -153,7 +153,7 @@ def _build_document_reference(
                 ]
             }
         ],
-        "subject": reference_registry.get_patient_reference(),
+        "subject": reference_registry.get_patient_reference().to_dict(),
         "content": [],
     }
 

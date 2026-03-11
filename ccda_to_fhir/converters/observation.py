@@ -190,7 +190,7 @@ class ObservationConverter(BaseConverter[Observation]):
                 "reference_registry is required. "
                 "Cannot create Observation without patient reference."
             )
-        patient_ref = self.reference_registry.get_patient_reference()
+        patient_ref = self.reference_registry.get_patient_reference().to_dict()
         fhir_obs["subject"] = patient_ref
 
         # Diagnostic logging
@@ -443,7 +443,7 @@ class ObservationConverter(BaseConverter[Observation]):
                 "reference_registry is required. "
                 "Cannot create Observation panel without patient reference."
             )
-        panel["subject"] = self.reference_registry.get_patient_reference()
+        panel["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 7. Effective time from organizer
         if organizer.effective_time:
@@ -1475,7 +1475,7 @@ class ObservationConverter(BaseConverter[Observation]):
         if "subject" in systolic_obs:
             bp_obs["subject"] = systolic_obs["subject"]
         elif self.reference_registry:
-            bp_obs["subject"] = self.reference_registry.get_patient_reference()
+            bp_obs["subject"] = self.reference_registry.get_patient_reference().to_dict()
         else:
             raise ValueError(
                 "reference_registry is required. "

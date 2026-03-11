@@ -132,7 +132,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # Subject (REQUIRED) - reference to patient
         if self.reference_registry:
-            careplan["subject"] = self.reference_registry.get_patient_reference()
+            careplan["subject"] = self.reference_registry.get_patient_reference().to_dict()
         else:
             # Fallback for unit tests
             if clinical_document.record_target and len(clinical_document.record_target) > 0:
@@ -434,7 +434,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                         "reference_registry is required. "
                         "Cannot extract activity performer without registry."
                     )
-                return self.reference_registry.get_patient_reference()
+                return self.reference_registry.get_patient_reference().to_dict()
 
         return None
 

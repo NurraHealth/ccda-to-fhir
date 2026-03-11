@@ -140,7 +140,7 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
                 "reference_registry is required. "
                 "Cannot create DiagnosticReport without patient reference."
             )
-        report["subject"] = self.reference_registry.get_patient_reference()
+        report["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 7. Effective time
         effective_time = self._extract_effective_time(organizer)

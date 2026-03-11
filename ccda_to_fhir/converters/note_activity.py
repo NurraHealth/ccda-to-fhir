@@ -106,7 +106,7 @@ class NoteActivityConverter(BaseConverter[Act]):
         ]
 
         # Subject
-        doc_ref["subject"] = self.reference_registry.get_patient_reference()
+        doc_ref["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Date and author references
         if note_act.author:

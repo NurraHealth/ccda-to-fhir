@@ -120,7 +120,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create MedicationStatement without patient reference."
             )
-        med_statement["subject"] = self.reference_registry.get_patient_reference()
+        med_statement["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 6. Effective[x] (from effectiveTime)
         effective = self._extract_effective_time(substance_admin)

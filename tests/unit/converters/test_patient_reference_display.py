@@ -56,8 +56,8 @@ class TestGetPatientReferenceDisplay:
 
         ref = registry.get_patient_reference()
 
-        assert ref["reference"] == "urn:uuid:patient-123"
-        assert ref["display"] == "John Smith"
+        assert ref.reference == "urn:uuid:patient-123"
+        assert ref.display == "John Smith"
 
     def test_omits_display_when_not_set(self):
         registry = ReferenceRegistry()
@@ -65,8 +65,8 @@ class TestGetPatientReferenceDisplay:
 
         ref = registry.get_patient_reference()
 
-        assert ref["reference"] == "urn:uuid:patient-123"
-        assert "display" not in ref
+        assert ref.reference == "urn:uuid:patient-123"
+        assert ref.display is None
 
     def test_display_survives_multiple_calls(self):
         """Display should be returned on every call."""
@@ -76,8 +76,8 @@ class TestGetPatientReferenceDisplay:
         ref1 = registry.get_patient_reference()
         ref2 = registry.get_patient_reference()
 
-        assert ref1["display"] == "Jane Doe"
-        assert ref2["display"] == "Jane Doe"
+        assert ref1.display == "Jane Doe"
+        assert ref2.display == "Jane Doe"
 
 
 class TestPatientDisplayProperty:

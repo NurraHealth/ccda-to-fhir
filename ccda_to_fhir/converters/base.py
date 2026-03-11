@@ -1897,8 +1897,11 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         code,
         section=None,
         include_original_text: bool = True,
-    ) -> JSONObject | None:
-        """Convert a C-CDA coded element to FHIR CodeableConcept with translations.
+    ) -> FHIRCodeableConcept | None:
+        """Convert a C-CDA coded element to FHIR CodeableConcept model with translations.
+
+        Returns the Pydantic model directly. Callers should call .to_dict()
+        when embedding the result into a FHIRResourceDict.
 
         This is a higher-level method that combines translation extraction with
         CodeableConcept creation. It handles:
@@ -1912,7 +1915,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             include_original_text: Whether to include original_text in the result
 
         Returns:
-            FHIR CodeableConcept dict or None if code is invalid
+            FHIRCodeableConcept model or None if code is invalid
         """
         if not code or not code.code:
             return None
@@ -1929,7 +1932,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if not original_text and code.display_name:
                 original_text = code.display_name
 
-        return self.create_codeable_concept(
+        return self.create_codeable_concept_model(
             code=code.code,
             code_system=code.code_system,
             display_name=code.display_name,

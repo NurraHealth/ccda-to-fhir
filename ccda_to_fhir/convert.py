@@ -157,7 +157,7 @@ def convert_careteam_organizer(
     if not reference_registry:
         raise ValueError("Reference registry required for CareTeam conversion")
 
-    patient_reference = reference_registry.get_patient_reference()
+    patient_reference = reference_registry.get_patient_reference().to_dict()
 
     converter = CareTeamConverter(
         patient_reference=patient_reference,
@@ -3119,7 +3119,7 @@ class DocumentConverter:
                 "reference_registry is required. "
                 "Cannot create header Encounter without patient reference."
             )
-        fhir_encounter["subject"] = self.reference_registry.get_patient_reference()
+        fhir_encounter["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         return fhir_encounter
 

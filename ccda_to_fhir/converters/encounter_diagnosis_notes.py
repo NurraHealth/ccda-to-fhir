@@ -260,7 +260,7 @@ def _build_doc_ref(
                 ]
             }
         ],
-        "subject": reference_registry.get_patient_reference(),
+        "subject": reference_registry.get_patient_reference().to_dict(),
         "content": [
             {
                 "attachment": {

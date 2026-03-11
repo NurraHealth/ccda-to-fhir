@@ -217,7 +217,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                 "reference_registry is required. "
                 "Cannot create AllergyIntolerance without patient reference."
             )
-        allergy["patient"] = self.reference_registry.get_patient_reference()
+        allergy["patient"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Onset date
         if observation.effective_time and observation.effective_time.low:

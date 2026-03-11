@@ -134,7 +134,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if has_valid_code:
             converted_code = self._convert_code(procedure.code)
             if converted_code is not None:
-                fhir_procedure["code"] = converted_code
+                fhir_procedure["code"] = converted_code.to_dict()
             else:
                 # _convert_code returned None (e.g., code exists but code_system is missing)
                 # Fall through to the nullFlavor handling below
@@ -168,7 +168,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 "reference_registry is required. "
                 "Cannot create Procedure without patient reference."
             )
-        fhir_procedure["subject"] = self.reference_registry.get_patient_reference()
+        fhir_procedure["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Performed date/time
         performed = None
@@ -535,7 +535,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                         # Get patient reference from registry
                         patient_ref = None
                         if self.reference_registry:
-                            patient_ref = self.reference_registry.get_patient_reference()
+                            patient_ref = self.reference_registry.get_patient_reference().to_dict()
 
                         # Convert Product Instance to Device
                         device = device_converter.convert_product_instance(

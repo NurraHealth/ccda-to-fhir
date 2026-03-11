@@ -132,7 +132,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         # Code (required)
         code = self._convert_code(procedure.code)
         if code:
-            fhir_service_request["code"] = code
+            fhir_service_request["code"] = code.to_dict()
 
         # Subject (required) - patient reference
         if not self.reference_registry:
@@ -140,13 +140,13 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                 "reference_registry is required. "
                 "Cannot create ServiceRequest without patient reference."
             )
-        fhir_service_request["subject"] = self.reference_registry.get_patient_reference()
+        fhir_service_request["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Encounter (must support)
         if self.reference_registry:
             encounter_ref = self.reference_registry.get_encounter_reference()
             if encounter_ref:
-                fhir_service_request["encounter"] = encounter_ref
+                fhir_service_request["encounter"] = encounter_ref.to_dict()
 
         # Occurrence[x] (must support) - from effectiveTime
         if procedure.effective_time:
@@ -181,7 +181,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if procedure.performer:
             performer_type = self._extract_performer_type(procedure.performer)
             if performer_type:
-                fhir_service_request["performerType"] = performer_type
+                fhir_service_request["performerType"] = performer_type.to_dict()
 
         # Priority - from priorityCode (both CCDAProcedure and CCDAAct have this)
         if procedure.priority_code:
@@ -196,7 +196,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                 if site_code.code:
                     body_site = self._convert_code(site_code)
                     if body_site:
-                        body_sites.append(body_site)
+                        body_sites.append(body_site.to_dict())
             if body_sites:
                 fhir_service_request["bodySite"] = body_sites
 

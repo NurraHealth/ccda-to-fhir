@@ -151,7 +151,7 @@ class GoalConverter(BaseConverter[Observation]):
                 "reference_registry is required. "
                 "Cannot create Goal without patient reference."
             )
-        fhir_goal["subject"] = self.reference_registry.get_patient_reference()
+        fhir_goal["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 6. Start date and target due date from effectiveTime
         target_due_date = None  # Initialize outside if block to avoid UnboundLocalError
@@ -375,7 +375,7 @@ class GoalConverter(BaseConverter[Observation]):
                         "reference_registry is required. "
                         "Cannot extract expressedBy reference without registry."
                     )
-                return self.reference_registry.get_patient_reference()
+                return self.reference_registry.get_patient_reference().to_dict()
 
         return None
 

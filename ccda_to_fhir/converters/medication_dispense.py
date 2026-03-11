@@ -135,13 +135,13 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                 "reference_registry is required. "
                 "Cannot create MedicationDispense without patient reference."
             )
-        med_dispense["subject"] = self.reference_registry.get_patient_reference()
+        med_dispense["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 6b. Context (encounter reference) - US Core Must Support
         if self.reference_registry:
             encounter_ref = self.reference_registry.get_encounter_reference()
             if encounter_ref:
-                med_dispense["context"] = encounter_ref
+                med_dispense["context"] = encounter_ref.to_dict()
 
         # 7. Performer (pharmacy/pharmacist) and Location (pharmacy)
         performers, location_ref = self._extract_performers_and_location(supply)

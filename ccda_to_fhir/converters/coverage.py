@@ -217,7 +217,7 @@ class CoverageConverter(BaseConverter["Act"]):
             logger.warning("No reference registry; Coverage will lack beneficiary/payor")
             return coverage, related
 
-        patient_ref = self.reference_registry.get_patient_reference()
+        patient_ref = self.reference_registry.get_patient_reference().to_dict()
         coverage["beneficiary"] = patient_ref
         # payor is required in FHIR Coverage — default to patient if no PAYOR performer
         if "payor" not in coverage:
@@ -374,7 +374,7 @@ class CoverageConverter(BaseConverter["Act"]):
 
         # When relationship is SELF, subscriber is the patient (beneficiary)
         if relationship_code == "SELF" and self.reference_registry:
-            coverage["subscriber"] = self.reference_registry.get_patient_reference()
+            coverage["subscriber"] = self.reference_registry.get_patient_reference().to_dict()
 
         # COV participant time is the coverage period (preferred over policy effectiveTime)
         if participant.time:

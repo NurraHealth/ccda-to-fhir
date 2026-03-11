@@ -280,7 +280,7 @@ class ConditionConverter(BaseConverter[Observation]):
                 "reference_registry is required. "
                 "Cannot create Condition without patient reference."
             )
-        condition["subject"] = self.reference_registry.get_patient_reference()
+        condition["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Onset and abatement
         onset, abatement = self._convert_effective_time(observation)

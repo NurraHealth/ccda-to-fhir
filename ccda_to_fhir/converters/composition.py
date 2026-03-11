@@ -281,7 +281,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         if self.reference_registry:
             encounter_ref = self.reference_registry.get_encounter_reference()
             if encounter_ref:
-                composition["encounter"] = encounter_ref
+                composition["encounter"] = encounter_ref.to_dict()
 
         # Sections - convert structured body to Composition sections
         if clinical_document.component and clinical_document.component.structured_body:
@@ -345,7 +345,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         # Patient reference (from recordTarget in document header)
         if self.reference_registry:
             try:
-                return self.reference_registry.get_patient_reference()
+                return self.reference_registry.get_patient_reference().to_dict()
             except Exception:
                 # Patient not registered (conversion failed) - return None to trigger fail-fast
                 return None
