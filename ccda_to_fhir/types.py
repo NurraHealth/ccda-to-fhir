@@ -76,7 +76,9 @@ class FHIRCodeableConcept(BaseModel, frozen=True):
     text: str | None = None
 
     def to_dict(self) -> JSONObject:
-        # Can't use model_dump alone: need to skip empty coding list
+        # Custom serialization: omit empty coding list (model_dump would
+        # include it as []), unlike FHIRCoding/FHIRReference which use
+        # model_dump(exclude_none=True) since they only need to drop None fields.
         d: JSONObject = {}
         if self.coding:
             d["coding"] = [c.to_dict() for c in self.coding]
@@ -122,7 +124,12 @@ class DiagnosisRole(BaseModel, frozen=True):
 
 
 class OperationStats(BaseModel, frozen=True):
-    """Performance statistics for a single profiled operation."""
+    """Performance statistics for a single profiled operation.
+
+    All fields default to zero.  A zero-valued instance (from an untracked
+    operation) is falsy so callers can use ``if stats:`` to distinguish
+    "tracked with data" from "not tracked".
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -131,6 +138,9 @@ class OperationStats(BaseModel, frozen=True):
     avg: float = 0.0
     min_duration: float = 0.0
     max_duration: float = 0.0
+
+    def __bool__(self) -> bool:
+        return self.count > 0
 
 
 class ValidationStats(BaseModel):

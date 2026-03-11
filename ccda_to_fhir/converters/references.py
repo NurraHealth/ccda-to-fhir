@@ -13,7 +13,7 @@ from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import FHIRReference, RegistryStats
 
 if TYPE_CHECKING:
-    from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+    from ccda_to_fhir.types import FHIRResourceDict
 
 logger = get_logger(__name__)
 
@@ -31,11 +31,11 @@ class ReferenceRegistry:
         >>>
         >>> # Later, validate a reference
         >>> ref = registry.resolve_reference("Patient", "patient-123")
-        >>> # Returns: {"reference": "Patient/patient-123"}
+        >>> # Returns: FHIRReference(reference="urn:uuid:patient-123")
         >>>
         >>> # Invalid reference
         >>> ref = registry.resolve_reference("Patient", "does-not-exist")
-        >>> # Returns: None (and logs warning)
+        >>> # Raises: MissingReferenceError
     """
 
     def __init__(self) -> None:
@@ -225,7 +225,7 @@ class ReferenceRegistry:
         this returns the first patient.
 
         Returns:
-            Reference object {"reference": "Patient/id"}
+            FHIRReference with urn:uuid reference and optional display
 
         Raises:
             MissingReferenceError: If no patient is registered (architectural violation)
@@ -235,7 +235,7 @@ class ReferenceRegistry:
             >>> patient = {"resourceType": "Patient", "id": "patient-123"}
             >>> registry.register_resource(patient)
             >>> ref = registry.get_patient_reference()
-            >>> # Returns: {"reference": "Patient/patient-123"}
+            >>> # Returns: FHIRReference(reference="urn:uuid:patient-123")
         """
         if not self.has_patient():
             raise MissingReferenceError(
@@ -295,14 +295,14 @@ class ReferenceRegistry:
         This method returns a reference to the first registered encounter.
 
         Returns:
-            Reference object {"reference": "Encounter/id"} or None if no encounter registered
+            FHIRReference or None if no encounter registered
 
         Example:
             >>> registry = ReferenceRegistry()
             >>> encounter = {"resourceType": "Encounter", "id": "encounter-123"}
             >>> registry.register_resource(encounter)
             >>> ref = registry.get_encounter_reference()
-            >>> # Returns: {"reference": "Encounter/encounter-123"}
+            >>> # Returns: FHIRReference(reference="urn:uuid:encounter-123")
         """
         if not self.has_encounter():
             return None
