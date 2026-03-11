@@ -140,6 +140,29 @@ class TestGetPatientReferenceDisplay:
 
         assert ref["display"] == "Mrs. Alice Newman PhD"
 
+    def test_display_uses_first_patient_when_multiple_registered(self):
+        """When multiple patients are registered, display matches the first."""
+        registry = ReferenceRegistry()
+        patient1: FHIRResourceDict = {
+            "resourceType": "Patient",
+            "id": "patient-1",
+            "name": [{"family": "Smith", "given": ["John"]}],
+        }
+        patient2: FHIRResourceDict = {
+            "resourceType": "Patient",
+            "id": "patient-2",
+            "name": [{"family": "Jones", "given": ["Alice"]}],
+        }
+        registry.register_resource(patient1)
+        registry.register_resource(patient2)
+
+        ref = registry.get_patient_reference()
+
+        # get_patient_reference returns the first patient's ID
+        assert ref["reference"] == "urn:uuid:patient-1"
+        # display must match the first patient, not the second
+        assert ref["display"] == "John Smith"
+
     def test_display_survives_multiple_calls(self):
         """Display should be returned on every call."""
         registry = ReferenceRegistry()

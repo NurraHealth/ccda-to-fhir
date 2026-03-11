@@ -144,7 +144,10 @@ class ReferenceRegistry:
 
         # Enhanced logging for Patient resources to help debug reference issues
         if resource_type == "Patient":
-            self._patient_display = _extract_patient_display(resource)
+            # Only store display from the first patient (matches get_patient_reference
+            # which returns the first registered patient).
+            if self._patient_display is None:
+                self._patient_display = _extract_patient_display(resource)
             logger.info(
                 f"Registered Patient resource with ID: {resource_id}",
                 extra={
