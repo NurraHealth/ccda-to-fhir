@@ -270,7 +270,11 @@ def _build_doc_ref(
     }
 
     if encounter_date:
-        doc_ref["date"] = encounter_date
+        from ccda_to_fhir.utils import fhir_date_to_instant
+
+        instant = fhir_date_to_instant(encounter_date)
+        if instant:
+            doc_ref["date"] = instant
 
     if author_references:
         doc_ref["author"] = author_references

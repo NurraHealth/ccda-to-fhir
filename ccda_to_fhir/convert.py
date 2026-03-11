@@ -2615,7 +2615,11 @@ class DocumentConverter:
                 if low_value:
                     raw_date = str(low_value)
             if raw_date:
-                enc_date = self.encounter_converter.convert_date(raw_date)
+                from ccda_to_fhir.utils import fhir_date_to_instant
+
+                enc_date = fhir_date_to_instant(
+                    self.encounter_converter.convert_date(raw_date)
+                )
 
         return enc_reference, enc_date
 
