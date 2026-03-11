@@ -2630,52 +2630,16 @@ class DocumentConverter:
         Uses the same ID generation as the resource converters, so the
         references will match resources already in the bundle.
 
-        When an author has an assignedPerson, a Practitioner reference is created.
-        Otherwise, falls back to Device (from assignedAuthoringDevice) and/or
-        Organization (from representedOrganization) references per FHIR
-        DocumentReference.author which accepts Practitioner | Device | Organization.
+        Delegates to the shared ``build_author_references`` helper.
 
         Returns:
             List of FHIR Reference objects (e.g. [{"reference": "urn:uuid:..."}])
         """
-        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+        from ccda_to_fhir.converters.author_references import build_author_references
 
-        refs: list[JSONObject] = []
         if not ccda_doc.author:
-            return refs
-
-        for author in ccda_doc.author:
-            if not author.assigned_author:
-                continue
-            assigned = author.assigned_author
-            if assigned.assigned_person and assigned.id:
-                first_id = assigned.id[0]
-                prac_id = generate_id_from_identifiers(
-                    "Practitioner",
-                    first_id.root or None,
-                    first_id.extension or None,
-                )
-                refs.append({"reference": f"urn:uuid:{prac_id}"})
-            else:
-                # Fallback: Device from assignedAuthoringDevice
-                if assigned.assigned_authoring_device and assigned.id:
-                    first_id = assigned.id[0]
-                    device_id = generate_id_from_identifiers(
-                        "Device",
-                        first_id.root or None,
-                        first_id.extension or None,
-                    )
-                    refs.append({"reference": f"urn:uuid:{device_id}"})
-                # Fallback: Organization from representedOrganization
-                if assigned.represented_organization and assigned.represented_organization.id:
-                    org_first_id = assigned.represented_organization.id[0]
-                    org_id = generate_id_from_identifiers(
-                        "Organization",
-                        org_first_id.root or None,
-                        org_first_id.extension or None,
-                    )
-                    refs.append({"reference": f"urn:uuid:{org_id}"})
-        return refs
+            return []
+        return build_author_references(ccda_doc.author)
 
     def _extract_header_encounter(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict | None:
         """Extract and convert encompassingEncounter from document header.
