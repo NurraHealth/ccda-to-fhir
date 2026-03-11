@@ -239,14 +239,14 @@ class GoalConverter(BaseConverter[Observation]):
 
     def _convert_code_to_codeable_concept(
         self, code_element: CD | CE | None
-    ) -> JSONObject:
+    ) -> JSONObject | None:
         """Convert C-CDA code element to FHIR CodeableConcept.
 
         Args:
             code_element: C-CDA CD or CE element
 
         Returns:
-            FHIR CodeableConcept
+            FHIR CodeableConcept dict or None
         """
         if not code_element:
             return {}
