@@ -23,13 +23,13 @@ def _get_doc_refs(bundle: dict) -> list[dict]:
 
 
 class TestEncounterDisplayFromCode:
-    """NIST Ambulatory has encompassingEncounter with code displayName='Pnuemonia'."""
+    """NIST Ambulatory has encompassingEncounter with code displayName='Pneumonia'."""
 
     def test_nist_encounter_context_extraction(self) -> None:
         """Verify the encounter code.displayName is available in the conversion.
 
         NIST Ambulatory has no narrative sections or note activities, but the
-        encompassingEncounter has code displayName='Pnuemonia'. We validate
+        encompassingEncounter has code displayName='Pneumonia'. We validate
         that the conversion itself doesn't fail and that the encounter is created.
         """
         xml = (DOCUMENTS_DIR / "nist_ambulatory.xml").read_text()

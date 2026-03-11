@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
+from pydantic import BaseModel
+
 # JSON primitive types
 JSONPrimitive: TypeAlias = str | int | float | bool | None
 
@@ -25,6 +27,28 @@ JSONObject: TypeAlias = dict[str, JSONValue]
 
 # JSON array (for lists within FHIR resources)
 JSONArray: TypeAlias = list[JSONValue]
+
+
+class EncounterContext(BaseModel, frozen=True):
+    """Encounter context from encompassingEncounter for DocumentReference creation."""
+
+    reference: str | None = None
+    """Encounter reference in urn:uuid format."""
+
+    date: str | None = None
+    """Encounter date as a FHIR instant string."""
+
+    display: str | None = None
+    """Human-readable label from encompassingEncounter code.displayName."""
+
+    def to_fhir_reference(self) -> JSONObject | None:
+        """Build a FHIR Reference object, or None if no reference is set."""
+        if not self.reference:
+            return None
+        ref: JSONObject = {"reference": self.reference}
+        if self.display:
+            ref["display"] = self.display
+        return ref
 
 
 # =============================================================================

@@ -37,6 +37,7 @@ from ccda_to_fhir.converters.note_activity import (
 )
 from ccda_to_fhir.converters.code_systems import CodeSystemMapper
 from ccda_to_fhir.converters.references import ReferenceRegistry
+from ccda_to_fhir.types import EncounterContext
 
 
 # ============================================================================
@@ -431,31 +432,33 @@ class TestCreateMissingContent:
 
 
 class TestCreateContext:
+    _NO_ENC = EncounterContext()
+
     def test_period_from_ivl_ts_value(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
-        result = _create_context(act, lambda v: f"converted-{v}")
+        result = _create_context(act, lambda v: f"converted-{v}", self._NO_ENC)
         assert result is not None
         assert result["period"]["start"] == "converted-20260115"
 
     def test_period_from_ivl_ts_low(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(low=TS(value="20260110")))
-        result = _create_context(act, lambda v: f"converted-{v}")
+        result = _create_context(act, lambda v: f"converted-{v}", self._NO_ENC)
         assert result is not None
         assert result["period"]["start"] == "converted-20260110"
 
     def test_ivl_ts_value_preferred_over_low(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260101", low=TS(value="20260110")))
-        result = _create_context(act, lambda v: f"converted-{v}")
+        result = _create_context(act, lambda v: f"converted-{v}", self._NO_ENC)
         assert result is not None
         assert result["period"]["start"] == "converted-20260101"
 
     def test_no_effective_time_returns_none(self) -> None:
         act = _make_note_act()
-        assert _create_context(act, lambda v: v) is None
+        assert _create_context(act, lambda v: v, self._NO_ENC) is None
 
     def test_converter_returns_none(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
-        assert _create_context(act, lambda v: None) is None
+        assert _create_context(act, lambda v: None, self._NO_ENC) is None
 
     def test_encounter_reference(self) -> None:
         act = _make_note_act()
@@ -465,7 +468,7 @@ class TestCreateContext:
                 encounter=CDAEncounter(id=[II(root="enc-root", extension="enc-1")]),
             )
         ]
-        result = _create_context(act, lambda v: v)
+        result = _create_context(act, lambda v: v, self._NO_ENC)
         assert result is not None
         assert len(result["encounter"]) == 1
         assert result["encounter"][0]["reference"].startswith("urn:uuid:")
@@ -482,7 +485,7 @@ class TestCreateContext:
                 encounter=CDAEncounter(id=[II(root="enc-2")]),
             ),
         ]
-        result = _create_context(act, lambda v: v)
+        result = _create_context(act, lambda v: v, self._NO_ENC)
         assert result is not None
         assert len(result["encounter"]) == 2
 
@@ -491,7 +494,7 @@ class TestCreateContext:
         act.entry_relationship = [
             EntryRelationship(type_code="COMP", encounter=CDAEncounter()),
         ]
-        assert _create_context(act, lambda v: v) is None
+        assert _create_context(act, lambda v: v, self._NO_ENC) is None
 
     def test_both_period_and_encounter(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
@@ -501,7 +504,7 @@ class TestCreateContext:
                 encounter=CDAEncounter(id=[II(root="enc-1")]),
             ),
         ]
-        result = _create_context(act, lambda v: v)
+        result = _create_context(act, lambda v: v, self._NO_ENC)
         assert result is not None
         assert "period" in result
         assert "encounter" in result
@@ -1011,7 +1014,8 @@ class TestFallbackEncounterReference:
 
     def test_fallback_used_when_no_explicit_encounter(self) -> None:
         act = _make_note_act()
-        result = _create_context(act, lambda v: v, fallback_encounter_reference="urn:uuid:enc-fallback")
+        ctx = EncounterContext(reference="urn:uuid:enc-fallback")
+        result = _create_context(act, lambda v: v, ctx)
         assert result is not None
         assert result["encounter"][0]["reference"] == "urn:uuid:enc-fallback"
 
@@ -1023,7 +1027,8 @@ class TestFallbackEncounterReference:
                 encounter=CDAEncounter(id=[II(root="enc-explicit")]),
             )
         ]
-        result = _create_context(act, lambda v: v, fallback_encounter_reference="urn:uuid:enc-fallback")
+        ctx = EncounterContext(reference="urn:uuid:enc-fallback")
+        result = _create_context(act, lambda v: v, ctx)
         assert result is not None
         # Should use explicit encounter, not fallback
         assert len(result["encounter"]) == 1
@@ -1033,19 +1038,20 @@ class TestFallbackEncounterReference:
 
     def test_no_fallback_no_encounter_returns_none(self) -> None:
         act = _make_note_act()
-        result = _create_context(act, lambda v: v)
+        result = _create_context(act, lambda v: v, EncounterContext())
         assert result is None
 
     def test_fallback_combined_with_period(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
-        result = _create_context(act, lambda v: f"converted-{v}", fallback_encounter_reference="urn:uuid:enc-fb")
+        ctx = EncounterContext(reference="urn:uuid:enc-fb")
+        result = _create_context(act, lambda v: f"converted-{v}", ctx)
         assert result is not None
         assert result["period"]["start"] == "converted-20260115"
         assert result["encounter"][0]["reference"] == "urn:uuid:enc-fb"
 
-    def test_none_fallback_ignored(self) -> None:
+    def test_empty_context_no_encounter(self) -> None:
         act = _make_note_act()
-        result = _create_context(act, lambda v: v, fallback_encounter_reference=None)
+        result = _create_context(act, lambda v: v, EncounterContext())
         assert result is None
 
 
@@ -1054,23 +1060,17 @@ class TestFallbackEncounterDisplay:
 
     def test_display_set_on_fallback(self) -> None:
         act = _make_note_act()
-        result = _create_context(
-            act, lambda v: v,
-            fallback_encounter_reference="urn:uuid:enc-fb",
-            fallback_encounter_display="Pnuemonia",
-        )
+        ctx = EncounterContext(reference="urn:uuid:enc-fb", display="Pneumonia")
+        result = _create_context(act, lambda v: v, ctx)
         assert result is not None
         enc_ref = result["encounter"][0]
         assert enc_ref["reference"] == "urn:uuid:enc-fb"
-        assert enc_ref["display"] == "Pnuemonia"
+        assert enc_ref["display"] == "Pneumonia"
 
     def test_no_display_when_none(self) -> None:
         act = _make_note_act()
-        result = _create_context(
-            act, lambda v: v,
-            fallback_encounter_reference="urn:uuid:enc-fb",
-            fallback_encounter_display=None,
-        )
+        ctx = EncounterContext(reference="urn:uuid:enc-fb")
+        result = _create_context(act, lambda v: v, ctx)
         assert result is not None
         enc_ref = result["encounter"][0]
         assert enc_ref == {"reference": "urn:uuid:enc-fb"}
@@ -1084,22 +1084,16 @@ class TestFallbackEncounterDisplay:
                 encounter=CDAEncounter(id=[II(root="enc-explicit")]),
             )
         ]
-        result = _create_context(
-            act, lambda v: v,
-            fallback_encounter_reference="urn:uuid:enc-fb",
-            fallback_encounter_display="Office visit",
-        )
+        ctx = EncounterContext(reference="urn:uuid:enc-fb", display="Office visit")
+        result = _create_context(act, lambda v: v, ctx)
         assert result is not None
         enc_ref = result["encounter"][0]
         assert "display" not in enc_ref
 
     def test_display_combined_with_period(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
-        result = _create_context(
-            act, lambda v: f"converted-{v}",
-            fallback_encounter_reference="urn:uuid:enc-fb",
-            fallback_encounter_display="Checkup",
-        )
+        ctx = EncounterContext(reference="urn:uuid:enc-fb", display="Checkup")
+        result = _create_context(act, lambda v: f"converted-{v}", ctx)
         assert result is not None
         assert result["period"]["start"] == "converted-20260115"
         assert result["encounter"][0]["display"] == "Checkup"
@@ -1110,7 +1104,8 @@ class TestFallbackEncounterIntegration:
 
     def test_fallback_encounter_on_convert(self, converter: NoteActivityConverter) -> None:
         act = _make_note_act()
-        result = converter.convert(act, fallback_encounter_reference="urn:uuid:enc-123")
+        ctx = EncounterContext(reference="urn:uuid:enc-123")
+        result = converter.convert(act, fallback_encounter_context=ctx)
         assert result["context"]["encounter"][0]["reference"] == "urn:uuid:enc-123"
 
     def test_explicit_encounter_not_overridden_on_convert(
@@ -1123,7 +1118,8 @@ class TestFallbackEncounterIntegration:
                 encounter=CDAEncounter(id=[II(root="enc-explicit")]),
             )
         ]
-        result = converter.convert(act, fallback_encounter_reference="urn:uuid:enc-fallback")
+        ctx = EncounterContext(reference="urn:uuid:enc-fallback")
+        result = converter.convert(act, fallback_encounter_context=ctx)
         enc_ref = result["context"]["encounter"][0]["reference"]
         assert enc_ref != "urn:uuid:enc-fallback"
         assert enc_ref.startswith("urn:uuid:")
@@ -1135,40 +1131,32 @@ class TestFallbackEncounterIntegration:
 
     def test_convenience_fn_passes_fallback(self, registry: ReferenceRegistry) -> None:
         act = _make_note_act()
+        ctx = EncounterContext(reference="urn:uuid:enc-conv")
         result = convert_note_activity(
-            act,
-            reference_registry=registry,
-            fallback_encounter_reference="urn:uuid:enc-conv",
+            act, reference_registry=registry, fallback_encounter_context=ctx
         )
         assert result["context"]["encounter"][0]["reference"] == "urn:uuid:enc-conv"
 
     def test_display_on_convert(self, converter: NoteActivityConverter) -> None:
         act = _make_note_act()
-        result = converter.convert(
-            act,
-            fallback_encounter_reference="urn:uuid:enc-123",
-            fallback_encounter_display="Pnuemonia",
-        )
+        ctx = EncounterContext(reference="urn:uuid:enc-123", display="Pneumonia")
+        result = converter.convert(act, fallback_encounter_context=ctx)
         enc_ref = result["context"]["encounter"][0]
         assert enc_ref["reference"] == "urn:uuid:enc-123"
-        assert enc_ref["display"] == "Pnuemonia"
+        assert enc_ref["display"] == "Pneumonia"
 
     def test_no_display_on_convert_when_none(self, converter: NoteActivityConverter) -> None:
         act = _make_note_act()
-        result = converter.convert(
-            act,
-            fallback_encounter_reference="urn:uuid:enc-123",
-        )
+        ctx = EncounterContext(reference="urn:uuid:enc-123")
+        result = converter.convert(act, fallback_encounter_context=ctx)
         enc_ref = result["context"]["encounter"][0]
         assert enc_ref == {"reference": "urn:uuid:enc-123"}
 
     def test_convenience_fn_passes_display(self, registry: ReferenceRegistry) -> None:
         act = _make_note_act()
+        ctx = EncounterContext(reference="urn:uuid:enc-conv", display="Office visit")
         result = convert_note_activity(
-            act,
-            reference_registry=registry,
-            fallback_encounter_reference="urn:uuid:enc-conv",
-            fallback_encounter_display="Office visit",
+            act, reference_registry=registry, fallback_encounter_context=ctx
         )
         enc_ref = result["context"]["encounter"][0]
         assert enc_ref["display"] == "Office visit"

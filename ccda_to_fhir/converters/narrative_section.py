@@ -16,7 +16,7 @@ import base64
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import EncounterContext, FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.struc_doc_utils import narrative_to_html, narrative_to_plain_text
 
 from .references import ReferenceRegistry
@@ -57,9 +57,7 @@ def _is_empty_narrative(plain_text: str) -> bool:
 def extract_narrative_sections(
     structured_body: StructuredBody,
     reference_registry: ReferenceRegistry,
-    encounter_reference: str | None = None,
-    encounter_date: str | None = None,
-    encounter_display: str | None = None,
+    encounter_context: EncounterContext | None = None,
     author_references: list[JSONObject] | None = None,
 ) -> list[FHIRResourceDict]:
     """Walk sections and create DocumentReferences for narrative-only clinical sections.
@@ -72,11 +70,8 @@ def extract_narrative_sections(
     Args:
         structured_body: Parsed C-CDA structured body
         reference_registry: Registry for patient reference resolution
-        encounter_reference: Optional encounter reference (e.g. "urn:uuid:abc-123")
-            from the document header's encompassingEncounter
-        encounter_date: Optional date from the encompassingEncounter's effectiveTime
-        encounter_display: Optional display text for the encounter reference,
-            derived from the encompassingEncounter's code.displayName
+        encounter_context: Optional encounter context from the document header's
+            encompassingEncounter (reference, date, and display)
         author_references: Optional list of author references (e.g. from document
             header authors) to set on each DocumentReference
 
@@ -84,6 +79,7 @@ def extract_narrative_sections(
         List of FHIR DocumentReference dicts
     """
     results: list[FHIRResourceDict] = []
+    enc_ctx = encounter_context or EncounterContext()
 
     for section, section_code in _iter_sections(structured_body):
         if not section_code or section_code not in NARRATIVE_SECTIONS:
@@ -107,9 +103,7 @@ def extract_narrative_sections(
             display=display,
             plain_text=plain_text,
             reference_registry=reference_registry,
-            encounter_reference=encounter_reference,
-            encounter_date=encounter_date,
-            encounter_display=encounter_display,
+            encounter_context=enc_ctx,
             author_references=author_references,
         )
         results.append(doc_ref)
@@ -130,9 +124,7 @@ def _build_document_reference(
     display: str,
     plain_text: str,
     reference_registry: ReferenceRegistry,
-    encounter_reference: str | None = None,
-    encounter_date: str | None = None,
-    encounter_display: str | None = None,
+    encounter_context: EncounterContext,
     author_references: list[JSONObject] | None = None,
 ) -> FHIRResourceDict:
     """Build a FHIR DocumentReference for a narrative section."""
@@ -165,16 +157,12 @@ def _build_document_reference(
         "content": [],
     }
 
-    if encounter_date:
-        doc_ref["date"] = encounter_date
+    if encounter_context.date:
+        doc_ref["date"] = encounter_context.date
 
-    if encounter_reference:
-        enc_ref_obj: JSONObject = {"reference": encounter_reference}
-        if encounter_display:
-            enc_ref_obj["display"] = encounter_display
-        doc_ref["context"] = {
-            "encounter": [enc_ref_obj],
-        }
+    enc_fhir_ref = encounter_context.to_fhir_reference()
+    if enc_fhir_ref:
+        doc_ref["context"] = {"encounter": [enc_fhir_ref]}
 
     if author_references:
         doc_ref["author"] = author_references
