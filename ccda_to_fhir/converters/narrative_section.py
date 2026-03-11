@@ -16,7 +16,7 @@ import base64
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.struc_doc_utils import narrative_to_html, narrative_to_plain_text
 
 from .references import ReferenceRegistry
@@ -59,6 +59,7 @@ def extract_narrative_sections(
     reference_registry: ReferenceRegistry,
     encounter_reference: str | None = None,
     encounter_date: str | None = None,
+    author_references: list[JSONObject] | None = None,
 ) -> list[FHIRResourceDict]:
     """Walk sections and create DocumentReferences for narrative-only clinical sections.
 
@@ -73,6 +74,8 @@ def extract_narrative_sections(
         encounter_reference: Optional encounter reference (e.g. "urn:uuid:abc-123")
             from the document header's encompassingEncounter
         encounter_date: Optional date from the encompassingEncounter's effectiveTime
+        author_references: Optional list of author references (e.g. from document
+            header authors) to set on each DocumentReference
 
     Returns:
         List of FHIR DocumentReference dicts
@@ -103,6 +106,7 @@ def extract_narrative_sections(
             reference_registry=reference_registry,
             encounter_reference=encounter_reference,
             encounter_date=encounter_date,
+            author_references=author_references,
         )
         results.append(doc_ref)
         logger.info(
@@ -124,6 +128,7 @@ def _build_document_reference(
     reference_registry: ReferenceRegistry,
     encounter_reference: str | None = None,
     encounter_date: str | None = None,
+    author_references: list[JSONObject] | None = None,
 ) -> FHIRResourceDict:
     """Build a FHIR DocumentReference for a narrative section."""
     doc_ref: FHIRResourceDict = {
@@ -162,6 +167,9 @@ def _build_document_reference(
         doc_ref["context"] = {
             "encounter": [{"reference": encounter_reference}],
         }
+
+    if author_references:
+        doc_ref["author"] = author_references
 
     # Plain text attachment
     plain_b64 = base64.b64encode(plain_text.encode("utf-8")).decode("ascii")

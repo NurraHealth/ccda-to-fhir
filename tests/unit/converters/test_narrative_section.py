@@ -254,3 +254,52 @@ class TestEncounterContext:
         )
         assert "context" not in results[0]
         assert "date" not in results[0]
+
+
+class TestAuthorReferences:
+    """Tests for author references from document header."""
+
+    def test_author_references_set(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        author_refs = [{"reference": "urn:uuid:prac-1"}]
+        results = extract_narrative_sections(
+            body, _make_registry(), author_references=author_refs
+        )
+        assert len(results) == 1
+        assert results[0]["author"] == [{"reference": "urn:uuid:prac-1"}]
+
+    def test_multiple_author_references(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        author_refs = [
+            {"reference": "urn:uuid:prac-1"},
+            {"reference": "urn:uuid:prac-2"},
+        ]
+        results = extract_narrative_sections(
+            body, _make_registry(), author_references=author_refs
+        )
+        assert len(results[0]["author"]) == 2
+
+    def test_no_author_references_omits_field(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        results = extract_narrative_sections(body, _make_registry())
+        assert "author" not in results[0]
+
+    def test_empty_author_references_omits_field(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        results = extract_narrative_sections(
+            body, _make_registry(), author_references=[]
+        )
+        assert "author" not in results[0]
+
+    def test_all_sections_share_authors(self) -> None:
+        body = _make_body([
+            _make_section("10164-2", "HPI content."),
+            _make_section("29545-1", "PE content."),
+        ])
+        author_refs = [{"reference": "urn:uuid:prac-1"}]
+        results = extract_narrative_sections(
+            body, _make_registry(), author_references=author_refs
+        )
+        assert len(results) == 2
+        for dr in results:
+            assert dr["author"] == [{"reference": "urn:uuid:prac-1"}]

@@ -905,6 +905,10 @@ class DocumentConverter:
             for diagnosis in encounter_diagnoses:
                 self.reference_registry.register_resource(diagnosis)
 
+            # Build shared context for all DocumentReference resources
+            enc_ref, enc_date = self._get_encompassing_encounter_context(ccda_doc)
+            doc_author_refs = self._build_document_author_references(ccda_doc) or None
+
             # Extract per-diagnosis notes from encounter narrative tables
             all_conditions = conditions + encounter_diagnoses
             diagnosis_note_doc_refs = extract_encounter_diagnosis_notes(
@@ -912,6 +916,7 @@ class DocumentConverter:
                 encounters,
                 all_conditions,
                 self.reference_registry,
+                author_references=doc_author_refs,
             )
             resources.extend(diagnosis_note_doc_refs)
             for doc_ref in diagnosis_note_doc_refs:
@@ -922,9 +927,6 @@ class DocumentConverter:
             resources.extend(locations)
             for location in locations:
                 self.reference_registry.register_resource(location)
-
-            # Build encounter context from encompassingEncounter for DocumentReferences
-            enc_ref, enc_date = self._get_encompassing_encounter_context(ccda_doc)
 
             # Notes (from Notes sections)
             notes = self._extract_notes(
@@ -944,6 +946,7 @@ class DocumentConverter:
                 reference_registry=self.reference_registry,
                 encounter_reference=enc_ref,
                 encounter_date=enc_date,
+                author_references=doc_author_refs,
             )
             resources.extend(narrative_doc_refs)
             for doc_ref in narrative_doc_refs:
@@ -2615,6 +2618,37 @@ class DocumentConverter:
                 enc_date = self.encounter_converter.convert_date(raw_date)
 
         return enc_reference, enc_date
+
+    def _build_document_author_references(
+        self, ccda_doc: ClinicalDocument
+    ) -> list[dict[str, str]]:
+        """Build author references from document-level authors.
+
+        Uses the same ID generation as the practitioner converter, so the
+        references will match Practitioner resources already in the bundle.
+
+        Returns:
+            List of FHIR Reference objects (e.g. [{"reference": "urn:uuid:..."}])
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        refs: list[dict[str, str]] = []
+        if not ccda_doc.author:
+            return refs
+
+        for author in ccda_doc.author:
+            if not author.assigned_author:
+                continue
+            assigned = author.assigned_author
+            if assigned.assigned_person and assigned.id:
+                first_id = assigned.id[0]
+                prac_id = generate_id_from_identifiers(
+                    "Practitioner",
+                    first_id.root or None,
+                    first_id.extension or None,
+                )
+                refs.append({"reference": f"urn:uuid:{prac_id}"})
+        return refs
 
     def _extract_header_encounter(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict | None:
         """Extract and convert encompassingEncounter from document header.

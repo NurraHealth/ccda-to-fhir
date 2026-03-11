@@ -581,3 +581,64 @@ class TestExtractEncounterDiagnosisNotesIntegration:
         context = dr["context"]
         assert context["encounter"] == [{"reference": f"urn:uuid:{fhir_enc_id}"}]
         assert dr["date"] == "2024-01-22T12:02:39-05:00"
+
+
+# ============================================================================
+# Author references
+# ============================================================================
+
+
+class TestAuthorReferences:
+    """Tests for author references on diagnosis note DocumentReferences."""
+
+    def test_author_references_set_on_doc_ref(self, registry: ReferenceRegistry) -> None:
+        notes = [DiagnosisNote(
+            encounter_content_id=None,
+            diagnosis_display="Pneumonia",
+            snomed_code="233604007",
+            note_text="Improving on antibiotics.",
+        )]
+        author_refs = [{"reference": "urn:uuid:prac-1"}]
+        result = create_diagnosis_note_doc_refs(
+            notes, {}, {}, registry, author_references=author_refs
+        )
+        assert len(result) == 1
+        assert result[0]["author"] == [{"reference": "urn:uuid:prac-1"}]
+
+    def test_multiple_authors(self, registry: ReferenceRegistry) -> None:
+        notes = [DiagnosisNote(
+            encounter_content_id=None,
+            diagnosis_display="HTN",
+            snomed_code=None,
+            note_text="Blood pressure controlled.",
+        )]
+        author_refs = [
+            {"reference": "urn:uuid:prac-1"},
+            {"reference": "urn:uuid:prac-2"},
+        ]
+        result = create_diagnosis_note_doc_refs(
+            notes, {}, {}, registry, author_references=author_refs
+        )
+        assert len(result[0]["author"]) == 2
+
+    def test_no_author_references_omits_field(self, registry: ReferenceRegistry) -> None:
+        notes = [DiagnosisNote(
+            encounter_content_id=None,
+            diagnosis_display="Pneumonia",
+            snomed_code=None,
+            note_text="Improving.",
+        )]
+        result = create_diagnosis_note_doc_refs(notes, {}, {}, registry)
+        assert "author" not in result[0]
+
+    def test_empty_author_references_omits_field(self, registry: ReferenceRegistry) -> None:
+        notes = [DiagnosisNote(
+            encounter_content_id=None,
+            diagnosis_display="Pneumonia",
+            snomed_code=None,
+            note_text="Improving.",
+        )]
+        result = create_diagnosis_note_doc_refs(
+            notes, {}, {}, registry, author_references=[]
+        )
+        assert "author" not in result[0]
