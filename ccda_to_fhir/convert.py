@@ -905,6 +905,10 @@ class DocumentConverter:
             for diagnosis in encounter_diagnoses:
                 self.reference_registry.register_resource(diagnosis)
 
+            # Build shared context for all DocumentReference resources
+            enc_ref, enc_date = self._get_encompassing_encounter_context(ccda_doc)
+            doc_author_refs = self._build_document_author_references(ccda_doc) or None
+
             # Extract per-diagnosis notes from encounter narrative tables
             all_conditions = conditions + encounter_diagnoses
             diagnosis_note_doc_refs = extract_encounter_diagnosis_notes(
@@ -912,6 +916,7 @@ class DocumentConverter:
                 encounters,
                 all_conditions,
                 self.reference_registry,
+                author_references=doc_author_refs,
             )
             resources.extend(diagnosis_note_doc_refs)
             for doc_ref in diagnosis_note_doc_refs:
@@ -924,7 +929,11 @@ class DocumentConverter:
                 self.reference_registry.register_resource(location)
 
             # Notes (from Notes sections)
-            notes = self._extract_notes(ccda_doc.component.structured_body, metadata)
+            notes = self._extract_notes(
+                ccda_doc.component.structured_body,
+                metadata,
+                fallback_encounter_reference=enc_ref,
+            )
             resources.extend(notes)
             for note in notes:
                 self.reference_registry.register_resource(note)
@@ -935,6 +944,9 @@ class DocumentConverter:
             narrative_doc_refs = extract_narrative_sections(
                 ccda_doc.component.structured_body,
                 reference_registry=self.reference_registry,
+                encounter_reference=enc_ref,
+                encounter_date=enc_date,
+                author_references=doc_author_refs,
             )
             resources.extend(narrative_doc_refs)
             for doc_ref in narrative_doc_refs:
@@ -2562,6 +2574,82 @@ class DocumentConverter:
             f"Merged header encounter data into body encounter {body_encounter.get('id')}"
         )
 
+    def _get_encompassing_encounter_context(
+        self, ccda_doc: ClinicalDocument
+    ) -> tuple[str | None, str | None]:
+        """Extract encounter reference and date from encompassingEncounter.
+
+        Returns a (encounter_reference, encounter_date) tuple for use in
+        DocumentReference resources. The encounter reference is formatted as
+        ``urn:uuid:<id>`` using the same ID generation as the encounter converter,
+        so it will match the Encounter resource in the bundle.
+
+        Returns:
+            Tuple of (encounter_reference, encounter_date). Either or both may be None.
+        """
+        if not ccda_doc.component_of:
+            return None, None
+
+        enc = ccda_doc.component_of.encompassing_encounter
+        if not enc:
+            return None, None
+
+        # Build encounter reference using same ID generation as _extract_header_encounter
+        enc_reference: str | None = None
+        if enc.id and len(enc.id) > 0:
+            first_id = enc.id[0]
+            enc_id = self.encounter_converter._generate_encounter_id(
+                root=first_id.root,
+                extension=first_id.extension,
+            )
+            enc_reference = f"urn:uuid:{enc_id}"
+
+        # Extract date from effectiveTime
+        enc_date: str | None = None
+        if enc.effective_time:
+            raw_date: str | None = None
+            if enc.effective_time.value:
+                raw_date = str(enc.effective_time.value)
+            elif enc.effective_time.low:
+                low_value = getattr(enc.effective_time.low, "value", None)
+                if low_value:
+                    raw_date = str(low_value)
+            if raw_date:
+                enc_date = self.encounter_converter.convert_date(raw_date)
+
+        return enc_reference, enc_date
+
+    def _build_document_author_references(
+        self, ccda_doc: ClinicalDocument
+    ) -> list[dict[str, str]]:
+        """Build author references from document-level authors.
+
+        Uses the same ID generation as the practitioner converter, so the
+        references will match Practitioner resources already in the bundle.
+
+        Returns:
+            List of FHIR Reference objects (e.g. [{"reference": "urn:uuid:..."}])
+        """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
+        refs: list[dict[str, str]] = []
+        if not ccda_doc.author:
+            return refs
+
+        for author in ccda_doc.author:
+            if not author.assigned_author:
+                continue
+            assigned = author.assigned_author
+            if assigned.assigned_person and assigned.id:
+                first_id = assigned.id[0]
+                prac_id = generate_id_from_identifiers(
+                    "Practitioner",
+                    first_id.root or None,
+                    first_id.extension or None,
+                )
+                refs.append({"reference": f"urn:uuid:{prac_id}"})
+        return refs
+
     def _extract_header_encounter(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict | None:
         """Extract and convert encompassingEncounter from document header.
 
@@ -3080,6 +3168,7 @@ class DocumentConverter:
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
+        fallback_encounter_reference: str | None = None,
     ) -> list[FHIRResourceDict]:
         """Extract and convert Note Activities from the structured body."""
         notes: list[FHIRResourceDict] = []
@@ -3092,6 +3181,7 @@ class DocumentConverter:
                     code_system_mapper=self.code_system_mapper,
                     reference_registry=self.reference_registry,
                     section=section,
+                    fallback_encounter_reference=fallback_encounter_reference,
                 )
                 collect_results(notes, result)
 

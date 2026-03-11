@@ -258,11 +258,20 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
     # Pydantic model fields tell us this
     model_fields = model_class.model_fields
 
+    # Build alias → field_name mapping for fields whose alias differs from
+    # the snake_case of the XML tag (e.g. field "list_elem" has alias "list")
+    alias_to_field: dict[str, str] = {}
+    for fname, finfo in model_fields.items():
+        if finfo.alias and finfo.alias != fname:
+            alias_to_field[_to_snake_case(finfo.alias)] = fname
+
     for tag, elements in child_elements.items():
         # Convert tag to snake_case to match Pydantic field names
         field_name = _to_snake_case(tag)
 
-        # Check if this field exists in the model
+        # Check if this field exists in the model (by name or alias)
+        if field_name not in model_fields:
+            field_name = alias_to_field.get(field_name, field_name)
         if field_name not in model_fields:
             # Skip unknown elements (extra="ignore" in CDAModel config)
             continue
@@ -305,9 +314,12 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
             if field_value is None:
                 continue
 
+            # Resolve the XML tag name for this field, checking alias first
+            finfo = model_fields[field_name]
+            field_tag = finfo.alias if finfo.alias and finfo.alias != field_name else _to_camel_case(field_name)
+
             # Handle list fields (multiple child elements)
             if isinstance(field_value, list):
-                field_tag = _to_camel_case(field_name)
                 if field_tag in child_elements:
                     xml_children = child_elements[field_tag]
                     # Match parsed models with their XML elements by index
@@ -319,7 +331,6 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
 
             # Handle single-value fields (Pydantic models, not primitives)
             elif isinstance(field_value, BaseModel):
-                field_tag = _to_camel_case(field_name)
                 if field_tag in child_elements and child_elements[field_tag]:
                     xml_child = child_elements[field_tag][0]
                     # Not all models have tail_text field
