@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
+from ccda_to_fhir.ccda.models.datatypes import CD, CE
 from ccda_to_fhir.constants import FHIRSystems
 from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
 from ccda_to_fhir.id_generator import generate_id
@@ -1244,8 +1245,14 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     FHIRCodes.ResourceTypes.CONDITION, condition_id
                 ):
                     # Condition exists - use reasonReference
+                    # Add display from Problem Observation value (condition code)
+                    display: str | None = None
+                    if obs.value and isinstance(obs.value, (CD, CE)):
+                        if obs.value.display_name:
+                            display = obs.value.display_name
+
                     reason_refs.append(
-                        FHIRReference(reference=f"urn:uuid:{condition_id}")
+                        FHIRReference(reference=f"urn:uuid:{condition_id}", display=display)
                     )
                 else:
                     # Inline Problem Observation not converted - use reasonCode

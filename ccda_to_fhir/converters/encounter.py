@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from ccda_to_fhir.ccda.models.datatypes import IVL_TS, TS
+from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
 from ccda_to_fhir.ccda.models.observation import EntryRelationship
 from ccda_to_fhir.constants import (
@@ -811,10 +811,17 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                         )
                                         condition_id = generate_id_from_observation_content(obs)
 
+                                    condition_ref: JSONObject = {
+                                        "reference": f"urn:uuid:{condition_id}"
+                                    }
+
+                                    # Add display from observation value (diagnosis code)
+                                    if obs.value and isinstance(obs.value, (CD, CE)):
+                                        if obs.value.display_name:
+                                            condition_ref["display"] = obs.value.display_name
+
                                     diagnosis: JSONObject = {
-                                        "condition": {
-                                            "reference": f"urn:uuid:{condition_id}"
-                                        }
+                                        "condition": condition_ref
                                     }
 
                                     # Add diagnosis use/role - will be set by _determine_diagnosis_role

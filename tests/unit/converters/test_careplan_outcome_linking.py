@@ -17,6 +17,7 @@ class MockEntry:
     def __init__(self, entry_id, entry_relationships=None):
         self.id = [Mock(root=entry_id)]
         self.entry_relationship = entry_relationships or []
+        self.code = None
 
 
 class MockEntryRelationship:
