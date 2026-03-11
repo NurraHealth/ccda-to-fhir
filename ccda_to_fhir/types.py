@@ -76,7 +76,7 @@ class EncounterContext(BaseModel, frozen=True):
     """Encounter date as a FHIR instant string."""
 
     display: str | None = None
-    """Human-readable label from encompassingEncounter code.displayName."""
+    """Human-readable label derived from encounter code or participant specialty."""
 
     def to_fhir_reference(self) -> JSONObject | None:
         """Build a FHIR Reference object, or None if no reference is set."""

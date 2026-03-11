@@ -2583,9 +2583,11 @@ class DocumentConverter:
         ``urn:uuid:<id>`` using the same ID generation as the encounter converter,
         so it will match the Encounter resource in the bundle.
 
-        The display string is derived from the encounter's ``code.displayName``
-        when available, giving downstream consumers a human-readable label
-        without resolving the reference.
+        Display string resolution order:
+
+        1. ``encompassingEncounter/code/@displayName`` — the encounter type
+        2. First ``encounterParticipant/assignedEntity/code/@displayName`` —
+           the participant specialty, rendered as ``"{specialty} visit"``
         """
         if not ccda_doc.component_of:
             return EncounterContext()
@@ -2619,10 +2621,19 @@ class DocumentConverter:
                     self.encounter_converter.convert_date(raw_date)
                 )
 
-        # Extract display from code.displayName
+        # Extract display — encounter code first, then participant specialty
         enc_display: str | None = None
         if enc.code and enc.code.display_name:
             enc_display = enc.code.display_name
+        elif enc.encounter_participant:
+            for participant in enc.encounter_participant:
+                if (
+                    participant.assigned_entity
+                    and participant.assigned_entity.code
+                    and participant.assigned_entity.code.display_name
+                ):
+                    enc_display = participant.assigned_entity.code.display_name
+                    break
 
         return EncounterContext(
             reference=enc_reference,

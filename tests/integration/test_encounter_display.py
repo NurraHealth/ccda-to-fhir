@@ -45,10 +45,10 @@ class TestEncounterDisplayFromCode:
         assert len(encounters) >= 1
 
 
-class TestEncounterDisplayAbsence:
-    """Athena CCD has encompassingEncounter without a code element."""
+class TestEncounterDisplayFromParticipantSpecialty:
+    """Athena CCD has encompassingEncounter without code but with participant specialty."""
 
-    def test_athena_no_display_on_encounter_refs(self) -> None:
+    def test_athena_display_falls_back_to_participant_specialty(self) -> None:
         xml = (DOCUMENTS_DIR / "athena_ccd.xml").read_text()
         result = convert_document(xml)
         bundle = result["bundle"]
@@ -60,9 +60,8 @@ class TestEncounterDisplayAbsence:
             if "context" not in dr or "encounter" not in dr["context"]:
                 continue
             for enc_ref in dr["context"]["encounter"]:
-                assert "display" not in enc_ref, (
-                    f"Athena CCD has no code on encompassingEncounter, "
-                    f"but encounter ref has display: {enc_ref}"
+                assert enc_ref.get("display") == "Family Medicine", (
+                    f"Expected participant specialty fallback display, got: {enc_ref}"
                 )
 
 
@@ -162,8 +161,8 @@ class TestEncounterDisplayEndToEnd:
             f"Expected display from encompassingEncounter code, got: {enc_ref}"
         )
 
-    def test_display_absent_without_code(self) -> None:
-        """When encompassingEncounter has no code, display should be absent."""
+    def test_display_absent_without_code_or_participant(self) -> None:
+        """When encompassingEncounter has no code and no participants, display should be absent."""
         xml_no_code = self.MINIMAL_CCDA.replace(
             '<code code="99213" codeSystem="2.16.840.1.113883.6.12"\n'
             '            codeSystemName="CPT" displayName="Office or other outpatient visit"/>',
@@ -181,5 +180,37 @@ class TestEncounterDisplayEndToEnd:
 
         enc_ref = hpi_refs[0]["context"]["encounter"][0]
         assert "display" not in enc_ref, (
-            f"Without code on encompassingEncounter, display should be absent: {enc_ref}"
+            f"Without code or participants, display should be absent: {enc_ref}"
+        )
+
+    def test_display_falls_back_to_participant_specialty(self) -> None:
+        """When no code but participant has specialty, display uses specialty."""
+        xml_with_participant = self.MINIMAL_CCDA.replace(
+            '<code code="99213" codeSystem="2.16.840.1.113883.6.12"\n'
+            '            codeSystemName="CPT" displayName="Office or other outpatient visit"/>',
+            "",
+        ).replace(
+            "<effectiveTime value=\"20260101\"/>\n    </encompassingEncounter>",
+            '<effectiveTime value="20260101"/>\n'
+            '      <encounterParticipant typeCode="ATND">\n'
+            "        <assignedEntity>\n"
+            '          <code code="207Q00000X" codeSystem="2.16.840.1.113883.6.101"\n'
+            '                codeSystemName="NUCC" displayName="Family Medicine"/>\n'
+            "        </assignedEntity>\n"
+            "      </encounterParticipant>\n"
+            "    </encompassingEncounter>",
+        )
+        result = convert_document(xml_with_participant)
+        bundle = result["bundle"]
+
+        doc_refs = _get_doc_refs(bundle)
+        hpi_refs = [
+            dr for dr in doc_refs
+            if dr.get("type", {}).get("coding", [{}])[0].get("code") == "10164-2"
+        ]
+        assert len(hpi_refs) == 1
+
+        enc_ref = hpi_refs[0]["context"]["encounter"][0]
+        assert enc_ref["display"] == "Family Medicine", (
+            f"Expected participant specialty fallback, got: {enc_ref}"
         )
