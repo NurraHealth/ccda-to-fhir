@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
+from .author_references import format_organization_display, make_ref
 from .base import BaseConverter
 
 if TYPE_CHECKING:
@@ -83,8 +84,11 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
 
         # Create reference to Organization (optional)
         if organization_id:
+            display = format_organization_display(
+                getattr(assigned, "represented_organization", None)
+            )
             practitioner_role["organization"] = self._create_organization_reference(
-                organization_id
+                organization_id, display
             )
 
         # Map specialty (assignedAuthor/code)
@@ -148,18 +152,19 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
             "reference": f"urn:uuid:{practitioner_id}"
         }
 
-    def _create_organization_reference(self, organization_id: str) -> JSONObject:
+    def _create_organization_reference(
+        self, organization_id: str, display: str | None = None
+    ) -> JSONObject:
         """Create a reference to the Organization resource.
 
         Args:
             organization_id: ID of the Organization resource
+            display: Organization display name
 
         Returns:
             FHIR Reference object
         """
-        return {
-            "reference": f"urn:uuid:{organization_id}"
-        }
+        return make_ref(f"urn:uuid:{organization_id}", display)
 
     def _convert_specialty(self, code: CE) -> list[JSONObject]:
         """Convert specialty code to FHIR PractitionerRole.specialty.

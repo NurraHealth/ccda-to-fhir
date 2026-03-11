@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
+from .author_references import make_ref
 from .base import BaseConverter
 
 if TYPE_CHECKING:
@@ -622,7 +623,8 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Check if Organization resource exists in registry
         # Only create reference if the Organization has been registered
         if self.reference_registry and self.reference_registry.has_resource("Organization", org_id):
-            return {"reference": f"urn:uuid:{org_id}"}
+            display = scoping_entity.desc
+            return make_ref(f"urn:uuid:{org_id}", display)
 
         # If no Organization resource exists in registry, don't create dangling reference
         # The organization may be created later or may not be relevant

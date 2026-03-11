@@ -908,6 +908,8 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         Returns:
             FHIR Reference or None
         """
+        from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
         if not custodian or not custodian.assigned_custodian:
             return None
 
@@ -917,15 +919,26 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         custodian_org = custodian.assigned_custodian.represented_custodian_organization
 
         # Extract display name from ON object
+        display: str | None = None
         if custodian_org.name:
-            # Handle ON (organization name) object
             if isinstance(custodian_org.name, str):
-                return {"display": custodian_org.name}
+                display = custodian_org.name or None
             elif custodian_org.name.value:
-                # ON has value attribute
-                return {"display": custodian_org.name.value}
+                display = custodian_org.name.value
 
-        return None
+        # Build reference with both URI and display when org has identifiers
+        ref: JSONObject = {}
+        if custodian_org.id:
+            first_id = custodian_org.id[0]
+            org_id = generate_id_from_identifiers(
+                "Organization", first_id.root, first_id.extension
+            )
+            ref["reference"] = f"urn:uuid:{org_id}"
+
+        if display:
+            ref["display"] = display
+
+        return ref if ref else None
 
     def _convert_sections(self, structured_body: StructuredBody) -> list[JSONObject]:
         """Convert C-CDA structured body to FHIR Composition sections.

@@ -631,9 +631,12 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         # Add managingOrganization (US Core Must Support)
         # Create Organization resource from the same representedOrganization and reference it
         # Per US Core: "Must be supported if the data is present in the sending system"
+        from ccda_to_fhir.converters.author_references import format_organization_display, make_ref
+
         org_id = self._create_pharmacy_organization(organization)
         if org_id:
-            location["managingOrganization"] = {"reference": f"urn:uuid:{org_id}"}
+            display = format_organization_display(organization)
+            location["managingOrganization"] = make_ref(f"urn:uuid:{org_id}", display)
 
         # Register Location resource
         self.reference_registry.register_resource(location)
