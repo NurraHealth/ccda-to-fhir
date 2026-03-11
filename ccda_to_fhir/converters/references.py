@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 def _extract_patient_display(resource: FHIRResourceDict) -> str | None:
     """Extract a display string from a FHIR Patient resource.
 
-    Builds "given family" from the first HumanName entry.
+    Builds "prefix given family suffix" from the first HumanName entry.
 
     Args:
         resource: FHIR Patient resource dictionary.
@@ -28,6 +28,8 @@ def _extract_patient_display(resource: FHIRResourceDict) -> str | None:
     Returns:
         Formatted patient name or None if unavailable.
     """
+    from ccda_to_fhir.types import format_human_name_display
+
     names = resource.get("name")
     if not isinstance(names, list) or not names:
         return None
@@ -36,35 +38,7 @@ def _extract_patient_display(resource: FHIRResourceDict) -> str | None:
     if not isinstance(name, dict):
         return None
 
-    parts: list[str] = []
-
-    # Prefix
-    prefix = name.get("prefix")
-    if isinstance(prefix, list):
-        for p in prefix:
-            if isinstance(p, str) and p:
-                parts.append(p)
-
-    # Given names
-    given = name.get("given")
-    if isinstance(given, list):
-        for g in given:
-            if isinstance(g, str) and g:
-                parts.append(g)
-
-    # Family name
-    family = name.get("family")
-    if isinstance(family, str) and family:
-        parts.append(family)
-
-    # Suffix
-    suffix = name.get("suffix")
-    if isinstance(suffix, list):
-        for s in suffix:
-            if isinstance(s, str) and s:
-                parts.append(s)
-
-    return " ".join(parts) if parts else None
+    return format_human_name_display(name)
 
 
 class ReferenceRegistry:

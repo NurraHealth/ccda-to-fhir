@@ -29,6 +29,40 @@ JSONObject: TypeAlias = dict[str, JSONValue]
 JSONArray: TypeAlias = list[JSONValue]
 
 
+class HumanName(TypedDict, total=False):
+    """FHIR R4 HumanName element (all fields optional)."""
+
+    use: str
+    text: str
+    family: str
+    given: list[str]
+    prefix: list[str]
+    suffix: list[str]
+    period: JSONObject
+    extension: list[JSONObject]
+
+
+def format_human_name_display(name: HumanName) -> str | None:
+    """Build a display string from a FHIR HumanName: "prefix given family suffix".
+
+    Returns None if no meaningful parts are present.
+    """
+    parts: list[str] = []
+    for p in name.get("prefix", []):
+        if isinstance(p, str) and p:
+            parts.append(p)
+    for g in name.get("given", []):
+        if isinstance(g, str) and g:
+            parts.append(g)
+    family = name.get("family")
+    if isinstance(family, str) and family:
+        parts.append(family)
+    for s in name.get("suffix", []):
+        if isinstance(s, str) and s:
+            parts.append(s)
+    return " ".join(parts) if parts else None
+
+
 class EncounterContext(BaseModel, frozen=True):
     """Encounter context from encompassingEncounter for DocumentReference creation."""
 
