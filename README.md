@@ -50,14 +50,16 @@ print(f"Converted {len(bundle['entry'])} resources")
 | Care Teams | CareTeam |
 | Payers | Coverage, Organization |
 | Plan of Treatment | ServiceRequest |
-| Notes | DocumentReference |
+| Notes (Note Activities, narrative-only sections, encounter diagnosis notes) | DocumentReference |
 | Devices | Device |
-| Authors/Performers | Practitioner, PractitionerRole, Provenance |
+| Authors/Performers | Practitioner, PractitionerRole, Device, Organization, Provenance |
 
 ### Clinical Data Handling
 
 - Complex structures: blood pressure components, pregnancy observations
-- Provenance tracking with multi-author support
+- Provenance tracking with multi-author support (Practitioner, Device, Organization)
+- Narrative-only section extraction (HPI, Physical Exam, ROS, Assessment, Reason for Visit)
+- Encounter diagnosis notes from narrative tables
 - Negation patterns: no-known-allergies, refuted conditions, not-done procedures
 - Body site qualifiers with laterality
 - Reference ranges for vital signs and lab results
