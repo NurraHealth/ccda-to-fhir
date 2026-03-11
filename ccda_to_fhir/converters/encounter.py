@@ -19,6 +19,7 @@ from ccda_to_fhir.constants import (
     TemplateIds,
     map_cpt_to_actcode,
 )
+from ccda_to_fhir.converters.author_references import format_person_display, make_ref
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
@@ -471,10 +472,11 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                             if self.reference_registry:
                                 self.reference_registry.register_resource(practitioner)
 
-                        # Add reference to participant
-                        participant["individual"] = {
-                            "reference": f"urn:uuid:{practitioner_id}"
-                        }
+                        # Add reference to participant with display text
+                        display = format_person_display(assigned_entity.assigned_person)
+                        participant["individual"] = make_ref(
+                            f"urn:uuid:{practitioner_id}", display
+                        )
 
             if participant:
                 participants.append(participant)

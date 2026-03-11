@@ -11,6 +11,11 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
+from ccda_to_fhir.converters.author_references import (
+    format_device_display,
+    format_person_display,
+    make_ref,
+)
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
@@ -611,9 +616,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     for id_elem in assigned_author.id:
                         if id_elem.root:
                             pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                            return {
-                                "reference": f"urn:uuid:{pract_id}"
-                            }
+                            display = format_person_display(assigned_author.assigned_person)
+                            return make_ref(f"urn:uuid:{pract_id}", display)
 
             # Check for device (assigned_authoring_device)
             elif assigned_author.assigned_authoring_device:
@@ -621,9 +625,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     for id_elem in assigned_author.id:
                         if id_elem.root:
                             device_id = self._generate_device_id(id_elem.root, id_elem.extension)
-                            return {
-                                "reference": f"urn:uuid:{device_id}"
-                            }
+                            display = format_device_display(assigned_author.assigned_authoring_device)
+                            return make_ref(f"urn:uuid:{device_id}", display)
 
         return None
 

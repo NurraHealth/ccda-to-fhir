@@ -17,6 +17,8 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures" / "ccda"
 PROBLEMS_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.5.1"
 ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
 NOTES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.65"
+PROCEDURES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.7.1"
+ENCOUNTERS_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.22.1"
 
 
 def _find_resources(bundle: dict, resource_type: str) -> list[dict]:
@@ -95,3 +97,59 @@ class TestDocumentReferenceAuthorDisplay:
         assert len(authors) >= 1
         # The note.xml fixture has author with prefix "Dr." and family "Specialist"
         assert authors[0]["display"] == "Dr. Specialist"
+
+
+class TestProcedureRecorderDisplay:
+    """Procedure.recorder should have display from author name."""
+
+    def test_recorder_display_from_author(self) -> None:
+        fixture = (FIXTURES_DIR / "procedure_with_author.xml").read_text()
+        xml = wrap_in_ccda_document(fixture, PROCEDURES_TEMPLATE_ID)
+        result = convert_document(xml)
+        procedures = _find_resources(result["bundle"], "Procedure")
+        assert len(procedures) >= 1
+        recorder = procedures[0].get("recorder")
+        assert recorder is not None
+        assert recorder["display"] == "Sarah Documenter MD"
+        assert "urn:uuid:" in recorder["reference"]
+
+    def test_recorder_display_latest_author(self) -> None:
+        fixture = (FIXTURES_DIR / "procedure_multiple_authors.xml").read_text()
+        xml = wrap_in_ccda_document(fixture, PROCEDURES_TEMPLATE_ID)
+        result = convert_document(xml)
+        procedures = _find_resources(result["bundle"], "Procedure")
+        assert len(procedures) >= 1
+        recorder = procedures[0].get("recorder")
+        assert recorder is not None
+        assert "display" in recorder
+        assert "urn:uuid:" in recorder["reference"]
+
+
+class TestEncounterParticipantDisplay:
+    """Encounter.participant.individual should have display from performer name."""
+
+    def test_participant_display_from_performer(self) -> None:
+        fixture = (FIXTURES_DIR / "encounter.xml").read_text()
+        xml = wrap_in_ccda_document(fixture, ENCOUNTERS_TEMPLATE_ID)
+        result = convert_document(xml)
+        encounters = _find_resources(result["bundle"], "Encounter")
+        assert len(encounters) >= 1
+        participants = encounters[0].get("participant", [])
+        assert len(participants) >= 1
+        individual = participants[0].get("individual")
+        assert individual is not None
+        assert individual["display"] == "John Smith"
+        assert "urn:uuid:" in individual["reference"]
+
+    def test_participant_display_with_function_code(self) -> None:
+        fixture = (FIXTURES_DIR / "encounter_with_function_code.xml").read_text()
+        xml = wrap_in_ccda_document(fixture, ENCOUNTERS_TEMPLATE_ID)
+        result = convert_document(xml)
+        encounters = _find_resources(result["bundle"], "Encounter")
+        assert len(encounters) >= 1
+        participants = encounters[0].get("participant", [])
+        assert len(participants) >= 1
+        individual = participants[0].get("individual")
+        assert individual is not None
+        assert individual["display"] == "Adam Careful"
+        assert "urn:uuid:" in individual["reference"]
