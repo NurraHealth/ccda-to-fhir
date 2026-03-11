@@ -2621,7 +2621,7 @@ class DocumentConverter:
 
     def _build_document_author_references(
         self, ccda_doc: ClinicalDocument
-    ) -> list[dict[str, str]]:
+    ) -> list[JSONObject]:
         """Build author references from document-level authors.
 
         Uses the same ID generation as the practitioner converter, so the
@@ -2632,7 +2632,7 @@ class DocumentConverter:
         """
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
-        refs: list[dict[str, str]] = []
+        refs: list[JSONObject] = []
         if not ccda_doc.author:
             return refs
 
