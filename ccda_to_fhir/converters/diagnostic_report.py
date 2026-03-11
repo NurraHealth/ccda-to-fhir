@@ -191,18 +191,9 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
                             "reference": f"urn:uuid:{observation['id']}"
                         }
 
-                        # Add display from observation code
-                        obs_code = observation.get("code")
-                        if isinstance(obs_code, dict):
-                            display = obs_code.get("text")
-                            if not display:
-                                codings = obs_code.get("coding")
-                                if isinstance(codings, list) and codings:
-                                    first = codings[0]
-                                    if isinstance(first, dict):
-                                        display = first.get("display")
-                            if display:
-                                result_ref["display"] = display
+                        # Add display from C-CDA observation code
+                        if component.observation.code and component.observation.code.display_name:
+                            result_ref["display"] = component.observation.code.display_name
 
                         result_refs.append(result_ref)
 

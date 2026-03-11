@@ -622,9 +622,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             ref: JSONObject = {"reference": f"urn:uuid:{resource_id}"}
 
             # Add display from outcome observation code
-            if hasattr(outcome_entry, "code") and outcome_entry.code:
-                if hasattr(outcome_entry.code, "display_name") and outcome_entry.code.display_name:
-                    ref["display"] = outcome_entry.code.display_name
+            if outcome_entry.code and outcome_entry.code.display_name:
+                ref["display"] = outcome_entry.code.display_name
 
             return ref
 
