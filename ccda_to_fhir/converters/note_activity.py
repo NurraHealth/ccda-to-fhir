@@ -17,6 +17,7 @@ from ccda_to_fhir.constants import (
 from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
+from .author_references import build_author_references
 from .base import BaseConverter
 from .code_systems import CodeSystemMapper
 from .references import ReferenceRegistry
@@ -113,7 +114,7 @@ class NoteActivityConverter(BaseConverter[Act]):
             if date:
                 doc_ref["date"] = date
 
-            authors = _convert_author_references(note_act.author)
+            authors = build_author_references(note_act.author)
             if authors:
                 doc_ref["author"] = authors
 
@@ -238,15 +239,6 @@ def _extract_author_date(
         return convert_date_fn(first_author.time.value)
     return None
 
-
-def _convert_author_references(authors: list[Author]) -> list[JSONObject]:
-    """Convert note authors to FHIR references (Practitioner, Device, or Organization).
-
-    Delegates to the shared ``build_author_references`` helper.
-    """
-    from ccda_to_fhir.converters.author_references import build_author_references
-
-    return build_author_references(authors)
 
 
 def _create_content_list(
