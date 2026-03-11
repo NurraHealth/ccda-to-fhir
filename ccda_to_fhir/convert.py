@@ -2627,8 +2627,13 @@ class DocumentConverter:
     ) -> list[JSONObject]:
         """Build author references from document-level authors.
 
-        Uses the same ID generation as the practitioner converter, so the
-        references will match Practitioner resources already in the bundle.
+        Uses the same ID generation as the resource converters, so the
+        references will match resources already in the bundle.
+
+        When an author has an assignedPerson, a Practitioner reference is created.
+        Otherwise, falls back to Device (from assignedAuthoringDevice) and/or
+        Organization (from representedOrganization) references per FHIR
+        DocumentReference.author which accepts Practitioner | Device | Organization.
 
         Returns:
             List of FHIR Reference objects (e.g. [{"reference": "urn:uuid:..."}])
@@ -2651,6 +2656,25 @@ class DocumentConverter:
                     first_id.extension or None,
                 )
                 refs.append({"reference": f"urn:uuid:{prac_id}"})
+            else:
+                # Fallback: Device from assignedAuthoringDevice
+                if assigned.assigned_authoring_device and assigned.id:
+                    first_id = assigned.id[0]
+                    device_id = generate_id_from_identifiers(
+                        "Device",
+                        first_id.root or None,
+                        first_id.extension or None,
+                    )
+                    refs.append({"reference": f"urn:uuid:{device_id}"})
+                # Fallback: Organization from representedOrganization
+                if assigned.represented_organization and assigned.represented_organization.id:
+                    org_first_id = assigned.represented_organization.id[0]
+                    org_id = generate_id_from_identifiers(
+                        "Organization",
+                        org_first_id.root or None,
+                        org_first_id.extension or None,
+                    )
+                    refs.append({"reference": f"urn:uuid:{org_id}"})
         return refs
 
     def _extract_header_encounter(self, ccda_doc: ClinicalDocument) -> FHIRResourceDict | None:

@@ -240,7 +240,13 @@ def _extract_author_date(
 
 
 def _convert_author_references(authors: list[Author]) -> list[JSONObject]:
-    """Convert note authors to FHIR Practitioner references."""
+    """Convert note authors to FHIR references (Practitioner, Device, or Organization).
+
+    When an author has an assignedPerson, a Practitioner reference is created.
+    Otherwise, falls back to Device (from assignedAuthoringDevice) and/or
+    Organization (from representedOrganization) references per FHIR
+    DocumentReference.author which accepts Practitioner | Device | Organization.
+    """
     refs: list[JSONObject] = []
     for author in authors:
         if not author.assigned_author:
@@ -254,6 +260,25 @@ def _convert_author_references(authors: list[Author]) -> list[JSONObject]:
                 first_id.extension or None,
             )
             refs.append({"reference": f"urn:uuid:{prac_id}"})
+        else:
+            # Fallback: Device from assignedAuthoringDevice
+            if assigned.assigned_authoring_device and assigned.id:
+                first_id = assigned.id[0]
+                device_id = generate_id_from_identifiers(
+                    "Device",
+                    first_id.root or None,
+                    first_id.extension or None,
+                )
+                refs.append({"reference": f"urn:uuid:{device_id}"})
+            # Fallback: Organization from representedOrganization
+            if assigned.represented_organization and assigned.represented_organization.id:
+                org_first_id = assigned.represented_organization.id[0]
+                org_id = generate_id_from_identifiers(
+                    "Organization",
+                    org_first_id.root or None,
+                    org_first_id.extension or None,
+                )
+                refs.append({"reference": f"urn:uuid:{org_id}"})
     return refs
 
 
