@@ -38,6 +38,8 @@ def format_person_display(person: AssignedPerson | None) -> str | None:
     """Format a person name for FHIR Reference.display.
 
     Extracts prefix + given + family + suffix from the first PN element.
+    Deduplicates the family name when it already appears in the given name
+    (e.g. Athena puts ``<given>John Doe, MD</given><family>Doe</family>``).
 
     Args:
         person: C-CDA AssignedPerson with name list.
@@ -52,17 +54,34 @@ def format_person_display(person: AssignedPerson | None) -> str | None:
     parts: list[str] = []
 
     parts.extend(_extract_enxp_values(name.prefix))
-    parts.extend(_extract_enxp_values(name.given))
 
+    given_values = _extract_enxp_values(name.given)
+    parts.extend(given_values)
+
+    family_value: str | None = None
     if name.family:
         if isinstance(name.family, str):
-            parts.append(name.family)
+            family_value = name.family
         elif name.family.value:
-            parts.append(name.family.value)
+            family_value = name.family.value
+
+    if family_value and not _family_in_given(family_value, given_values):
+        parts.append(family_value)
 
     parts.extend(_extract_enxp_values(name.suffix))
 
     return " ".join(parts) if parts else None
+
+
+def _family_in_given(family: str, given_values: list[str]) -> bool:
+    """Check if the family name already appears in the given name parts.
+
+    Handles Athena-style names where ``<given>`` contains the full formatted
+    name including the family name (e.g. ``"John Doe, MD"`` with family ``"Doe"``).
+    Comparison is case-insensitive.
+    """
+    given_text = " ".join(given_values).upper()
+    return family.upper() in given_text
 
 
 def format_device_display(device: AssignedAuthoringDevice | None) -> str | None:
