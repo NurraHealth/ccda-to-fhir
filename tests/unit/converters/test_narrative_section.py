@@ -12,6 +12,7 @@ from ccda_to_fhir.converters.narrative_section import (
     extract_narrative_sections,
 )
 from ccda_to_fhir.converters.references import ReferenceRegistry
+from ccda_to_fhir.types import EncounterContext
 
 
 def _make_registry() -> ReferenceRegistry:
@@ -184,31 +185,27 @@ class TestEncounterContext:
 
     def test_encounter_reference_set(self) -> None:
         body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        ctx = EncounterContext(reference="urn:uuid:enc-123")
         results = extract_narrative_sections(
-            body,
-            _make_registry(),
-            encounter_reference="urn:uuid:enc-123",
+            body, _make_registry(), encounter_context=ctx
         )
         assert len(results) == 1
         assert results[0]["context"]["encounter"][0]["reference"] == "urn:uuid:enc-123"
 
     def test_encounter_date_set(self) -> None:
         body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        ctx = EncounterContext(date="2026-01-20")
         results = extract_narrative_sections(
-            body,
-            _make_registry(),
-            encounter_date="2026-01-20",
+            body, _make_registry(), encounter_context=ctx
         )
         assert len(results) == 1
         assert results[0]["date"] == "2026-01-20"
 
     def test_both_encounter_reference_and_date(self) -> None:
         body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        ctx = EncounterContext(reference="urn:uuid:enc-123", date="2026-01-20")
         results = extract_narrative_sections(
-            body,
-            _make_registry(),
-            encounter_reference="urn:uuid:enc-123",
-            encounter_date="2026-01-20",
+            body, _make_registry(), encounter_context=ctx
         )
         dr = results[0]
         assert dr["date"] == "2026-01-20"
@@ -220,11 +217,9 @@ class TestEncounterContext:
             _make_section("29545-1", "PE content."),
             _make_section("10187-3", "ROS content."),
         ])
+        ctx = EncounterContext(reference="urn:uuid:enc-shared", date="2026-01-20")
         results = extract_narrative_sections(
-            body,
-            _make_registry(),
-            encounter_reference="urn:uuid:enc-shared",
-            encounter_date="2026-01-20",
+            body, _make_registry(), encounter_context=ctx
         )
         assert len(results) == 3
         enc_refs = {
@@ -246,11 +241,9 @@ class TestEncounterContext:
 
     def test_none_encounter_reference_omits_context(self) -> None:
         body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        ctx = EncounterContext()
         results = extract_narrative_sections(
-            body,
-            _make_registry(),
-            encounter_reference=None,
-            encounter_date=None,
+            body, _make_registry(), encounter_context=ctx
         )
         assert "context" not in results[0]
         assert "date" not in results[0]
@@ -303,3 +296,50 @@ class TestAuthorReferences:
         assert len(results) == 2
         for dr in results:
             assert dr["author"] == [{"reference": "urn:uuid:prac-1"}]
+
+
+class TestEncounterDisplay:
+    """Tests for encounter display text on context.encounter references."""
+
+    def test_encounter_display_set(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        ctx = EncounterContext(reference="urn:uuid:enc-123", display="Pneumonia")
+        results = extract_narrative_sections(
+            body, _make_registry(), encounter_context=ctx
+        )
+        enc_ref = results[0]["context"]["encounter"][0]
+        assert enc_ref["reference"] == "urn:uuid:enc-123"
+        assert enc_ref["display"] == "Pneumonia"
+
+    def test_no_display_when_none(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        ctx = EncounterContext(reference="urn:uuid:enc-123")
+        results = extract_narrative_sections(
+            body, _make_registry(), encounter_context=ctx
+        )
+        enc_ref = results[0]["context"]["encounter"][0]
+        assert enc_ref == {"reference": "urn:uuid:enc-123"}
+        assert "display" not in enc_ref
+
+    def test_display_omitted_without_encounter_reference(self) -> None:
+        body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
+        ctx = EncounterContext(display="Pneumonia")
+        results = extract_narrative_sections(
+            body, _make_registry(), encounter_context=ctx
+        )
+        assert "context" not in results[0]
+
+    def test_all_sections_share_encounter_display(self) -> None:
+        body = _make_body([
+            _make_section("10164-2", "HPI content."),
+            _make_section("29545-1", "PE content."),
+            _make_section("10187-3", "ROS content."),
+        ])
+        ctx = EncounterContext(reference="urn:uuid:enc-shared", display="Office visit")
+        results = extract_narrative_sections(
+            body, _make_registry(), encounter_context=ctx
+        )
+        assert len(results) == 3
+        for dr in results:
+            enc_ref = dr["context"]["encounter"][0]
+            assert enc_ref["display"] == "Office visit"

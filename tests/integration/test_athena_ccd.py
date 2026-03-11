@@ -259,6 +259,17 @@ def test_athena_ccd_comprehensive() -> None:
         "(device/org fallback should populate author for Athena CCD)"
     )
 
+    # === ENCOUNTER DISPLAY VALIDATION ===
+    # Athena CCD has no code on encompassingEncounter, so encounter
+    # references should not have a display field
+    for dr in doc_refs:
+        if "context" in dr and "encounter" in dr["context"]:
+            for enc_ref in dr["context"]["encounter"]:
+                assert "display" not in enc_ref, (
+                    "Athena CCD encompassingEncounter has no code, "
+                    "so encounter references should not have display"
+                )
+
     print("\n✓ athena_ccd comprehensive validation passed!")
     print(f"  Resources validated: {len(resources_by_id)}")
     print(f"  Resource types: {sorted(resources_by_type.keys())}")

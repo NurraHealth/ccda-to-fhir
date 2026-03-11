@@ -45,6 +45,7 @@ from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import (
     ConversionMetadata,
     ConversionResult,
+    EncounterContext,
     FHIRResourceDict,
     JSONObject,
 )
@@ -907,7 +908,7 @@ class DocumentConverter:
                 self.reference_registry.register_resource(diagnosis)
 
             # Build shared context for all DocumentReference resources
-            enc_ref, enc_date = self._get_encompassing_encounter_context(ccda_doc)
+            enc_ctx = self._get_encompassing_encounter_context(ccda_doc)
             doc_author_refs = self._build_document_author_references(ccda_doc) or None
 
             # Extract per-diagnosis notes from encounter narrative tables
@@ -933,7 +934,7 @@ class DocumentConverter:
             notes = self._extract_notes(
                 ccda_doc.component.structured_body,
                 metadata,
-                fallback_encounter_reference=enc_ref,
+                fallback_encounter_context=enc_ctx,
             )
             resources.extend(notes)
             for note in notes:
@@ -945,8 +946,7 @@ class DocumentConverter:
             narrative_doc_refs = extract_narrative_sections(
                 ccda_doc.component.structured_body,
                 reference_registry=self.reference_registry,
-                encounter_reference=enc_ref,
-                encounter_date=enc_date,
+                encounter_context=enc_ctx,
                 author_references=doc_author_refs,
             )
             resources.extend(narrative_doc_refs)
@@ -2577,23 +2577,24 @@ class DocumentConverter:
 
     def _get_encompassing_encounter_context(
         self, ccda_doc: ClinicalDocument
-    ) -> tuple[str | None, str | None]:
-        """Extract encounter reference and date from encompassingEncounter.
+    ) -> EncounterContext:
+        """Extract encounter context from encompassingEncounter.
 
-        Returns a (encounter_reference, encounter_date) tuple for use in
-        DocumentReference resources. The encounter reference is formatted as
+        Builds an ``EncounterContext`` with reference, date, and display for use
+        in DocumentReference resources. The encounter reference is formatted as
         ``urn:uuid:<id>`` using the same ID generation as the encounter converter,
         so it will match the Encounter resource in the bundle.
 
-        Returns:
-            Tuple of (encounter_reference, encounter_date). Either or both may be None.
+        The display string is derived from the encounter's ``code.displayName``
+        when available, giving downstream consumers a human-readable label
+        without resolving the reference.
         """
         if not ccda_doc.component_of:
-            return None, None
+            return EncounterContext()
 
         enc = ccda_doc.component_of.encompassing_encounter
         if not enc:
-            return None, None
+            return EncounterContext()
 
         # Build encounter reference using same ID generation as _extract_header_encounter
         enc_reference: str | None = None
@@ -2620,7 +2621,16 @@ class DocumentConverter:
                     self.encounter_converter.convert_date(raw_date)
                 )
 
-        return enc_reference, enc_date
+        # Extract display from code.displayName
+        enc_display: str | None = None
+        if enc.code and enc.code.display_name:
+            enc_display = enc.code.display_name
+
+        return EncounterContext(
+            reference=enc_reference,
+            date=enc_date,
+            display=enc_display,
+        )
 
     def _build_document_author_references(
         self, ccda_doc: ClinicalDocument
@@ -3159,7 +3169,7 @@ class DocumentConverter:
         self,
         structured_body: StructuredBody,
         metadata: ConversionMetadata | None = None,
-        fallback_encounter_reference: str | None = None,
+        fallback_encounter_context: EncounterContext | None = None,
     ) -> list[FHIRResourceDict]:
         """Extract and convert Note Activities from the structured body."""
         notes: list[FHIRResourceDict] = []
@@ -3172,7 +3182,7 @@ class DocumentConverter:
                     code_system_mapper=self.code_system_mapper,
                     reference_registry=self.reference_registry,
                     section=section,
-                    fallback_encounter_reference=fallback_encounter_reference,
+                    fallback_encounter_context=fallback_encounter_context,
                 )
                 collect_results(notes, result)
 
