@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
@@ -12,9 +14,19 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import (
+    FHIRCodeableConcept,
+    FHIRReference,
+    FHIRResourceDict,
+    JSONObject,
+    ReasonResult,
+)
 
 from .base import BaseConverter
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
+    from ccda_to_fhir.ccda.models.performer import Performer
 
 
 class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
@@ -118,7 +130,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         # Code (required)
         code = self._convert_code(procedure.code)
         if code:
-            fhir_service_request["code"] = code
+            fhir_service_request["code"] = code.to_dict()
 
         # Subject (required) - patient reference
         if not self.reference_registry:
@@ -126,13 +138,13 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                 "reference_registry is required. "
                 "Cannot create ServiceRequest without patient reference."
             )
-        fhir_service_request["subject"] = self.reference_registry.get_patient_reference()
+        fhir_service_request["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Encounter (must support)
         if self.reference_registry:
             encounter_ref = self.reference_registry.get_encounter_reference()
             if encounter_ref:
-                fhir_service_request["encounter"] = encounter_ref
+                fhir_service_request["encounter"] = encounter_ref.to_dict()
 
         # Occurrence[x] (must support) - from effectiveTime
         if procedure.effective_time:
@@ -153,19 +165,19 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if procedure.author:
             requester = self._extract_requester(procedure.author)
             if requester:
-                fhir_service_request["requester"] = requester
+                fhir_service_request["requester"] = requester.to_dict()
 
         # Performer - from performer/assignedEntity
         if procedure.performer:
             performers = self.extract_performer_references(procedure.performer)
             if performers:
-                fhir_service_request["performer"] = performers
+                fhir_service_request["performer"] = [p.to_dict() for p in performers]
 
         # PerformerType - from performer/functionCode
         if procedure.performer:
             performer_type = self._extract_performer_type(procedure.performer)
             if performer_type:
-                fhir_service_request["performerType"] = performer_type
+                fhir_service_request["performerType"] = performer_type.to_dict()
 
         # Priority - from priorityCode (both CCDAProcedure and CCDAAct have this)
         if procedure.priority_code:
@@ -180,17 +192,17 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                 if site_code.code:
                     body_site = self._convert_code(site_code)
                     if body_site:
-                        body_sites.append(body_site)
+                        body_sites.append(body_site.to_dict())
             if body_sites:
                 fhir_service_request["bodySite"] = body_sites
 
         # Reason codes and references - from entryRelationship
         if procedure.entry_relationship:
             reasons = self._extract_reasons(procedure.entry_relationship)
-            if reasons.get("codes"):
-                fhir_service_request["reasonCode"] = reasons["codes"]
-            if reasons.get("references"):
-                fhir_service_request["reasonReference"] = reasons["references"]
+            if reasons.codes:
+                fhir_service_request["reasonCode"] = [c.to_dict() for c in reasons.codes]
+            if reasons.references:
+                fhir_service_request["reasonReference"] = [r.to_dict() for r in reasons.references]
 
         # Patient instruction - from entryRelationship with Instruction template
         if procedure.entry_relationship:
@@ -370,14 +382,14 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             ]
         }
 
-    def _convert_code(self, code: CD) -> JSONObject | None:
-        """Convert C-CDA code to FHIR CodeableConcept.
+    def _convert_code(self, code: CD) -> FHIRCodeableConcept | None:
+        """Convert C-CDA code to FHIR CodeableConcept model.
 
         Args:
             code: The C-CDA code
 
         Returns:
-            FHIR CodeableConcept
+            FHIRCodeableConcept or None
         """
         return self.convert_code_to_codeable_concept(code)
 
@@ -446,7 +458,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         latest_author = max(authors_with_time, key=lambda a: a.time.value)
         return self.convert_date(latest_author.time.value)
 
-    def _extract_requester(self, authors: list) -> JSONObject | None:
+    def _extract_requester(self, authors: list) -> FHIRReference | None:
         """Extract requester reference from C-CDA authors.
 
         Uses the latest author.
@@ -455,7 +467,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             authors: List of C-CDA author elements
 
         Returns:
-            FHIR Reference or None
+            FHIRReference or None
         """
         if not authors or len(authors) == 0:
             return None
@@ -476,22 +488,21 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                         pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                         from ccda_to_fhir.converters.author_references import (
                             format_person_display,
-                            make_ref,
                         )
 
                         display = format_person_display(assigned_author.assigned_person)
-                        return make_ref(f"urn:uuid:{pract_id}", display)
+                        return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
 
         return None
 
-    def _extract_performer_type(self, performers: list) -> JSONObject | None:
+    def _extract_performer_type(self, performers: list[Performer]) -> FHIRCodeableConcept | None:
         """Extract performerType from C-CDA performer functionCode.
 
         Args:
             performers: List of C-CDA performer elements
 
         Returns:
-            FHIR CodeableConcept or None
+            FHIRCodeableConcept or None
         """
         for performer in performers:
             if performer.function_code:
@@ -499,7 +510,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         return None
 
-    def _extract_reasons(self, entry_relationships: list) -> dict[str, list]:
+    def _extract_reasons(self, entry_relationships: list[EntryRelationship]) -> ReasonResult:
         """Extract reason codes and references from entryRelationships.
 
         Delegates to base class method for consistent handling across converters.
@@ -508,7 +519,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             entry_relationships: List of C-CDA entry relationship elements
 
         Returns:
-            Dict with "codes" and "references" lists
+            ReasonResult with codes and references lists
         """
         return self.extract_reasons_from_entry_relationships(
             entry_relationships,
@@ -529,7 +540,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         """
         for entry_rel in entry_relationships:
             # Look for Instruction acts with typeCode="SUBJ" and inversionInd="true"
-            if (entry_rel.type_code == "SUBJ" and entry_rel.inversion_ind) and entry_rel.act:
+            if entry_rel.type_code == "SUBJ" and entry_rel.inversion_ind and entry_rel.act:
                 act = entry_rel.act
 
                 # Check if this is an Instruction template

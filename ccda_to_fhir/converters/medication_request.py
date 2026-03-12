@@ -15,7 +15,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 from .medication import MedicationConverter
@@ -156,7 +156,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create MedicationRequest without patient reference."
             )
-        med_request["subject"] = self.reference_registry.get_patient_reference()
+        med_request["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 7. AuthoredOn (from author time)
         authored_on = self._extract_authored_on(substance_admin)
@@ -180,7 +180,6 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                     from ccda_to_fhir.converters.author_references import (
                         format_device_display,
                         format_person_display,
-                        make_ref,
                     )
 
                     if assigned.assigned_person:
@@ -191,9 +190,10 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                         id_elem.root, id_elem.extension
                                     )
                                     display = format_person_display(assigned.assigned_person)
-                                    med_request["requester"] = make_ref(
-                                        f"urn:uuid:{pract_id}", display
+                                    requester_ref = FHIRReference(
+                                        reference=f"urn:uuid:{pract_id}", display=display
                                     )
+                                    med_request["requester"] = requester_ref.to_dict()
                                     break
                     # Check for device
                     elif assigned.assigned_authoring_device and assigned.id:
@@ -203,9 +203,10 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                     id_elem.root, id_elem.extension
                                 )
                                 display = format_device_display(assigned.assigned_authoring_device)
-                                med_request["requester"] = make_ref(
-                                    f"urn:uuid:{device_id}", display
+                                requester_ref = FHIRReference(
+                                    reference=f"urn:uuid:{device_id}", display=display
                                 )
+                                med_request["requester"] = requester_ref.to_dict()
                                 break
 
         # 8. ReasonCode (from indication entry relationship)
@@ -364,11 +365,11 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             medication_id = medication["id"]
             _medication_registry[medication_id] = medication
 
-            med_ref: JSONObject = {"reference": f"urn:uuid:{medication_id}"}
-
-            # Add display from medication code
+            display: str | None = None
             if manufactured_material.code and manufactured_material.code.display_name:
-                med_ref["display"] = manufactured_material.code.display_name
+                display = manufactured_material.code.display_name
+            med_ref_obj = FHIRReference(reference=f"urn:uuid:{medication_id}", display=display)
+            med_ref: JSONObject = med_ref_obj.to_dict()
 
             return {"medicationReference": med_ref}
         else:
@@ -403,12 +404,10 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
             # Check if codeable_concept is empty (no codings, no text)
             # This can happen when all codings are skipped due to unmapped OIDs
-            if not codeable_concept or (
-                not codeable_concept.get("coding") and not codeable_concept.get("text")
-            ):
+            if not codeable_concept or (not codeable_concept.coding and not codeable_concept.text):
                 return None
 
-            return {"medicationCodeableConcept": codeable_concept}
+            return {"medicationCodeableConcept": codeable_concept.to_dict()}
 
     def _has_complex_medication_info(
         self, substance_admin: SubstanceAdministration, manufactured_product
@@ -478,10 +477,10 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             return reason_codes
 
         for rel in substance_admin.entry_relationship:
+            # This is an Indication observation
             if (
                 rel.type_code == TypeCodes.REASON
                 and rel.observation
-                # This is an Indication observation
                 and rel.observation.value
                 and isinstance(rel.observation.value, (CD, CE))
             ):
@@ -492,7 +491,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                     display_name=value.display_name,
                 )
                 if reason_code:
-                    reason_codes.append(reason_code)
+                    reason_codes.append(reason_code.to_dict())
 
         return reason_codes
 
@@ -548,7 +547,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 display_name=substance_admin.route_code.display_name,
             )
             if route:
-                dosage["route"] = route
+                dosage["route"] = route.to_dict()
 
         # 7. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)
@@ -572,9 +571,9 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 rel.type_code == TypeCodes.SUBJECT
                 and rel.inversion_ind
                 and rel.act
-                # Check if it's an Instruction Act
                 and rel.act.template_id
             ):
+                # Check if it's an Instruction Act
                 for template in rel.act.template_id:
                     if (
                         template.root == TemplateIds.INSTRUCTION_ACT
@@ -596,8 +595,11 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         for rel in substance_admin.entry_relationship:
             if (
-                rel.type_code == TypeCodes.SUBJECT and rel.inversion_ind and rel.act
-            ) and rel.act.template_id:
+                rel.type_code == TypeCodes.SUBJECT
+                and rel.inversion_ind
+                and rel.act
+                and rel.act.template_id
+            ):
                 for template in rel.act.template_id:
                     if (
                         template.root == TemplateIds.INSTRUCTION_ACT
@@ -610,7 +612,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                             display_name=rel.act.code.display_name,
                         )
                         if instruction:
-                            instructions.append(instruction)
+                            instructions.append(instruction.to_dict())
 
         return instructions
 
@@ -812,11 +814,14 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             if precondition.criterion and precondition.criterion.value:
                 criterion_value = precondition.criterion.value
                 if isinstance(criterion_value, (CD, CE)):
-                    return self.create_codeable_concept(
+                    concept = self.create_codeable_concept(
                         code=criterion_value.code,
                         code_system=criterion_value.code_system,
                         display_name=criterion_value.display_name,
                     )
+                    if concept:
+                        return concept.to_dict()
+                    return None
 
         return None
 

@@ -15,9 +15,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ccda_to_fhir.constants import FHIRCodes
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
-from .author_references import make_ref
 from .base import BaseConverter
 
 if TYPE_CHECKING:
@@ -127,7 +126,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Map managingOrganization (US Core Must Support)
         managing_org = self._get_managing_organization_reference(participant_role)
         if managing_org:
-            location["managingOrganization"] = managing_org
+            location["managingOrganization"] = managing_org.to_dict()
 
         return location
 
@@ -506,12 +505,10 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         code_system = location_code.code_system
         code_value = location_code.code
 
-        if code_system == "2.16.840.1.113883.6.259":  # HSLOC
-            if code_value in hsloc_map:
-                physical_type_code, display = hsloc_map[code_value]
-        elif code_system == "2.16.840.1.113883.5.111":  # RoleCode
-            if code_value in rolecode_map:
-                physical_type_code, display = rolecode_map[code_value]
+        if code_system == "2.16.840.1.113883.6.259" and code_value in hsloc_map:  # HSLOC
+            physical_type_code, display = hsloc_map[code_value]
+        elif code_system == "2.16.840.1.113883.5.111" and code_value in rolecode_map:  # RoleCode
+            physical_type_code, display = rolecode_map[code_value]
         elif code_system == "2.16.840.1.113883.6.96" and code_value in snomed_map:  # SNOMED CT
             physical_type_code, display = snomed_map[code_value]
 
@@ -581,7 +578,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
     def _get_managing_organization_reference(
         self, participant_role: ParticipantRole
-    ) -> JSONObject | None:
+    ) -> FHIRReference | None:
         """Extract managing organization reference from location's scoping entity.
 
         The managing organization is the organization responsible for the provisioning
@@ -594,7 +591,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             participant_role: C-CDA ParticipantRole with potential scopingEntity
 
         Returns:
-            Organization reference dict or None if no managing organization found
+            FHIRReference or None if no managing organization found
 
         Examples:
             >>> # Location with scoping organization
@@ -622,7 +619,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Only create reference if the Organization has been registered
         if self.reference_registry and self.reference_registry.has_resource("Organization", org_id):
             display = scoping_entity.desc or None
-            return make_ref(f"urn:uuid:{org_id}", display)
+            return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
 
         # If no Organization resource exists in registry, don't create dangling reference
         # The organization may be created later or may not be relevant

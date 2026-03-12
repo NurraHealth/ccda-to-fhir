@@ -30,6 +30,7 @@ from ccda_to_fhir.converters.encounter_diagnosis_notes import (
 )
 from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.id_generator import reset_id_cache
+from ccda_to_fhir.types import FHIRReference
 
 # ============================================================================
 # Fixtures
@@ -601,7 +602,7 @@ class TestAuthorReferences:
                 note_text="Improving on antibiotics.",
             )
         ]
-        author_refs = [{"reference": "urn:uuid:prac-1"}]
+        author_refs = [FHIRReference(reference="urn:uuid:prac-1")]
         result = create_diagnosis_note_doc_refs(
             notes, {}, {}, registry, author_references=author_refs
         )
@@ -618,8 +619,8 @@ class TestAuthorReferences:
             )
         ]
         author_refs = [
-            {"reference": "urn:uuid:prac-1"},
-            {"reference": "urn:uuid:prac-2"},
+            FHIRReference(reference="urn:uuid:prac-1"),
+            FHIRReference(reference="urn:uuid:prac-2"),
         ]
         result = create_diagnosis_note_doc_refs(
             notes, {}, {}, registry, author_references=author_refs

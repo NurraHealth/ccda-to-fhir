@@ -10,6 +10,7 @@ import pytest
 
 from ccda_to_fhir.converters.careplan import CarePlanConverter
 from ccda_to_fhir.converters.references import ReferenceRegistry
+from ccda_to_fhir.types import FHIRReference
 
 
 class MockEntry:
@@ -38,7 +39,7 @@ class TestCarePlanOutcomeLinking:
         registry = Mock(spec=ReferenceRegistry)
         registry.has_resource = Mock(return_value=True)
         registry.get_patient_reference = Mock(
-            return_value={"reference": "urn:uuid:12345678-1234-5678-1234-567812345678"}
+            return_value=FHIRReference(reference="urn:uuid:12345678-1234-5678-1234-567812345678")
         )
         return registry
 
@@ -278,9 +279,8 @@ class TestCarePlanOutcomeLinking:
         outcome = MockEntry("outcome-456")
 
         ref = converter._create_outcome_reference(outcome)
-        assert isinstance(ref, dict)
-        assert "reference" in ref
-        assert ref["reference"].startswith("urn:uuid:")
+        assert ref is not None
+        assert ref.reference.startswith("urn:uuid:")
 
     def test_create_outcome_reference_not_found(self, converter, mock_reference_registry):
         """Test outcome reference returns None when not in registry."""

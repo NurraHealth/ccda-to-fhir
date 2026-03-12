@@ -12,7 +12,7 @@ from ccda_to_fhir.converters.narrative_section import (
     extract_narrative_sections,
 )
 from ccda_to_fhir.converters.references import ReferenceRegistry
-from ccda_to_fhir.types import EncounterContext
+from ccda_to_fhir.types import EncounterContext, FHIRReference
 
 
 def _make_registry() -> ReferenceRegistry:
@@ -242,7 +242,7 @@ class TestAuthorReferences:
 
     def test_author_references_set(self) -> None:
         body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
-        author_refs = [{"reference": "urn:uuid:prac-1"}]
+        author_refs = [FHIRReference(reference="urn:uuid:prac-1")]
         results = extract_narrative_sections(body, _make_registry(), author_references=author_refs)
         assert len(results) == 1
         assert results[0]["author"] == [{"reference": "urn:uuid:prac-1"}]
@@ -250,8 +250,8 @@ class TestAuthorReferences:
     def test_multiple_author_references(self) -> None:
         body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
         author_refs = [
-            {"reference": "urn:uuid:prac-1"},
-            {"reference": "urn:uuid:prac-2"},
+            FHIRReference(reference="urn:uuid:prac-1"),
+            FHIRReference(reference="urn:uuid:prac-2"),
         ]
         results = extract_narrative_sections(body, _make_registry(), author_references=author_refs)
         assert len(results[0]["author"]) == 2
@@ -273,7 +273,7 @@ class TestAuthorReferences:
                 _make_section("29545-1", "PE content."),
             ]
         )
-        author_refs = [{"reference": "urn:uuid:prac-1"}]
+        author_refs = [FHIRReference(reference="urn:uuid:prac-1")]
         results = extract_narrative_sections(body, _make_registry(), author_references=author_refs)
         assert len(results) == 2
         for dr in results:

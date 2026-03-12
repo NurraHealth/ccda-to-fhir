@@ -31,9 +31,9 @@ from typing import TYPE_CHECKING
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict
 
-from .author_references import format_organization_display, make_ref
+from .author_references import format_organization_display
 from .base import BaseConverter
 from .organization import OrganizationConverter
 
@@ -190,7 +190,7 @@ class CoverageConverter(BaseConverter["Act"]):
                 display_name=policy.code.display_name,
             )
             if coverage_type:
-                coverage["type"] = coverage_type
+                coverage["type"] = coverage_type.to_dict()
 
         # Order from sequenceNumber
         if sequence_number is not None:
@@ -217,7 +217,7 @@ class CoverageConverter(BaseConverter["Act"]):
             logger.warning("No reference registry; Coverage will lack beneficiary/payor")
             return coverage, related
 
-        patient_ref = self.reference_registry.get_patient_reference()
+        patient_ref = self.reference_registry.get_patient_reference().to_dict()
         coverage["beneficiary"] = patient_ref
         # payor is required in FHIR Coverage — default to patient if no PAYOR performer
         if "payor" not in coverage:
@@ -288,7 +288,8 @@ class CoverageConverter(BaseConverter["Act"]):
                     org["id"] = generate_id()
                 related.append(org)
                 display = format_organization_display(assigned.represented_organization)
-                coverage["payor"] = [make_ref(f"urn:uuid:{org['id']}", display)]
+                payor_ref = FHIRReference(reference=f"urn:uuid:{org['id']}", display=display)
+                coverage["payor"] = [payor_ref.to_dict()]
         elif assigned.id:
             # Create minimal Organization from assignedEntity
             org_id = generate_id_from_identifiers(
@@ -306,7 +307,8 @@ class CoverageConverter(BaseConverter["Act"]):
                 minimal_org["identifier"] = identifiers
             related.append(minimal_org)
             # Minimal org built from identifiers only — no name available for display
-            coverage["payor"] = [{"reference": f"urn:uuid:{org_id}"}]
+            payor_ref = FHIRReference(reference=f"urn:uuid:{org_id}")
+            coverage["payor"] = [payor_ref.to_dict()]
 
     @staticmethod
     def _is_payor_performer(performer: Performer) -> bool:
@@ -372,7 +374,7 @@ class CoverageConverter(BaseConverter["Act"]):
 
         # When relationship is SELF, subscriber is the patient (beneficiary)
         if relationship_code == "SELF" and self.reference_registry:
-            coverage["subscriber"] = self.reference_registry.get_patient_reference()
+            coverage["subscriber"] = self.reference_registry.get_patient_reference().to_dict()
 
         # COV participant time is the coverage period (preferred over policy effectiveTime)
         if participant.time:

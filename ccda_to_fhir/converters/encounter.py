@@ -19,7 +19,13 @@ from ccda_to_fhir.constants import (
     TemplateIds,
     map_cpt_to_actcode,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import (
+    DiagnosisRole,
+    FHIRCodeableConcept,
+    FHIRResourceDict,
+    JSONObject,
+    ReasonResult,
+)
 
 from .base import BaseConverter
 
@@ -121,12 +127,12 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             raise ValueError(
                 "reference_registry is required. Cannot create Encounter without patient reference."
             )
-        fhir_encounter["subject"] = self.reference_registry.get_patient_reference()
+        fhir_encounter["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Type - Convert encounter code to type (if not used for class)
         encounter_type = self._extract_type(encounter)
         if encounter_type:
-            fhir_encounter["type"] = [encounter_type]
+            fhir_encounter["type"] = [encounter_type.to_dict()]
 
         # Participant - Extract performers and their roles
         participants = self._extract_participants(encounter)
@@ -141,10 +147,10 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         # Reason codes and references - Extract from indication entry relationships
         reasons = self._extract_reasons(encounter.entry_relationship)
-        if reasons["codes"]:
-            fhir_encounter["reasonCode"] = reasons["codes"]
-        if reasons["references"]:
-            fhir_encounter["reasonReference"] = reasons["references"]
+        if reasons.codes:
+            fhir_encounter["reasonCode"] = [c.to_dict() for c in reasons.codes]
+        if reasons.references:
+            fhir_encounter["reasonReference"] = [r.to_dict() for r in reasons.references]
 
         # Diagnosis - Extract from encounter diagnosis entry relationships
         diagnoses = self._extract_diagnoses(encounter.entry_relationship)
@@ -292,7 +298,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             "code": FHIRCodes.EncounterClass.AMBULATORY,
         }
 
-    def _extract_type(self, encounter: CCDAEncounter) -> JSONObject | None:
+    def _extract_type(self, encounter: CCDAEncounter) -> FHIRCodeableConcept | None:
         """Extract FHIR type from C-CDA encounter code.
 
         If the encounter code is NOT from V3 ActCode (since that's used for class),
@@ -313,14 +319,14 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         return self._convert_code(encounter.code)
 
-    def _convert_code(self, code) -> JSONObject | None:
-        """Convert C-CDA encounter code to FHIR CodeableConcept.
+    def _convert_code(self, code: CD) -> FHIRCodeableConcept | None:
+        """Convert C-CDA encounter code to FHIR CodeableConcept model.
 
         Args:
             code: The C-CDA encounter code
 
         Returns:
-            FHIR CodeableConcept or None
+            FHIRCodeableConcept or None
         """
         return self.convert_code_to_codeable_concept(code)
 
@@ -892,10 +898,10 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         # Apply the determined role to all diagnoses in this encounter
         for diagnosis in diagnoses:
             if "use" in diagnosis and "coding" in diagnosis["use"]:
-                diagnosis["use"]["coding"][0]["code"] = diagnosis_role["code"]
-                diagnosis["use"]["coding"][0]["display"] = diagnosis_role["display"]
+                diagnosis["use"]["coding"][0]["code"] = diagnosis_role.code
+                diagnosis["use"]["coding"][0]["display"] = diagnosis_role.display
 
-    def _determine_diagnosis_role(self, encounter: CCDAEncounter) -> dict[str, str]:
+    def _determine_diagnosis_role(self, encounter: CCDAEncounter) -> DiagnosisRole:
         """Determine the appropriate diagnosis role based on encounter context.
 
         C-CDA Encounter Diagnosis Act does not explicitly encode diagnosis roles
@@ -920,14 +926,14 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             encounter: The C-CDA encounter
 
         Returns:
-            Dict with 'code' and 'display' keys for the diagnosis role
+            DiagnosisRole with code and display for the diagnosis role
         """
         # Check for discharge disposition - indicates discharge diagnosis
         if (
             encounter.sdtc_discharge_disposition_code
             and encounter.sdtc_discharge_disposition_code.code
         ):
-            return {"code": "DD", "display": "Discharge diagnosis"}
+            return DiagnosisRole(code="DD", display="Discharge diagnosis")
 
         # Check encounter class for inpatient or emergency
         if encounter.code and encounter.code.code:
@@ -952,21 +958,15 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                         encounter_class = trans_code
                         break
 
-            # Inpatient encounters → admission diagnosis
-            if encounter_class in ["IMP", "ACUTE", "NONAC"]:
-                return {"code": "AD", "display": "Admission diagnosis"}
-
-            # Emergency encounters → admission diagnosis
-            if encounter_class == "EMER":
-                return {"code": "AD", "display": "Admission diagnosis"}
+            # Inpatient and emergency encounters → admission diagnosis
+            if encounter_class in ["IMP", "ACUTE", "NONAC", "EMER"]:
+                return DiagnosisRole(code="AD", display="Admission diagnosis")
 
         # Default to billing diagnosis for all other encounters
         # This is the most general-purpose role for outpatient, ambulatory, etc.
-        return {"code": "billing", "display": "Billing"}
+        return DiagnosisRole(code="billing", display="Billing")
 
-    def _extract_reasons(
-        self, entry_relationships: list[EntryRelationship] | None
-    ) -> dict[str, list]:
+    def _extract_reasons(self, entry_relationships: list[EntryRelationship] | None) -> ReasonResult:
         """Extract FHIR reason codes and references from C-CDA entry relationships.
 
         Delegates to base class method for consistent handling across converters.
@@ -975,7 +975,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             entry_relationships: List of entry relationships
 
         Returns:
-            Dict with "codes" and "references" lists
+            ReasonResult with codes and references lists
         """
         return self.extract_reasons_from_entry_relationships(
             entry_relationships,

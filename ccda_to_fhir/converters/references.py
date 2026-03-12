@@ -10,9 +10,10 @@ from typing import TYPE_CHECKING
 
 from ccda_to_fhir.exceptions import MissingReferenceError
 from ccda_to_fhir.logging_config import get_logger
+from ccda_to_fhir.types import FHIRReference, RegistryStats
 
 if TYPE_CHECKING:
-    from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+    from ccda_to_fhir.types import FHIRResourceDict
 
 logger = get_logger(__name__)
 
@@ -30,22 +31,18 @@ class ReferenceRegistry:
         >>>
         >>> # Later, validate a reference
         >>> ref = registry.resolve_reference("Patient", "patient-123")
-        >>> # Returns: {"reference": "Patient/patient-123"}
+        >>> # Returns: FHIRReference(reference="urn:uuid:patient-123")
         >>>
         >>> # Invalid reference
         >>> ref = registry.resolve_reference("Patient", "does-not-exist")
-        >>> # Returns: None (and logs warning)
+        >>> # Raises: MissingReferenceError
     """
 
     def __init__(self) -> None:
         """Initialize empty registry."""
         self._resources: dict[str, dict[str, FHIRResourceDict]] = {}
         self._patient_display: str | None = None
-        self._stats: dict[str, int] = {
-            "registered": 0,
-            "resolved": 0,
-            "failed": 0,
-        }
+        self._stats = RegistryStats()
 
     def register_resource(self, resource: FHIRResourceDict) -> None:
         """Register a resource in the registry.
@@ -90,7 +87,7 @@ class ReferenceRegistry:
 
         # Register the resource
         self._resources[resource_type][resource_id] = resource
-        self._stats["registered"] += 1
+        self._stats.registered += 1
 
         # Enhanced logging for Patient resources to help debug reference issues
         if resource_type == "Patient":
@@ -115,7 +112,7 @@ class ReferenceRegistry:
         self,
         resource_type: str,
         resource_id: str,
-    ) -> JSONObject:
+    ) -> FHIRReference:
         """Resolve a reference to a resource, validating it exists.
 
         Args:
@@ -123,14 +120,14 @@ class ReferenceRegistry:
             resource_id: The resource ID
 
         Returns:
-            Reference object {"reference": "ResourceType/id"}
+            FHIRReference with the urn:uuid reference
 
         Raises:
             MissingReferenceError: If the referenced resource doesn't exist
         """
         # Check if resource type exists
         if resource_type not in self._resources:
-            self._stats["failed"] += 1
+            self._stats.failed += 1
             raise MissingReferenceError(
                 resource_type=resource_type,
                 resource_id=resource_id,
@@ -139,7 +136,7 @@ class ReferenceRegistry:
 
         # Check if resource ID exists
         if resource_id not in self._resources[resource_type]:
-            self._stats["failed"] += 1
+            self._stats.failed += 1
             available_ids = list(self._resources[resource_type].keys())[:5]
             raise MissingReferenceError(
                 resource_type=resource_type,
@@ -148,8 +145,8 @@ class ReferenceRegistry:
             )
 
         # Resource exists - return reference using urn:uuid format for transaction bundles
-        self._stats["resolved"] += 1
-        return {"reference": f"urn:uuid:{resource_id}"}
+        self._stats.resolved += 1
+        return FHIRReference(reference=f"urn:uuid:{resource_id}")
 
     def has_resource(self, resource_type: str, resource_id: str) -> bool:
         """Check if a resource exists in the registry.
@@ -193,13 +190,13 @@ class ReferenceRegistry:
             all_resources.extend(resource_type_dict.values())
         return all_resources
 
-    def get_stats(self) -> dict[str, int]:
+    def get_stats(self) -> RegistryStats:
         """Get registry statistics.
 
         Returns:
-            Dictionary with stats: registered, resolved, failed
+            RegistryStats with registered, resolved, failed counts
         """
-        return self._stats.copy()
+        return self._stats.model_copy()
 
     def has_patient(self) -> bool:
         """Check if a patient has been registered.
@@ -213,7 +210,7 @@ class ReferenceRegistry:
         """
         return "Patient" in self._resources and bool(self._resources["Patient"])
 
-    def get_patient_reference(self) -> JSONObject:
+    def get_patient_reference(self) -> FHIRReference:
         """Get reference to the document's patient.
 
         Per C-CDA specification, recordTarget is required (SHALL, cardinality 1..*).
@@ -225,7 +222,7 @@ class ReferenceRegistry:
         this returns the first patient.
 
         Returns:
-            Reference object {"reference": "Patient/id"}
+            FHIRReference with urn:uuid reference and optional display
 
         Raises:
             MissingReferenceError: If no patient is registered (architectural violation)
@@ -235,7 +232,7 @@ class ReferenceRegistry:
             >>> patient = {"resourceType": "Patient", "id": "patient-123"}
             >>> registry.register_resource(patient)
             >>> ref = registry.get_patient_reference()
-            >>> # Returns: {"reference": "Patient/patient-123"}
+            >>> # Returns: FHIRReference(reference="urn:uuid:patient-123")
         """
         if not self.has_patient():
             raise MissingReferenceError(
@@ -262,11 +259,11 @@ class ReferenceRegistry:
                 },
             )
 
-        self._stats["resolved"] += 1
-        ref: JSONObject = {"reference": f"urn:uuid:{patient_id}"}
-        if self._patient_display:
-            ref["display"] = self._patient_display
-        return ref
+        self._stats.resolved += 1
+        return FHIRReference(
+            reference=f"urn:uuid:{patient_id}",
+            display=self._patient_display,
+        )
 
     @property
     def patient_display(self) -> str | None:
@@ -285,7 +282,7 @@ class ReferenceRegistry:
         """
         return "Encounter" in self._resources and bool(self._resources["Encounter"])
 
-    def get_encounter_reference(self) -> JSONObject | None:
+    def get_encounter_reference(self) -> FHIRReference | None:
         """Get reference to the document's encounter if one exists.
 
         C-CDA documents may contain an encounter in componentOf/encompassingEncounter.
@@ -295,29 +292,25 @@ class ReferenceRegistry:
         This method returns a reference to the first registered encounter.
 
         Returns:
-            Reference object {"reference": "Encounter/id"} or None if no encounter registered
+            FHIRReference or None if no encounter registered
 
         Example:
             >>> registry = ReferenceRegistry()
             >>> encounter = {"resourceType": "Encounter", "id": "encounter-123"}
             >>> registry.register_resource(encounter)
             >>> ref = registry.get_encounter_reference()
-            >>> # Returns: {"reference": "Encounter/encounter-123"}
+            >>> # Returns: FHIRReference(reference="urn:uuid:encounter-123")
         """
         if not self.has_encounter():
             return None
 
         # Get first encounter
         encounter_id = next(iter(self._resources["Encounter"].keys()))
-        self._stats["resolved"] += 1
-        return {"reference": f"urn:uuid:{encounter_id}"}
+        self._stats.resolved += 1
+        return FHIRReference(reference=f"urn:uuid:{encounter_id}")
 
     def clear(self) -> None:
         """Clear all registered resources and reset stats."""
         self._resources.clear()
         self._patient_display = None
-        self._stats = {
-            "registered": 0,
-            "resolved": 0,
-            "failed": 0,
-        }
+        self._stats = RegistryStats()
