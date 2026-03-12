@@ -489,12 +489,8 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                 self.reference_registry.register_resource(practitioner)
 
                         # Add reference to participant with display
-                        individual_ref: JSONObject = {
-                            "reference": f"urn:uuid:{practitioner_id}"
-                        }
-                        display = format_person_display(
-                            assigned_entity.assigned_person
-                        )
+                        individual_ref: JSONObject = {"reference": f"urn:uuid:{practitioner_id}"}
+                        display = format_person_display(assigned_entity.assigned_person)
                         if display:
                             individual_ref["display"] = display
                         participant["individual"] = individual_ref

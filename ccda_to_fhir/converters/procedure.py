@@ -611,10 +611,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 if assigned_author.id:
                     for id_elem in assigned_author.id:
                         if id_elem.root:
-                            pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                            ref: JSONObject = {
-                                "reference": f"urn:uuid:{pract_id}"
-                            }
+                            pract_id = self._generate_practitioner_id(
+                                id_elem.root, id_elem.extension
+                            )
+                            ref: JSONObject = {"reference": f"urn:uuid:{pract_id}"}
                             display = format_person_display(assigned_author.assigned_person)
                             if display:
                                 ref["display"] = display
@@ -626,10 +626,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     for id_elem in assigned_author.id:
                         if id_elem.root:
                             device_id = self._generate_device_id(id_elem.root, id_elem.extension)
-                            ref = {
-                                "reference": f"urn:uuid:{device_id}"
-                            }
-                            display = format_device_display(assigned_author.assigned_authoring_device)
+                            ref = {"reference": f"urn:uuid:{device_id}"}
+                            display = format_device_display(
+                                assigned_author.assigned_authoring_device
+                            )
                             if display:
                                 ref["display"] = display
                             return ref

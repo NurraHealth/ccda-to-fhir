@@ -8,8 +8,6 @@ entry-level author reference builders.
 from __future__ import annotations
 
 import re
-from typing import NamedTuple
-
 
 from ccda_to_fhir.ccda.models.author import (
     AssignedAuthor,

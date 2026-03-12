@@ -6,8 +6,6 @@ reference and date when body encounter mapping fails.
 
 from __future__ import annotations
 
-import base64
-
 import pytest
 
 from ccda_to_fhir.converters.encounter_diagnosis_notes import (
@@ -19,7 +17,7 @@ from ccda_to_fhir.id_generator import reset_id_cache
 
 
 @pytest.fixture(autouse=True)
-def _reset_ids():
+def _reset_ids():  # pyright: ignore[reportUnusedFunction]
     reset_id_cache()
     yield
     reset_id_cache()
@@ -35,12 +33,14 @@ def registry() -> ReferenceRegistry:
 class TestDiagnosisNoteFallback:
     def test_fallback_encounter_when_mapping_fails(self, registry: ReferenceRegistry) -> None:
         """When encounter_content_id doesn't map, use fallback reference."""
-        notes = [DiagnosisNote(
-            encounter_content_id="unmapped-id",
-            diagnosis_display="Hypertension",
-            snomed_code="59621000",
-            note_text="BP above goal.",
-        )]
+        notes = [
+            DiagnosisNote(
+                encounter_content_id="unmapped-id",
+                diagnosis_display="Hypertension",
+                snomed_code="59621000",
+                note_text="BP above goal.",
+            )
+        ]
 
         doc_refs = create_diagnosis_note_doc_refs(
             notes=notes,
@@ -59,12 +59,14 @@ class TestDiagnosisNoteFallback:
 
     def test_fallback_encounter_when_no_content_id(self, registry: ReferenceRegistry) -> None:
         """When encounter_content_id is None, use fallback reference."""
-        notes = [DiagnosisNote(
-            encounter_content_id=None,
-            diagnosis_display="Diabetes",
-            snomed_code=None,
-            note_text="Monitor HbA1c.",
-        )]
+        notes = [
+            DiagnosisNote(
+                encounter_content_id=None,
+                diagnosis_display="Diabetes",
+                snomed_code=None,
+                note_text="Monitor HbA1c.",
+            )
+        ]
 
         doc_refs = create_diagnosis_note_doc_refs(
             notes=notes,
@@ -83,12 +85,14 @@ class TestDiagnosisNoteFallback:
 
     def test_body_encounter_takes_precedence(self, registry: ReferenceRegistry) -> None:
         """When body encounter mapping succeeds, use it instead of fallback."""
-        notes = [DiagnosisNote(
-            encounter_content_id="enc1",
-            diagnosis_display="Hypertension",
-            snomed_code="59621000",
-            note_text="BP note.",
-        )]
+        notes = [
+            DiagnosisNote(
+                encounter_content_id="enc1",
+                diagnosis_display="Hypertension",
+                snomed_code="59621000",
+                note_text="BP note.",
+            )
+        ]
 
         doc_refs = create_diagnosis_note_doc_refs(
             notes=notes,
@@ -109,12 +113,14 @@ class TestDiagnosisNoteFallback:
 
     def test_no_fallback_no_encounter(self, registry: ReferenceRegistry) -> None:
         """When no fallback and no mapping, context should have no encounter."""
-        notes = [DiagnosisNote(
-            encounter_content_id=None,
-            diagnosis_display="Diabetes",
-            snomed_code=None,
-            note_text="Monitor.",
-        )]
+        notes = [
+            DiagnosisNote(
+                encounter_content_id=None,
+                diagnosis_display="Diabetes",
+                snomed_code=None,
+                note_text="Monitor.",
+            )
+        ]
 
         doc_refs = create_diagnosis_note_doc_refs(
             notes=notes,
@@ -128,12 +134,14 @@ class TestDiagnosisNoteFallback:
 
     def test_fallback_date_when_body_has_no_date(self, registry: ReferenceRegistry) -> None:
         """When body encounter has no date, fall back to encompassingEncounter date."""
-        notes = [DiagnosisNote(
-            encounter_content_id="enc1",
-            diagnosis_display="Hypertension",
-            snomed_code="59621000",
-            note_text="BP note.",
-        )]
+        notes = [
+            DiagnosisNote(
+                encounter_content_id="enc1",
+                diagnosis_display="Hypertension",
+                snomed_code="59621000",
+                note_text="BP note.",
+            )
+        ]
 
         doc_refs = create_diagnosis_note_doc_refs(
             notes=notes,
