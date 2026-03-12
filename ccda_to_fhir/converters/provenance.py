@@ -68,7 +68,8 @@ class ProvenanceConverter(BaseConverter[None]):
         )
 
         # Target - reference to the resource(s) this Provenance is about
-        provenance["target"] = [FHIRReference(reference=f"urn:uuid:{resource_id}").to_dict()]
+        target_ref = FHIRReference(reference=f"urn:uuid:{resource_id}")
+        provenance["target"] = [target_ref.to_dict()]
 
         # Recorded - when the provenance was recorded (use earliest author time)
         recorded_date = self._get_earliest_author_time(authors)
@@ -134,23 +135,24 @@ class ProvenanceConverter(BaseConverter[None]):
             ]
         }
 
-        from ccda_to_fhir.types import FHIRReference
-
         # Who - reference to Practitioner or Device
         if author_info.practitioner_id:
-            agent["who"] = FHIRReference(
+            who_ref = FHIRReference(
                 reference=f"urn:uuid:{author_info.practitioner_id}", display=author_info.display
-            ).to_dict()
+            )
+            agent["who"] = who_ref.to_dict()
         elif author_info.device_id:
-            agent["who"] = FHIRReference(
+            who_ref = FHIRReference(
                 reference=f"urn:uuid:{author_info.device_id}", display=author_info.display
-            ).to_dict()
+            )
+            agent["who"] = who_ref.to_dict()
 
         # OnBehalfOf - reference to Organization (optional)
         if author_info.organization_id:
-            agent["onBehalfOf"] = FHIRReference(
+            on_behalf_of_ref = FHIRReference(
                 reference=f"urn:uuid:{author_info.organization_id}", display=author_info.organization_display
-            ).to_dict()
+            )
+            agent["onBehalfOf"] = on_behalf_of_ref.to_dict()
 
         return agent
 

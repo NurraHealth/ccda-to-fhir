@@ -281,14 +281,15 @@ def _build_doc_ref(
     context: dict = {}
 
     if encounter_resource_id:
-        context["encounter"] = [FHIRReference(reference=f"urn:uuid:{encounter_resource_id}").to_dict()]
+        encounter_ref = FHIRReference(reference=f"urn:uuid:{encounter_resource_id}")
+        context["encounter"] = [encounter_ref.to_dict()]
 
     if note.snomed_code and note.snomed_code in condition_snomed_map:
         condition_ids = condition_snomed_map[note.snomed_code]
         related_refs: list[JSONObject] = []
         for cid in condition_ids:
-            ref = FHIRReference(reference=f"urn:uuid:{cid}", display=note.diagnosis_display or None).to_dict()
-            related_refs.append(ref)
+            condition_ref = FHIRReference(reference=f"urn:uuid:{cid}", display=note.diagnosis_display or None)
+            related_refs.append(condition_ref.to_dict())
         context["related"] = related_refs
 
     if context:

@@ -367,7 +367,8 @@ def _create_context(
                     first_id.root or None,
                     first_id.extension or None,
                 )
-                encounter_refs.append(FHIRReference(reference=f"urn:uuid:{enc_id}").to_dict())
+                enc_ref = FHIRReference(reference=f"urn:uuid:{enc_id}")
+                encounter_refs.append(enc_ref.to_dict())
         if encounter_refs:
             context["encounter"] = encounter_refs
 
@@ -400,9 +401,10 @@ def _convert_relates_to(references: list[Reference]) -> list[JSONObject]:
             first_id.root or None,
             first_id.extension or None,
         )
+        target_ref = FHIRReference(reference=f"urn:uuid:{doc_id}")
         relates_to.append({
             "code": fhir_code,
-            "target": FHIRReference(reference=f"urn:uuid:{doc_id}").to_dict(),
+            "target": target_ref.to_dict(),
         })
     return relates_to
 

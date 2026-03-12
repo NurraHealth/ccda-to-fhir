@@ -268,13 +268,15 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             latest_author = max(authors_with_time, key=lambda a: a.time)
 
             if latest_author.practitioner_id:
-                allergy["recorder"] = FHIRReference(
+                recorder_ref = FHIRReference(
                     reference=f"urn:uuid:{latest_author.practitioner_id}", display=latest_author.display
-                ).to_dict()
+                )
+                allergy["recorder"] = recorder_ref.to_dict()
             elif latest_author.device_id:
-                allergy["recorder"] = FHIRReference(
+                recorder_ref = FHIRReference(
                     reference=f"urn:uuid:{latest_author.device_id}", display=latest_author.display
-                ).to_dict()
+                )
+                allergy["recorder"] = recorder_ref.to_dict()
 
         # Extract allergy-level severity (if present)
         allergy_level_severity = self._extract_allergy_level_severity(observation)

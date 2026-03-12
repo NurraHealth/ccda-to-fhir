@@ -68,7 +68,8 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         related_person["id"] = self._generate_related_person_id(related_entity)
 
         # Patient reference (required)
-        related_person["patient"] = FHIRReference(reference=f"urn:uuid:{self.patient_id}", display=self.patient_display).to_dict()
+        patient_ref = FHIRReference(reference=f"urn:uuid:{self.patient_id}", display=self.patient_display)
+        related_person["patient"] = patient_ref.to_dict()
 
         # Map relationship code
         if related_entity.code:

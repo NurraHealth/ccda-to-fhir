@@ -1075,13 +1075,15 @@ class DocumentConverter:
                 if TemplateIds.GOALS_SECTION in section_resource_map:
                     for goal in section_resource_map[TemplateIds.GOALS_SECTION]:
                         if goal.get("id"):
-                            goal_refs.append(FHIRReference(reference=f"urn:uuid:{goal['id']}").to_dict())
+                            goal_ref = FHIRReference(reference=f"urn:uuid:{goal['id']}")
+                            goal_refs.append(goal_ref.to_dict())
 
                 health_concern_refs = []
                 if TemplateIds.HEALTH_CONCERNS_SECTION in section_resource_map:
                     for condition in section_resource_map[TemplateIds.HEALTH_CONCERNS_SECTION]:
                         if condition.get("id"):
-                            health_concern_refs.append(FHIRReference(reference=f"urn:uuid:{condition['id']}").to_dict())
+                            concern_ref = FHIRReference(reference=f"urn:uuid:{condition['id']}")
+                            health_concern_refs.append(concern_ref.to_dict())
 
                 # Extract intervention and outcome entries from sections for CarePlan linking
                 # NOTE: Intervention/outcome resources have already been processed and registered
@@ -3104,7 +3106,8 @@ class DocumentConverter:
                         self._temp_header_locations.append(location_resource)
 
                 if location_id:
-                    location_dict = FHIRReference(reference=f"urn:uuid:{location_id}", display=location_display).to_dict()
+                    location_ref = FHIRReference(reference=f"urn:uuid:{location_id}", display=location_display)
+                    location_dict = location_ref.to_dict()
 
                     fhir_encounter["location"] = [{
                         "location": location_dict,

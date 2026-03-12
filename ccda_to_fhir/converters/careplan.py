@@ -145,7 +145,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                         patient_id.root,
                         patient_id.extension,
                     )
-                    careplan["subject"] = FHIRReference(reference=f"urn:uuid:{patient_ref_id}").to_dict()
+                    subject_ref = FHIRReference(reference=f"urn:uuid:{patient_ref_id}")
+                    careplan["subject"] = subject_ref.to_dict()
                 else:
                     raise ValueError(
                         "Cannot create CarePlan: patient identifier has no root"
@@ -204,7 +205,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                             if ref_uri not in seen_contributor_refs:
                                 seen_contributor_refs.add(ref_uri)
                                 display = format_person_display(performer.assigned_entity.assigned_person)
-                                contributors.append(FHIRReference(reference=ref_uri, display=display).to_dict())
+                                contributor_ref = FHIRReference(reference=ref_uri, display=display)
+                                contributors.append(contributor_ref.to_dict())
 
         if contributors:
             careplan["contributor"] = contributors
@@ -463,7 +465,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 continue
 
             # CarePlan.activity.reference is a Reference type, not a string
-            activity_detail: JSONObject = {"reference": FHIRReference(reference=activity_ref).to_dict()}
+            intervention_ref = FHIRReference(reference=activity_ref)
+            activity_detail: JSONObject = {"reference": intervention_ref.to_dict()}
 
             # Find outcomes linked to this intervention via entryRelationship
             linked_outcomes = []

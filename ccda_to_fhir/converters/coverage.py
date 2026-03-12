@@ -288,9 +288,8 @@ class CoverageConverter(BaseConverter["Act"]):
                     org["id"] = generate_id()
                 related.append(org)
                 display = format_organization_display(assigned.represented_organization)
-                coverage["payor"] = [
-                    FHIRReference(reference=f"urn:uuid:{org['id']}", display=display).to_dict()
-                ]
+                payor_ref = FHIRReference(reference=f"urn:uuid:{org['id']}", display=display)
+                coverage["payor"] = [payor_ref.to_dict()]
         elif assigned.id:
             # Create minimal Organization from assignedEntity
             org_id = generate_id_from_identifiers(
@@ -308,9 +307,8 @@ class CoverageConverter(BaseConverter["Act"]):
                 minimal_org["identifier"] = identifiers
             related.append(minimal_org)
             # Minimal org built from identifiers only — no name available for display
-            coverage["payor"] = [
-                FHIRReference(reference=f"urn:uuid:{org_id}").to_dict()
-            ]
+            payor_ref = FHIRReference(reference=f"urn:uuid:{org_id}")
+            coverage["payor"] = [payor_ref.to_dict()]
 
     @staticmethod
     def _is_payor_performer(performer: Performer) -> bool:

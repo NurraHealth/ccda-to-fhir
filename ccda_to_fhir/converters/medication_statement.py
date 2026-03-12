@@ -159,7 +159,8 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                                     display = format_person_display(assigned.assigned_person)
-                                    med_statement["informationSource"] = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
+                                    source_ref = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                                    med_statement["informationSource"] = source_ref.to_dict()
                                     break
                     # Check for device
                     elif assigned.assigned_authoring_device:
@@ -168,7 +169,8 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     device_id = self._generate_device_id(id_elem.root, id_elem.extension)
                                     display = format_device_display(assigned.assigned_authoring_device)
-                                    med_statement["informationSource"] = FHIRReference(reference=f"urn:uuid:{device_id}", display=display).to_dict()
+                                    source_ref = FHIRReference(reference=f"urn:uuid:{device_id}", display=display)
+                                    med_statement["informationSource"] = source_ref.to_dict()
                                     break
 
         # 9. ReasonCode (from indication entry relationship)

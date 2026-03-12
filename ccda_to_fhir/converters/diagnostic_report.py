@@ -165,7 +165,8 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
                             display = format_person_display(
                                 performer.assigned_entity.assigned_person
                             )
-                            interpreters.append(FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display).to_dict())
+                            interpreter_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
+                            interpreters.append(interpreter_ref.to_dict())
                             break  # Use first valid ID
             if interpreters:
                 report["resultsInterpreter"] = interpreters

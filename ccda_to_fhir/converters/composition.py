@@ -499,7 +499,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                     from ccda_to_fhir.converters.author_references import format_person_display
                     from ccda_to_fhir.types import FHIRReference
                     display = format_person_display(assigned.assigned_person)
-                    party_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display).to_dict()
+                    party_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
         if not party_ref:
@@ -507,7 +507,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         attester: JSONObject = {
             "mode": "legal",  # Legal attestation
-            "party": party_ref  # Required per US Realm Header Profile
+            "party": party_ref.to_dict()  # Required per US Realm Header Profile
         }
 
         # Extract time (optional)
@@ -558,7 +558,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                     from ccda_to_fhir.converters.author_references import format_person_display
                     from ccda_to_fhir.types import FHIRReference
                     display = format_person_display(assigned.assigned_person)
-                    party_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display).to_dict()
+                    party_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
         if not party_ref:
@@ -566,7 +566,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         attester: JSONObject = {
             "mode": "professional",  # Professional attestation
-            "party": party_ref  # Required per US Realm Header Profile
+            "party": party_ref.to_dict()  # Required per US Realm Header Profile
         }
 
         # Extract time (optional)
@@ -1128,7 +1128,8 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                         # Only add if not already added (deduplicate)
                         if reference not in seen_references:
                             seen_references.add(reference)
-                            entries.append(FHIRReference(reference=reference).to_dict())
+                            entry_ref = FHIRReference(reference=reference)
+                            entries.append(entry_ref.to_dict())
 
         return entries
 

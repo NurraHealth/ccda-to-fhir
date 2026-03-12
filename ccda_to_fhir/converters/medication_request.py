@@ -187,7 +187,8 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                                     display = format_person_display(assigned.assigned_person)
-                                    med_request["requester"] = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
+                                    requester_ref = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                                    med_request["requester"] = requester_ref.to_dict()
                                     break
                     # Check for device
                     elif assigned.assigned_authoring_device:
@@ -196,7 +197,8 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                 if id_elem.root:
                                     device_id = self._generate_device_id(id_elem.root, id_elem.extension)
                                     display = format_device_display(assigned.assigned_authoring_device)
-                                    med_request["requester"] = FHIRReference(reference=f"urn:uuid:{device_id}", display=display).to_dict()
+                                    requester_ref = FHIRReference(reference=f"urn:uuid:{device_id}", display=display)
+                                    med_request["requester"] = requester_ref.to_dict()
                                     break
 
         # 8. ReasonCode (from indication entry relationship)
@@ -360,7 +362,8 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             display: str | None = None
             if manufactured_material.code and manufactured_material.code.display_name:
                 display = manufactured_material.code.display_name
-            med_ref: JSONObject = FHIRReference(reference=f"urn:uuid:{medication_id}", display=display).to_dict()
+            med_ref_obj = FHIRReference(reference=f"urn:uuid:{medication_id}", display=display)
+            med_ref: JSONObject = med_ref_obj.to_dict()
 
             return {"medicationReference": med_ref}
         else:

@@ -149,13 +149,13 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         # 7b. Location (pharmacy location)
         if location_ref:
-            med_dispense["location"] = FHIRReference(reference=location_ref).to_dict()
+            location_ref_obj = FHIRReference(reference=location_ref)
+            med_dispense["location"] = location_ref_obj.to_dict()
 
         # 8. AuthorizingPrescription (reference to parent MedicationRequest)
         if parent_medication_request_id:
-            med_dispense["authorizingPrescription"] = [
-                FHIRReference(reference=f"urn:uuid:{parent_medication_request_id}").to_dict()
-            ]
+            prescription_ref = FHIRReference(reference=f"urn:uuid:{parent_medication_request_id}")
+            med_dispense["authorizingPrescription"] = [prescription_ref.to_dict()]
 
         # 9. Type (inferred from repeatNumber)
         dispense_type = self._infer_dispense_type(supply)
@@ -367,7 +367,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     if root:
                         pract_id = self._generate_practitioner_id(root, extension)
                         display = format_person_display(assigned.assigned_person)
-                        performer_obj["actor"] = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict()
+                        actor_ref = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                        performer_obj["actor"] = actor_ref.to_dict()
 
                     # Determine function from C-CDA functionCode or use context-based default
                     performer_obj["function"] = self._determine_performer_function(perf, context="performer")
@@ -381,7 +382,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     org_id = self._create_pharmacy_organization(org)
                     if org_id:
                         display = format_organization_display(org)
-                        performer_obj["actor"] = FHIRReference(reference=f"urn:uuid:{org_id}", display=display).to_dict()
+                        actor_ref = FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+                        performer_obj["actor"] = actor_ref.to_dict()
                         # Determine function from C-CDA functionCode or use context-based default
                         performer_obj["function"] = self._determine_performer_function(perf, context="performer")
                         performers.append(performer_obj)
@@ -404,9 +406,10 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                     if root:
                         pract_id = self._generate_practitioner_id(root, extension)
                         display = format_person_display(assigned.assigned_person)
+                        actor_ref = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
                         performer_obj = {
                             "function": self._determine_performer_function(author, context="author"),
-                            "actor": FHIRReference(reference=f"urn:uuid:{pract_id}", display=display).to_dict(),
+                            "actor": actor_ref.to_dict(),
                         }
                         performers.append(performer_obj)
 
@@ -637,7 +640,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         org_id = self._create_pharmacy_organization(organization)
         if org_id:
             display = format_organization_display(organization)
-            location["managingOrganization"] = FHIRReference(reference=f"urn:uuid:{org_id}", display=display).to_dict()
+            managing_org_ref = FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+            location["managingOrganization"] = managing_org_ref.to_dict()
 
         # Register Location resource
         self.reference_registry.register_resource(location)
