@@ -17,10 +17,8 @@ from ccda_to_fhir.ccda.models.clinical_document import (
 )
 from ccda_to_fhir.ccda.models.datatypes import CE, CS, II, ON
 from ccda_to_fhir.ccda.models.participant import ParticipantRole, ScopingEntity
-from ccda_to_fhir.ccda.models.performer import AssignedEntity, Performer
-from ccda_to_fhir.ccda.models.performer import RepresentedOrganization
+from ccda_to_fhir.ccda.models.performer import AssignedEntity, Performer, RepresentedOrganization
 from ccda_to_fhir.converters.references import ReferenceRegistry
-
 
 # ============================================================================
 # Fixtures
@@ -296,9 +294,7 @@ class TestDeviceOwnerReferenceDisplay:
         assert ref is not None
         assert ref.display is None
 
-    def test_product_device_owner_includes_display(
-        self, registry: ReferenceRegistry
-    ) -> None:
+    def test_product_device_owner_includes_display(self, registry: ReferenceRegistry) -> None:
         from ccda_to_fhir.converters.device import DeviceConverter
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
@@ -375,9 +371,7 @@ class TestLocationManagingOrgDisplay:
         assert ref.display == "Good Health Hospital"
         assert ref.reference == f"urn:uuid:{org_id}"
 
-    def test_managing_org_no_display_when_desc_missing(
-        self, registry: ReferenceRegistry
-    ) -> None:
+    def test_managing_org_no_display_when_desc_missing(self, registry: ReferenceRegistry) -> None:
         from ccda_to_fhir.converters.location import LocationConverter
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
 
@@ -441,7 +435,8 @@ class TestCareTeamManagingOrgDisplay:
     def _make_organizer(self, org_name: str | None = "Good Health Clinic"):
         from ccda_to_fhir.ccda.models.act import Act
         from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
-        from ccda_to_fhir.ccda.models.organizer import Organizer, OrganizerComponent as Component
+        from ccda_to_fhir.ccda.models.organizer import Organizer
+        from ccda_to_fhir.ccda.models.organizer import OrganizerComponent as Component
         from ccda_to_fhir.ccda.models.performer import AssignedEntity, Performer
 
         org_names = [ON(value=org_name)] if org_name else None
@@ -453,9 +448,7 @@ class TestCareTeamManagingOrgDisplay:
         from ccda_to_fhir.ccda.models.datatypes import ENXP, PN
         from ccda_to_fhir.ccda.models.performer import AssignedPerson
 
-        person = AssignedPerson(
-            name=[PN(given=[ENXP(value="Jane")], family=ENXP(value="Smith"))]
-        )
+        person = AssignedPerson(name=[PN(given=[ENXP(value="Jane")], family=ENXP(value="Smith"))])
 
         assigned_entity = AssignedEntity(
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
@@ -473,14 +466,16 @@ class TestCareTeamManagingOrgDisplay:
             mood_code="EVN",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2022-06-01")],
             code=CD(code="86744-0", code_system="2.16.840.1.113883.6.1"),
-            performer=[Performer(
-                assigned_entity=assigned_entity,
-                function_code=CE(
-                    code="PCP",
-                    code_system="2.16.840.1.113883.5.88",
-                    display_name="Primary Care Provider",
-                ),
-            )],
+            performer=[
+                Performer(
+                    assigned_entity=assigned_entity,
+                    function_code=CE(
+                        code="PCP",
+                        code_system="2.16.840.1.113883.5.88",
+                        display_name="Primary Care Provider",
+                    ),
+                )
+            ],
             effective_time=IVL_TS(low=TS(value="20230101")),
         )
 
@@ -545,9 +540,7 @@ class TestPractitionerRoleOrgDisplay:
         )
 
         converter = PractitionerRoleConverter()
-        result = converter.convert(
-            assigned, practitioner_id="prac-123", organization_id="org-456"
-        )
+        result = converter.convert(assigned, practitioner_id="prac-123", organization_id="org-456")
 
         assert "organization" in result
         assert result["organization"]["display"] == "Family Practice Associates"
@@ -561,9 +554,7 @@ class TestPractitionerRoleOrgDisplay:
         )
 
         converter = PractitionerRoleConverter()
-        result = converter.convert(
-            assigned, practitioner_id="prac-456", organization_id="org-789"
-        )
+        result = converter.convert(assigned, practitioner_id="prac-456", organization_id="org-789")
 
         assert "organization" in result
         assert "display" not in result["organization"]
@@ -581,9 +572,7 @@ class TestPractitionerRoleOrgDisplay:
         )
 
         converter = PractitionerRoleConverter()
-        result = converter.convert(
-            assigned, practitioner_id="prac-789", organization_id="org-000"
-        )
+        result = converter.convert(assigned, practitioner_id="prac-789", organization_id="org-000")
 
         assert "organization" in result
         assert "display" not in result["organization"]

@@ -45,13 +45,15 @@ def payor_performer() -> Performer:
             represented_organization=RepresentedOrganization(
                 name=[ON(value="BLUE CROSS BLUE SHIELD")],
                 telecom=[TEL(value="tel: (877) 842-3210", use="WP")],
-                addr=[AD(
-                    use="WP",
-                    street_address_line=["PO BOX 31362"],
-                    city="SALT LAKE CITY",
-                    state="UT",
-                    postal_code="84131-0362",
-                )],
+                addr=[
+                    AD(
+                        use="WP",
+                        street_address_line=["PO BOX 31362"],
+                        city="SALT LAKE CITY",
+                        state="UT",
+                        postal_code="84131-0362",
+                    )
+                ],
             ),
         ),
     )
@@ -174,11 +176,13 @@ def _wrap_in_coverage_activity(
     ers = []
     for i, policy in enumerate(policy_acts):
         seq = sequence_numbers[i] if sequence_numbers else None
-        ers.append(EntryRelationship(
-            type_code="COMP",
-            sequence_number=seq,
-            act=policy,
-        ))
+        ers.append(
+            EntryRelationship(
+                type_code="COMP",
+                sequence_number=seq,
+                act=policy,
+            )
+        )
     return Act(
         template_id=[II(root=TemplateIds.COVERAGE_ACTIVITY)],
         status_code=CS(code="completed"),
@@ -253,12 +257,16 @@ class TestCoverageConverter:
 
     def test_policy_holder_with_root_and_extension(self, converter):
         """When HLD has both root and extension, system is mapped from root."""
-        policy = _make_policy(participants=[Participant(
-            type_code="HLD",
-            participant_role=ParticipantRole(
-                id=[II(root="2.16.840.1.113883.4.1", extension="HLD-54321")],
-            ),
-        )])
+        policy = _make_policy(
+            participants=[
+                Participant(
+                    type_code="HLD",
+                    participant_role=ParticipantRole(
+                        id=[II(root="2.16.840.1.113883.4.1", extension="HLD-54321")],
+                    ),
+                )
+            ]
+        )
         act = _wrap_in_coverage_activity(policy)
         result = converter.convert(act)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
@@ -268,12 +276,16 @@ class TestCoverageConverter:
 
     def test_policy_holder_no_root_omits_system(self, converter):
         """When HLD participant has no root OID, system key is omitted."""
-        policy = _make_policy(participants=[Participant(
-            type_code="HLD",
-            participant_role=ParticipantRole(
-                id=[II(root=None, extension="HLD-EXT-123")],
-            ),
-        )])
+        policy = _make_policy(
+            participants=[
+                Participant(
+                    type_code="HLD",
+                    participant_role=ParticipantRole(
+                        id=[II(root=None, extension="HLD-EXT-123")],
+                    ),
+                )
+            ]
+        )
         act = _wrap_in_coverage_activity(policy)
         result = converter.convert(act)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
@@ -308,17 +320,19 @@ class TestCoverageConverter:
                 low=TS(value="20200101"),
                 high=TS(value="20201231"),
             ),
-            participants=[Participant(
-                type_code="COV",
-                participant_role=ParticipantRole(
-                    id=[II(root="member-root", extension="M999")],
-                    code=CE(code="SELF", code_system="2.16.840.1.113883.5.111"),
-                ),
-                time=IVL_TS(
-                    low=TS(value="20210601"),
-                    high=TS(value="20220531"),
-                ),
-            )],
+            participants=[
+                Participant(
+                    type_code="COV",
+                    participant_role=ParticipantRole(
+                        id=[II(root="member-root", extension="M999")],
+                        code=CE(code="SELF", code_system="2.16.840.1.113883.5.111"),
+                    ),
+                    time=IVL_TS(
+                        low=TS(value="20210601"),
+                        high=TS(value="20220531"),
+                    ),
+                )
+            ],
         )
         act = _wrap_in_coverage_activity(policy)
         result = converter.convert(act)
@@ -329,13 +343,17 @@ class TestCoverageConverter:
 
     def test_subscriber_not_set_for_non_self(self, converter):
         """When relationship is not SELF, subscriber is not set."""
-        policy = _make_policy(participants=[Participant(
-            type_code="COV",
-            participant_role=ParticipantRole(
-                id=[II(root="member-root", extension="DEP001")],
-                code=CE(code="CHILD", code_system="2.16.840.1.113883.5.111"),
-            ),
-        )])
+        policy = _make_policy(
+            participants=[
+                Participant(
+                    type_code="COV",
+                    participant_role=ParticipantRole(
+                        id=[II(root="member-root", extension="DEP001")],
+                        code=CE(code="CHILD", code_system="2.16.840.1.113883.5.111"),
+                    ),
+                )
+            ]
+        )
         act = _wrap_in_coverage_activity(policy)
         result = converter.convert(act)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
@@ -394,13 +412,16 @@ class TestMultiplePolicyActivities:
 
 
 class TestStatusMapping:
-    @pytest.mark.parametrize("ccda_status,fhir_status", [
-        ("completed", "active"),
-        ("active", "active"),
-        ("suspended", "cancelled"),
-        ("aborted", "cancelled"),
-        ("nullified", "entered-in-error"),
-    ])
+    @pytest.mark.parametrize(
+        "ccda_status,fhir_status",
+        [
+            ("completed", "active"),
+            ("active", "active"),
+            ("suspended", "cancelled"),
+            ("aborted", "cancelled"),
+            ("nullified", "entered-in-error"),
+        ],
+    )
     def test_status_mapping(self, converter, ccda_status, fhir_status):
         policy = _make_policy(status=ccda_status)
         act = _wrap_in_coverage_activity(policy)
@@ -429,24 +450,31 @@ class TestStatusMapping:
 
 
 class TestRelationshipCodes:
-    @pytest.mark.parametrize("ccda_code,fhir_code", [
-        ("SELF", "self"),
-        ("SPOUSE", "spouse"),
-        ("CHILD", "child"),
-        ("STPCHLD", "child"),
-        ("PARENT", "parent"),
-        ("DOMPART", "common"),
-        ("FAMMEMB", "other"),
-        ("OTHER", "other"),
-    ])
+    @pytest.mark.parametrize(
+        "ccda_code,fhir_code",
+        [
+            ("SELF", "self"),
+            ("SPOUSE", "spouse"),
+            ("CHILD", "child"),
+            ("STPCHLD", "child"),
+            ("PARENT", "parent"),
+            ("DOMPART", "common"),
+            ("FAMMEMB", "other"),
+            ("OTHER", "other"),
+        ],
+    )
     def test_relationship_mapping(self, converter, ccda_code, fhir_code):
-        policy = _make_policy(participants=[Participant(
-            type_code="COV",
-            participant_role=ParticipantRole(
-                id=[II(root="member-root", extension="M001")],
-                code=CE(code=ccda_code, code_system="2.16.840.1.113883.5.111"),
-            ),
-        )])
+        policy = _make_policy(
+            participants=[
+                Participant(
+                    type_code="COV",
+                    participant_role=ParticipantRole(
+                        id=[II(root="member-root", extension="M001")],
+                        code=CE(code=ccda_code, code_system="2.16.840.1.113883.5.111"),
+                    ),
+                )
+            ]
+        )
         act = _wrap_in_coverage_activity(policy)
         result = converter.convert(act)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
@@ -454,13 +482,17 @@ class TestRelationshipCodes:
 
     def test_unknown_relationship_defaults_to_other(self, converter, caplog):
         """Unrecognized relationship codes fall back to 'other' with warning."""
-        policy = _make_policy(participants=[Participant(
-            type_code="COV",
-            participant_role=ParticipantRole(
-                id=[II(root="member-root", extension="M001")],
-                code=CE(code="NEPHEW", code_system="2.16.840.1.113883.5.111"),
-            ),
-        )])
+        policy = _make_policy(
+            participants=[
+                Participant(
+                    type_code="COV",
+                    participant_role=ParticipantRole(
+                        id=[II(root="member-root", extension="M001")],
+                        code=CE(code="NEPHEW", code_system="2.16.840.1.113883.5.111"),
+                    ),
+                )
+            ]
+        )
         act = _wrap_in_coverage_activity(policy)
         result = converter.convert(act)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
@@ -469,13 +501,17 @@ class TestRelationshipCodes:
 
     def test_case_insensitive_relationship(self, converter):
         """Relationship codes should be case-insensitive."""
-        policy = _make_policy(participants=[Participant(
-            type_code="COV",
-            participant_role=ParticipantRole(
-                id=[II(root="member-root", extension="M001")],
-                code=CE(code="self", code_system="2.16.840.1.113883.5.111"),
-            ),
-        )])
+        policy = _make_policy(
+            participants=[
+                Participant(
+                    type_code="COV",
+                    participant_role=ParticipantRole(
+                        id=[II(root="member-root", extension="M001")],
+                        code=CE(code="self", code_system="2.16.840.1.113883.5.111"),
+                    ),
+                )
+            ]
+        )
         act = _wrap_in_coverage_activity(policy)
         result = converter.convert(act)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
@@ -527,6 +563,7 @@ class TestGuarantorPerformer:
     def test_guarantor_logged_not_mapped(self, converter, caplog):
         """Guarantor performer (.88) is logged but not mapped."""
         import logging
+
         with caplog.at_level(logging.DEBUG, logger="ccda_to_fhir.converters.coverage"):
             guarantor = Performer(
                 type_code="PRF",
@@ -560,11 +597,13 @@ class TestMissingOptionalFields:
         act = Act(
             template_id=[II(root=TemplateIds.COVERAGE_ACTIVITY)],
             status_code=CS(code="completed"),
-            entry_relationship=[EntryRelationship(
-                type_code="COMP",
-                # No sequence_number
-                act=policy,
-            )],
+            entry_relationship=[
+                EntryRelationship(
+                    type_code="COMP",
+                    # No sequence_number
+                    act=policy,
+                )
+            ],
         )
         result = converter.convert(act)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
@@ -604,12 +643,16 @@ class TestMissingOptionalFields:
 
     def test_hld_with_empty_ii_omits_policy_holder(self, converter):
         """When HLD participant has II with no root and no extension, policyHolder is omitted."""
-        policy = _make_policy(participants=[Participant(
-            type_code="HLD",
-            participant_role=ParticipantRole(
-                id=[II(root=None, extension=None)],
-            ),
-        )])
+        policy = _make_policy(
+            participants=[
+                Participant(
+                    type_code="HLD",
+                    participant_role=ParticipantRole(
+                        id=[II(root=None, extension=None)],
+                    ),
+                )
+            ]
+        )
         act = _wrap_in_coverage_activity(policy)
         result = converter.convert(act)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")
@@ -617,10 +660,14 @@ class TestMissingOptionalFields:
 
     def test_cov_without_participant_role_skipped(self, converter):
         """COV participant without participantRole is safely skipped."""
-        policy = _make_policy(participants=[Participant(
-            type_code="COV",
-            # No participant_role
-        )])
+        policy = _make_policy(
+            participants=[
+                Participant(
+                    type_code="COV",
+                    # No participant_role
+                )
+            ]
+        )
         act = _wrap_in_coverage_activity(policy)
         result = converter.convert(act)
         coverage = next(r for r in result if r["resourceType"] == "Coverage")

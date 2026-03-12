@@ -15,6 +15,7 @@ from ccda_to_fhir.types import FHIRReference
 
 class MockEntry:
     """Mock C-CDA entry element."""
+
     def __init__(self, entry_id, entry_relationships=None):
         self.id = [Mock(root=entry_id)]
         self.entry_relationship = entry_relationships or []
@@ -23,6 +24,7 @@ class MockEntry:
 
 class MockEntryRelationship:
     """Mock C-CDA entryRelationship element."""
+
     def __init__(self, type_code, observation_id):
         self.type_code = type_code
         self.observation = MockEntry(observation_id)
@@ -36,7 +38,9 @@ class TestCarePlanOutcomeLinking:
         """Create a mock reference registry."""
         registry = Mock(spec=ReferenceRegistry)
         registry.has_resource = Mock(return_value=True)
-        registry.get_patient_reference = Mock(return_value=FHIRReference(reference="urn:uuid:12345678-1234-5678-1234-567812345678"))
+        registry.get_patient_reference = Mock(
+            return_value=FHIRReference(reference="urn:uuid:12345678-1234-5678-1234-567812345678")
+        )
         return registry
 
     @pytest.fixture
@@ -44,14 +48,13 @@ class TestCarePlanOutcomeLinking:
         """Create CarePlanConverter instance with mock registry."""
         return CarePlanConverter(reference_registry=mock_reference_registry)
 
-    def test_activity_with_single_outcome_gevl_relationship(self, converter, mock_reference_registry):
+    def test_activity_with_single_outcome_gevl_relationship(
+        self, converter, mock_reference_registry
+    ):
         """Test activity with single outcome linked via GEVL relationship."""
         # Create intervention with GEVL entryRelationship to outcome
         intervention = MockEntry(
-            "intervention-123",
-            entry_relationships=[
-                MockEntryRelationship("GEVL", "outcome-456")
-            ]
+            "intervention-123", entry_relationships=[MockEntryRelationship("GEVL", "outcome-456")]
         )
 
         # Create outcome observation
@@ -74,8 +77,8 @@ class TestCarePlanOutcomeLinking:
             "intervention-123",
             entry_relationships=[
                 MockEntryRelationship("GEVL", "outcome-456"),
-                MockEntryRelationship("GEVL", "outcome-789")
-            ]
+                MockEntryRelationship("GEVL", "outcome-789"),
+            ],
         )
 
         # Create outcome observations
@@ -83,10 +86,7 @@ class TestCarePlanOutcomeLinking:
         outcome2 = MockEntry("outcome-789")
 
         # Link outcomes to activities
-        activities = converter._link_outcomes_to_activities(
-            [intervention],
-            [outcome1, outcome2]
-        )
+        activities = converter._link_outcomes_to_activities([intervention], [outcome1, outcome2])
 
         # Verify activity has multiple outcomeReferences
         assert len(activities) == 1
@@ -116,12 +116,10 @@ class TestCarePlanOutcomeLinking:
         """Test multiple activities each with their own outcomes."""
         # Create two interventions with different outcomes
         intervention1 = MockEntry(
-            "intervention-123",
-            entry_relationships=[MockEntryRelationship("GEVL", "outcome-456")]
+            "intervention-123", entry_relationships=[MockEntryRelationship("GEVL", "outcome-456")]
         )
         intervention2 = MockEntry(
-            "intervention-789",
-            entry_relationships=[MockEntryRelationship("GEVL", "outcome-999")]
+            "intervention-789", entry_relationships=[MockEntryRelationship("GEVL", "outcome-999")]
         )
 
         # Create outcome observations
@@ -130,8 +128,7 @@ class TestCarePlanOutcomeLinking:
 
         # Link outcomes to activities
         activities = converter._link_outcomes_to_activities(
-            [intervention1, intervention2],
-            [outcome1, outcome2]
+            [intervention1, intervention2], [outcome1, outcome2]
         )
 
         # Verify each activity has its own outcome
@@ -148,14 +145,18 @@ class TestCarePlanOutcomeLinking:
         assert activities[1]["outcomeReference"][0]["reference"].startswith("urn:uuid:")
 
         # Verify the outcomes are different
-        assert activities[0]["outcomeReference"][0]["reference"] != activities[1]["outcomeReference"][0]["reference"]
+        assert (
+            activities[0]["outcomeReference"][0]["reference"]
+            != activities[1]["outcomeReference"][0]["reference"]
+        )
 
-    def test_outcomes_without_gevl_relationship_not_linked(self, converter, mock_reference_registry):
+    def test_outcomes_without_gevl_relationship_not_linked(
+        self, converter, mock_reference_registry
+    ):
         """Test outcomes without GEVL relationship are not linked to activities."""
         # Create intervention with RSON relationship (not GEVL)
         intervention = MockEntry(
-            "intervention-123",
-            entry_relationships=[MockEntryRelationship("RSON", "outcome-456")]
+            "intervention-123", entry_relationships=[MockEntryRelationship("RSON", "outcome-456")]
         )
 
         # Create outcome observation
@@ -172,8 +173,7 @@ class TestCarePlanOutcomeLinking:
         """Test outcome referenced in GEVL but not in outcomes list is not linked."""
         # Create intervention with GEVL to outcome-456
         intervention = MockEntry(
-            "intervention-123",
-            entry_relationships=[MockEntryRelationship("GEVL", "outcome-456")]
+            "intervention-123", entry_relationships=[MockEntryRelationship("GEVL", "outcome-456")]
         )
 
         # Create different outcome (not the one referenced)
@@ -203,8 +203,7 @@ class TestCarePlanOutcomeLinking:
         """Test outcome without ID cannot be linked."""
         # Create intervention with GEVL
         intervention = MockEntry(
-            "intervention-123",
-            entry_relationships=[MockEntryRelationship("GEVL", "outcome-456")]
+            "intervention-123", entry_relationships=[MockEntryRelationship("GEVL", "outcome-456")]
         )
 
         # Create outcome without id
@@ -238,7 +237,9 @@ class TestCarePlanOutcomeLinking:
         entry_id = converter._get_entry_id(entry)
         assert entry_id is None
 
-    def test_create_intervention_reference_as_service_request(self, converter, mock_reference_registry):
+    def test_create_intervention_reference_as_service_request(
+        self, converter, mock_reference_registry
+    ):
         """Test intervention reference created as ServiceRequest when in registry."""
         intervention = MockEntry("intervention-123")
 

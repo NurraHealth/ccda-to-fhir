@@ -79,8 +79,8 @@ class TestBasicParsing:
 
     def test_parse_coded_element(self) -> None:
         """Test parsing CE (Coded Element)."""
-        xml = '''<code code="F" codeSystem="2.16.840.1.113883.5.1"
-                      displayName="Female" xmlns="urn:hl7-org:v3"/>'''
+        xml = """<code code="F" codeSystem="2.16.840.1.113883.5.1"
+                      displayName="Female" xmlns="urn:hl7-org:v3"/>"""
         ce = parse_ccda_fragment(xml, CE)
 
         assert ce.code == "F"
@@ -107,17 +107,17 @@ class TestNamespaceHandling:
 
     def test_parse_with_default_namespace(self) -> None:
         """Test parsing with default HL7 namespace."""
-        xml = '''<id root="123" xmlns="urn:hl7-org:v3"/>'''
+        xml = """<id root="123" xmlns="urn:hl7-org:v3"/>"""
         ii = parse_ccda_fragment(xml, II)
         assert ii.root == "123"
 
     def test_parse_with_sdtc_namespace(self) -> None:
         """Test parsing elements with SDTC namespace."""
-        xml = '''
+        xml = """
         <patient xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc">
             <sdtc:deceasedInd value="false"/>
         </patient>
-        '''
+        """
         patient = parse_ccda_fragment(xml, Patient)
         assert patient.sdtc_deceased_ind is False
 
@@ -127,14 +127,14 @@ class TestPolymorphicValues:
 
     def test_parse_pq_value(self) -> None:
         """Test parsing PQ (Physical Quantity) with xsi:type."""
-        xml = '''
+        xml = """
         <observation classCode="OBS" moodCode="EVN" xmlns="urn:hl7-org:v3"
                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <code code="8867-4" codeSystem="2.16.840.1.113883.6.1"/>
             <statusCode code="completed"/>
             <value xsi:type="PQ" value="80" unit="/min"/>
         </observation>
-        '''
+        """
         obs = parse_ccda_fragment(xml, Observation)
 
         assert obs.code is not None
@@ -145,7 +145,7 @@ class TestPolymorphicValues:
 
     def test_parse_cd_value(self) -> None:
         """Test parsing CD (Concept Descriptor) with xsi:type."""
-        xml = '''
+        xml = """
         <observation classCode="OBS" moodCode="EVN" xmlns="urn:hl7-org:v3"
                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
@@ -153,7 +153,7 @@ class TestPolymorphicValues:
             <value xsi:type="CD" code="419511003" codeSystem="2.16.840.1.113883.6.96"
                    displayName="Propensity to adverse reactions to drug"/>
         </observation>
-        '''
+        """
         obs = parse_ccda_fragment(xml, Observation)
 
         assert isinstance(obs.value, CD)
@@ -162,7 +162,7 @@ class TestPolymorphicValues:
 
     def test_parse_ivl_ts_value(self) -> None:
         """Test parsing IVL_TS (Interval of Time) with xsi:type."""
-        xml = '''
+        xml = """
         <observation classCode="OBS" moodCode="EVN" xmlns="urn:hl7-org:v3"
                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
@@ -172,7 +172,7 @@ class TestPolymorphicValues:
                 <high value="20090501"/>
             </effectiveTime>
         </observation>
-        '''
+        """
         obs = parse_ccda_fragment(xml, Observation)
 
         assert isinstance(obs.effective_time, IVL_TS)
@@ -183,12 +183,12 @@ class TestPolymorphicValues:
 
     def test_unknown_xsi_type_raises_error(self) -> None:
         """Test that unknown xsi:type raises UnknownTypeError."""
-        xml = '''
+        xml = """
         <observation classCode="OBS" moodCode="EVN" xmlns="urn:hl7-org:v3"
                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <value xsi:type="UNKNOWN_TYPE" value="test"/>
         </observation>
-        '''
+        """
         with pytest.raises(UnknownTypeError) as exc_info:
             parse_ccda_fragment(xml, Observation)
 
@@ -201,12 +201,12 @@ class TestNestedStructures:
 
     def test_parse_person_name(self) -> None:
         """Test parsing PN (Person Name) with nested parts."""
-        xml = '''
+        xml = """
         <name use="L" xmlns="urn:hl7-org:v3">
             <given>Myra</given>
             <family>Jones</family>
         </name>
-        '''
+        """
         pn = parse_ccda_fragment(xml, PN)
 
         assert pn.use == "L"
@@ -218,14 +218,14 @@ class TestNestedStructures:
 
     def test_parse_address(self) -> None:
         """Test parsing AD (Address) with nested components."""
-        xml = '''
+        xml = """
         <addr use="H" xmlns="urn:hl7-org:v3">
             <streetAddressLine>1357 Amber Drive</streetAddressLine>
             <city>Beaverton</city>
             <state>OR</state>
             <postalCode>97006</postalCode>
         </addr>
-        '''
+        """
         ad = parse_ccda_fragment(xml, AD)
 
         assert ad.use == "H"
@@ -238,7 +238,7 @@ class TestNestedStructures:
 
     def test_parse_nested_observations_in_act(self) -> None:
         """Test parsing Act with nested EntryRelationship and Observation."""
-        xml = '''
+        xml = """
         <act classCode="ACT" moodCode="EVN" xmlns="urn:hl7-org:v3"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <templateId root="2.16.840.1.113883.10.20.22.4.3"/>
@@ -261,7 +261,7 @@ class TestNestedStructures:
                 </observation>
             </entryRelationship>
         </act>
-        '''
+        """
         act = parse_ccda_fragment(xml, Act)
 
         assert act.code is not None
@@ -281,14 +281,14 @@ class TestListAggregation:
 
     def test_parse_multiple_identifiers(self) -> None:
         """Test parsing multiple <id> elements into a list."""
-        xml = '''
+        xml = """
         <act classCode="ACT" moodCode="EVN" xmlns="urn:hl7-org:v3">
             <id root="1.2.3.4" extension="1"/>
             <id root="5.6.7.8" extension="2"/>
             <code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
             <statusCode code="active"/>
         </act>
-        '''
+        """
         act = parse_ccda_fragment(xml, Act)
 
         assert act.id is not None
@@ -300,7 +300,7 @@ class TestListAggregation:
 
     def test_parse_multiple_template_ids(self) -> None:
         """Test parsing multiple <templateId> elements."""
-        xml = '''
+        xml = """
         <observation classCode="OBS" moodCode="EVN" xmlns="urn:hl7-org:v3"
                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <templateId root="2.16.840.1.113883.10.20.22.4.4"/>
@@ -313,7 +313,7 @@ class TestListAggregation:
             </effectiveTime>
             <value xsi:type="CD" code="38341003" codeSystem="2.16.840.1.113883.6.96"/>
         </observation>
-        '''
+        """
         obs = parse_ccda_fragment(xml, Observation)
 
         assert obs.template_id is not None
@@ -324,7 +324,7 @@ class TestListAggregation:
 
     def test_parse_organizer_with_components(self) -> None:
         """Test parsing Organizer with multiple components."""
-        xml = '''
+        xml = """
         <organizer classCode="CLUSTER" moodCode="EVN" xmlns="urn:hl7-org:v3"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <templateId root="2.16.840.1.113883.10.20.22.4.26"/>
@@ -347,7 +347,7 @@ class TestListAggregation:
                 </observation>
             </component>
         </organizer>
-        '''
+        """
         organizer = parse_ccda_fragment(xml, Organizer)
 
         assert organizer.class_code == "CLUSTER"
@@ -383,7 +383,7 @@ class TestAttributeConversion:
 
     def test_multiple_word_attribute_conversion(self) -> None:
         """Test conversion of multi-word attributes."""
-        xml = '''
+        xml = """
         <entryRelationship typeCode="SUBJ" inversionInd="true"
                            contextConductionInd="true" xmlns="urn:hl7-org:v3">
             <observation classCode="OBS" moodCode="EVN">
@@ -391,7 +391,7 @@ class TestAttributeConversion:
                 <statusCode code="completed"/>
             </observation>
         </entryRelationship>
-        '''
+        """
         from ccda_to_fhir.ccda.models import EntryRelationship
 
         entry_rel = parse_ccda_fragment(xml, EntryRelationship)
@@ -408,7 +408,9 @@ class TestRealFixtures:
         """Test parsing real patient recordTarget fixture."""
         from pathlib import Path
 
-        fixture_path = Path(__file__).parent.parent / "integration" / "fixtures" / "ccda" / "patient.xml"
+        fixture_path = (
+            Path(__file__).parent.parent / "integration" / "fixtures" / "ccda" / "patient.xml"
+        )
         if not fixture_path.exists():
             pytest.skip(f"Fixture not found: {fixture_path}")
 
@@ -472,7 +474,9 @@ class TestRealFixtures:
         """Test parsing real allergy concern act fixture."""
         from pathlib import Path
 
-        fixture_path = Path(__file__).parent.parent / "integration" / "fixtures" / "ccda" / "allergy.xml"
+        fixture_path = (
+            Path(__file__).parent.parent / "integration" / "fixtures" / "ccda" / "allergy.xml"
+        )
         if not fixture_path.exists():
             pytest.skip(f"Fixture not found: {fixture_path}")
 
@@ -519,7 +523,9 @@ class TestRealFixtures:
         """Test parsing real vital signs organizer fixture."""
         from pathlib import Path
 
-        fixture_path = Path(__file__).parent.parent / "integration" / "fixtures" / "ccda" / "vital_signs.xml"
+        fixture_path = (
+            Path(__file__).parent.parent / "integration" / "fixtures" / "ccda" / "vital_signs.xml"
+        )
         if not fixture_path.exists():
             pytest.skip(f"Fixture not found: {fixture_path}")
 
@@ -581,11 +587,11 @@ class TestErrorHandling:
 
     def test_unknown_child_elements_ignored(self) -> None:
         """Test that unknown child elements are ignored (extra='ignore')."""
-        xml = '''
+        xml = """
         <id root="123" xmlns="urn:hl7-org:v3">
             <unknownElement>This should be ignored</unknownElement>
         </id>
-        '''
+        """
         ii = parse_ccda_fragment(xml, II)
 
         assert ii.root == "123"
@@ -597,13 +603,13 @@ class TestEdgeCases:
 
     def test_null_flavor_attribute(self) -> None:
         """Test parsing elements with nullFlavor."""
-        xml = '''
+        xml = """
         <observation classCode="OBS" moodCode="EVN" xmlns="urn:hl7-org:v3">
             <id nullFlavor="NI"/>
             <code code="TEST" codeSystem="1.2.3"/>
             <statusCode code="completed"/>
         </observation>
-        '''
+        """
         obs = parse_ccda_fragment(xml, Observation)
 
         assert obs.id is not None
@@ -615,18 +621,18 @@ class TestEdgeCases:
         xml = '<text xmlns="urn:hl7-org:v3">This is narrative text content</text>'
         from ccda_to_fhir.ccda.models import ED
 
-        ed = parse_ccda_fragment(xml, ED)
+        parse_ccda_fragment(xml, ED)
         # Text content handling depends on ED model structure
         # This test documents current behavior
 
     def test_empty_list_when_no_elements(self) -> None:
         """Test that missing repeated elements result in None (not empty list)."""
-        xml = '''
+        xml = """
         <observation classCode="OBS" moodCode="EVN" xmlns="urn:hl7-org:v3">
             <code code="TEST" codeSystem="1.2.3"/>
             <statusCode code="completed"/>
         </observation>
-        '''
+        """
         obs = parse_ccda_fragment(xml, Observation)
 
         # No template_id elements, should be None

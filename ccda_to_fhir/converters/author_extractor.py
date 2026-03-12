@@ -84,9 +84,7 @@ class AuthorInfo:
             elif assigned.assigned_authoring_device and assigned.id:
                 for id_elem in assigned.id:
                     if id_elem.root:
-                        self.device_id = self._generate_device_id(
-                            id_elem.root, id_elem.extension
-                        )
+                        self.device_id = self._generate_device_id(id_elem.root, id_elem.extension)
                         break
 
                 self.display = format_device_display(assigned.assigned_authoring_device)
@@ -139,6 +137,7 @@ class AuthorInfo:
             A cached UUID v4 string
         """
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
         return generate_id_from_identifiers("Practitioner", root, extension)
 
     def _generate_device_id(self, root: str | None, extension: str | None) -> str:
@@ -152,6 +151,7 @@ class AuthorInfo:
             A cached UUID v4 string
         """
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
         return generate_id_from_identifiers("Device", root, extension)
 
     def _generate_organization_id(self, root: str | None, extension: str | None) -> str:
@@ -165,6 +165,7 @@ class AuthorInfo:
             A cached UUID v4 string
         """
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
         return generate_id_from_identifiers("Organization", root, extension)
 
 

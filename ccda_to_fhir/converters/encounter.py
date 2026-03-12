@@ -19,7 +19,13 @@ from ccda_to_fhir.constants import (
     TemplateIds,
     map_cpt_to_actcode,
 )
-from ccda_to_fhir.types import DiagnosisRole, FHIRCodeableConcept, FHIRResourceDict, JSONObject, ReasonResult
+from ccda_to_fhir.types import (
+    DiagnosisRole,
+    FHIRCodeableConcept,
+    FHIRResourceDict,
+    JSONObject,
+    ReasonResult,
+)
 
 from .author_references import format_person_display
 from .base import BaseConverter
@@ -120,8 +126,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         # Patient reference (from recordTarget in document header)
         if not self.reference_registry:
             raise ValueError(
-                "reference_registry is required. "
-                "Cannot create Encounter without patient reference."
+                "reference_registry is required. Cannot create Encounter without patient reference."
             )
         fhir_encounter["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
@@ -406,10 +411,14 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                 function_code = performer.function_code.code
 
                 # Map known function codes (PCP→PPRF, ATTPHYS→ATND, ANEST→SPRF, etc.)
-                mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(
-                    function_code,
-                    function_code  # Pass through if not in map
-                ) if function_code else "PART"  # Default to PART if no code
+                mapped_code = (
+                    PARTICIPATION_FUNCTION_CODE_MAP.get(
+                        function_code,
+                        function_code,  # Pass through if not in map
+                    )
+                    if function_code
+                    else "PART"
+                )  # Default to PART if no code
 
                 type_coding = {
                     "system": FHIRSystems.V3_PARTICIPATION_TYPE,
@@ -419,21 +428,24 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                 participant["type"] = [{"coding": [type_coding]}]
             else:
                 # Default to PART (participant) if no function code specified
-                participant["type"] = [{
-                    "coding": [{
-                        "system": FHIRSystems.V3_PARTICIPATION_TYPE,
-                        "code": "PART",
-                        "display": "participant",
-                    }]
-                }]
+                participant["type"] = [
+                    {
+                        "coding": [
+                            {
+                                "system": FHIRSystems.V3_PARTICIPATION_TYPE,
+                                "code": "PART",
+                                "display": "participant",
+                            }
+                        ]
+                    }
+                ]
 
             # Extract individual reference from assignedEntity
             # Create Practitioner resource if it doesn't already exist
             # Prefer NPI (2.16.840.1.113883.4.6) over other identifiers for consistency
             # Only process if participant represents a person (has assigned_person)
             # Per C-CDA: assignedEntity can be just an organization without a person
-            if (performer.assigned_entity and
-                performer.assigned_entity.assigned_person):
+            if performer.assigned_entity and performer.assigned_entity.assigned_person:
                 assigned_entity = performer.assigned_entity
 
                 # Generate practitioner ID from NPI or other identifiers
@@ -454,10 +466,14 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                     # Use NPI if available, otherwise use first identifier
                     selected_id = npi_id if npi_id else first_id
                     if selected_id:
-                        practitioner_id = self._generate_practitioner_id(selected_id.root, selected_id.extension)
+                        practitioner_id = self._generate_practitioner_id(
+                            selected_id.root, selected_id.extension
+                        )
 
                         # Check if resource already exists in reference registry
-                        if self.reference_registry and not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                        if self.reference_registry and not self.reference_registry.has_resource(
+                            "Practitioner", practitioner_id
+                        ):
                             # Create Practitioner resource
                             pract_converter = PractitionerConverter(
                                 code_system_mapper=self.code_system_mapper
@@ -473,12 +489,8 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                 self.reference_registry.register_resource(practitioner)
 
                         # Add reference to participant with display
-                        individual_ref: JSONObject = {
-                            "reference": f"urn:uuid:{practitioner_id}"
-                        }
-                        display = format_person_display(
-                            assigned_entity.assigned_person
-                        )
+                        individual_ref: JSONObject = {"reference": f"urn:uuid:{practitioner_id}"}
+                        display = format_person_display(assigned_entity.assigned_person)
                         if display:
                             individual_ref["display"] = display
                         participant["individual"] = individual_ref
@@ -543,14 +555,20 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                             address_for_id["state"] = addr_raw.state
                         if addr_raw.street_address_line:
                             # street_address_line is a list, use first element
-                            address_for_id["line"] = [addr_raw.street_address_line[0]] if addr_raw.street_address_line else []
+                            address_for_id["line"] = (
+                                [addr_raw.street_address_line[0]]
+                                if addr_raw.street_address_line
+                                else []
+                            )
 
                     # Generate location ID from role ID, or create synthetic ID if missing
                     location_id = None
                     if role.id:
                         for id_elem in role.id:
                             if id_elem.root:
-                                location_id = self._generate_location_id(id_elem.root, id_elem.extension)
+                                location_id = self._generate_location_id(
+                                    id_elem.root, id_elem.extension
+                                )
                                 break
 
                     # Generate synthetic ID if no explicit ID
@@ -560,7 +578,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                     # Create location reference if we have a valid ID
                     if location_id:
                         # Check if resource already exists in reference registry
-                        if self.reference_registry and not self.reference_registry.has_resource("Location", location_id):
+                        if self.reference_registry and not self.reference_registry.has_resource(
+                            "Location", location_id
+                        ):
                             # Create Location resource
                             loc_converter = LocationConverter(
                                 code_system_mapper=self.code_system_mapper
@@ -576,9 +596,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                 self.reference_registry.register_resource(location_resource)
 
                         # Add reference to encounter location
-                        location["location"] = {
-                            "reference": f"urn:uuid:{location_id}"
-                        }
+                        location["location"] = {"reference": f"urn:uuid:{location_id}"}
                         if display:
                             location["location"]["display"] = display
 
@@ -590,7 +608,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                 location["period"] = period
 
                         # Determine status based on participant time and encounter status
-                        location["status"] = self._determine_location_status(participant, period, encounter)
+                        location["status"] = self._determine_location_status(
+                            participant, period, encounter
+                        )
 
                         if location:
                             locations.append(location)
@@ -598,10 +618,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         return locations
 
     def _determine_location_status(
-        self,
-        participant,
-        period: JSONObject | None,
-        encounter: CCDAEncounter
+        self, participant, period: JSONObject | None, encounter: CCDAEncounter
     ) -> str:
         """Determine FHIR location status from C-CDA participant time and encounter context.
 
@@ -706,32 +723,38 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         # 1. Emergency encounter class → from emergency department
         if encounter_class == "EMER":
             return {
-                "coding": [{
-                    "system": "http://terminology.hl7.org/CodeSystem/admit-source",
-                    "code": "emd",
-                    "display": "From accident/emergency department"
-                }]
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/admit-source",
+                        "code": "emd",
+                        "display": "From accident/emergency department",
+                    }
+                ]
             }
 
         # 2. Emergency priority code → from emergency department
         if encounter.priority_code and encounter.priority_code.code == "EM":
             return {
-                "coding": [{
-                    "system": "http://terminology.hl7.org/CodeSystem/admit-source",
-                    "code": "emd",
-                    "display": "From accident/emergency department"
-                }]
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/admit-source",
+                        "code": "emd",
+                        "display": "From accident/emergency department",
+                    }
+                ]
             }
 
         # 3. Inpatient encounters → other (general admission)
         # Only assign "other" for inpatient encounters, not outpatient
         if encounter_class in ["IMP", "ACUTE", "NONAC"]:
             return {
-                "coding": [{
-                    "system": "http://terminology.hl7.org/CodeSystem/admit-source",
-                    "code": "other",
-                    "display": "Other"
-                }]
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/admit-source",
+                        "code": "other",
+                        "display": "Other",
+                    }
+                ]
             }
 
         # 4. Outpatient/Ambulatory → No admission source
@@ -769,16 +792,22 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                     fhir_code = disposition.code
 
                 hospitalization["dischargeDisposition"] = {
-                    "coding": [{
-                        "system": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
-                        "code": fhir_code,
-                        "display": disposition.display_name if disposition.display_name else None,
-                    }]
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
+                            "code": fhir_code,
+                            "display": disposition.display_name
+                            if disposition.display_name
+                            else None,
+                        }
+                    ]
                 }
 
         return hospitalization if hospitalization else None
 
-    def _extract_diagnoses(self, entry_relationships: list[EntryRelationship] | None) -> list[JSONObject]:
+    def _extract_diagnoses(
+        self, entry_relationships: list[EntryRelationship] | None
+    ) -> list[JSONObject]:
         """Extract FHIR diagnoses from encounter diagnosis entry relationships.
 
         Creates condition references with intelligent diagnosis role detection.
@@ -809,13 +838,16 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                     # Must match ID generation in ConditionConverter
                                     if obs.id and len(obs.id) > 0:
                                         first_id = obs.id[0]
-                                        condition_id = self._generate_condition_id(first_id.root, first_id.extension)
+                                        condition_id = self._generate_condition_id(
+                                            first_id.root, first_id.extension
+                                        )
                                     else:
                                         # Fallback: Generate deterministic ID from observation content
                                         # Must use same method as ConditionConverter for consistency
                                         from ccda_to_fhir.converters.condition import (
                                             generate_id_from_observation_content,
                                         )
+
                                         condition_id = generate_id_from_observation_content(obs)
 
                                     condition_ref: JSONObject = {
@@ -823,22 +855,25 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                                     }
 
                                     # Add display from observation value (diagnosis code)
-                                    if obs.value and isinstance(obs.value, (CD, CE)):
-                                        if obs.value.display_name:
-                                            condition_ref["display"] = obs.value.display_name
+                                    if (
+                                        obs.value
+                                        and isinstance(obs.value, (CD, CE))
+                                        and obs.value.display_name
+                                    ):
+                                        condition_ref["display"] = obs.value.display_name
 
-                                    diagnosis: JSONObject = {
-                                        "condition": condition_ref
-                                    }
+                                    diagnosis: JSONObject = {"condition": condition_ref}
 
                                     # Add diagnosis use/role - will be set by _determine_diagnosis_role
                                     # when the encounter context is available
                                     diagnosis["use"] = {
-                                        "coding": [{
-                                            "system": "http://terminology.hl7.org/CodeSystem/diagnosis-role",
-                                            "code": "billing",
-                                            "display": "Billing"
-                                        }]
+                                        "coding": [
+                                            {
+                                                "system": "http://terminology.hl7.org/CodeSystem/diagnosis-role",
+                                                "code": "billing",
+                                                "display": "Billing",
+                                            }
+                                        ]
                                     }
 
                                     diagnoses.append(diagnosis)
@@ -899,7 +934,10 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             DiagnosisRole with code and display for the diagnosis role
         """
         # Check for discharge disposition - indicates discharge diagnosis
-        if encounter.sdtc_discharge_disposition_code and encounter.sdtc_discharge_disposition_code.code:
+        if (
+            encounter.sdtc_discharge_disposition_code
+            and encounter.sdtc_discharge_disposition_code.code
+        ):
             return DiagnosisRole(code="DD", display="Discharge diagnosis")
 
         # Check encounter class for inpatient or emergency
@@ -948,7 +986,6 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             entry_relationships,
             problem_template_id=TemplateIds.PROBLEM_OBSERVATION,
         )
-
 
     def _generate_synthetic_location_id(self, name: str, address: JSONObject | None) -> str:
         """Generate synthetic FHIR Location ID from name and address.
@@ -1002,6 +1039,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         # Fallback: Generate deterministic ID from observation content
         # Must use same method as ConditionConverter for consistency
         from ccda_to_fhir.converters.condition import generate_id_from_observation_content
+
         return generate_id_from_observation_content(observation)
 
     # Note: _generate_condition_id is inherited from BaseConverter

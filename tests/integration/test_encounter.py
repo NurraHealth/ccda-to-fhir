@@ -26,9 +26,7 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
 class TestEncounterConversion:
     """E2E tests for C-CDA Encounter Activity to FHIR Encounter conversion."""
 
-    def test_converts_identifier(
-        self, ccda_encounter: str, fhir_encounter: JSONObject
-    ) -> None:
+    def test_converts_identifier(self, ccda_encounter: str, fhir_encounter: JSONObject) -> None:
         """Test that identifier is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -37,7 +35,9 @@ class TestEncounterConversion:
         assert encounter is not None
         assert "identifier" in encounter
         assert len(encounter["identifier"]) == 1
-        assert encounter["identifier"][0]["value"] == "urn:uuid:2a620155-9d11-439e-92b3-5d9815ff4de8"
+        assert (
+            encounter["identifier"][0]["value"] == "urn:uuid:2a620155-9d11-439e-92b3-5d9815ff4de8"
+        )
 
     def test_converts_status_to_finished(
         self, ccda_encounter: str, fhir_encounter: JSONObject
@@ -63,9 +63,7 @@ class TestEncounterConversion:
         assert encounter["class"]["code"] == "AMB"
         assert encounter["class"]["system"] == "http://terminology.hl7.org/CodeSystem/v3-ActCode"
 
-    def test_converts_type_code(
-        self, ccda_encounter: str, fhir_encounter: JSONObject
-    ) -> None:
+    def test_converts_type_code(self, ccda_encounter: str, fhir_encounter: JSONObject) -> None:
         """Test that encounter type code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -75,17 +73,18 @@ class TestEncounterConversion:
         assert "type" in encounter
         assert len(encounter["type"]) == 1
         cpt = next(
-            (c for c in encounter["type"][0]["coding"]
-             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
-            None
+            (
+                c
+                for c in encounter["type"][0]["coding"]
+                if c.get("system") == "http://www.ama-assn.org/go/cpt"
+            ),
+            None,
         )
         assert cpt is not None
         assert cpt["code"] == "99213"
         assert cpt["display"] == "Office outpatient visit 15 minutes"
 
-    def test_converts_type_text(
-        self, ccda_encounter: str, fhir_encounter: JSONObject
-    ) -> None:
+    def test_converts_type_text(self, ccda_encounter: str, fhir_encounter: JSONObject) -> None:
         """Test that type text is derived from display name."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -95,9 +94,7 @@ class TestEncounterConversion:
         assert "type" in encounter
         assert "text" in encounter["type"][0]
 
-    def test_converts_period_start(
-        self, ccda_encounter: str, fhir_encounter: JSONObject
-    ) -> None:
+    def test_converts_period_start(self, ccda_encounter: str, fhir_encounter: JSONObject) -> None:
         """Test that effectiveTime is converted to period.start."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter, ENCOUNTERS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -148,9 +145,7 @@ class TestEncounterConversion:
         assert encounter is not None
         assert encounter["status"] == "finished"
 
-    def test_converts_v3_actcode_class(
-        self, ccda_encounter_inpatient_v3: str
-    ) -> None:
+    def test_converts_v3_actcode_class(self, ccda_encounter_inpatient_v3: str) -> None:
         """Test that V3 ActCode class is correctly mapped to encounter.class."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_inpatient_v3, ENCOUNTERS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -179,26 +174,24 @@ class TestEncounterConversion:
         assert len(encounter["participant"]) >= 1
 
         # Find participant with type
-        participant_with_type = next(
-            (p for p in encounter["participant"] if "type" in p),
-            None
-        )
+        participant_with_type = next((p for p in encounter["participant"] if "type" in p), None)
         assert participant_with_type is not None
         assert len(participant_with_type["type"]) == 1
 
         # Check the type coding - C-CDA PCP should map to FHIR PPRF
         pcp_coding = next(
-            (c for c in participant_with_type["type"][0]["coding"]
-             if c.get("system") == "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"),
-            None
+            (
+                c
+                for c in participant_with_type["type"][0]["coding"]
+                if c.get("system") == "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
+            ),
+            None,
         )
         assert pcp_coding is not None
         assert pcp_coding["code"] == "PPRF", "C-CDA PCP should map to FHIR PPRF (primary performer)"
         assert pcp_coding["display"] == "Primary Care Provider"
 
-    def test_converts_location_participant(
-        self, ccda_encounter_with_location: str
-    ) -> None:
+    def test_converts_location_participant(self, ccda_encounter_with_location: str) -> None:
         """Test that location participant is converted to encounter.location."""
         import uuid as uuid_module
 
@@ -220,8 +213,8 @@ class TestEncounterConversion:
         location_id = location_ref.replace("urn:uuid:", "")
         try:
             uuid_module.UUID(location_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Location ID {location_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(f"Location ID {location_id} is not a valid UUID v4") from err
 
         assert "status" in location
         assert location["status"] == "completed"
@@ -230,7 +223,9 @@ class TestEncounterConversion:
         self, ccda_encounter_location_with_time_period: str
     ) -> None:
         """Test location status is 'completed' when participant.time has both start and end."""
-        ccda_doc = wrap_in_ccda_document(ccda_encounter_location_with_time_period, ENCOUNTERS_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_encounter_location_with_time_period, ENCOUNTERS_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -240,7 +235,9 @@ class TestEncounterConversion:
 
         location = encounter["location"][0]
         assert "status" in location
-        assert location["status"] == "completed", "Location with complete time period (start+end) should be 'completed'"
+        assert location["status"] == "completed", (
+            "Location with complete time period (start+end) should be 'completed'"
+        )
 
         # Verify period is extracted from participant.time
         assert "period" in location
@@ -263,7 +260,9 @@ class TestEncounterConversion:
 
         location = encounter["location"][0]
         assert "status" in location
-        assert location["status"] == "active", "Location with only start time (no end) should be 'active'"
+        assert location["status"] == "active", (
+            "Location with only start time (no end) should be 'active'"
+        )
 
         # Verify period has only start
         assert "period" in location
@@ -275,7 +274,9 @@ class TestEncounterConversion:
         self, ccda_encounter_location_no_time_in_progress: str
     ) -> None:
         """Test location status falls back to 'active' when no time and encounter is in-progress."""
-        ccda_doc = wrap_in_ccda_document(ccda_encounter_location_no_time_in_progress, ENCOUNTERS_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_encounter_location_no_time_in_progress, ENCOUNTERS_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -285,7 +286,9 @@ class TestEncounterConversion:
 
         location = encounter["location"][0]
         assert "status" in location
-        assert location["status"] == "active", "Location without time should derive 'active' from in-progress encounter"
+        assert location["status"] == "active", (
+            "Location without time should derive 'active' from in-progress encounter"
+        )
 
         # Verify no period since participant.time is not present
         assert "period" not in location
@@ -304,14 +307,14 @@ class TestEncounterConversion:
 
         location = encounter["location"][0]
         assert "status" in location
-        assert location["status"] == "planned", "Location should be 'planned' for planned encounters"
+        assert location["status"] == "planned", (
+            "Location should be 'planned' for planned encounters"
+        )
 
         # Verify encounter is planned
         assert encounter["status"] == "planned"
 
-    def test_converts_discharge_disposition(
-        self, ccda_encounter_with_discharge: str
-    ) -> None:
+    def test_converts_discharge_disposition(self, ccda_encounter_with_discharge: str) -> None:
         """Test that discharge disposition is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_discharge, ENCOUNTERS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -325,7 +328,10 @@ class TestEncounterConversion:
         assert "coding" in discharge_disp
         assert len(discharge_disp["coding"]) == 1
         assert discharge_disp["coding"][0]["code"] == "home"
-        assert discharge_disp["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/discharge-disposition"
+        assert (
+            discharge_disp["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/discharge-disposition"
+        )
 
     def test_emergency_encounter_has_admit_source_emd(self) -> None:
         """Test that emergency encounters map to 'emd' (from emergency department) admit source."""
@@ -337,7 +343,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -350,7 +356,10 @@ class TestEncounterConversion:
         assert "coding" in admit_source
         assert len(admit_source["coding"]) == 1
         assert admit_source["coding"][0]["code"] == "emd"
-        assert admit_source["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/admit-source"
+        assert (
+            admit_source["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/admit-source"
+        )
         assert admit_source["coding"][0]["display"] == "From accident/emergency department"
 
     def test_emergency_priority_has_admit_source_emd(self) -> None:
@@ -364,7 +373,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -387,7 +396,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -410,7 +419,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -430,7 +439,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -451,7 +460,7 @@ class TestEncounterConversion:
                 <effectiveTime value="20230101"/>
                 <sdtc:dischargeDispositionCode code="01" codeSystem="2.16.840.1.113883.12.112" displayName="Home"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -481,7 +490,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -508,7 +517,7 @@ class TestEncounterConversion:
                     </assignedEntity>
                 </performer>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -536,7 +545,7 @@ class TestEncounterConversion:
                     </assignedEntity>
                 </performer>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -564,7 +573,7 @@ class TestEncounterConversion:
                     </assignedEntity>
                 </performer>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -591,7 +600,7 @@ class TestEncounterConversion:
                     </assignedEntity>
                 </performer>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -623,7 +632,7 @@ class TestEncounterConversion:
                     </assignedEntity>
                 </performer>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -654,7 +663,7 @@ class TestEncounterConversion:
                     </assignedEntity>
                 </performer>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -665,23 +674,22 @@ class TestEncounterConversion:
         assert coding["code"] == "ATND", "C-CDA RNDPHYS should map to FHIR ATND (attender)"
         assert coding["display"] == "Rounding Physician"
 
-    def test_header_encounter_only(
-        self, ccda_header_encounter_only: str
-    ) -> None:
+    def test_header_encounter_only(self, ccda_header_encounter_only: str) -> None:
         """Test that header encompassingEncounter creates an Encounter resource when no body encounters exist."""
         # This is a full document, not a wrapped encounter
         bundle = convert_document(ccda_header_encounter_only)["bundle"]
 
         # Should have an Encounter resource from header
         encounter = _find_resource_in_bundle(bundle, "Encounter")
-        assert encounter is not None, "Encounter resource should be created from header encompassingEncounter"
+        assert encounter is not None, (
+            "Encounter resource should be created from header encompassingEncounter"
+        )
 
         # Verify identifier from header encounter ID
         assert "identifier" in encounter
         assert len(encounter["identifier"]) >= 1
         identifier = next(
-            (i for i in encounter["identifier"] if "ENC-HEADER-12345" in i.get("value", "")),
-            None
+            (i for i in encounter["identifier"] if "ENC-HEADER-12345" in i.get("value", "")), None
         )
         assert identifier is not None, "Should have identifier from header encounter"
 
@@ -705,9 +713,12 @@ class TestEncounterConversion:
         assert "type" in encounter
         assert len(encounter["type"]) >= 1
         cpt_coding = next(
-            (c for c in encounter["type"][0]["coding"]
-             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
-            None
+            (
+                c
+                for c in encounter["type"][0]["coding"]
+                if c.get("system") == "http://www.ama-assn.org/go/cpt"
+            ),
+            None,
         )
         assert cpt_coding is not None
         assert cpt_coding["code"] == "99213"
@@ -721,7 +732,9 @@ class TestEncounterConversion:
 
         # Verify participants from responsibleParty and encounterParticipant
         assert "participant" in encounter
-        assert len(encounter["participant"]) >= 2, "Should have responsibleParty and encounterParticipant"
+        assert len(encounter["participant"]) >= 2, (
+            "Should have responsibleParty and encounterParticipant"
+        )
 
         # Verify location from healthCareFacility
         assert "location" in encounter
@@ -762,22 +775,31 @@ class TestEncounterConversion:
         # Body has code 99214 (25 min visit), header has 99213 (15 min visit)
         assert "type" in encounter
         cpt_coding = next(
-            (c for c in encounter["type"][0]["coding"]
-             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
-            None
+            (
+                c
+                for c in encounter["type"][0]["coding"]
+                if c.get("system") == "http://www.ama-assn.org/go/cpt"
+            ),
+            None,
         )
         assert cpt_coding is not None
-        assert cpt_coding["code"] == "99214", "Should use body encounter code (99214), not header (99213)"
+        assert cpt_coding["code"] == "99214", (
+            "Should use body encounter code (99214), not header (99213)"
+        )
         assert "25 minutes" in cpt_coding["display"]
 
         # Body has class IMP (inpatient), header has AMB (ambulatory)
         assert "class" in encounter
-        assert encounter["class"]["code"] == "IMP", "Should use body encounter class (IMP), not header (AMB)"
+        assert encounter["class"]["code"] == "IMP", (
+            "Should use body encounter class (IMP), not header (AMB)"
+        )
 
         # Body has different time range: 10:00-12:00 vs header 10:30-11:30
         assert "period" in encounter
         assert "start" in encounter["period"]
-        assert "2023-12-01T10:00:00" in encounter["period"]["start"], "Should use body encounter start time"
+        assert "2023-12-01T10:00:00" in encounter["period"]["start"], (
+            "Should use body encounter start time"
+        )
 
         # Body has different performer (Jane Doe), location (Downtown ER)
         assert "participant" in encounter
@@ -816,7 +838,9 @@ class TestEncounterConversion:
                 encounter_provenance = prov
                 break
 
-        assert encounter_provenance is not None, "Provenance resource should be created for Encounter"
+        assert encounter_provenance is not None, (
+            "Provenance resource should be created for Encounter"
+        )
         # Verify Provenance has recorded date
         assert "recorded" in encounter_provenance
         # Verify Provenance has agents
@@ -854,9 +878,7 @@ class TestEncounterConversion:
         assert "reference" in agent["who"]
         assert agent["who"]["reference"].startswith("urn:uuid:")
 
-    def test_provenance_agent_has_author_type(
-        self, ccda_encounter_with_author: str
-    ) -> None:
+    def test_provenance_agent_has_author_type(self, ccda_encounter_with_author: str) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_encounter_with_author, ENCOUNTERS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -920,9 +942,13 @@ class TestEncounterConversion:
             assert "reference" in agent["who"]
             assert agent["who"]["reference"].startswith("urn:uuid:")
 
-    def test_converts_inline_problem_to_reason_code(self, ccda_encounter_with_reason_reference: str) -> None:
+    def test_converts_inline_problem_to_reason_code(
+        self, ccda_encounter_with_reason_reference: str
+    ) -> None:
         """Test that inline Problem Observation (not in Problems section) creates reasonCode."""
-        ccda_doc = wrap_in_ccda_document(ccda_encounter_with_reason_reference, ENCOUNTERS_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_encounter_with_reason_reference, ENCOUNTERS_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -937,9 +963,13 @@ class TestEncounterConversion:
         assert coding["code"] == "59621000"
         assert "Essential hypertension" in coding["display"]
 
-    def test_inline_problem_has_no_reason_reference(self, ccda_encounter_with_reason_reference: str) -> None:
+    def test_inline_problem_has_no_reason_reference(
+        self, ccda_encounter_with_reason_reference: str
+    ) -> None:
         """Test that inline Problem Observation creates reasonCode, not reasonReference."""
-        ccda_doc = wrap_in_ccda_document(ccda_encounter_with_reason_reference, ENCOUNTERS_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_encounter_with_reason_reference, ENCOUNTERS_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -949,7 +979,9 @@ class TestEncounterConversion:
         # Should NOT have reasonReference (Condition doesn't exist)
         assert "reasonReference" not in encounter
 
-    def test_converts_referenced_problem_to_reason_reference(self, ccda_encounter_with_problem_reference: str) -> None:
+    def test_converts_referenced_problem_to_reason_reference(
+        self, ccda_encounter_with_problem_reference: str
+    ) -> None:
         """Test that Problem Observation from Problems section creates reasonReference."""
         import uuid as uuid_module
 
@@ -969,8 +1001,8 @@ class TestEncounterConversion:
         condition_id = reason_ref["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(condition_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Condition ID {condition_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(f"Condition ID {condition_id} is not a valid UUID v4") from err
 
         # Verify the Condition resource exists in the bundle
         conditions = [
@@ -981,7 +1013,9 @@ class TestEncounterConversion:
         ]
         assert len(conditions) > 0, "Referenced Condition should exist in bundle"
 
-    def test_referenced_problem_has_no_reason_code(self, ccda_encounter_with_problem_reference: str) -> None:
+    def test_referenced_problem_has_no_reason_code(
+        self, ccda_encounter_with_problem_reference: str
+    ) -> None:
         """Test that referenced Problem Observation creates reasonReference, not reasonCode."""
         bundle = convert_document(ccda_encounter_with_problem_reference)["bundle"]
 
@@ -992,7 +1026,9 @@ class TestEncounterConversion:
         # Should NOT have reasonCode (reference takes precedence)
         assert "reasonCode" not in encounter
 
-    def test_reason_reference_condition_id_format(self, ccda_encounter_with_problem_reference: str) -> None:
+    def test_reason_reference_condition_id_format(
+        self, ccda_encounter_with_problem_reference: str
+    ) -> None:
         """Test that reasonReference uses consistent Condition ID format (UUID v4)."""
         import uuid as uuid_module
 
@@ -1007,8 +1043,8 @@ class TestEncounterConversion:
         condition_id = reason_ref["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(condition_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Condition ID {condition_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(f"Condition ID {condition_id} is not a valid UUID v4") from err
 
     def test_cpt_outpatient_code_maps_to_ambulatory(self) -> None:
         """Test that CPT outpatient codes (99201-99215) map to AMB (ambulatory).
@@ -1024,7 +1060,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1038,9 +1074,12 @@ class TestEncounterConversion:
         # CPT code should still appear in type
         assert "type" in encounter
         cpt_coding = next(
-            (c for c in encounter["type"][0]["coding"]
-             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
-            None
+            (
+                c
+                for c in encounter["type"][0]["coding"]
+                if c.get("system") == "http://www.ama-assn.org/go/cpt"
+            ),
+            None,
         )
         assert cpt_coding is not None
         assert cpt_coding["code"] == "99213"
@@ -1059,7 +1098,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1073,9 +1112,12 @@ class TestEncounterConversion:
         # CPT code should still appear in type
         assert "type" in encounter
         cpt_coding = next(
-            (c for c in encounter["type"][0]["coding"]
-             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
-            None
+            (
+                c
+                for c in encounter["type"][0]["coding"]
+                if c.get("system") == "http://www.ama-assn.org/go/cpt"
+            ),
+            None,
         )
         assert cpt_coding is not None
         assert cpt_coding["code"] == "99221"
@@ -1094,7 +1136,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1108,9 +1150,12 @@ class TestEncounterConversion:
         # CPT code should still appear in type
         assert "type" in encounter
         cpt_coding = next(
-            (c for c in encounter["type"][0]["coding"]
-             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
-            None
+            (
+                c
+                for c in encounter["type"][0]["coding"]
+                if c.get("system") == "http://www.ama-assn.org/go/cpt"
+            ),
+            None,
         )
         assert cpt_coding is not None
         assert cpt_coding["code"] == "99283"
@@ -1129,7 +1174,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1143,9 +1188,12 @@ class TestEncounterConversion:
         # CPT code should still appear in type
         assert "type" in encounter
         cpt_coding = next(
-            (c for c in encounter["type"][0]["coding"]
-             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
-            None
+            (
+                c
+                for c in encounter["type"][0]["coding"]
+                if c.get("system") == "http://www.ama-assn.org/go/cpt"
+            ),
+            None,
         )
         assert cpt_coding is not None
         assert cpt_coding["code"] == "99345"
@@ -1164,7 +1212,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1177,9 +1225,12 @@ class TestEncounterConversion:
         # CPT code should still appear in type
         assert "type" in encounter
         cpt_coding = next(
-            (c for c in encounter["type"][0]["coding"]
-             if c.get("system") == "http://www.ama-assn.org/go/cpt"),
-            None
+            (
+                c
+                for c in encounter["type"][0]["coding"]
+                if c.get("system") == "http://www.ama-assn.org/go/cpt"
+            ),
+            None,
         )
         assert cpt_coding is not None
         assert cpt_coding["code"] == "99499"
@@ -1194,7 +1245,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1212,7 +1263,7 @@ class TestEncounterConversion:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1574,7 +1625,9 @@ class TestEncounterConversion:
         assert "class" in encounter
         # CPT 99221 would normally map to IMP, but explicit translation is EMER
         # Translation should take precedence
-        assert encounter["class"]["code"] == "EMER", "Explicit translation EMER should take precedence over CPT mapping (IMP)"
+        assert encounter["class"]["code"] == "EMER", (
+            "Explicit translation EMER should take precedence over CPT mapping (IMP)"
+        )
         assert encounter["class"]["display"] == "emergency"
 
     def test_ambulatory_encounter_diagnosis_uses_billing_role(self) -> None:
@@ -1603,7 +1656,7 @@ class TestEncounterConversion:
                     </act>
                 </entryRelationship>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1641,7 +1694,7 @@ class TestEncounterConversion:
                     </act>
                 </entryRelationship>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1679,7 +1732,7 @@ class TestEncounterConversion:
                     </act>
                 </entryRelationship>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1718,7 +1771,7 @@ class TestEncounterConversion:
                     </act>
                 </entryRelationship>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1750,14 +1803,16 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
         assert encounter["class"]["code"] == "AMB"
-        assert encounter["class"]["display"] == "ambulatory", "AMB should have standard display 'ambulatory'"
+        assert encounter["class"]["display"] == "ambulatory", (
+            "AMB should have standard display 'ambulatory'"
+        )
 
     def test_emergency_code_uses_standard_display(self) -> None:
         """Test that EMER (emergency) uses standard display name 'emergency'."""
@@ -1769,14 +1824,16 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
         assert encounter["class"]["code"] == "EMER"
-        assert encounter["class"]["display"] == "emergency", "EMER should have standard display 'emergency'"
+        assert encounter["class"]["display"] == "emergency", (
+            "EMER should have standard display 'emergency'"
+        )
 
     def test_field_code_uses_standard_display(self) -> None:
         """Test that FLD (field) uses standard display name 'field'."""
@@ -1788,7 +1845,7 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1807,14 +1864,16 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
         assert encounter["class"]["code"] == "HH"
-        assert encounter["class"]["display"] == "home health", "HH should have standard display 'home health'"
+        assert encounter["class"]["display"] == "home health", (
+            "HH should have standard display 'home health'"
+        )
 
     def test_inpatient_code_uses_standard_display(self) -> None:
         """Test that IMP (inpatient encounter) uses standard display name 'inpatient encounter'."""
@@ -1826,14 +1885,16 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
         assert encounter["class"]["code"] == "IMP"
-        assert encounter["class"]["display"] == "inpatient encounter", "IMP should have standard display 'inpatient encounter'"
+        assert encounter["class"]["display"] == "inpatient encounter", (
+            "IMP should have standard display 'inpatient encounter'"
+        )
 
     def test_inpatient_acute_code_uses_standard_display(self) -> None:
         """Test that ACUTE (inpatient acute) uses standard display name 'inpatient acute'."""
@@ -1845,14 +1906,16 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
         assert encounter["class"]["code"] == "ACUTE"
-        assert encounter["class"]["display"] == "inpatient acute", "ACUTE should have standard display 'inpatient acute'"
+        assert encounter["class"]["display"] == "inpatient acute", (
+            "ACUTE should have standard display 'inpatient acute'"
+        )
 
     def test_inpatient_non_acute_code_uses_standard_display(self) -> None:
         """Test that NONAC (inpatient non-acute) uses standard display name 'inpatient non-acute'."""
@@ -1864,14 +1927,16 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
         assert encounter["class"]["code"] == "NONAC"
-        assert encounter["class"]["display"] == "inpatient non-acute", "NONAC should have standard display 'inpatient non-acute'"
+        assert encounter["class"]["display"] == "inpatient non-acute", (
+            "NONAC should have standard display 'inpatient non-acute'"
+        )
 
     def test_observation_encounter_code_uses_standard_display(self) -> None:
         """Test that OBSENC (observation encounter) uses standard display name 'observation encounter'."""
@@ -1883,14 +1948,16 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
         assert encounter["class"]["code"] == "OBSENC"
-        assert encounter["class"]["display"] == "observation encounter", "OBSENC should have standard display 'observation encounter'"
+        assert encounter["class"]["display"] == "observation encounter", (
+            "OBSENC should have standard display 'observation encounter'"
+        )
 
     def test_preadmission_code_uses_standard_display(self) -> None:
         """Test that PRENC (pre-admission) uses standard display name 'pre-admission'."""
@@ -1902,14 +1969,16 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
         assert encounter["class"]["code"] == "PRENC"
-        assert encounter["class"]["display"] == "pre-admission", "PRENC should have standard display 'pre-admission'"
+        assert encounter["class"]["display"] == "pre-admission", (
+            "PRENC should have standard display 'pre-admission'"
+        )
 
     def test_short_stay_code_uses_standard_display(self) -> None:
         """Test that SS (short stay) uses standard display name 'short stay'."""
@@ -1921,14 +1990,16 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
         assert encounter["class"]["code"] == "SS"
-        assert encounter["class"]["display"] == "short stay", "SS should have standard display 'short stay'"
+        assert encounter["class"]["display"] == "short stay", (
+            "SS should have standard display 'short stay'"
+        )
 
     def test_virtual_code_uses_standard_display(self) -> None:
         """Test that VR (virtual) uses standard display name 'virtual'."""
@@ -1940,14 +2011,16 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
 
         assert encounter is not None
         assert encounter["class"]["code"] == "VR"
-        assert encounter["class"]["display"] == "virtual", "VR should have standard display 'virtual'"
+        assert encounter["class"]["display"] == "virtual", (
+            "VR should have standard display 'virtual'"
+        )
 
     def test_v3_actcode_in_translation_uses_standard_display(self) -> None:
         """Test that V3 ActCode in translation element uses standard display name."""
@@ -1961,7 +2034,7 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -1969,7 +2042,9 @@ class TestV3ActCodeStandardDisplayNames:
         assert encounter is not None
         assert encounter["class"]["code"] == "AMB"
         # Should use standard display 'ambulatory' even though translation had 'OUTPATIENT'
-        assert encounter["class"]["display"] == "ambulatory", "Translation should use standard display 'ambulatory'"
+        assert encounter["class"]["display"] == "ambulatory", (
+            "Translation should use standard display 'ambulatory'"
+        )
 
     def test_unknown_v3_actcode_uses_ccda_display(self) -> None:
         """Test that unknown V3 ActCode values fall back to C-CDA display name."""
@@ -1981,7 +2056,7 @@ class TestV3ActCodeStandardDisplayNames:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -2014,7 +2089,7 @@ class TestEncounterNullFlavorIdentifiers:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -2046,7 +2121,7 @@ class TestEncounterNullFlavorIdentifiers:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -2073,7 +2148,7 @@ class TestEncounterNullFlavorIdentifiers:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         encounter = _find_resource_in_bundle(bundle, "Encounter")
@@ -2103,7 +2178,7 @@ class TestEncounterIDSanitization:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101120000"/>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
@@ -2133,7 +2208,7 @@ class TestEncounterIDSanitization:
                     <high value="20230102120000"/>
                 </effectiveTime>
             </encounter>""",
-            ENCOUNTERS_TEMPLATE_ID
+            ENCOUNTERS_TEMPLATE_ID,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]

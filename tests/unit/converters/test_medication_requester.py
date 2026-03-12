@@ -21,13 +21,17 @@ from ccda_to_fhir.converters.medication_request import MedicationRequestConverte
 class TestMedicationRequester:
     """Test MedicationRequest.requester field extraction from latest author."""
 
-    def create_substance_admin_with_authors(self, authors: list[Author] | None) -> SubstanceAdministration:
+    def create_substance_admin_with_authors(
+        self, authors: list[Author] | None
+    ) -> SubstanceAdministration:
         """Helper to create substance administration with given authors."""
         sa = SubstanceAdministration()
 
         # Create proper consumable structure
         material = ManufacturedMaterial()
-        material.code = CE(code="197361", code_system="2.16.840.1.113883.6.88", display_name="Aspirin")
+        material.code = CE(
+            code="197361", code_system="2.16.840.1.113883.6.88", display_name="Aspirin"
+        )
 
         product = ManufacturedProduct()
         product.manufactured_material = material
@@ -45,18 +49,21 @@ class TestMedicationRequester:
         time: str | None,
         practitioner_ext: str | None = None,
         has_person: bool = True,
-        has_device: bool = False
+        has_device: bool = False,
     ) -> Author:
         """Helper to create author with specified time and identifiers."""
         assigned_author = AssignedAuthor()
-        assigned_author.id = [II(root="2.16.840.1.113883.4.6", extension=practitioner_ext)] if practitioner_ext else []
+        assigned_author.id = (
+            [II(root="2.16.840.1.113883.4.6", extension=practitioner_ext)]
+            if practitioner_ext
+            else []
+        )
 
         if has_person and not has_device:
             assigned_author.assigned_person = AssignedPerson(name=[])
         elif has_device:
             assigned_author.assigned_authoring_device = AssignedAuthoringDevice(
-                manufacturer_model_name="Test Device",
-                software_name="Test Software"
+                manufacturer_model_name="Test Device", software_name="Test Software"
             )
 
         author = Author()
@@ -71,7 +78,9 @@ class TestMedicationRequester:
         author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
         sa = self.create_substance_admin_with_authors([author])
 
-        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = MedicationRequestConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
@@ -94,7 +103,9 @@ class TestMedicationRequester:
         ]
         sa = self.create_substance_admin_with_authors(authors)
 
-        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = MedicationRequestConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
@@ -116,7 +127,9 @@ class TestMedicationRequester:
         ]
         sa = self.create_substance_admin_with_authors(authors)
 
-        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = MedicationRequestConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
@@ -136,7 +149,9 @@ class TestMedicationRequester:
         ]
         sa = self.create_substance_admin_with_authors(authors)
 
-        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = MedicationRequestConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         med_request = converter.convert(sa)
 
         assert "requester" not in med_request
@@ -146,14 +161,13 @@ class TestMedicationRequester:
         import uuid as uuid_module
 
         author = self.create_author(
-            time="20240115",
-            practitioner_ext="DEVICE-001",
-            has_person=False,
-            has_device=True
+            time="20240115", practitioner_ext="DEVICE-001", has_person=False, has_device=True
         )
         sa = self.create_substance_admin_with_authors([author])
 
-        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = MedicationRequestConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         med_request = converter.convert(sa)
 
         assert "requester" in med_request
@@ -175,7 +189,9 @@ class TestMedicationRequester:
         ]
         sa = self.create_substance_admin_with_authors(authors)
 
-        converter = MedicationRequestConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = MedicationRequestConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         med_request = converter.convert(sa)
 
         # authoredOn should still use earliest

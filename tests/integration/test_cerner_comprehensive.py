@@ -7,9 +7,9 @@ value expected from the C-CDA source document. No field goes untested.
 from pathlib import Path
 
 import pytest
+from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
-from fhir.resources.bundle import Bundle
 
 from .comprehensive_validator import FieldValidator
 
@@ -32,25 +32,27 @@ class TestCernerComprehensive:
         validator = FieldValidator(cerner_bundle)
         stats = validator.validate_all()
 
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"STRUCTURAL VALIDATION: {stats['fields_validated']} fields validated")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
-        if stats['errors']:
+        if stats["errors"]:
             print(f"\n❌ ERRORS ({len(stats['errors'])}):")
-            for error in stats['errors'][:20]:
+            for error in stats["errors"][:20]:
                 print(f"  - {error}")
 
-        assert len(stats['errors']) == 0, \
+        assert len(stats["errors"]) == 0, (
             f"Found {len(stats['errors'])} structural validation errors"
+        )
 
     def test_patient_exact_values(self, cerner_bundle):
         """Validate Patient has EXACT values from C-CDA."""
-        patients = [e.resource for e in cerner_bundle.entry
-                   if e.resource.get_resource_type() == "Patient"]
+        patients = [
+            e.resource for e in cerner_bundle.entry if e.resource.get_resource_type() == "Patient"
+        ]
         assert len(patients) == 1
 
-        p = patients[0].dict() if hasattr(patients[0], 'dict') else patients[0].model_dump()
+        p = patients[0].dict() if hasattr(patients[0], "dict") else patients[0].model_dump()
 
         # Exact name
         assert len(p["name"]) == 1
@@ -59,6 +61,7 @@ class TestCernerComprehensive:
 
         # Exact birth date
         from datetime import date
+
         assert p["birthDate"] == date(1947, 4, 7)
 
         # Exact gender
@@ -85,34 +88,48 @@ class TestCernerComprehensive:
 
         # Exact race/ethnicity extensions
         assert "extension" in p
-        race_ext = next((e for e in p["extension"]
-                        if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"), None)
+        race_ext = next(
+            (
+                e
+                for e in p["extension"]
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
+            ),
+            None,
+        )
         assert race_ext is not None
 
         # US Core profile (optional)
         if "meta" in p and "profile" in p["meta"]:
-            assert p["meta"]["profile"] == ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]
+            assert p["meta"]["profile"] == [
+                "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+            ]
 
     def test_condition_angina_exact_values(self, cerner_bundle):
         """Validate Angina condition has EXACT values."""
-        conditions = [e.resource for e in cerner_bundle.entry
-                     if e.resource.get_resource_type() == "Condition"]
+        conditions = [
+            e.resource for e in cerner_bundle.entry if e.resource.get_resource_type() == "Condition"
+        ]
 
         # Find Angina condition by code
         angina = None
         for cond in conditions:
-            c = cond.dict() if hasattr(cond, 'dict') else cond.model_dump()
-            if "code" in c and c["code"] and "coding" in c["code"]:
-                if any(coding.get("code") == "194828000" for coding in c["code"]["coding"]):
-                    angina = c
-                    break
+            c = cond.dict() if hasattr(cond, "dict") else cond.model_dump()
+            if (
+                "code" in c
+                and c["code"]
+                and "coding" in c["code"]
+                and any(coding.get("code") == "194828000" for coding in c["code"]["coding"])
+            ):
+                angina = c
+                break
 
         assert angina is not None, "Must have Angina condition"
 
         # Exact code
         assert len(angina["code"]["coding"]) >= 1
-        snomed_coding = next((c for c in angina["code"]["coding"]
-                             if c["system"] == "http://snomed.info/sct"), None)
+        snomed_coding = next(
+            (c for c in angina["code"]["coding"] if c["system"] == "http://snomed.info/sct"), None
+        )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "194828000"
         assert snomed_coding["display"] == "Angina (disorder)"
@@ -122,15 +139,14 @@ class TestCernerComprehensive:
 
         # Exact clinical status
         assert angina["clinicalStatus"]["coding"][0]["code"] == "active"
-        assert angina["clinicalStatus"]["coding"][0]["system"] == \
-            "http://terminology.hl7.org/CodeSystem/condition-clinical"
+        assert (
+            angina["clinicalStatus"]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/condition-clinical"
+        )
 
         # Exact category
         assert len(angina["category"]) >= 1
-        assert any(
-            cat["coding"][0]["code"] == "problem-list-item"
-            for cat in angina["category"]
-        )
+        assert any(cat["coding"][0]["code"] == "problem-list-item" for cat in angina["category"])
 
         # Has subject reference to Patient
         assert angina["subject"]["reference"].startswith("urn:uuid:")
@@ -140,34 +156,43 @@ class TestCernerComprehensive:
 
     def test_condition_diabetes_exact_values(self, cerner_bundle):
         """Validate Diabetes Type 2 condition has EXACT values."""
-        conditions = [e.resource for e in cerner_bundle.entry
-                     if e.resource.get_resource_type() == "Condition"]
+        conditions = [
+            e.resource for e in cerner_bundle.entry if e.resource.get_resource_type() == "Condition"
+        ]
 
         diabetes = None
         for cond in conditions:
-            c = cond.dict() if hasattr(cond, 'dict') else cond.model_dump()
-            if "code" in c and c["code"] and "coding" in c["code"]:
-                if any(coding.get("code") == "44054006" for coding in c["code"]["coding"]):
-                    diabetes = c
-                    break
+            c = cond.dict() if hasattr(cond, "dict") else cond.model_dump()
+            if (
+                "code" in c
+                and c["code"]
+                and "coding" in c["code"]
+                and any(coding.get("code") == "44054006" for coding in c["code"]["coding"])
+            ):
+                diabetes = c
+                break
 
         assert diabetes is not None, "Must have Diabetes Type 2 condition"
 
         # Exact code
-        snomed_coding = next((c for c in diabetes["code"]["coding"]
-                             if c["system"] == "http://snomed.info/sct"), None)
+        snomed_coding = next(
+            (c for c in diabetes["code"]["coding"] if c["system"] == "http://snomed.info/sct"), None
+        )
         assert snomed_coding["code"] == "44054006"
         assert snomed_coding["display"] == "Diabetes mellitus type 2 (disorder)"
         assert diabetes["code"]["text"] == "Diabetes mellitus type 2 (disorder)"
 
     def test_allergy_codeine_exact_values(self, cerner_bundle):
         """Validate Codeine allergy has EXACT values."""
-        allergies = [e.resource for e in cerner_bundle.entry
-                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+        allergies = [
+            e.resource
+            for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
 
         codeine = None
         for allergy in allergies:
-            a = allergy.dict() if hasattr(allergy, 'dict') else allergy.model_dump()
+            a = allergy.dict() if hasattr(allergy, "dict") else allergy.model_dump()
             if any(coding.get("code") == "2670" for coding in a["code"]["coding"]):
                 codeine = a
                 break
@@ -175,8 +200,14 @@ class TestCernerComprehensive:
         assert codeine is not None, "Must have Codeine allergy"
 
         # Exact code
-        rxnorm_coding = next((c for c in codeine["code"]["coding"]
-                             if c["system"] == "http://www.nlm.nih.gov/research/umls/rxnorm"), None)
+        rxnorm_coding = next(
+            (
+                c
+                for c in codeine["code"]["coding"]
+                if c["system"] == "http://www.nlm.nih.gov/research/umls/rxnorm"
+            ),
+            None,
+        )
         assert rxnorm_coding["code"] == "2670"
         assert rxnorm_coding["display"] == "Codeine"
 
@@ -200,22 +231,37 @@ class TestCernerComprehensive:
 
     def test_medication_insulin_exact_values(self, cerner_bundle):
         """Validate Insulin Glargine medication has EXACT values."""
-        meds = [e.resource for e in cerner_bundle.entry
-               if e.resource.get_resource_type() == "MedicationRequest"]
+        meds = [
+            e.resource
+            for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "MedicationRequest"
+        ]
 
         insulin = None
         for med in meds:
-            m = med.dict() if hasattr(med, 'dict') else med.model_dump()
-            if "medicationCodeableConcept" in m and "coding" in m["medicationCodeableConcept"]:
-                if any(coding.get("code") == "311041" for coding in m["medicationCodeableConcept"]["coding"]):
-                    insulin = m
-                    break
+            m = med.dict() if hasattr(med, "dict") else med.model_dump()
+            if (
+                "medicationCodeableConcept" in m
+                and "coding" in m["medicationCodeableConcept"]
+                and any(
+                    coding.get("code") == "311041"
+                    for coding in m["medicationCodeableConcept"]["coding"]
+                )
+            ):
+                insulin = m
+                break
 
         assert insulin is not None, "Must have Insulin Glargine"
 
         # Exact medication code
-        rxnorm_coding = next((c for c in insulin["medicationCodeableConcept"]["coding"]
-                             if c["system"] == "http://www.nlm.nih.gov/research/umls/rxnorm"), None)
+        rxnorm_coding = next(
+            (
+                c
+                for c in insulin["medicationCodeableConcept"]["coding"]
+                if c["system"] == "http://www.nlm.nih.gov/research/umls/rxnorm"
+            ),
+            None,
+        )
         assert rxnorm_coding["code"] == "311041"
         assert rxnorm_coding["display"] == "Insulin Glargine 100 UNT/ML Injectable Solution"
 
@@ -240,6 +286,7 @@ class TestCernerComprehensive:
         # Has authoredOn
         assert "authoredOn" in insulin
         from datetime import datetime
+
         assert isinstance(insulin["authoredOn"], datetime)
 
         # Exact dosageInstruction.timing (high-priority untested field)
@@ -252,12 +299,15 @@ class TestCernerComprehensive:
 
     def test_observation_bp_exact_values(self, cerner_bundle):
         """Validate Blood Pressure observation has EXACT values."""
-        observations = [e.resource for e in cerner_bundle.entry
-                       if e.resource.get_resource_type() == "Observation"]
+        observations = [
+            e.resource
+            for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
 
         bp = None
         for obs in observations:
-            o = obs.dict() if hasattr(obs, 'dict') else obs.model_dump()
+            o = obs.dict() if hasattr(obs, "dict") else obs.model_dump()
             if any(coding.get("code") == "85354-9" for coding in o["code"]["coding"]):
                 bp = o
                 break
@@ -265,8 +315,9 @@ class TestCernerComprehensive:
         assert bp is not None, "Must have Blood Pressure observation"
 
         # Exact code
-        loinc_coding = next((c for c in bp["code"]["coding"]
-                            if c["system"] == "http://loinc.org"), None)
+        loinc_coding = next(
+            (c for c in bp["code"]["coding"] if c["system"] == "http://loinc.org"), None
+        )
         assert loinc_coding["code"] == "85354-9"
         assert "Blood pressure" in loinc_coding["display"]
 
@@ -274,15 +325,13 @@ class TestCernerComprehensive:
         assert bp["status"] == "final"
 
         # Exact category
-        assert any(
-            cat["coding"][0]["code"] == "vital-signs"
-            for cat in bp["category"]
-        )
+        assert any(cat["coding"][0]["code"] == "vital-signs" for cat in bp["category"])
 
         # Exact components - systolic
         assert len(bp["component"]) == 2
-        systolic = next((c for c in bp["component"]
-                        if c["code"]["coding"][0]["code"] == "8480-6"), None)
+        systolic = next(
+            (c for c in bp["component"] if c["code"]["coding"][0]["code"] == "8480-6"), None
+        )
         assert systolic is not None
         assert systolic["valueQuantity"]["value"] == 150.0
         assert systolic["valueQuantity"]["unit"] == "mm[Hg]"
@@ -294,31 +343,46 @@ class TestCernerComprehensive:
         assert systolic["interpretation"][0]["coding"][0]["code"] == "H"
 
         # Exact components - diastolic
-        diastolic = next((c for c in bp["component"]
-                         if c["code"]["coding"][0]["code"] == "8462-4"), None)
+        diastolic = next(
+            (c for c in bp["component"] if c["code"]["coding"][0]["code"] == "8462-4"), None
+        )
         assert diastolic is not None
         assert diastolic["valueQuantity"]["value"] == 95.0
         assert diastolic["valueQuantity"]["unit"] == "mm[Hg]"
 
     def test_immunization_influenza_exact_values(self, cerner_bundle):
         """Validate Influenza immunization has EXACT values."""
-        immunizations = [e.resource for e in cerner_bundle.entry
-                        if e.resource.get_resource_type() == "Immunization"]
+        immunizations = [
+            e.resource
+            for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
 
         assert len(immunizations) >= 1
-        flu = immunizations[0].dict() if hasattr(immunizations[0], 'dict') else immunizations[0].model_dump()
+        flu = (
+            immunizations[0].dict()
+            if hasattr(immunizations[0], "dict")
+            else immunizations[0].model_dump()
+        )
 
         # Exact vaccine code
-        cvx_coding = next((c for c in flu["vaccineCode"]["coding"]
-                          if c["system"] == "http://hl7.org/fhir/sid/cvx"), None)
+        cvx_coding = next(
+            (
+                c
+                for c in flu["vaccineCode"]["coding"]
+                if c["system"] == "http://hl7.org/fhir/sid/cvx"
+            ),
+            None,
+        )
         assert cvx_coding["code"] == "88"  # Influenza
 
         # Exact status
         assert flu["status"] == "completed"
 
         # Exact route
-        nci_coding = next((c for c in flu["route"]["coding"]
-                          if c["system"] == "http://ncimeta.nci.nih.gov"), None)
+        nci_coding = next(
+            (c for c in flu["route"]["coding"] if c["system"] == "http://ncimeta.nci.nih.gov"), None
+        )
         assert nci_coding is not None
         assert nci_coding["code"] == "C28161"  # Intramuscular
 
@@ -328,11 +392,12 @@ class TestCernerComprehensive:
 
     def test_encounter_exact_values(self, cerner_bundle):
         """Validate Encounter has EXACT values."""
-        encounters = [e.resource for e in cerner_bundle.entry
-                     if e.resource.get_resource_type() == "Encounter"]
+        encounters = [
+            e.resource for e in cerner_bundle.entry if e.resource.get_resource_type() == "Encounter"
+        ]
 
         assert len(encounters) >= 1
-        enc = encounters[0].dict() if hasattr(encounters[0], 'dict') else encounters[0].model_dump()
+        enc = encounters[0].dict() if hasattr(encounters[0], "dict") else encounters[0].model_dump()
 
         # Exact class
         assert enc["class"]["code"] == "AMB"  # Ambulatory
@@ -343,6 +408,7 @@ class TestCernerComprehensive:
 
         # Exact period start
         from datetime import datetime
+
         assert isinstance(enc["period"]["start"], datetime)
 
         # Has location reference
@@ -357,17 +423,26 @@ class TestCernerComprehensive:
         assert "type" in participant
         assert len(participant["type"]) >= 1
         assert "coding" in participant["type"][0]
-        assert participant["type"][0]["coding"][0]["system"] == \
-            "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
+        assert (
+            participant["type"][0]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
+        )
         assert participant["type"][0]["coding"][0]["code"] == "PART"
 
     def test_practitioner_exact_values(self, cerner_bundle):
         """Validate Practitioner has EXACT values."""
-        practitioners = [e.resource for e in cerner_bundle.entry
-                        if e.resource.get_resource_type() == "Practitioner"]
+        practitioners = [
+            e.resource
+            for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Practitioner"
+        ]
 
         assert len(practitioners) >= 1
-        prac = practitioners[0].dict() if hasattr(practitioners[0], 'dict') else practitioners[0].model_dump()
+        prac = (
+            practitioners[0].dict()
+            if hasattr(practitioners[0], "dict")
+            else practitioners[0].model_dump()
+        )
 
         # Exact name
         assert len(prac["name"]) >= 1
@@ -386,18 +461,26 @@ class TestCernerComprehensive:
 
     def test_composition_exact_values(self, cerner_bundle):
         """Validate Composition has EXACT values."""
-        compositions = [e.resource for e in cerner_bundle.entry
-                       if e.resource.get_resource_type() == "Composition"]
+        compositions = [
+            e.resource
+            for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Composition"
+        ]
 
         assert len(compositions) == 1
-        comp = compositions[0].dict() if hasattr(compositions[0], 'dict') else compositions[0].model_dump()
+        comp = (
+            compositions[0].dict()
+            if hasattr(compositions[0], "dict")
+            else compositions[0].model_dump()
+        )
 
         # Exact status
         assert comp["status"] == "final"
 
         # Exact type
-        loinc_coding = next((c for c in comp["type"]["coding"]
-                            if c["system"] == "http://loinc.org"), None)
+        loinc_coding = next(
+            (c for c in comp["type"]["coding"] if c["system"] == "http://loinc.org"), None
+        )
         assert loinc_coding["code"] == "34133-9"
         assert loinc_coding["display"] == "Summarization of episode note"
 
@@ -406,6 +489,7 @@ class TestCernerComprehensive:
 
         # Exact date
         from datetime import datetime
+
         assert isinstance(comp["date"], datetime)
 
         # Has encounter reference
@@ -417,11 +501,14 @@ class TestCernerComprehensive:
 
     def test_diagnostic_report_exact_values(self, cerner_bundle):
         """Validate DiagnosticReport has EXACT values."""
-        reports = [e.resource for e in cerner_bundle.entry
-                  if e.resource.get_resource_type() == "DiagnosticReport"]
+        reports = [
+            e.resource
+            for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "DiagnosticReport"
+        ]
 
         if len(reports) > 0:
-            report = reports[0].dict() if hasattr(reports[0], 'dict') else reports[0].model_dump()
+            report = reports[0].dict() if hasattr(reports[0], "dict") else reports[0].model_dump()
 
             # Exact identifier - US Core Must-Support field
             assert "identifier" in report
@@ -438,8 +525,10 @@ class TestCernerComprehensive:
             # Exact category - LAB
             assert len(report["category"]) >= 1
             assert report["category"][0]["coding"][0]["code"] == "LAB"
-            assert report["category"][0]["coding"][0]["system"] == \
-                "http://terminology.hl7.org/CodeSystem/v2-0074"
+            assert (
+                report["category"][0]["coding"][0]["system"]
+                == "http://terminology.hl7.org/CodeSystem/v2-0074"
+            )
 
             # Has result references
             if "result" in report:
@@ -448,23 +537,29 @@ class TestCernerComprehensive:
 
     def test_procedure_ecg_exact_values(self, cerner_bundle):
         """Validate Electrocardiographic procedure has EXACT values."""
-        procedures = [e.resource for e in cerner_bundle.entry
-                     if e.resource.get_resource_type() == "Procedure"]
+        procedures = [
+            e.resource for e in cerner_bundle.entry if e.resource.get_resource_type() == "Procedure"
+        ]
 
         # Find ECG procedure by SNOMED code 29303009
         ecg = None
         for proc in procedures:
-            p = proc.dict() if hasattr(proc, 'dict') else proc.model_dump()
-            if "code" in p and p["code"] and "coding" in p["code"]:
-                if any(coding.get("code") == "29303009" for coding in p["code"]["coding"]):
-                    ecg = p
-                    break
+            p = proc.dict() if hasattr(proc, "dict") else proc.model_dump()
+            if (
+                "code" in p
+                and p["code"]
+                and "coding" in p["code"]
+                and any(coding.get("code") == "29303009" for coding in p["code"]["coding"])
+            ):
+                ecg = p
+                break
 
         assert ecg is not None, "Must have Electrocardiographic procedure"
 
         # Exact code - SNOMED CT
-        snomed_coding = next((c for c in ecg["code"]["coding"]
-                             if c["system"] == "http://snomed.info/sct"), None)
+        snomed_coding = next(
+            (c for c in ecg["code"]["coding"] if c["system"] == "http://snomed.info/sct"), None
+        )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "29303009"
         assert "Electrocardiographic procedure" in snomed_coding["display"]
@@ -475,6 +570,7 @@ class TestCernerComprehensive:
         # Has performedDateTime
         assert "performedDateTime" in ecg
         from datetime import datetime
+
         assert isinstance(ecg["performedDateTime"], datetime)
 
         # Has subject reference to Patient
@@ -482,12 +578,19 @@ class TestCernerComprehensive:
 
     def test_organization_exact_values(self, cerner_bundle):
         """Validate Organization has EXACT values."""
-        organizations = [e.resource for e in cerner_bundle.entry
-                        if e.resource.get_resource_type() == "Organization"]
+        organizations = [
+            e.resource
+            for e in cerner_bundle.entry
+            if e.resource.get_resource_type() == "Organization"
+        ]
 
         assert len(organizations) >= 1, "Must have Organization resource"
 
-        org = organizations[0].dict() if hasattr(organizations[0], 'dict') else organizations[0].model_dump()
+        org = (
+            organizations[0].dict()
+            if hasattr(organizations[0], "dict")
+            else organizations[0].model_dump()
+        )
 
         # Exact name
         assert org["name"] == "Local Community Hospital Organization"
@@ -518,18 +621,21 @@ class TestCernerComprehensive:
 
     def test_device_exact_values(self, cerner_bundle):
         """Validate Device (EHR system) has EXACT values."""
-        devices = [e.resource for e in cerner_bundle.entry
-                  if e.resource.get_resource_type() == "Device"]
+        devices = [
+            e.resource for e in cerner_bundle.entry if e.resource.get_resource_type() == "Device"
+        ]
 
         assert len(devices) >= 1, "Must have Device resource"
 
-        device = devices[0].dict() if hasattr(devices[0], 'dict') else devices[0].model_dump()
+        device = devices[0].dict() if hasattr(devices[0], "dict") else devices[0].model_dump()
 
         # Exact type - Electronic health record (SNOMED)
         assert "type" in device
         assert "coding" in device["type"]
-        snomed_coding = next((c for c in device["type"]["coding"]
-                             if c.get("system") == "http://snomed.info/sct"), None)
+        snomed_coding = next(
+            (c for c in device["type"]["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
+        )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "706689003"
         assert snomed_coding["display"] == "Electronic health record"
@@ -540,25 +646,26 @@ class TestCernerComprehensive:
         assert len(device["deviceName"]) >= 2
 
         # Find manufacturer name
-        manufacturer = next((d for d in device["deviceName"]
-                            if d.get("type") == "manufacturer-name"), None)
+        manufacturer = next(
+            (d for d in device["deviceName"] if d.get("type") == "manufacturer-name"), None
+        )
         assert manufacturer is not None
         assert manufacturer["name"] == "Cerner Corporation"
 
         # Find model name
-        model = next((d for d in device["deviceName"]
-                     if d.get("type") == "model-name"), None)
+        model = next((d for d in device["deviceName"] if d.get("type") == "model-name"), None)
         assert model is not None
         assert model["name"] == "Millennium Clinical Document Generator"
 
     def test_location_exact_values(self, cerner_bundle):
         """Validate Location has EXACT values."""
-        locations = [e.resource for e in cerner_bundle.entry
-                    if e.resource.get_resource_type() == "Location"]
+        locations = [
+            e.resource for e in cerner_bundle.entry if e.resource.get_resource_type() == "Location"
+        ]
 
         assert len(locations) >= 1, "Must have Location resource"
 
-        loc = locations[0].dict() if hasattr(locations[0], 'dict') else locations[0].model_dump()
+        loc = locations[0].dict() if hasattr(locations[0], "dict") else locations[0].model_dump()
 
         # Exact status
         assert loc["status"] == "active"

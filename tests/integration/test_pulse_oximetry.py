@@ -39,7 +39,7 @@ class TestPulseOximetryComponents:
         ccda_doc = wrap_in_ccda_document(
             organizer_xml,
             section_template_id="2.16.840.1.113883.10.20.22.2.4.1",
-            section_code="8716-3"
+            section_code="8716-3",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -73,7 +73,7 @@ class TestPulseOximetryComponents:
         ccda_doc = wrap_in_ccda_document(
             organizer_xml,
             section_template_id="2.16.840.1.113883.10.20.22.2.4.1",
-            section_code="8716-3"
+            section_code="8716-3",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -107,7 +107,7 @@ class TestPulseOximetryComponents:
         ccda_doc = wrap_in_ccda_document(
             organizer_xml,
             section_template_id="2.16.840.1.113883.10.20.22.2.4.1",
-            section_code="8716-3"
+            section_code="8716-3",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -151,7 +151,7 @@ class TestPulseOximetryComponents:
         ccda_doc = wrap_in_ccda_document(
             organizer_xml,
             section_template_id="2.16.840.1.113883.10.20.22.2.4.1",
-            section_code="8716-3"
+            section_code="8716-3",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -172,7 +172,7 @@ class TestPulseOximetryComponents:
         ccda_doc = wrap_in_ccda_document(
             organizer_xml,
             section_template_id="2.16.840.1.113883.10.20.22.2.4.1",
-            section_code="8716-3"
+            section_code="8716-3",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 

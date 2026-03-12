@@ -4,16 +4,14 @@ These validators ensure exact compliance with FHIR R4 Quantity
 requirements per C-CDA on FHIR IG.
 """
 
-from typing import Optional
-
 
 def assert_quantity_exact(
     quantity,
-    expected_value: Optional[float] = None,
-    expected_unit: Optional[str] = None,
+    expected_value: float | None = None,
+    expected_unit: str | None = None,
     expected_system: str = "http://unitsofmeasure.org",
-    expected_code: Optional[str] = None,
-    field_name: str = "Quantity"
+    expected_code: str | None = None,
+    field_name: str = "Quantity",
 ):
     """Validate Quantity has exact structure with UCUM units.
 
@@ -34,22 +32,26 @@ def assert_quantity_exact(
     # Value validation
     assert quantity.value is not None, f"{field_name}.value must not be None"
     if expected_value is not None:
-        assert quantity.value == expected_value, \
+        assert quantity.value == expected_value, (
             f"{field_name}.value must be {expected_value}, got {quantity.value}"
+        )
 
     # Unit validation
     if expected_unit is not None:
-        assert quantity.unit == expected_unit, \
+        assert quantity.unit == expected_unit, (
             f"{field_name}.unit must be '{expected_unit}', got '{quantity.unit}'"
+        )
 
     # System validation (should always be UCUM for FHIR)
-    assert quantity.system == expected_system, \
+    assert quantity.system == expected_system, (
         f"{field_name}.system must be '{expected_system}', got '{quantity.system}'"
+    )
 
     # Code validation (UCUM code)
     if expected_code is not None:
-        assert quantity.code == expected_code, \
+        assert quantity.code == expected_code, (
             f"{field_name}.code must be '{expected_code}', got '{quantity.code}'"
+        )
 
 
 def assert_quantity_has_ucum(quantity, field_name: str = "Quantity", strict_system: bool = True):
@@ -67,33 +69,38 @@ def assert_quantity_has_ucum(quantity, field_name: str = "Quantity", strict_syst
     assert quantity.value is not None, f"{field_name}.value must not be None"
 
     # Check if quantity has a unit - if not, system and code can be omitted per FHIR spec
-    has_unit = hasattr(quantity, 'unit') and quantity.unit is not None
+    has_unit = hasattr(quantity, "unit") and quantity.unit is not None
 
     if strict_system:
         if has_unit:
             # If unit is present, require UCUM system and code
-            assert quantity.system == "http://unitsofmeasure.org", \
+            assert quantity.system == "http://unitsofmeasure.org", (
                 f"{field_name}.system must be UCUM when unit present, got '{quantity.system}'"
-            assert quantity.code is not None, f"{field_name}.code must not be None when unit present"
+            )
+            assert quantity.code is not None, (
+                f"{field_name}.code must not be None when unit present"
+            )
         else:
             # No unit - system and code are optional per FHIR qty-3
             # If system is present without unit, it should still be UCUM
-            if hasattr(quantity, 'system') and quantity.system is not None:
-                assert quantity.system == "http://unitsofmeasure.org", \
+            if hasattr(quantity, "system") and quantity.system is not None:
+                assert quantity.system == "http://unitsofmeasure.org", (
                     f"{field_name}.system should be UCUM when present, got '{quantity.system}'"
+                )
     else:
         # Lenient mode: just check if system exists and is UCUM when present
-        if hasattr(quantity, 'system') and quantity.system:
-            assert quantity.system == "http://unitsofmeasure.org", \
+        if hasattr(quantity, "system") and quantity.system:
+            assert quantity.system == "http://unitsofmeasure.org", (
                 f"{field_name}.system should be UCUM when present, got '{quantity.system}'"
+            )
 
 
 def assert_range_exact(
     range_obj,
-    expected_low_value: Optional[float] = None,
-    expected_high_value: Optional[float] = None,
-    expected_unit: Optional[str] = None,
-    field_name: str = "Range"
+    expected_low_value: float | None = None,
+    expected_high_value: float | None = None,
+    expected_unit: str | None = None,
+    field_name: str = "Range",
 ):
     """Validate Range has exact low/high Quantity structure.
 
@@ -113,29 +120,33 @@ def assert_range_exact(
     if range_obj.low:
         assert_quantity_has_ucum(range_obj.low, field_name=f"{field_name}.low")
         if expected_low_value is not None:
-            assert range_obj.low.value == expected_low_value, \
+            assert range_obj.low.value == expected_low_value, (
                 f"{field_name}.low.value must be {expected_low_value}"
+            )
         if expected_unit is not None:
-            assert range_obj.low.unit == expected_unit, \
+            assert range_obj.low.unit == expected_unit, (
                 f"{field_name}.low.unit must be '{expected_unit}'"
+            )
 
     # High validation
     if range_obj.high:
         assert_quantity_has_ucum(range_obj.high, field_name=f"{field_name}.high")
         if expected_high_value is not None:
-            assert range_obj.high.value == expected_high_value, \
+            assert range_obj.high.value == expected_high_value, (
                 f"{field_name}.high.value must be {expected_high_value}"
+            )
         if expected_unit is not None:
-            assert range_obj.high.unit == expected_unit, \
+            assert range_obj.high.unit == expected_unit, (
                 f"{field_name}.high.unit must be '{expected_unit}'"
+            )
 
 
 def assert_reference_range_exact(
     reference_range,
-    expected_low_value: Optional[float] = None,
-    expected_high_value: Optional[float] = None,
-    expected_unit: Optional[str] = None,
-    field_name: str = "referenceRange"
+    expected_low_value: float | None = None,
+    expected_high_value: float | None = None,
+    expected_unit: str | None = None,
+    field_name: str = "referenceRange",
 ):
     """Validate Observation.referenceRange has exact Quantity structure.
 
@@ -171,17 +182,18 @@ def assert_reference_range_exact(
     if reference_range.type:
         type_coding = reference_range.type.coding[0]
         assert type_coding.system == "http://terminology.hl7.org/CodeSystem/referencerange-meaning"
-        assert type_coding.code == "normal", \
+        assert type_coding.code == "normal", (
             f"Reference range type should be 'normal', got '{type_coding.code}'"
+        )
 
 
 def assert_ratio_exact(
     ratio,
-    expected_numerator_value: Optional[float] = None,
-    expected_numerator_unit: Optional[str] = None,
-    expected_denominator_value: Optional[float] = None,
-    expected_denominator_unit: Optional[str] = None,
-    field_name: str = "Ratio"
+    expected_numerator_value: float | None = None,
+    expected_numerator_unit: str | None = None,
+    expected_denominator_value: float | None = None,
+    expected_denominator_unit: str | None = None,
+    field_name: str = "Ratio",
 ):
     """Validate Ratio has exact numerator/denominator Quantity structure.
 

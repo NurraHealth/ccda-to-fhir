@@ -376,7 +376,9 @@ class TestBasicDemographics:
 
         # Multiple names
         assert len(result["name"]) == 2
-        assert result["name"][0]["use"] == "usual"  # L (Legal) -> usual per V3 EntityNameUse standard
+        assert (
+            result["name"][0]["use"] == "usual"
+        )  # L (Legal) -> usual per V3 EntityNameUse standard
         assert result["name"][0]["given"] == ["Isabella", "Maria"]
         assert result["name"][0]["family"] == "Garcia"
         assert result["name"][1]["use"] == "nickname"  # P -> nickname
@@ -439,7 +441,9 @@ class TestPatientIdentifiers:
     - Identity verification
     """
 
-    def test_converts_mrn_identifier(self, patient_role_with_identifiers, basic_patient, mock_reference_registry):
+    def test_converts_mrn_identifier(
+        self, patient_role_with_identifiers, basic_patient, mock_reference_registry
+    ):
         """Test Medical Record Number conversion.
 
         MRN is the primary patient identifier in most EHR systems.
@@ -459,7 +463,9 @@ class TestPatientIdentifiers:
         assert mrn["value"] == "E12345"
         assert "1.2.840.114350" in mrn["system"]  # Epic OID
 
-    def test_converts_ssn_identifier(self, patient_role_with_identifiers, basic_patient, mock_reference_registry):
+    def test_converts_ssn_identifier(
+        self, patient_role_with_identifiers, basic_patient, mock_reference_registry
+    ):
         """Test SSN conversion with proper type coding.
 
         SSN requires special handling per:
@@ -512,7 +518,9 @@ class TestContactInformation:
     - Phone number (required if known)
     """
 
-    def test_converts_home_address(self, patient_role_with_contacts, basic_patient, mock_reference_registry):
+    def test_converts_home_address(
+        self, patient_role_with_contacts, basic_patient, mock_reference_registry
+    ):
         """Test home address conversion with all components.
 
         Address validation important for:
@@ -538,7 +546,9 @@ class TestContactInformation:
         assert home["postalCode"] == "02101"
         assert home["country"] == "USA"
 
-    def test_converts_multiple_addresses(self, patient_role_with_contacts, basic_patient, mock_reference_registry):
+    def test_converts_multiple_addresses(
+        self, patient_role_with_contacts, basic_patient, mock_reference_registry
+    ):
         """Test multiple addresses (home + work).
 
         Realistic for working patients with separate contact points.
@@ -554,7 +564,9 @@ class TestContactInformation:
         assert result["address"][0]["use"] == "home"
         assert result["address"][1]["use"] == "work"
 
-    def test_converts_telecom_with_use_codes(self, patient_role_with_contacts, basic_patient, mock_reference_registry):
+    def test_converts_telecom_with_use_codes(
+        self, patient_role_with_contacts, basic_patient, mock_reference_registry
+    ):
         """Test phone/email conversion with proper use codes.
 
         Use codes critical for:
@@ -620,24 +632,21 @@ class TestUSCoreExtensions:
 
         # Find race extension
         race_ext = next(
-            (e for e in result.get("extension", [])
-             if "us-core-race" in e["url"]),
-            None
+            (e for e in result.get("extension", []) if "us-core-race" in e["url"]), None
         )
 
         assert race_ext is not None, "Race extension missing"
 
         # Should have ombCategory sub-extension
-        omb_category = next(
-            (e for e in race_ext["extension"] if e["url"] == "ombCategory"),
-            None
-        )
+        omb_category = next((e for e in race_ext["extension"] if e["url"] == "ombCategory"), None)
 
         assert omb_category is not None
         assert omb_category["valueCoding"]["code"] == "2106-3"
         assert "White" in omb_category["valueCoding"]["display"]
 
-    def test_converts_ethnicity_extension_omb_compliant(self, complete_patient, mock_reference_registry):
+    def test_converts_ethnicity_extension_omb_compliant(
+        self, complete_patient, mock_reference_registry
+    ):
         """Test ethnicity extension per OMB standard.
 
         OMB categories:
@@ -658,19 +667,14 @@ class TestUSCoreExtensions:
 
         # Find ethnicity extension
         eth_ext = next(
-            (e for e in result.get("extension", [])
-             if "us-core-ethnicity" in e["url"]),
-            None
+            (e for e in result.get("extension", []) if "us-core-ethnicity" in e["url"]), None
         )
 
         assert eth_ext is not None, "Ethnicity extension missing"
 
         # Central American (2155-0) is a detailed ethnicity code, not an OMB category
         # OMB categories are: 2135-2 (Hispanic or Latino) or 2186-5 (Not Hispanic or Latino)
-        detailed = next(
-            (e for e in eth_ext["extension"] if e["url"] == "detailed"),
-            None
-        )
+        detailed = next((e for e in eth_ext["extension"] if e["url"] == "detailed"), None)
 
         assert detailed is not None
         assert detailed["valueCoding"]["code"] == "2155-0"
@@ -685,7 +689,9 @@ class TestUSCoreExtensions:
 class TestSpecialCases:
     """Test edge cases and special patient scenarios."""
 
-    def test_converts_pediatric_patient_with_guardian(self, patient_with_guardian, mock_reference_registry):
+    def test_converts_pediatric_patient_with_guardian(
+        self, patient_with_guardian, mock_reference_registry
+    ):
         """Test child patient with guardian/parent.
 
         Pediatric records require:
@@ -755,7 +761,9 @@ class TestSpecialCases:
         elif "deceasedBoolean" in result:
             assert result["deceasedBoolean"] is True
 
-    def test_converts_birthplace_international(self, patient_with_birthplace, mock_reference_registry):
+    def test_converts_birthplace_international(
+        self, patient_with_birthplace, mock_reference_registry
+    ):
         """Test patient born outside USA.
 
         Birthplace extension important for:
@@ -780,9 +788,7 @@ class TestSpecialCases:
 
         # Find birthplace extension
         bp_ext = next(
-            (e for e in result.get("extension", [])
-             if "patient-birthPlace" in e["url"]),
-            None
+            (e for e in result.get("extension", []) if "patient-birthPlace" in e["url"]), None
         )
 
         assert bp_ext is not None, "Birthplace extension missing"
@@ -877,10 +883,12 @@ class TestPatientIDGeneration:
 
         record_target = RecordTarget(
             patient_role=PatientRole(
-                id=[II(
-                    root="1.2.840.114350.1.13.297.3.7.2.686980",
-                    extension="MRN12345",
-                )],
+                id=[
+                    II(
+                        root="1.2.840.114350.1.13.297.3.7.2.686980",
+                        extension="MRN12345",
+                    )
+                ],
                 patient=basic_patient,
             )
         )
@@ -901,10 +909,12 @@ class TestPatientIDGeneration:
         """Test that same input produces same ID."""
         record_target = RecordTarget(
             patient_role=PatientRole(
-                id=[II(
-                    root="2.16.840.1.113883.19.5",
-                    extension="STABLE-ID",
-                )],
+                id=[
+                    II(
+                        root="2.16.840.1.113883.19.5",
+                        extension="STABLE-ID",
+                    )
+                ],
                 patient=basic_patient,
             )
         )

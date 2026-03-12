@@ -24,8 +24,7 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
 class TestAllergyConversion:
     """E2E tests for C-CDA Allergy Concern Act to FHIR AllergyIntolerance conversion."""
 
-    def test_converts_allergy_code(
-        self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
+    def test_converts_allergy_code(self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that the allergen code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -34,16 +33,18 @@ class TestAllergyConversion:
         assert allergy is not None
         assert "code" in allergy
         rxnorm_coding = next(
-            (c for c in allergy["code"]["coding"]
-             if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"),
-            None
+            (
+                c
+                for c in allergy["code"]["coding"]
+                if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"
+            ),
+            None,
         )
         assert rxnorm_coding is not None
         assert rxnorm_coding["code"] == "1191"
         assert rxnorm_coding["display"] == "Aspirin"
 
-    def test_converts_clinical_status(
-        self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
+    def test_converts_clinical_status(self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that clinical status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -52,11 +53,12 @@ class TestAllergyConversion:
         assert allergy is not None
         assert "clinicalStatus" in allergy
         assert allergy["clinicalStatus"]["coding"][0]["code"] == "active"
-        assert allergy["clinicalStatus"]["coding"][0]["system"] == \
-            "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+        assert (
+            allergy["clinicalStatus"]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+        )
 
-    def test_converts_category(
-        self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
+    def test_converts_category(self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that category is correctly determined."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -66,8 +68,7 @@ class TestAllergyConversion:
         assert "category" in allergy
         assert "medication" in allergy["category"]
 
-    def test_converts_onset_date(
-        self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
+    def test_converts_onset_date(self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that onset date is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -78,7 +79,8 @@ class TestAllergyConversion:
         assert allergy["onsetDateTime"] == "2008-05-01"
 
     def test_converts_reaction_manifestation(
-        self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
+        self, ccda_allergy: str, fhir_allergy: JSONObject
+    ) -> None:
         """Test that reaction manifestation is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -91,16 +93,18 @@ class TestAllergyConversion:
         assert "manifestation" in reaction
 
         snomed_coding = next(
-            (c for c in reaction["manifestation"][0]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (
+                c
+                for c in reaction["manifestation"][0]["coding"]
+                if c.get("system") == "http://snomed.info/sct"
+            ),
+            None,
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "247472004"
         assert snomed_coding["display"] == "Wheal"
 
-    def test_converts_reaction_severity(
-        self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
+    def test_converts_reaction_severity(self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that reaction severity is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -111,8 +115,7 @@ class TestAllergyConversion:
         reaction = allergy["reaction"][0]
         assert reaction["severity"] == "severe"
 
-    def test_converts_identifiers(
-        self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
+    def test_converts_identifiers(self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that identifiers are correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -122,8 +125,7 @@ class TestAllergyConversion:
         assert "identifier" in allergy
         assert len(allergy["identifier"]) >= 1
 
-    def test_converts_translation_codes(
-        self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
+    def test_converts_translation_codes(self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
         """Test that translation codes are included in code.coding."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -132,15 +134,15 @@ class TestAllergyConversion:
         assert allergy is not None
         assert "code" in allergy
         snomed_coding = next(
-            (c for c in allergy["code"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in allergy["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "293586001"
 
     def test_resource_type_is_allergy_intolerance(
-        self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
+        self, ccda_allergy: str, fhir_allergy: JSONObject
+    ) -> None:
         """Test that the resource type is AllergyIntolerance."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -163,7 +165,9 @@ class TestAllergyConversion:
         self, ccda_allergy_with_verification_status: str
     ) -> None:
         """Test that non-negated allergies have verificationStatus=confirmed."""
-        ccda_doc = wrap_in_ccda_document(ccda_allergy_with_verification_status, ALLERGIES_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_allergy_with_verification_status, ALLERGIES_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
@@ -194,9 +198,13 @@ class TestAllergyConversion:
         assert allergy is not None
         assert "extension" in allergy
         abatement_ext = next(
-            (e for e in allergy["extension"]
-             if e.get("url") == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-abatement"),
-            None
+            (
+                e
+                for e in allergy["extension"]
+                if e.get("url")
+                == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-abatement"
+            ),
+            None,
         )
         assert abatement_ext is not None
         assert abatement_ext["valueDateTime"] == "2023-09-10"
@@ -211,9 +219,7 @@ class TestAllergyConversion:
         assert "recordedDate" in allergy
         assert "2023-10-15" in allergy["recordedDate"]
 
-    def test_converts_comment_activity_to_note(
-        self, ccda_allergy_with_comment: str
-    ) -> None:
+    def test_converts_comment_activity_to_note(self, ccda_allergy_with_comment: str) -> None:
         """Test that Comment Activity is converted to note."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_comment, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -271,14 +277,11 @@ class TestAllergyConversion:
         assert len(allergy_provenance["agent"]) > 0
         # Latest author should be in Provenance agents
         agent_refs = [
-            agent.get("who", {}).get("reference")
-            for agent in allergy_provenance["agent"]
+            agent.get("who", {}).get("reference") for agent in allergy_provenance["agent"]
         ]
         assert recorder_ref in agent_refs
 
-    def test_provenance_has_recorded_date(
-        self, ccda_allergy_with_recorded_date: str
-    ) -> None:
+    def test_provenance_has_recorded_date(self, ccda_allergy_with_recorded_date: str) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_recorded_date, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -305,9 +308,7 @@ class TestAllergyConversion:
         # Should have a valid ISO datetime
         assert len(allergy_provenance["recorded"]) > 0
 
-    def test_provenance_agent_has_correct_type(
-        self, ccda_allergy_with_recorded_date: str
-    ) -> None:
+    def test_provenance_agent_has_correct_type(self, ccda_allergy_with_recorded_date: str) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_allergy_with_recorded_date, ALLERGIES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -392,8 +393,12 @@ class TestAllergyConversion:
 
         # Verify the referenced Practitioner exists in bundle
         # Latest author is LATEST-ALLERGY-DOC (time: 20231120), not EARLY-ALLERGY-DOC (time: 20230301)
-        practitioners = [e["resource"] for e in bundle.get("entry", [])
-                        if e["resource"]["resourceType"] == "Practitioner" and e["resource"]["id"] == recorder_id]
+        practitioners = [
+            e["resource"]
+            for e in bundle.get("entry", [])
+            if e["resource"]["resourceType"] == "Practitioner"
+            and e["resource"]["id"] == recorder_id
+        ]
         assert len(practitioners) == 1
         practitioner = practitioners[0]
 
@@ -462,9 +467,8 @@ class TestAllergyConversion:
 
         # Verify SNOMED code for Hives
         snomed_coding = next(
-            (c for c in manifestation["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in manifestation["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "247472004"
@@ -508,22 +512,32 @@ class TestAllergyInheritanceSeverity:
 
         # Verify first reaction (Hives) has moderate severity
         hives_reaction = next(
-            (r for r in allergy["reaction"]
-             if any(c.get("code") == "247472004"
+            (
+                r
+                for r in allergy["reaction"]
+                if any(
+                    c.get("code") == "247472004"
                     for m in r.get("manifestation", [])
-                    for c in m.get("coding", []))),
-            None
+                    for c in m.get("coding", [])
+                )
+            ),
+            None,
         )
         assert hives_reaction is not None
         assert hives_reaction["severity"] == "moderate"
 
         # Verify second reaction (Rash) also has moderate severity
         rash_reaction = next(
-            (r for r in allergy["reaction"]
-             if any(c.get("code") == "271807003"
+            (
+                r
+                for r in allergy["reaction"]
+                if any(
+                    c.get("code") == "271807003"
                     for m in r.get("manifestation", [])
-                    for c in m.get("coding", []))),
-            None
+                    for c in m.get("coding", [])
+                )
+            ),
+            None,
         )
         assert rash_reaction is not None
         assert rash_reaction["severity"] == "moderate"
@@ -546,11 +560,16 @@ class TestAllergyInheritanceSeverity:
         # First reaction (Anaphylaxis) has reaction-level severity "severe"
         # (should override allergy-level "mild")
         anaphylaxis_reaction = next(
-            (r for r in allergy["reaction"]
-             if any(c.get("code") == "39579001"
+            (
+                r
+                for r in allergy["reaction"]
+                if any(
+                    c.get("code") == "39579001"
                     for m in r.get("manifestation", [])
-                    for c in m.get("coding", []))),
-            None
+                    for c in m.get("coding", [])
+                )
+            ),
+            None,
         )
         assert anaphylaxis_reaction is not None
         assert "severity" in anaphylaxis_reaction
@@ -559,11 +578,16 @@ class TestAllergyInheritanceSeverity:
         # Second reaction (Hives) has no reaction-level severity
         # (should inherit allergy-level "mild")
         hives_reaction = next(
-            (r for r in allergy["reaction"]
-             if any(c.get("code") == "247472004"
+            (
+                r
+                for r in allergy["reaction"]
+                if any(
+                    c.get("code") == "247472004"
                     for m in r.get("manifestation", [])
-                    for c in m.get("coding", []))),
-            None
+                    for c in m.get("coding", [])
+                )
+            ),
+            None,
         )
         assert hives_reaction is not None
         assert "severity" in hives_reaction
@@ -583,11 +607,16 @@ class TestAllergyInheritanceSeverity:
 
         # Verify that the reaction with its own severity uses it (not allergy-level)
         anaphylaxis_reaction = next(
-            (r for r in allergy["reaction"]
-             if any(c.get("code") == "39579001"
+            (
+                r
+                for r in allergy["reaction"]
+                if any(
+                    c.get("code") == "39579001"
                     for m in r.get("manifestation", [])
-                    for c in m.get("coding", []))),
-            None
+                    for c in m.get("coding", [])
+                )
+            ),
+            None,
         )
         assert anaphylaxis_reaction is not None
         # Should be "severe" from reaction, NOT "mild" from allergy level
@@ -635,14 +664,15 @@ class TestAllergyNarrativePropagation:
         """Test that section text is converted to FHIR Narrative and added to resource."""
         # Strip XML declaration from fixture
         import re
-        ccda_allergy_clean = re.sub(r'<\?xml[^?]*\?>\s*', '', ccda_allergy)
+
+        ccda_allergy_clean = re.sub(r"<\?xml[^?]*\?>\s*", "", ccda_allergy)
 
         # Add text/reference element to observation (standards-compliant approach)
         # Insert after <observation> tag
         ccda_allergy_clean = ccda_allergy_clean.replace(
             '<observation classCode="OBS" moodCode="EVN">',
             '<observation classCode="OBS" moodCode="EVN"><text><reference value="#allergy-1"/></text>',
-            1  # Only first occurrence
+            1,  # Only first occurrence
         )
 
         # Create document with section text containing narrative
@@ -838,9 +868,12 @@ class TestAllergyReactionDetails:
         assert "manifestation" in reaction
         assert len(reaction["manifestation"]) == 1
         snomed_coding = next(
-            (c for c in reaction["manifestation"][0]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (
+                c
+                for c in reaction["manifestation"][0]["coding"]
+                if c.get("system") == "http://snomed.info/sct"
+            ),
+            None,
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "247472004"
@@ -913,7 +946,7 @@ class TestAllergyIntoleranceIDSanitization:
                     </observation>
                 </entryRelationship>
             </act>""",
-            ALLERGIES_TEMPLATE_ID
+            ALLERGIES_TEMPLATE_ID,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
@@ -922,6 +955,7 @@ class TestAllergyIntoleranceIDSanitization:
         assert allergy is not None
         # ID should be a valid UUID v4
         import uuid
+
         assert "id" in allergy
         try:
             uuid.UUID(allergy["id"], version=4)
@@ -964,7 +998,7 @@ class TestAllergyIntoleranceIDSanitization:
                     </observation>
                 </entryRelationship>
             </act>""",
-            ALLERGIES_TEMPLATE_ID
+            ALLERGIES_TEMPLATE_ID,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
@@ -973,6 +1007,7 @@ class TestAllergyIntoleranceIDSanitization:
         assert allergy is not None
         # ID should be a valid UUID v4
         import uuid
+
         assert "id" in allergy
         try:
             uuid.UUID(allergy["id"], version=4)
@@ -982,12 +1017,11 @@ class TestAllergyIntoleranceIDSanitization:
         assert allergy["code"]["coding"][0]["code"] == "1191"
 
 
-
 class TestAllergyCodeableConceptEdgeCases:
     """Tests for CodeableConcept edge cases with missing/invalid code_system.
-    
+
     These tests verify that the library handles malformed C-CDA data gracefully.
-    
+
     Key behaviors:
     1. When code_system is missing but displayName exists → creates text-only CodeableConcept (valid FHIR)
     2. When both code_system AND displayName are missing → returns None, reaction skipped
@@ -995,12 +1029,12 @@ class TestAllergyCodeableConceptEdgeCases:
 
     def test_reaction_with_missing_code_system_creates_text_only_manifestation(self) -> None:
         """Test that reaction with missing code_system but valid displayName creates text-only manifestation.
-        
+
         This is valid FHIR R4 behavior - CodeableConcept can have just text field
         when standardized coding is unavailable but descriptive text exists.
         """
         ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
-        
+
         ccda_doc = wrap_in_ccda_document(
             """<act classCode="ACT" moodCode="EVN">
                 <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
@@ -1044,21 +1078,21 @@ class TestAllergyCodeableConceptEdgeCases:
                     </observation>
                 </entryRelationship>
             </act>""",
-            ALLERGIES_TEMPLATE_ID
+            ALLERGIES_TEMPLATE_ID,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
-        
+
         # Reaction SHOULD exist with text-only manifestation (valid FHIR)
         assert "reaction" in allergy
         assert len(allergy["reaction"]) == 1
-        
+
         reaction = allergy["reaction"][0]
         assert "manifestation" in reaction
         assert len(reaction["manifestation"]) == 1
-        
+
         manifestation = reaction["manifestation"][0]
         # Should have text but no coding (text-only CodeableConcept)
         assert "text" in manifestation
@@ -1068,12 +1102,12 @@ class TestAllergyCodeableConceptEdgeCases:
 
     def test_reaction_with_no_code_system_and_no_display_name_skips_reaction(self, caplog) -> None:
         """Test that reaction without code_system AND without displayName is skipped with warning.
-        
+
         When neither standardized coding nor descriptive text is available,
         create_codeable_concept() returns None and the reaction should be skipped.
         """
         ALLERGIES_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.6.1"
-        
+
         ccda_doc = wrap_in_ccda_document(
             """<act classCode="ACT" moodCode="EVN">
                 <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
@@ -1117,22 +1151,24 @@ class TestAllergyCodeableConceptEdgeCases:
                     </observation>
                 </entryRelationship>
             </act>""",
-            ALLERGIES_TEMPLATE_ID
+            ALLERGIES_TEMPLATE_ID,
         )
 
         import logging
+
         with caplog.at_level(logging.WARNING):
             bundle = convert_document(ccda_doc)["bundle"]
-        
+
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
-        
+
         # Reaction should be skipped (no manifestation possible = invalid FHIR)
         assert "reaction" not in allergy or len(allergy.get("reaction", [])) == 0
-        
+
         # Warning should be logged
         assert any(
-            "Skipping reaction manifestation due to missing code_system or content" in record.message
+            "Skipping reaction manifestation due to missing code_system or content"
+            in record.message
             for record in caplog.records
         ), "Expected warning about missing code_system not found in logs"
 
@@ -1179,7 +1215,7 @@ class TestAllergyCodeableConceptEdgeCases:
                     </observation>
                 </entryRelationship>
             </act>""",
-            ALLERGIES_TEMPLATE_ID
+            ALLERGIES_TEMPLATE_ID,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]

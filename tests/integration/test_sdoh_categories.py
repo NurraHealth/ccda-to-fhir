@@ -22,7 +22,9 @@ def _find_observation_by_loinc(bundle: JSONObject, loinc_code: str) -> JSONObjec
     return None
 
 
-def _create_social_history_observation(loinc_code: str, loinc_display: str, value: str = "Yes") -> str:
+def _create_social_history_observation(
+    loinc_code: str, loinc_display: str, value: str = "Yes"
+) -> str:
     """Create a C-CDA social history observation (without entry wrapper - that's added by wrap_in_ccda_document)."""
     return f"""
         <observation classCode="OBS" moodCode="EVN">
@@ -57,21 +59,33 @@ class TestSDOHCategoryMapping:
 
         # Check social-history category
         social_history_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "social-history" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "social-history" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert social_history_cat is not None, "Should have social-history category"
-        assert social_history_cat["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/observation-category"
+        assert (
+            social_history_cat["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/observation-category"
+        )
 
         # Check food-insecurity category
         food_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "food-insecurity" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "food-insecurity" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert food_cat is not None, "Should have food-insecurity category"
-        assert food_cat["coding"][0]["system"] == "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes"
+        assert (
+            food_cat["coding"][0]["system"]
+            == "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes"
+        )
         assert food_cat["coding"][0]["display"] == "Food Insecurity"
 
     def test_housing_instability_worried_losing_housing(self) -> None:
@@ -90,9 +104,12 @@ class TestSDOHCategoryMapping:
 
         # Check housing-instability category
         housing_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "housing-instability" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "housing-instability" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert housing_cat is not None
         assert housing_cat["coding"][0]["display"] == "Housing Instability"
@@ -113,9 +130,12 @@ class TestSDOHCategoryMapping:
 
         # Check employment-status category
         employment_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "employment-status" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "employment-status" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert employment_cat is not None
         assert employment_cat["coding"][0]["display"] == "Employment Status"
@@ -136,9 +156,12 @@ class TestSDOHCategoryMapping:
 
         # Check transportation-insecurity category
         transport_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "transportation-insecurity" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "transportation-insecurity" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert transport_cat is not None
         assert transport_cat["coding"][0]["display"] == "Transportation Insecurity"
@@ -159,9 +182,12 @@ class TestSDOHCategoryMapping:
 
         # Check financial-insecurity category
         financial_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "financial-insecurity" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "financial-insecurity" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert financial_cat is not None
         assert financial_cat["coding"][0]["display"] == "Financial Insecurity"
@@ -182,18 +208,19 @@ class TestSDOHCategoryMapping:
 
         # Check social-connection category
         social_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "social-connection" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "social-connection" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert social_cat is not None
         assert social_cat["coding"][0]["display"] == "Social Connection"
 
     def test_stress_level(self) -> None:
         """Test that stress level (93038-8) gets stress category."""
-        ccda_entry = _create_social_history_observation(
-            "93038-8", "Stress level", "High"
-        )
+        ccda_entry = _create_social_history_observation("93038-8", "Stress level", "High")
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -205,9 +232,12 @@ class TestSDOHCategoryMapping:
 
         # Check stress category
         stress_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "stress" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "stress" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert stress_cat is not None
         assert stress_cat["coding"][0]["display"] == "Stress"
@@ -228,9 +258,12 @@ class TestSDOHCategoryMapping:
 
         # Check educational-attainment category
         education_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "educational-attainment" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "educational-attainment" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert education_cat is not None
         assert education_cat["coding"][0]["display"] == "Educational Attainment"
@@ -251,9 +284,12 @@ class TestSDOHCategoryMapping:
 
         # Check veteran-status category
         veteran_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "veteran-status" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "veteran-status" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert veteran_cat is not None
         assert veteran_cat["coding"][0]["display"] == "Veteran Status"
@@ -261,7 +297,9 @@ class TestSDOHCategoryMapping:
     def test_intimate_partner_violence_afraid_of_partner(self) -> None:
         """Test that IPV (76501-6) gets intimate-partner-violence category."""
         ccda_entry = _create_social_history_observation(
-            "76501-6", "Within the last year, have you been afraid of your partner or ex-partner", "Yes"
+            "76501-6",
+            "Within the last year, have you been afraid of your partner or ex-partner",
+            "Yes",
         )
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -274,9 +312,12 @@ class TestSDOHCategoryMapping:
 
         # Check intimate-partner-violence category
         ipv_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "intimate-partner-violence" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "intimate-partner-violence" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert ipv_cat is not None
         assert ipv_cat["coding"][0]["display"] == "Intimate Partner Violence"
@@ -299,7 +340,10 @@ class TestSDOHCategoryMapping:
 
         social_history_cat = categories[0]
         assert social_history_cat["coding"][0]["code"] == "social-history"
-        assert social_history_cat["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/observation-category"
+        assert (
+            social_history_cat["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/observation-category"
+        )
 
     def test_smoking_status_gets_only_social_history_category(self) -> None:
         """Test that smoking status observation gets only social-history category (not SDOH)."""
@@ -342,9 +386,12 @@ class TestSDOHCategoryMapping:
 
         # Check utility-insecurity category
         utility_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "utility-insecurity" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "utility-insecurity" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert utility_cat is not None
         assert utility_cat["coding"][0]["display"] == "Utility Insecurity"
@@ -365,18 +412,19 @@ class TestSDOHCategoryMapping:
 
         # Check incarceration-status category
         incarceration_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "incarceration-status" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "incarceration-status" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert incarceration_cat is not None
         assert incarceration_cat["coding"][0]["display"] == "Incarceration Status"
 
     def test_language_access_preferred_language(self) -> None:
         """Test that preferred language (54899-0) gets language-access category."""
-        ccda_entry = _create_social_history_observation(
-            "54899-0", "Preferred language", "Spanish"
-        )
+        ccda_entry = _create_social_history_observation("54899-0", "Preferred language", "Spanish")
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -388,9 +436,12 @@ class TestSDOHCategoryMapping:
 
         # Check language-access category
         language_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "language-access" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "language-access" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert language_cat is not None
         assert language_cat["coding"][0]["display"] == "Language Status"
@@ -411,18 +462,19 @@ class TestSDOHCategoryMapping:
 
         # Check material-hardship category
         material_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "material-hardship" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "material-hardship" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert material_cat is not None
         assert material_cat["coding"][0]["display"] == "Material Hardship"
 
     def test_health_insurance_coverage_status_primary_insurance(self) -> None:
         """Test that primary insurance (76437-3) gets health-insurance-coverage-status category."""
-        ccda_entry = _create_social_history_observation(
-            "76437-3", "Primary insurance", "Medicare"
-        )
+        ccda_entry = _create_social_history_observation("76437-3", "Primary insurance", "Medicare")
         ccda_doc = wrap_in_ccda_document(ccda_entry, SOCIAL_HISTORY_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -434,9 +486,15 @@ class TestSDOHCategoryMapping:
 
         # Check health-insurance-coverage-status category
         insurance_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "health-insurance-coverage-status" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(
+                    c.get("code") == "health-insurance-coverage-status"
+                    for c in cat.get("coding", [])
+                )
+            ),
+            None,
         )
         assert insurance_cat is not None
         assert insurance_cat["coding"][0]["display"] == "Health Insurance Coverage Status"
@@ -457,9 +515,12 @@ class TestSDOHCategoryMapping:
 
         # Check inadequate-housing category
         housing_cat = next(
-            (cat for cat in categories
-             if any(c.get("code") == "inadequate-housing" for c in cat.get("coding", []))),
-            None
+            (
+                cat
+                for cat in categories
+                if any(c.get("code") == "inadequate-housing" for c in cat.get("coding", []))
+            ),
+            None,
         )
         assert housing_cat is not None
         assert housing_cat["coding"][0]["display"] == "Inadequate Housing"

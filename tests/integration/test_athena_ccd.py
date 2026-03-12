@@ -6,6 +6,7 @@ rather than exact JSON matching, making it compatible with non-deterministic UUI
 
 from __future__ import annotations
 
+import contextlib
 import uuid as uuid_module
 from pathlib import Path
 from typing import Any
@@ -73,12 +74,8 @@ def test_athena_ccd_comprehensive() -> None:
             # Check if ID is UUID v4 (most resources use UUID v4)
             # Some resources like Procedure may use simple IDs from C-CDA
             resource_id = resource["id"]
-            try:
+            with contextlib.suppress(ValueError, AttributeError):
                 uuid_module.UUID(resource_id, version=4)
-            except (ValueError, AttributeError):
-                # Not a UUID v4 - could be a simple ID like "procedure-with-ref-001"
-                # This is acceptable for some resources
-                pass
 
     # === NO PLACEHOLDER REFERENCES ===
     def check_no_placeholders(obj: Any, path: str = "") -> None:
@@ -86,8 +83,9 @@ def test_athena_ccd_comprehensive() -> None:
         if isinstance(obj, dict):
             for key, value in obj.items():
                 if key == "reference" and isinstance(value, str):
-                    assert "placeholder" not in value.lower(), \
+                    assert "placeholder" not in value.lower(), (
                         f"Found placeholder reference at {path}.{key}: {value}"
+                    )
                 else:
                     check_no_placeholders(value, f"{path}.{key}")
         elif isinstance(obj, list):
@@ -117,7 +115,9 @@ def test_athena_ccd_comprehensive() -> None:
         refs = extract_references(resource)
         for ref in refs:
             if not ref.startswith("urn:") and ref not in resources_by_id:
-                broken_refs.append(f"{resource['resourceType']}/{resource.get('id', 'unknown')} -> {ref}")
+                broken_refs.append(
+                    f"{resource['resourceType']}/{resource.get('id', 'unknown')} -> {ref}"
+                )
 
     assert len(broken_refs) == 0, f"Found broken references: {broken_refs}"
 
@@ -154,7 +154,9 @@ def test_athena_ccd_comprehensive() -> None:
             for reason_ref in procedure["reasonReference"]:
                 ref = reason_ref["reference"]
                 assert ref in resources_by_id, f"Procedure reasonReference {ref} not found"
-                assert ref.startswith("urn:uuid:"), f"Procedure reasonReference should point to Condition, got {ref}"
+                assert ref.startswith("urn:uuid:"), (
+                    f"Procedure reasonReference should point to Condition, got {ref}"
+                )
 
                 # Verify the Condition exists and has expected fields
                 condition = resources_by_id[ref]
@@ -244,16 +246,17 @@ def test_athena_ccd_comprehensive() -> None:
                 )
                 target_type = resources_by_id[ref]["resourceType"]
                 assert target_type in (
-                    "Practitioner", "Device", "Organization",
-                    "PractitionerRole", "Patient", "RelatedPerson",
+                    "Practitioner",
+                    "Device",
+                    "Organization",
+                    "PractitionerRole",
+                    "Patient",
+                    "RelatedPerson",
                 ), f"Unexpected author resource type: {target_type}"
 
     # Narrative-section DocumentReferences (non-NoteActivity) should now have
     # author populated from the document-level device/org author
-    narrative_doc_refs = [
-        dr for dr in doc_refs
-        if "author" in dr
-    ]
+    narrative_doc_refs = [dr for dr in doc_refs if "author" in dr]
     assert len(narrative_doc_refs) >= 1, (
         "Expected at least one DocumentReference with author references "
         "(device/org fallback should populate author for Athena CCD)"

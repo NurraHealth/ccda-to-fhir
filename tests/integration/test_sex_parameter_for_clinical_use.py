@@ -36,7 +36,7 @@ class TestSexParameterForClinicalUseExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -46,9 +46,13 @@ class TestSexParameterForClinicalUseExtension:
         # Should have patient-sexParameterForClinicalUse extension
         assert "extension" in patient
         spcu_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"]
+                == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+            ),
+            None,
         )
         assert spcu_ext is not None
 
@@ -56,10 +60,7 @@ class TestSexParameterForClinicalUseExtension:
         assert "extension" in spcu_ext
 
         # Check value sub-extension
-        value_ext = next(
-            (e for e in spcu_ext["extension"] if e["url"] == "value"),
-            None
-        )
+        value_ext = next((e for e in spcu_ext["extension"] if e["url"] == "value"), None)
         assert value_ext is not None
         assert "valueCodeableConcept" in value_ext
         coding = value_ext["valueCodeableConcept"]["coding"][0]
@@ -68,10 +69,7 @@ class TestSexParameterForClinicalUseExtension:
         assert coding["system"] == "http://hl7.org/fhir/sex-parameter-for-clinical-use"
 
         # Check period sub-extension
-        period_ext = next(
-            (e for e in spcu_ext["extension"] if e["url"] == "period"),
-            None
-        )
+        period_ext = next((e for e in spcu_ext["extension"] if e["url"] == "period"), None)
         assert period_ext is not None
         assert "valuePeriod" in period_ext
         assert period_ext["valuePeriod"]["start"] == "2024-01-01"
@@ -93,7 +91,7 @@ class TestSexParameterForClinicalUseExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -101,25 +99,23 @@ class TestSexParameterForClinicalUseExtension:
         assert patient is not None
 
         spcu_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"]
+                == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+            ),
+            None,
         )
         assert spcu_ext is not None
 
-        value_ext = next(
-            (e for e in spcu_ext["extension"] if e["url"] == "value"),
-            None
-        )
+        value_ext = next((e for e in spcu_ext["extension"] if e["url"] == "value"), None)
         assert value_ext is not None
         coding = value_ext["valueCodeableConcept"]["coding"][0]
         assert coding["code"] == "male-typical"
 
         # Check period with timestamp
-        period_ext = next(
-            (e for e in spcu_ext["extension"] if e["url"] == "period"),
-            None
-        )
+        period_ext = next((e for e in spcu_ext["extension"] if e["url"] == "period"), None)
         assert period_ext is not None
         assert period_ext["valuePeriod"]["start"] == "2024-06-15T12:00:00-05:00"
 
@@ -140,7 +136,7 @@ class TestSexParameterForClinicalUseExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -148,20 +144,24 @@ class TestSexParameterForClinicalUseExtension:
         assert patient is not None
 
         spcu_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"]
+                == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+            ),
+            None,
         )
         assert spcu_ext is not None
 
         # Check comment sub-extension
-        comment_ext = next(
-            (e for e in spcu_ext["extension"] if e["url"] == "comment"),
-            None
-        )
+        comment_ext = next((e for e in spcu_ext["extension"] if e["url"] == "comment"), None)
         assert comment_ext is not None
         assert "valueString" in comment_ext
-        assert comment_ext["valueString"] == "Based on current hormone therapy and clinical presentation"
+        assert (
+            comment_ext["valueString"]
+            == "Based on current hormone therapy and clinical presentation"
+        )
 
     def test_spcu_extension_without_period(self) -> None:
         """Test that SPCU extension works without effectiveTime (no period)."""
@@ -177,7 +177,7 @@ class TestSexParameterForClinicalUseExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -185,23 +185,21 @@ class TestSexParameterForClinicalUseExtension:
         assert patient is not None
 
         spcu_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"]
+                == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+            ),
+            None,
         )
         assert spcu_ext is not None
 
         # Should have value but not period
-        value_ext = next(
-            (e for e in spcu_ext["extension"] if e["url"] == "value"),
-            None
-        )
+        value_ext = next((e for e in spcu_ext["extension"] if e["url"] == "value"), None)
         assert value_ext is not None
 
-        period_ext = next(
-            (e for e in spcu_ext["extension"] if e["url"] == "period"),
-            None
-        )
+        period_ext = next((e for e in spcu_ext["extension"] if e["url"] == "period"), None)
         assert period_ext is None
 
     def test_spcu_extension_with_all_sub_extensions(self) -> None:
@@ -221,7 +219,7 @@ class TestSexParameterForClinicalUseExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -229,9 +227,13 @@ class TestSexParameterForClinicalUseExtension:
         assert patient is not None
 
         spcu_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"]
+                == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+            ),
+            None,
         )
         assert spcu_ext is not None
 
@@ -261,17 +263,19 @@ class TestSexParameterForClinicalUseExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
         # Should NOT create a separate Observation resource for SPCU
         observations = [
-            entry["resource"] for entry in bundle.get("entry", [])
+            entry["resource"]
+            for entry in bundle.get("entry", [])
             if entry.get("resource", {}).get("resourceType") == "Observation"
         ]
         spcu_observations = [
-            obs for obs in observations
+            obs
+            for obs in observations
             if obs.get("code", {}).get("coding", [{}])[0].get("code") == "99501-9"
         ]
         assert len(spcu_observations) == 0, "SPCU should NOT create an Observation resource"
@@ -290,7 +294,7 @@ class TestSexParameterForClinicalUseExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -299,12 +303,19 @@ class TestSexParameterForClinicalUseExtension:
 
         # Verify extension URL is exactly correct
         spcu_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"]
+                == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+            ),
+            None,
         )
         assert spcu_ext is not None
-        assert spcu_ext["url"] == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+        assert (
+            spcu_ext["url"]
+            == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+        )
 
     def test_no_spcu_extension_when_not_present(self) -> None:
         """Test that SPCU extension is not added when observation is absent."""
@@ -317,8 +328,12 @@ class TestSexParameterForClinicalUseExtension:
         # Check that SPCU extension is not present
         if "extension" in patient:
             spcu_ext = next(
-                (e for e in patient["extension"]
-                 if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"),
-                None
+                (
+                    e
+                    for e in patient["extension"]
+                    if e["url"]
+                    == "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+                ),
+                None,
             )
             assert spcu_ext is None

@@ -88,14 +88,13 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # Add US Core CarePlan profile
         careplan["meta"] = {
-            "profile": [
-                "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careplan"
-            ]
+            "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-careplan"]
         }
 
         # Generate ID from document identifier
         if clinical_document.id:
             from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
             careplan_id = generate_id_from_identifiers(
                 "CarePlan",
                 clinical_document.id.root,
@@ -106,8 +105,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         # Identifier - same as document ID
         if clinical_document.id:
             identifier = self.create_identifier(
-                clinical_document.id.root,
-                clinical_document.id.extension
+                clinical_document.id.root, clinical_document.id.extension
             )
             if identifier:
                 careplan["identifier"] = [identifier]
@@ -122,13 +120,17 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # Category (REQUIRED) - fixed value "assess-plan" for Care Plan Documents
         # US Core CarePlan requires category from http://hl7.org/fhir/us/core/CodeSystem/careplan-category
-        careplan["category"] = [{
-            "coding": [{
-                "system": "http://hl7.org/fhir/us/core/CodeSystem/careplan-category",
-                "code": "assess-plan",
-                "display": "Assessment and Plan of Treatment"
-            }]
-        }]
+        careplan["category"] = [
+            {
+                "coding": [
+                    {
+                        "system": "http://hl7.org/fhir/us/core/CodeSystem/careplan-category",
+                        "code": "assess-plan",
+                        "display": "Assessment and Plan of Treatment",
+                    }
+                ]
+            }
+        ]
 
         # Subject (REQUIRED) - reference to patient
         if self.reference_registry:
@@ -139,6 +141,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 record_target = clinical_document.record_target[0]
                 if record_target.patient_role and record_target.patient_role.id:
                     from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
                     patient_id = record_target.patient_role.id[0]
                     patient_ref_id = generate_id_from_identifiers(
                         "Patient",
@@ -148,9 +151,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                     subject_ref = FHIRReference(reference=f"urn:uuid:{patient_ref_id}")
                     careplan["subject"] = subject_ref.to_dict()
                 else:
-                    raise ValueError(
-                        "Cannot create CarePlan: patient identifier has no root"
-                    )
+                    raise ValueError("Cannot create CarePlan: patient identifier has no root")
             else:
                 raise ValueError(
                     "Cannot create CarePlan: patient identifier missing from recordTarget"
@@ -160,9 +161,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         if clinical_document.documentation_of:
             for doc_of in clinical_document.documentation_of:
                 if doc_of.service_event and doc_of.service_event.effective_time:
-                    period = self._convert_service_event_period(
-                        doc_of.service_event.effective_time
-                    )
+                    period = self._convert_service_event_period(doc_of.service_event.effective_time)
                     if period:
                         careplan["period"] = period
                         break
@@ -193,8 +192,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 if doc_of.service_event and doc_of.service_event.performer:
                     for performer in doc_of.service_event.performer:
                         if performer.assigned_entity and performer.assigned_entity.id:
+                            from ccda_to_fhir.converters.author_references import (
+                                format_person_display,
+                            )
                             from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                            from ccda_to_fhir.converters.author_references import format_person_display
+
                             performer_id = performer.assigned_entity.id[0]
                             practitioner_id = generate_id_from_identifiers(
                                 "Practitioner",
@@ -204,7 +206,9 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                             ref_uri = f"urn:uuid:{practitioner_id}"
                             if ref_uri not in seen_contributor_refs:
                                 seen_contributor_refs.add(ref_uri)
-                                display = format_person_display(performer.assigned_entity.assigned_person)
+                                display = format_person_display(
+                                    performer.assigned_entity.assigned_person
+                                )
                                 contributor_ref = FHIRReference(reference=ref_uri, display=display)
                                 contributors.append(contributor_ref.to_dict())
 
@@ -222,8 +226,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         # Activity - planned interventions with properly linked outcomes
         if self.intervention_entries:
             activities = self._link_outcomes_to_activities(
-                self.intervention_entries,
-                self.outcome_entries
+                self.intervention_entries, self.outcome_entries
             )
             if activities:
                 careplan["activity"] = activities
@@ -251,11 +254,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         if not doc.template_id:
             return False
 
-        return any(
-            t.root == TemplateIds.CARE_PLAN_DOCUMENT
-            for t in doc.template_id
-            if t.root
-        )
+        return any(t.root == TemplateIds.CARE_PLAN_DOCUMENT for t in doc.template_id if t.root)
 
     def _determine_status(self, doc: ClinicalDocument) -> str:
         """Determine CarePlan status from document context.
@@ -285,19 +284,17 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         if doc.documentation_of:
             for doc_of in doc.documentation_of:
                 if doc_of.service_event and doc_of.service_event.effective_time:
-                    period = self._convert_service_event_period(
-                        doc_of.service_event.effective_time
-                    )
+                    period = self._convert_service_event_period(doc_of.service_event.effective_time)
                     if period:
                         break
 
         # 1. Check if period has ended (past end date → completed)
-        if period and period.get('end'):
+        if period and period.get("end"):
             try:
-                end_date_str = period['end']
+                end_date_str = period["end"]
                 # Handle both date (YYYY-MM-DD) and datetime formats
-                if 'T' in end_date_str:
-                    end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                if "T" in end_date_str:
+                    end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
                 else:
                     # Date only - add time component for comparison
                     end_date = datetime.fromisoformat(f"{end_date_str}T23:59:59+00:00")
@@ -311,19 +308,18 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         # 2. Check intervention statuses
         if self.intervention_entries:
             intervention_statuses = [
-                self._get_intervention_status(interv)
-                for interv in self.intervention_entries
+                self._get_intervention_status(interv) for interv in self.intervention_entries
             ]
             # Filter out None values
             intervention_statuses = [s for s in intervention_statuses if s is not None]
 
             if intervention_statuses:
                 # If all interventions completed → care plan completed
-                if all(s == 'completed' for s in intervention_statuses):
+                if all(s == "completed" for s in intervention_statuses):
                     return "completed"
 
                 # If any intervention cancelled → care plan revoked
-                if 'cancelled' in intervention_statuses:
+                if "cancelled" in intervention_statuses:
                     return "revoked"
 
         # 3. Check if document is authenticated (finalized)
@@ -365,13 +361,13 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # Map common C-CDA status codes to CarePlan-relevant statuses
         status_map = {
-            'completed': 'completed',
-            'active': 'active',
-            'cancelled': 'cancelled',
-            'aborted': 'cancelled',  # Treat aborted as cancelled
-            'suspended': 'suspended',
-            'new': 'active',  # New planned activities are active
-            'held': 'active',  # Held activities are still active (on hold)
+            "completed": "completed",
+            "active": "active",
+            "cancelled": "cancelled",
+            "aborted": "cancelled",  # Treat aborted as cancelled
+            "suspended": "suspended",
+            "new": "active",  # New planned activities are active
+            "held": "active",  # Held activities are still active (on hold)
         }
 
         return status_map.get(code)
@@ -419,8 +415,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
             # If assignedPerson exists, reference Practitioner
             if assigned_author.assigned_person:
+                from ccda_to_fhir.converters.author_references import (
+                    format_person_display,
+                )
                 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                from ccda_to_fhir.converters.author_references import format_person_display
+
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner",
                     first_id.root,
@@ -439,11 +438,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         return None
 
-    def _link_outcomes_to_activities(
-        self,
-        interventions: list,
-        outcomes: list
-    ) -> list[JSONObject]:
+    def _link_outcomes_to_activities(self, interventions: list, outcomes: list) -> list[JSONObject]:
         """Link outcome observations to their parent intervention activities.
 
         Uses entryRelationship with typeCode='GEVL' (evaluates) to determine
@@ -474,7 +469,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             if intervention.entry_relationship:
                 for rel in intervention.entry_relationship:
                     # typeCode='GEVL' means "evaluates" - outcome evaluates the intervention
-                    if rel.type_code == 'GEVL':
+                    if rel.type_code == "GEVL":
                         if rel.observation:
                             outcome_id = self._get_entry_id(rel.observation)
                             # Check if this outcome is in our outcomes list
@@ -543,9 +538,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # All converters now use standard generate_resource_id with hashing
         return self.generate_resource_id(
-            root=root,
-            extension=extension,
-            resource_type=resource_type
+            root=root, extension=extension, resource_type=resource_type
         )
 
     def _create_intervention_reference(self, intervention_entry) -> str | None:
@@ -568,10 +561,12 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         # First, check if this intervention has nested procedures/acts (COMP entryRelationships)
         if intervention_entry.entry_relationship:
             for rel in intervention_entry.entry_relationship:
-                if rel.type_code == 'COMP':
+                if rel.type_code == "COMP":
                     # Look for nested procedure
                     if rel.procedure:
-                        resource_id = self._generate_resource_id_from_entry(rel.procedure, "procedure")
+                        resource_id = self._generate_resource_id_from_entry(
+                            rel.procedure, "procedure"
+                        )
                         if resource_id:
                             # Try as Procedure
                             if self.reference_registry.has_resource("Procedure", resource_id):
@@ -584,10 +579,11 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                     # Look for nested act
                     elif rel.act:
                         resource_id = self._generate_resource_id_from_entry(rel.act, "procedure")
-                        if resource_id:
-                            # Try as Procedure
-                            if self.reference_registry.has_resource("Procedure", resource_id):
-                                return f"urn:uuid:{resource_id}"
+                        # Try as Procedure
+                        if resource_id and self.reference_registry.has_resource(
+                            "Procedure", resource_id
+                        ):
+                            return f"urn:uuid:{resource_id}"
 
         # Fallback: Try the intervention entry itself
         resource_id = self._generate_resource_id_from_entry(intervention_entry, "servicerequest")
@@ -660,45 +656,44 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         # Title
         if clinical_document.title:
             title = html.escape(clinical_document.title)
-            lines.append(f'<h2>{title}</h2>')
+            lines.append(f"<h2>{title}</h2>")
         else:
-            lines.append('<h2>Care Plan</h2>')
+            lines.append("<h2>Care Plan</h2>")
 
         # Period
         if period:
             period_text = self._format_period_text(period)
-            lines.append(f'<p><strong>Period:</strong> {html.escape(period_text)}</p>')
+            lines.append(f"<p><strong>Period:</strong> {html.escape(period_text)}</p>")
 
         # Health Concerns summary
         if health_concern_count > 0:
             plural = "s" if health_concern_count > 1 else ""
-            lines.append(f'<p><strong>Health Concerns:</strong> {health_concern_count} concern{plural} documented</p>')
+            lines.append(
+                f"<p><strong>Health Concerns:</strong> {health_concern_count} concern{plural} documented</p>"
+            )
 
         # Goals summary
         if goal_count > 0:
             plural = "s" if goal_count > 1 else ""
-            lines.append(f'<p><strong>Goals:</strong> {goal_count} goal{plural} documented</p>')
+            lines.append(f"<p><strong>Goals:</strong> {goal_count} goal{plural} documented</p>")
 
         # Interventions section
         if intervention_entries:
-            lines.append('<h3>Planned Interventions</h3>')
-            lines.append('<ul>')
+            lines.append("<h3>Planned Interventions</h3>")
+            lines.append("<ul>")
             for intervention in intervention_entries:
                 intervention_text = self._extract_intervention_text(intervention)
                 if intervention_text:
-                    lines.append(f'<li>{html.escape(intervention_text)}</li>')
-            lines.append('</ul>')
+                    lines.append(f"<li>{html.escape(intervention_text)}</li>")
+            lines.append("</ul>")
 
         # If no meaningful content was generated, add a minimal summary
         if len(lines) == 1:
-            lines.append('<p>Care Plan with no detailed information available</p>')
+            lines.append("<p>Care Plan with no detailed information available</p>")
 
-        lines.append('</div>')
+        lines.append("</div>")
 
-        return {
-            "status": "generated",
-            "div": '\n'.join(lines)
-        }
+        return {"status": "generated", "div": "\n".join(lines)}
 
     def _format_period_text(self, period: JSONObject) -> str:
         """Format period as readable text.
@@ -709,8 +704,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         Returns:
             Human-readable period text
         """
-        start = period.get('start', 'Unknown')
-        end = period.get('end')
+        start = period.get("start", "Unknown")
+        end = period.get("end")
 
         if end:
             return f"{start} to {end}"
@@ -735,7 +730,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         if intervention_entry.entry_relationship:
             for rel in intervention_entry.entry_relationship:
                 # Look for COMP (component) relationships with procedures
-                if rel.type_code == 'COMP':
+                if rel.type_code == "COMP":
                     # Check for procedure
                     if rel.procedure:
                         text = self._extract_code_display_text(rel.procedure)

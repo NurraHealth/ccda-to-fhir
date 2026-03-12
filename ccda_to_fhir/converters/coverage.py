@@ -313,9 +313,10 @@ class CoverageConverter(BaseConverter["Act"]):
     @staticmethod
     def _is_payor_performer(performer: Performer) -> bool:
         """Check if a performer is a PAYOR by templateId (.87) or code."""
-        if performer.template_id:
-            if any(t.root == TemplateIds.PAYER_PERFORMER for t in performer.template_id):
-                return True
+        if performer.template_id and any(
+            t.root == TemplateIds.PAYER_PERFORMER for t in performer.template_id
+        ):
+            return True
         if performer.assigned_entity and performer.assigned_entity.code:
             code = performer.assigned_entity.code.code
             return code.upper() == "PAYOR" if code else False
@@ -324,9 +325,10 @@ class CoverageConverter(BaseConverter["Act"]):
     @staticmethod
     def _is_guarantor_performer(performer: Performer) -> bool:
         """Check if a performer is a GUARANTOR by templateId (.88) or code."""
-        if performer.template_id:
-            if any(t.root == TemplateIds.GUARANTOR_PERFORMER for t in performer.template_id):
-                return True
+        if performer.template_id and any(
+            t.root == TemplateIds.GUARANTOR_PERFORMER for t in performer.template_id
+        ):
+            return True
         if performer.assigned_entity and performer.assigned_entity.code:
             code = performer.assigned_entity.code.code
             return code.upper() == "GUAR" if code else False
@@ -401,10 +403,12 @@ class CoverageConverter(BaseConverter["Act"]):
             )
             rel = _RELATIONSHIP_MAP["OTHER"]
         coverage["relationship"] = {
-            "coding": [{
-                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
-                **rel,
-            }],
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                    **rel,
+                }
+            ],
         }
         return relationship_code
 

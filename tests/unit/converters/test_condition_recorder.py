@@ -21,7 +21,9 @@ class TestConditionRecorder:
         """Helper to create observation with given authors."""
         obs = Observation()
         obs.code = CE(code="55607006", code_system="2.16.840.1.113883.6.96")
-        obs.value = CE(code="233604007", code_system="2.16.840.1.113883.6.96", display_name="Pneumonia")
+        obs.value = CE(
+            code="233604007", code_system="2.16.840.1.113883.6.96", display_name="Pneumonia"
+        )
         obs.id = [II(root="1.2.3.4", extension="obs-1")]
         obs.author = authors
         return obs
@@ -31,18 +33,21 @@ class TestConditionRecorder:
         time: str | None,
         practitioner_ext: str | None = None,
         has_person: bool = True,
-        has_device: bool = False
+        has_device: bool = False,
     ) -> Author:
         """Helper to create author with specified time and identifiers."""
         assigned_author = AssignedAuthor()
-        assigned_author.id = [II(root="2.16.840.1.113883.4.6", extension=practitioner_ext)] if practitioner_ext else []
+        assigned_author.id = (
+            [II(root="2.16.840.1.113883.4.6", extension=practitioner_ext)]
+            if practitioner_ext
+            else []
+        )
 
         if has_person and not has_device:
             assigned_author.assigned_person = AssignedPerson(name=[])
         elif has_device:
             assigned_author.assigned_authoring_device = AssignedAuthoringDevice(
-                manufacturer_model_name="Test Device",
-                software_name="Test Software"
+                manufacturer_model_name="Test Device", software_name="Test Software"
             )
 
         author = Author()
@@ -63,7 +68,12 @@ class TestConditionRecorder:
         author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
         obs = self.create_observation_with_authors([author])
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -86,7 +96,12 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -109,7 +124,12 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -131,7 +151,12 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -151,7 +176,12 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         assert "recorder" not in condition
@@ -161,7 +191,12 @@ class TestConditionRecorder:
         author = self.create_author(time="20240115", practitioner_ext=None)
         obs = self.create_observation_with_authors([author])
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         assert "recorder" not in condition
@@ -171,14 +206,16 @@ class TestConditionRecorder:
         import uuid as uuid_module
 
         author = self.create_author(
-            time="20240115",
-            practitioner_ext="DEVICE-001",
-            has_person=False,
-            has_device=True
+            time="20240115", practitioner_ext="DEVICE-001", has_person=False, has_device=True
         )
         obs = self.create_observation_with_authors([author])
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -196,12 +233,19 @@ class TestConditionRecorder:
 
         authors = [
             self.create_author(time="20240101", practitioner_ext="EARLY-PRAC", has_person=True),
-            self.create_author(time="20240301", practitioner_ext="LATE-DEVICE", has_person=False, has_device=True),
+            self.create_author(
+                time="20240301", practitioner_ext="LATE-DEVICE", has_person=False, has_device=True
+            ),
             self.create_author(time="20240201", practitioner_ext="MID-PRAC", has_person=True),
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         assert "recorder" in condition
@@ -217,7 +261,12 @@ class TestConditionRecorder:
         """Test that empty authors list does not create recorder."""
         obs = self.create_observation_with_authors([])
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         assert "recorder" not in condition
@@ -226,7 +275,12 @@ class TestConditionRecorder:
         """Test that None authors does not create recorder."""
         obs = self.create_observation_with_authors(None)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         assert "recorder" not in condition
@@ -238,9 +292,7 @@ class TestConditionRecorder:
         concern_act_authors = [
             self.create_author(time="20240101", practitioner_ext="CONCERN-EARLY")
         ]
-        obs_authors = [
-            self.create_author(time="20240301", practitioner_ext="OBS-LATEST")
-        ]
+        obs_authors = [self.create_author(time="20240301", practitioner_ext="OBS-LATEST")]
 
         concern_act = self.create_concern_act_with_authors(concern_act_authors)
         obs = self.create_observation_with_authors(obs_authors)
@@ -249,7 +301,7 @@ class TestConditionRecorder:
             code_system_mapper=None,
             section_code="11450-4",
             concern_act=concern_act,
-            reference_registry=mock_reference_registry
+            reference_registry=mock_reference_registry,
         )
         condition = converter.convert(obs)
 
@@ -269,9 +321,7 @@ class TestConditionRecorder:
         concern_act_authors = [
             self.create_author(time="20240301", practitioner_ext="CONCERN-LATEST")
         ]
-        obs_authors = [
-            self.create_author(time="20240101", practitioner_ext="OBS-EARLY")
-        ]
+        obs_authors = [self.create_author(time="20240101", practitioner_ext="OBS-EARLY")]
 
         concern_act = self.create_concern_act_with_authors(concern_act_authors)
         obs = self.create_observation_with_authors(obs_authors)
@@ -280,7 +330,7 @@ class TestConditionRecorder:
             code_system_mapper=None,
             section_code="11450-4",
             concern_act=concern_act,
-            reference_registry=mock_reference_registry
+            reference_registry=mock_reference_registry,
         )
         condition = converter.convert(obs)
 
@@ -303,7 +353,12 @@ class TestConditionRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
         condition = converter.convert(obs)
 
         # recordedDate should still use earliest
@@ -331,15 +386,24 @@ class TestConditionIDGeneration:
         # Create observation WITHOUT id field
         obs1 = Observation()
         obs1.code = CE(code="55607006", code_system="2.16.840.1.113883.6.96")
-        obs1.value = CE(code="233604007", code_system="2.16.840.1.113883.6.96", display_name="Pneumonia")
+        obs1.value = CE(
+            code="233604007", code_system="2.16.840.1.113883.6.96", display_name="Pneumonia"
+        )
         # Intentionally no id field set
 
         obs2 = Observation()
         obs2.code = CE(code="44054006", code_system="2.16.840.1.113883.6.96")
-        obs2.value = CE(code="73211009", code_system="2.16.840.1.113883.6.96", display_name="Diabetes")
+        obs2.value = CE(
+            code="73211009", code_system="2.16.840.1.113883.6.96", display_name="Diabetes"
+        )
         # Intentionally no id field set
 
-        converter = ConditionConverter(code_system_mapper=None, section_code="11450-4", concern_act=None, reference_registry=mock_reference_registry)
+        converter = ConditionConverter(
+            code_system_mapper=None,
+            section_code="11450-4",
+            concern_act=None,
+            reference_registry=mock_reference_registry,
+        )
 
         condition1 = converter.convert(obs1)
         condition2 = converter.convert(obs2)
@@ -359,4 +423,6 @@ class TestConditionIDGeneration:
             pytest.fail("Generated IDs should be valid UUID v4")
 
         # IDs should be UNIQUE
-        assert condition1["id"] != condition2["id"], "Different observations should generate unique IDs"
+        assert condition1["id"] != condition2["id"], (
+            "Different observations should generate unique IDs"
+        )

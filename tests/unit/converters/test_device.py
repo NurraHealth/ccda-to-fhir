@@ -23,10 +23,7 @@ def device_converter(mock_reference_registry) -> DeviceConverter:
 @pytest.fixture
 def sample_device() -> AssignedAuthoringDevice:
     """Create a sample AssignedAuthoringDevice."""
-    return AssignedAuthoringDevice(
-        manufacturer_model_name="Epic EHR",
-        software_name="Epic 2020"
-    )
+    return AssignedAuthoringDevice(manufacturer_model_name="Epic EHR", software_name="Epic 2020")
 
 
 @pytest.fixture
@@ -34,7 +31,7 @@ def sample_assigned_author_with_device(sample_device: AssignedAuthoringDevice) -
     """Create AssignedAuthor with device and identifier."""
     return AssignedAuthor(
         id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-        assigned_authoring_device=sample_device
+        assigned_authoring_device=sample_device,
     )
 
 
@@ -77,7 +74,7 @@ class TestDeviceConverter:
 
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension=None)],
-            assigned_authoring_device=sample_device
+            assigned_authoring_device=sample_device,
         )
 
         device = device_converter.convert(assigned_author)
@@ -111,9 +108,9 @@ class TestDeviceConverter:
         assigned_author = AssignedAuthor(
             id=[
                 II(root="2.16.840.1.113883.19.5", extension="DEVICE-001"),
-                II(root="2.16.840.1.113883.19.6", extension="DEVICE-002")
+                II(root="2.16.840.1.113883.19.6", extension="DEVICE-002"),
             ],
-            assigned_authoring_device=sample_device
+            assigned_authoring_device=sample_device,
         )
 
         device = device_converter.convert(assigned_author)
@@ -145,8 +142,7 @@ class TestDeviceConverter:
 
         assert "deviceName" in device
         manufacturer_names = [
-            dn for dn in device["deviceName"]
-            if dn.get("type") == "manufacturer-name"
+            dn for dn in device["deviceName"] if dn.get("type") == "manufacturer-name"
         ]
         assert len(manufacturer_names) == 1
         assert manufacturer_names[0]["name"] == "Epic EHR"
@@ -158,10 +154,7 @@ class TestDeviceConverter:
         device = device_converter.convert(sample_assigned_author_with_device)
 
         assert "deviceName" in device
-        model_names = [
-            dn for dn in device["deviceName"]
-            if dn.get("type") == "model-name"
-        ]
+        model_names = [dn for dn in device["deviceName"] if dn.get("type") == "model-name"]
         assert len(model_names) == 1
         assert model_names[0]["name"] == "Epic 2020"
 
@@ -178,17 +171,12 @@ class TestDeviceConverter:
         assert "manufacturer-name" in types
         assert "model-name" in types
 
-    def test_handles_missing_device_names(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_handles_missing_device_names(self, device_converter: DeviceConverter) -> None:
         """Test that missing names result in empty deviceName array."""
-        device_no_names = AssignedAuthoringDevice(
-            manufacturer_model_name=None,
-            software_name=None
-        )
+        device_no_names = AssignedAuthoringDevice(manufacturer_model_name=None, software_name=None)
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_no_names
+            assigned_authoring_device=device_no_names,
         )
 
         device = device_converter.convert(assigned_author)
@@ -209,25 +197,19 @@ class TestDeviceConverter:
         Device resources require identifiers. Without identifiers,
         the converter should raise an error rather than using a placeholder.
         """
-        assigned_author = AssignedAuthor(
-            id=None,
-            assigned_authoring_device=sample_device
-        )
+        assigned_author = AssignedAuthor(id=None, assigned_authoring_device=sample_device)
 
         with pytest.raises(ValueError, match="Cannot generate Device ID"):
             device_converter.convert(assigned_author)
 
-    def test_device_with_only_manufacturer_name(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_device_with_only_manufacturer_name(self, device_converter: DeviceConverter) -> None:
         """Test device with only manufacturer name (software is optional)."""
         device_only_manufacturer = AssignedAuthoringDevice(
-            manufacturer_model_name="Epic EHR",
-            software_name=None
+            manufacturer_model_name="Epic EHR", software_name=None
         )
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_only_manufacturer
+            assigned_authoring_device=device_only_manufacturer,
         )
 
         device = device_converter.convert(assigned_author)
@@ -237,17 +219,14 @@ class TestDeviceConverter:
         assert device["deviceName"][0]["name"] == "Epic EHR"
         assert device["deviceName"][0]["type"] == "manufacturer-name"
 
-    def test_device_with_only_software_name(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_device_with_only_software_name(self, device_converter: DeviceConverter) -> None:
         """Test device with only software name (manufacturer is optional)."""
         device_only_software = AssignedAuthoringDevice(
-            manufacturer_model_name=None,
-            software_name="Epic 2020"
+            manufacturer_model_name=None, software_name="Epic 2020"
         )
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_only_software
+            assigned_authoring_device=device_only_software,
         )
 
         device = device_converter.convert(assigned_author)
@@ -264,13 +243,11 @@ class TestDeviceConverter:
         import uuid as uuid_module
 
         device_empty = AssignedAuthoringDevice(
-            manufacturer_model_name=None,
-            software_name=None,
-            as_maintained_entity=None
+            manufacturer_model_name=None, software_name=None, as_maintained_entity=None
         )
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_empty
+            assigned_authoring_device=device_empty,
         )
 
         device = device_converter.convert(assigned_author)
@@ -296,11 +273,9 @@ class TestDeviceConverter:
         org_id = device_converter._generate_organization_id(
             [II(root="2.16.840.1.113883.19.5.9999.1393", extension="ORG-001")]
         )
-        registry.register_resource({
-            "resourceType": "Organization",
-            "id": org_id,
-            "name": "Community Health and Hospitals"
-        })
+        registry.register_resource(
+            {"resourceType": "Organization", "id": org_id, "name": "Community Health and Hospitals"}
+        )
         device_converter.reference_registry = registry
 
         assigned_author = AssignedAuthor(
@@ -308,8 +283,8 @@ class TestDeviceConverter:
             assigned_authoring_device=sample_device,
             represented_organization=RepresentedOrganization(
                 id=[II(root="2.16.840.1.113883.19.5.9999.1393", extension="ORG-001")],
-                name=["Community Health and Hospitals"]
-            )
+                name=["Community Health and Hospitals"],
+            ),
         )
 
         device = device_converter.convert(assigned_author)
@@ -327,7 +302,7 @@ class TestDeviceConverter:
 
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=sample_device
+            assigned_authoring_device=sample_device,
         )
 
         device = device_converter.convert(assigned_author)
@@ -349,8 +324,8 @@ class TestDeviceConverter:
             assigned_authoring_device=sample_device,
             represented_organization=RepresentedOrganization(
                 id=[II(root="2.16.840.1.113883.19.5.9999.1393", extension="ORG-001")],
-                name=["Community Health and Hospitals"]
-            )
+                name=["Community Health and Hospitals"],
+            ),
         )
 
         device = device_converter.convert(assigned_author)
@@ -358,9 +333,7 @@ class TestDeviceConverter:
         # Owner should be omitted since Organization not registered
         assert "owner" not in device
 
-    def test_as_maintained_entity_still_ignored(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_as_maintained_entity_still_ignored(self, device_converter: DeviceConverter) -> None:
         """Test that asMaintainedEntity is still ignored (out of scope)."""
         from ccda_to_fhir.ccda.models.author import MaintainedEntity
 
@@ -369,12 +342,12 @@ class TestDeviceConverter:
         device_with_maintained_entity = AssignedAuthoringDevice(
             manufacturer_model_name="Epic EHR",
             software_name="Epic 2020",
-            as_maintained_entity=MaintainedEntity()
+            as_maintained_entity=MaintainedEntity(),
         )
 
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_with_maintained_entity
+            assigned_authoring_device=device_with_maintained_entity,
         )
 
         device = device_converter.convert(assigned_author)
@@ -410,17 +383,14 @@ class TestDeviceConverter:
         assert "type" in device
         assert device["type"]["text"] == "Electronic Health Record System"
 
-    def test_version_extraction_v_pattern(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_version_extraction_v_pattern(self, device_converter: DeviceConverter) -> None:
         """Test version extracted from 'v1.2' pattern."""
         device_with_version = AssignedAuthoringDevice(
-            manufacturer_model_name="Epic EHR",
-            software_name="Epic v2.1"
+            manufacturer_model_name="Epic EHR", software_name="Epic v2.1"
         )
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_with_version
+            assigned_authoring_device=device_with_version,
         )
 
         device = device_converter.convert(assigned_author)
@@ -432,22 +402,22 @@ class TestDeviceConverter:
         assert "type" in device["version"][0]
         assert "coding" in device["version"][0]["type"]
         assert len(device["version"][0]["type"]["coding"]) == 1
-        assert device["version"][0]["type"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/device-version-type"
+        assert (
+            device["version"][0]["type"]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/device-version-type"
+        )
         assert device["version"][0]["type"]["coding"][0]["code"] == "software"
         assert device["version"][0]["type"]["coding"][0]["display"] == "Software Version"
         assert device["version"][0]["type"]["text"] == "software"
 
-    def test_version_extraction_version_keyword(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_version_extraction_version_keyword(self, device_converter: DeviceConverter) -> None:
         """Test version extracted from 'version 1.2' pattern."""
         device_with_version = AssignedAuthoringDevice(
-            manufacturer_model_name="MyEHR",
-            software_name="MyEHR version 3.0.1"
+            manufacturer_model_name="MyEHR", software_name="MyEHR version 3.0.1"
         )
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_with_version
+            assigned_authoring_device=device_with_version,
         )
 
         device = device_converter.convert(assigned_author)
@@ -455,17 +425,14 @@ class TestDeviceConverter:
         assert "version" in device
         assert device["version"][0]["value"] == "3.0.1"
 
-    def test_version_extraction_parentheses(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_version_extraction_parentheses(self, device_converter: DeviceConverter) -> None:
         """Test version extracted from '(1.5)' pattern."""
         device_with_version = AssignedAuthoringDevice(
-            manufacturer_model_name="System",
-            software_name="System (1.5)"
+            manufacturer_model_name="System", software_name="System (1.5)"
         )
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_with_version
+            assigned_authoring_device=device_with_version,
         )
 
         device = device_converter.convert(assigned_author)
@@ -473,17 +440,14 @@ class TestDeviceConverter:
         assert "version" in device
         assert device["version"][0]["value"] == "1.5"
 
-    def test_version_extraction_end_of_string(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_version_extraction_end_of_string(self, device_converter: DeviceConverter) -> None:
         """Test version extracted from '1.2.3' at end of string."""
         device_with_version = AssignedAuthoringDevice(
-            manufacturer_model_name="Epic EHR",
-            software_name="Epic 2020.1.5"
+            manufacturer_model_name="Epic EHR", software_name="Epic 2020.1.5"
         )
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_with_version
+            assigned_authoring_device=device_with_version,
         )
 
         device = device_converter.convert(assigned_author)
@@ -496,12 +460,11 @@ class TestDeviceConverter:
     ) -> None:
         """Test version not extracted when no recognizable pattern."""
         device_no_version = AssignedAuthoringDevice(
-            manufacturer_model_name="Epic EHR",
-            software_name="Epic System"
+            manufacturer_model_name="Epic EHR", software_name="Epic System"
         )
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_no_version
+            assigned_authoring_device=device_no_version,
         )
 
         device = device_converter.convert(assigned_author)
@@ -513,12 +476,11 @@ class TestDeviceConverter:
     ) -> None:
         """Test version not extracted when softwareName is None."""
         device_no_software = AssignedAuthoringDevice(
-            manufacturer_model_name="Epic EHR",
-            software_name=None
+            manufacturer_model_name="Epic EHR", software_name=None
         )
         assigned_author = AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=device_no_software
+            assigned_authoring_device=device_no_software,
         )
 
         device = device_converter.convert(assigned_author)
@@ -538,9 +500,7 @@ class TestProductInstanceConverter:
     # A. Basic Product Instance Conversion (5 tests)
     # ============================================================================
 
-    def test_creates_device_from_product_instance(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_creates_device_from_product_instance(self, device_converter: DeviceConverter) -> None:
         """Test basic Product Instance to Device conversion."""
         from ccda_to_fhir.ccda.models.datatypes import CE, II
         from ccda_to_fhir.ccda.models.participant import (
@@ -558,13 +518,12 @@ class TestProductInstanceConverter:
                 code=CE(
                     code="14106009",
                     code_system="2.16.840.1.113883.6.96",
-                    display_name="Cardiac pacemaker"
+                    display_name="Cardiac pacemaker",
                 )
             ),
             scoping_entity=ScopingEntity(
-                id=[II(root="2.16.840.1.113883.3.3719")],
-                desc="Acme Devices, Inc"
-            )
+                id=[II(root="2.16.840.1.113883.3.3719")], desc="Acme Devices, Inc"
+            ),
         )
 
         device = device_converter.convert_product_instance(participant_role)
@@ -594,9 +553,7 @@ class TestProductInstanceConverter:
         except ValueError:
             pytest.fail(f"ID {device['id']} is not a valid UUID v4")
 
-    def test_maps_device_identifiers(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_maps_device_identifiers(self, device_converter: DeviceConverter) -> None:
         """Test identifier mapping from Product Instance."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole
@@ -612,9 +569,7 @@ class TestProductInstanceConverter:
         assert device["identifier"][0]["system"] == "urn:oid:2.16.840.1.113883.19.321"
         assert device["identifier"][0]["value"] == "DEVICE-12345"
 
-    def test_maps_device_type_code(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_maps_device_type_code(self, device_converter: DeviceConverter) -> None:
         """Test device type code mapping."""
         from ccda_to_fhir.ccda.models.datatypes import CE, II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole, PlayingDevice
@@ -625,9 +580,9 @@ class TestProductInstanceConverter:
                 code=CE(
                     code="14106009",
                     code_system="2.16.840.1.113883.6.96",
-                    display_name="Cardiac pacemaker"
+                    display_name="Cardiac pacemaker",
                 )
-            )
+            ),
         )
 
         device = device_converter.convert_product_instance(participant_role)
@@ -638,9 +593,7 @@ class TestProductInstanceConverter:
         assert device["type"]["coding"][0]["code"] == "14106009"
         assert device["type"]["coding"][0]["display"] == "Cardiac pacemaker"
 
-    def test_maps_manufacturer(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_maps_manufacturer(self, device_converter: DeviceConverter) -> None:
         """Test manufacturer mapping from scoping entity."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import (
@@ -651,9 +604,8 @@ class TestProductInstanceConverter:
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
             scoping_entity=ScopingEntity(
-                id=[II(root="2.16.840.1.113883.3.3719")],
-                desc="Acme Devices, Inc"
-            )
+                id=[II(root="2.16.840.1.113883.3.3719")], desc="Acme Devices, Inc"
+            ),
         )
 
         device = device_converter.convert_product_instance(participant_role)
@@ -665,9 +617,7 @@ class TestProductInstanceConverter:
     # B. UDI Parsing and Mapping (6 tests)
     # ============================================================================
 
-    def test_parses_udi_with_gs1_format(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_parses_udi_with_gs1_format(self, device_converter: DeviceConverter) -> None:
         """Test UDI parsing with GS1 format (complete UDI string)."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole
@@ -676,7 +626,7 @@ class TestProductInstanceConverter:
             id=[
                 II(
                     root="2.16.840.1.113883.3.3719",
-                    extension="(01)51022222233336(11)141231(17)150707(10)A213B1(21)1234"
+                    extension="(01)51022222233336(11)141231(17)150707(10)A213B1(21)1234",
                 )
             ]
         )
@@ -688,24 +638,19 @@ class TestProductInstanceConverter:
 
         udi_carrier = device["udiCarrier"][0]
         assert udi_carrier["deviceIdentifier"] == "51022222233336"
-        assert udi_carrier["carrierHRF"] == "(01)51022222233336(11)141231(17)150707(10)A213B1(21)1234"
+        assert (
+            udi_carrier["carrierHRF"] == "(01)51022222233336(11)141231(17)150707(10)A213B1(21)1234"
+        )
         assert udi_carrier["issuer"] == "http://hl7.org/fhir/NamingSystem/gs1-di"
         assert udi_carrier["jurisdiction"] == "http://hl7.org/fhir/NamingSystem/fda-udi"
 
-    def test_extracts_manufacture_date_from_udi(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_extracts_manufacture_date_from_udi(self, device_converter: DeviceConverter) -> None:
         """Test manufacture date extraction from UDI."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
-            id=[
-                II(
-                    root="2.16.840.1.113883.3.3719",
-                    extension="(01)51022222233336(11)141231"
-                )
-            ]
+            id=[II(root="2.16.840.1.113883.3.3719", extension="(01)51022222233336(11)141231")]
         )
 
         device = device_converter.convert_product_instance(participant_role)
@@ -713,20 +658,13 @@ class TestProductInstanceConverter:
         assert "manufactureDate" in device
         assert device["manufactureDate"] == "2014-12-31"
 
-    def test_extracts_expiration_date_from_udi(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_extracts_expiration_date_from_udi(self, device_converter: DeviceConverter) -> None:
         """Test expiration date extraction from UDI."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
-            id=[
-                II(
-                    root="2.16.840.1.113883.3.3719",
-                    extension="(01)51022222233336(17)150707"
-                )
-            ]
+            id=[II(root="2.16.840.1.113883.3.3719", extension="(01)51022222233336(17)150707")]
         )
 
         device = device_converter.convert_product_instance(participant_role)
@@ -734,20 +672,13 @@ class TestProductInstanceConverter:
         assert "expirationDate" in device
         assert device["expirationDate"] == "2015-07-07"
 
-    def test_extracts_lot_number_from_udi(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_extracts_lot_number_from_udi(self, device_converter: DeviceConverter) -> None:
         """Test lot number extraction from UDI."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
-            id=[
-                II(
-                    root="2.16.840.1.113883.3.3719",
-                    extension="(01)51022222233336(10)A213B1"
-                )
-            ]
+            id=[II(root="2.16.840.1.113883.3.3719", extension="(01)51022222233336(10)A213B1")]
         )
 
         device = device_converter.convert_product_instance(participant_role)
@@ -755,20 +686,13 @@ class TestProductInstanceConverter:
         assert "lotNumber" in device
         assert device["lotNumber"] == "A213B1"
 
-    def test_extracts_serial_number_from_udi(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_extracts_serial_number_from_udi(self, device_converter: DeviceConverter) -> None:
         """Test serial number extraction from UDI."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole
 
         participant_role = ParticipantRole(
-            id=[
-                II(
-                    root="2.16.840.1.113883.3.3719",
-                    extension="(01)51022222233336(21)1234"
-                )
-            ]
+            id=[II(root="2.16.840.1.113883.3.3719", extension="(01)51022222233336(21)1234")]
         )
 
         device = device_converter.convert_product_instance(participant_role)
@@ -776,9 +700,7 @@ class TestProductInstanceConverter:
         assert "serialNumber" in device
         assert device["serialNumber"] == "1234"
 
-    def test_udi_with_all_components(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_udi_with_all_components(self, device_converter: DeviceConverter) -> None:
         """Test complete UDI with all production identifiers."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole
@@ -787,7 +709,7 @@ class TestProductInstanceConverter:
             id=[
                 II(
                     root="2.16.840.1.113883.3.3719",
-                    extension="(01)51022222233336(11)141231(17)150707(10)A213B1(21)1234"
+                    extension="(01)51022222233336(11)141231(17)150707(10)A213B1(21)1234",
                 )
             ]
         )
@@ -804,18 +726,14 @@ class TestProductInstanceConverter:
     # C. Device Name Mapping (3 tests)
     # ============================================================================
 
-    def test_maps_manufacturer_model_name(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_maps_manufacturer_model_name(self, device_converter: DeviceConverter) -> None:
         """Test manufacturerModelName mapping to deviceName and modelNumber."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole, PlayingDevice
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
-            playing_device=PlayingDevice(
-                manufacturer_model_name="Model XYZ Pacemaker"
-            )
+            playing_device=PlayingDevice(manufacturer_model_name="Model XYZ Pacemaker"),
         )
 
         device = device_converter.convert_product_instance(participant_role)
@@ -841,17 +759,16 @@ class TestProductInstanceConverter:
                 code=CE(
                     code="14106009",
                     code_system="2.16.840.1.113883.6.96",
-                    display_name="Cardiac pacemaker"
+                    display_name="Cardiac pacemaker",
                 )
-            )
+            ),
         )
 
         device = device_converter.convert_product_instance(participant_role)
 
         assert "deviceName" in device
         user_friendly_names = [
-            dn for dn in device["deviceName"]
-            if dn.get("type") == "user-friendly-name"
+            dn for dn in device["deviceName"] if dn.get("type") == "user-friendly-name"
         ]
         assert len(user_friendly_names) == 1
         assert user_friendly_names[0]["name"] == "Cardiac pacemaker"
@@ -869,10 +786,10 @@ class TestProductInstanceConverter:
                 code=CE(
                     code="14106009",
                     code_system="2.16.840.1.113883.6.96",
-                    display_name="Cardiac pacemaker"
+                    display_name="Cardiac pacemaker",
                 ),
-                manufacturer_model_name="Model XYZ Pacemaker"
-            )
+                manufacturer_model_name="Model XYZ Pacemaker",
+            ),
         )
 
         device = device_converter.convert_product_instance(participant_role)
@@ -888,9 +805,7 @@ class TestProductInstanceConverter:
     # D. Patient Reference and US Core Profile (4 tests)
     # ============================================================================
 
-    def test_adds_patient_reference_when_provided(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_adds_patient_reference_when_provided(self, device_converter: DeviceConverter) -> None:
         """Test patient reference is added for implantable devices."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole
@@ -901,8 +816,7 @@ class TestProductInstanceConverter:
 
         patient_ref = {"reference": "Patient/patient-123"}
         device = device_converter.convert_product_instance(
-            participant_role,
-            patient_reference=patient_ref
+            participant_role, patient_reference=patient_ref
         )
 
         assert "patient" in device
@@ -921,13 +835,15 @@ class TestProductInstanceConverter:
 
         patient_ref = {"reference": "Patient/patient-123"}
         device = device_converter.convert_product_instance(
-            participant_role,
-            patient_reference=patient_ref
+            participant_role, patient_reference=patient_ref
         )
 
         assert "meta" in device
         assert "profile" in device["meta"]
-        assert "http://hl7.org/fhir/us/core/StructureDefinition/us-core-implantable-device" in device["meta"]["profile"]
+        assert (
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-implantable-device"
+            in device["meta"]["profile"]
+        )
 
     def test_no_profile_when_patient_reference_absent(
         self, device_converter: DeviceConverter
@@ -945,9 +861,7 @@ class TestProductInstanceConverter:
         assert "patient" not in device
         assert "meta" not in device
 
-    def test_device_status_from_procedure_context(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_device_status_from_procedure_context(self, device_converter: DeviceConverter) -> None:
         """Test device status inference from procedure status."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import ParticipantRole
@@ -958,15 +872,13 @@ class TestProductInstanceConverter:
 
         # Completed procedure → active device
         device = device_converter.convert_product_instance(
-            participant_role,
-            procedure_status="completed"
+            participant_role, procedure_status="completed"
         )
         assert device["status"] == "active"
 
         # Planned procedure → inactive device
         device = device_converter.convert_product_instance(
-            participant_role,
-            procedure_status="planned"
+            participant_role, procedure_status="planned"
         )
         assert device["status"] == "inactive"
 
@@ -974,9 +886,7 @@ class TestProductInstanceConverter:
     # E. Device Owner Mapping (3 tests)
     # ============================================================================
 
-    def test_device_owner_from_scoping_entity(
-        self, device_converter: DeviceConverter
-    ) -> None:
+    def test_device_owner_from_scoping_entity(self, device_converter: DeviceConverter) -> None:
         """Test Device.owner from scopingEntity."""
         from ccda_to_fhir.ccda.models.datatypes import II
         from ccda_to_fhir.ccda.models.participant import (
@@ -990,19 +900,17 @@ class TestProductInstanceConverter:
         org_id = device_converter._generate_organization_id(
             [II(root="2.16.840.1.113883.3.3719", extension="ORG-123")]
         )
-        registry.register_resource({
-            "resourceType": "Organization",
-            "id": org_id,
-            "name": "Acme Devices, Inc"
-        })
+        registry.register_resource(
+            {"resourceType": "Organization", "id": org_id, "name": "Acme Devices, Inc"}
+        )
         device_converter.reference_registry = registry
 
         participant_role = ParticipantRole(
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
             scoping_entity=ScopingEntity(
                 id=[II(root="2.16.840.1.113883.3.3719", extension="ORG-123")],
-                desc="Acme Devices, Inc"
-            )
+                desc="Acme Devices, Inc",
+            ),
         )
 
         device = device_converter.convert_product_instance(participant_role)
@@ -1046,8 +954,8 @@ class TestProductInstanceConverter:
             id=[II(root="2.16.840.1.113883.19.321", extension="DEVICE-12345")],
             scoping_entity=ScopingEntity(
                 id=[II(root="2.16.840.1.113883.3.3719", extension="ORG-123")],
-                desc="Acme Devices, Inc"
-            )
+                desc="Acme Devices, Inc",
+            ),
         )
 
         device = device_converter.convert_product_instance(participant_role)

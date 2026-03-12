@@ -421,7 +421,7 @@ class ClinicalDocument(CDAModel):
     # Document body (structured or non-XML)
     component: Component | None = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_us_realm_header(self) -> ClinicalDocument:
         """Validate US Realm Header (2.16.840.1.113883.10.20.22.1.1).
 

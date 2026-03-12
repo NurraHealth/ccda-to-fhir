@@ -187,9 +187,9 @@ def _to_snake_case(name: str) -> str:
 
 def _to_camel_case(name: str) -> str:
     """Convert snake_case to camelCase."""
-    parts = name.split('_')
+    parts = name.split("_")
     # First part stays lowercase, rest get capitalized
-    return parts[0] + ''.join(word.capitalize() for word in parts[1:])
+    return parts[0] + "".join(word.capitalize() for word in parts[1:])
 
 
 def _parse_typed_value(element: etree._Element) -> BaseModel | None:
@@ -245,7 +245,7 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
         tag = _strip_namespace(child.tag)
         # Handle SDTC namespace elements
         # lxml expands namespaces, so <sdtc:deceasedInd> becomes {urn:hl7-org:sdtc}deceasedInd
-        if child.tag.startswith('{urn:hl7-org:sdtc}'):
+        if child.tag.startswith("{urn:hl7-org:sdtc}"):
             tag = "sdtc_" + tag
 
         if tag not in child_elements:
@@ -316,7 +316,11 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
 
             # Resolve the XML tag name for this field, checking alias first
             finfo = model_fields[field_name]
-            field_tag = finfo.alias if finfo.alias and finfo.alias != field_name else _to_camel_case(field_name)
+            field_tag = (
+                finfo.alias
+                if finfo.alias and finfo.alias != field_name
+                else _to_camel_case(field_name)
+            )
 
             # Handle list fields (multiple child elements)
             if isinstance(field_value, list):
@@ -325,18 +329,23 @@ def _parse_element(element: etree._Element, model_class: type[T]) -> T:
                     # Match parsed models with their XML elements by index
                     for parsed_item, xml_child in zip(field_value, xml_children, strict=False):
                         # Not all models have tail_text field
-                        if hasattr(parsed_item, 'tail_text') and xml_child.tail:
-                            if xml_child.tail.strip():
-                                parsed_item.tail_text = xml_child.tail.strip()
+                        if (
+                            hasattr(parsed_item, "tail_text")
+                            and xml_child.tail
+                            and xml_child.tail.strip()
+                        ):
+                            parsed_item.tail_text = xml_child.tail.strip()
 
             # Handle single-value fields (Pydantic models, not primitives)
-            elif isinstance(field_value, BaseModel):
-                if field_tag in child_elements and child_elements[field_tag]:
-                    xml_child = child_elements[field_tag][0]
-                    # Not all models have tail_text field
-                    if hasattr(field_value, 'tail_text') and xml_child.tail:
-                        if xml_child.tail.strip():
-                            field_value.tail_text = xml_child.tail.strip()
+            elif (
+                isinstance(field_value, BaseModel)
+                and field_tag in child_elements
+                and child_elements[field_tag]
+            ):
+                xml_child = child_elements[field_tag][0]
+                # Not all models have tail_text field
+                if hasattr(field_value, "tail_text") and xml_child.tail and xml_child.tail.strip():
+                    field_value.tail_text = xml_child.tail.strip()
 
         return instance
     except Exception as e:
@@ -392,6 +401,7 @@ def _parse_child_element(
 
     # Resolve ForwardRef if necessary
     from typing import ForwardRef, get_type_hints
+
     if isinstance(target_type, ForwardRef):
         # Get type hints from parent model to resolve forward references
         # This handles cases where a model references another model defined later in the file
@@ -614,16 +624,10 @@ def preprocess_ccda_namespaces(xml_string: str) -> str:
         True
     """
     # Check if xsi: prefix is used but not declared
-    needs_xsi = (
-        'xsi:' in xml_string and
-        'xmlns:xsi=' not in xml_string
-    )
+    needs_xsi = "xsi:" in xml_string and "xmlns:xsi=" not in xml_string
 
     # Check if sdtc: prefix is used but not declared
-    needs_sdtc = (
-        'sdtc:' in xml_string and
-        'xmlns:sdtc=' not in xml_string
-    )
+    needs_sdtc = "sdtc:" in xml_string and "xmlns:sdtc=" not in xml_string
 
     # If no missing namespaces, return unchanged
     if not needs_xsi and not needs_sdtc:
@@ -632,12 +636,12 @@ def preprocess_ccda_namespaces(xml_string: str) -> str:
     # Find the root element opening tag (any tag)
     # Look for first opening tag: <tagname ... > or <tagname>
     # Pattern matches: <tagname followed by space or >
-    pattern = r'<([a-zA-Z][a-zA-Z0-9:._-]*)(\s|>)'
+    pattern = r"<([a-zA-Z][a-zA-Z0-9:._-]*)(\s|>)"
 
     def add_namespaces(match):
         """Add namespace declarations to opening tag."""
         tag_name = match.group(1)  # tag name (e.g., 'ClinicalDocument', 'section')
-        suffix = match.group(2)     # ' ' or '>'
+        suffix = match.group(2)  # ' ' or '>'
 
         # Build namespace declarations
         namespaces = []
@@ -649,7 +653,7 @@ def preprocess_ccda_namespaces(xml_string: str) -> str:
         # Insert namespaces
         # If suffix is '>', add space before it
         # If suffix is ' ', namespaces will naturally space-separate
-        if suffix == '>':
+        if suffix == ">":
             return f"<{tag_name} {' '.join(namespaces)}>"
         else:
             return f"<{tag_name} {' '.join(namespaces)}{suffix}"

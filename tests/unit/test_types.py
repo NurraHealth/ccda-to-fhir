@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from ccda_to_fhir.types import (
     DiagnosisRole,
@@ -14,7 +15,6 @@ from ccda_to_fhir.types import (
     RegistryStats,
     ValidationStats,
 )
-
 
 # ============================================================================
 # FHIRCoding
@@ -55,11 +55,11 @@ class TestFHIRCoding:
 
     def test_frozen(self):
         c = FHIRCoding(system="http://snomed.info/sct", code="1234")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             c.code = "5678"
 
     def test_extra_fields_forbidden(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             FHIRCoding(system="http://snomed.info/sct", code="1234", version="1.0")
 
 
@@ -101,7 +101,7 @@ class TestFHIRCodeableConcept:
 
     def test_frozen(self):
         cc = FHIRCodeableConcept(text="Test")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             cc.text = "Changed"
 
 
@@ -129,7 +129,7 @@ class TestFHIRReference:
 
     def test_frozen(self):
         r = FHIRReference(reference="urn:uuid:abc-123")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             r.reference = "changed"
 
 
@@ -165,7 +165,7 @@ class TestDiagnosisRole:
 
     def test_frozen(self):
         role = DiagnosisRole(code="AD", display="Admission diagnosis")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             role.code = "DD"
 
 
@@ -185,7 +185,7 @@ class TestOperationStats:
 
     def test_frozen(self):
         s = OperationStats()
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             s.count = 1
 
 

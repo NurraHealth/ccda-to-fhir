@@ -41,9 +41,7 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
 class TestNoteConversion:
     """E2E tests for C-CDA Note Activity to FHIR DocumentReference conversion."""
 
-    def test_converts_to_document_reference(
-        self, ccda_note: str, fhir_note: JSONObject
-    ) -> None:
+    def test_converts_to_document_reference(self, ccda_note: str, fhir_note: JSONObject) -> None:
         """Test that note activity creates a DocumentReference."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -52,9 +50,7 @@ class TestNoteConversion:
         assert doc_ref is not None
         assert doc_ref["resourceType"] == "DocumentReference"
 
-    def test_converts_type(
-        self, ccda_note: str, fhir_note: JSONObject
-    ) -> None:
+    def test_converts_type(self, ccda_note: str, fhir_note: JSONObject) -> None:
         """Test that note code is converted to type."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -63,16 +59,12 @@ class TestNoteConversion:
         assert doc_ref is not None
         assert "type" in doc_ref
         loinc = next(
-            (c for c in doc_ref["type"]["coding"]
-             if c.get("system") == "http://loinc.org"),
-            None
+            (c for c in doc_ref["type"]["coding"] if c.get("system") == "http://loinc.org"), None
         )
         assert loinc is not None
         assert loinc["code"] == "34109-9"
 
-    def test_converts_translation_codes(
-        self, ccda_note: str, fhir_note: JSONObject
-    ) -> None:
+    def test_converts_translation_codes(self, ccda_note: str, fhir_note: JSONObject) -> None:
         """Test that translation codes are included in type."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -82,9 +74,7 @@ class TestNoteConversion:
         codes = [c["code"] for c in doc_ref["type"]["coding"]]
         assert "11488-4" in codes
 
-    def test_converts_status(
-        self, ccda_note: str, fhir_note: JSONObject
-    ) -> None:
+    def test_converts_status(self, ccda_note: str, fhir_note: JSONObject) -> None:
         """Test that status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -93,9 +83,7 @@ class TestNoteConversion:
         assert doc_ref is not None
         assert doc_ref["status"] == "current"
 
-    def test_converts_doc_status(
-        self, ccda_note: str, fhir_note: JSONObject
-    ) -> None:
+    def test_converts_doc_status(self, ccda_note: str, fhir_note: JSONObject) -> None:
         """Test that docStatus is mapped from statusCode."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -105,9 +93,7 @@ class TestNoteConversion:
         # statusCode="completed" → docStatus="final"
         assert doc_ref["docStatus"] == "final"
 
-    def test_converts_category(
-        self, ccda_note: str, fhir_note: JSONObject
-    ) -> None:
+    def test_converts_category(self, ccda_note: str, fhir_note: JSONObject) -> None:
         """Test that category is set to clinical-note."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -115,11 +101,12 @@ class TestNoteConversion:
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
         assert doc_ref["category"][0]["coding"][0]["code"] == "clinical-note"
-        assert doc_ref["category"][0]["coding"][0]["system"] == "http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category"
+        assert (
+            doc_ref["category"][0]["coding"][0]["system"]
+            == "http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category"
+        )
 
-    def test_converts_date(
-        self, ccda_note: str, fhir_note: JSONObject
-    ) -> None:
+    def test_converts_date(self, ccda_note: str, fhir_note: JSONObject) -> None:
         """Test that author time is converted to date."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -129,9 +116,7 @@ class TestNoteConversion:
         assert "date" in doc_ref
         assert "2016-09-08" in doc_ref["date"]
 
-    def test_converts_content_attachment(
-        self, ccda_note: str, fhir_note: JSONObject
-    ) -> None:
+    def test_converts_content_attachment(self, ccda_note: str, fhir_note: JSONObject) -> None:
         """Test that text content is converted to attachment."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -143,9 +128,7 @@ class TestNoteConversion:
         assert doc_ref["content"][0]["attachment"]["contentType"] == "application/rtf"
         assert doc_ref["content"][0]["attachment"]["data"] is not None
 
-    def test_converts_context_period(
-        self, ccda_note: str, fhir_note: JSONObject
-    ) -> None:
+    def test_converts_context_period(self, ccda_note: str, fhir_note: JSONObject) -> None:
         """Test that effectiveTime is converted to context.period."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -156,9 +139,7 @@ class TestNoteConversion:
         assert "period" in doc_ref["context"]
         assert "2016-09-08" in doc_ref["context"]["period"]["start"]
 
-    def test_type_text_from_display(
-        self, ccda_note: str, fhir_note: JSONObject
-    ) -> None:
+    def test_type_text_from_display(self, ccda_note: str, fhir_note: JSONObject) -> None:
         """Test that type.text is derived from displayName."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -244,7 +225,9 @@ class TestNoteConversion:
 
         # Must be the Note Activity DR (type code 34109-9), not the document-level one
         type_codes = [c.get("code") for c in doc_ref.get("type", {}).get("coding", [])]
-        assert "34109-9" in type_codes, f"Expected Note Activity DR (34109-9), got type codes: {type_codes}"
+        assert "34109-9" in type_codes, (
+            f"Expected Note Activity DR (34109-9), got type codes: {type_codes}"
+        )
 
         assert "content" in doc_ref
         assert len(doc_ref["content"]) > 0
@@ -256,6 +239,7 @@ class TestNoteConversion:
 
         # Decode and verify the content
         import base64
+
         decoded_text = base64.b64decode(attachment["data"]).decode("utf-8")
         assert "actual note content" in decoded_text.lower()
 
@@ -337,9 +321,7 @@ class TestNoteConversion:
         assert "_data" in attachment
         assert attachment["_data"]["extension"][0]["valueCode"] == "unknown"
 
-    def test_provenance_created_for_note_with_author(
-        self, ccda_note: str
-    ) -> None:
+    def test_provenance_created_for_note_with_author(self, ccda_note: str) -> None:
         """Test that Provenance resource is created for DocumentReference with author."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -363,16 +345,16 @@ class TestNoteConversion:
                 note_provenance = prov
                 break
 
-        assert note_provenance is not None, "Provenance resource should be created for DocumentReference"
+        assert note_provenance is not None, (
+            "Provenance resource should be created for DocumentReference"
+        )
         # Verify Provenance has recorded date
         assert "recorded" in note_provenance
         # Verify Provenance has agents
         assert "agent" in note_provenance
         assert len(note_provenance["agent"]) > 0
 
-    def test_provenance_agent_references_practitioner(
-        self, ccda_note: str
-    ) -> None:
+    def test_provenance_agent_references_practitioner(self, ccda_note: str) -> None:
         """Test that Provenance agent references Practitioner."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -401,9 +383,7 @@ class TestNoteConversion:
         assert "reference" in agent["who"]
         assert agent["who"]["reference"].startswith("urn:uuid:")
 
-    def test_provenance_has_recorded_date_from_author(
-        self, ccda_note: str
-    ) -> None:
+    def test_provenance_has_recorded_date_from_author(self, ccda_note: str) -> None:
         """Test that Provenance has recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -429,9 +409,7 @@ class TestNoteConversion:
         # Verify recorded date matches author time (20160908083215-0500)
         assert note_provenance["recorded"] == "2016-09-08T08:32:15-05:00"
 
-    def test_provenance_agent_has_author_type(
-        self, ccda_note: str
-    ) -> None:
+    def test_provenance_agent_has_author_type(self, ccda_note: str) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_note, NOTES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -459,7 +437,10 @@ class TestNoteConversion:
         assert "type" in agent
         type_coding = agent["type"]["coding"][0]
         assert type_coding["code"] == "author"
-        assert type_coding["system"] == "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+        assert (
+            type_coding["system"]
+            == "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+        )
 
 
 class TestNoteMultipleContent:
@@ -549,7 +530,9 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
         assert "content" in doc_ref
 
         # Should have TWO content items: one for inline PDF, one for reference
-        assert len(doc_ref["content"]) == 2, f"Should have 2 content items when both inline and reference present, got {len(doc_ref['content'])}"
+        assert len(doc_ref["content"]) == 2, (
+            f"Should have 2 content items when both inline and reference present, got {len(doc_ref['content'])}"
+        )
 
     def test_inline_content_has_correct_media_type(self) -> None:
         """Test that inline content preserves the mediaType from C-CDA."""
@@ -642,7 +625,9 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
 
         assert inline_content is not None, "Should have inline content with application/pdf"
         assert "data" in inline_content["attachment"]
-        assert inline_content["attachment"]["data"].startswith("JVBERi"), "PDF data should start with PDF magic bytes"
+        assert inline_content["attachment"]["data"].startswith("JVBERi"), (
+            "PDF data should start with PDF magic bytes"
+        )
 
     def test_reference_content_has_resolved_narrative(self) -> None:
         """Test that reference content resolves to section narrative."""
@@ -738,6 +723,7 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
 
         # Decode and verify it contains the narrative text
         import base64
+
         decoded_text = base64.b64decode(reference_content["attachment"]["data"]).decode("utf-8")
         assert "Chief Complaint" in decoded_text or "chief complaint" in decoded_text.lower()
 
@@ -745,6 +731,7 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
         """Test that note with only inline content creates single content item."""
         # Use the existing note.xml fixture which has only inline content
         from pathlib import Path
+
         fixture_path = Path(__file__).parent / "fixtures" / "ccda" / "note.xml"
         with open(fixture_path) as f:
             ccda_note = f.read()
@@ -847,7 +834,9 @@ JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0
 
         # Should have application/pdf for inline and text/html or text/plain for reference
         assert "application/pdf" in content_types, "Should have PDF content type"
-        assert any(ct in ["text/html", "text/plain"] for ct in content_types), "Should have text content type"
+        assert any(ct in ["text/html", "text/plain"] for ct in content_types), (
+            "Should have text content type"
+        )
 
 
 class TestNoteMissingContent:
@@ -942,7 +931,9 @@ class TestNoteMissingContent:
         assert len(extensions) > 0
 
         data_absent_ext = extensions[0]
-        assert data_absent_ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert (
+            data_absent_ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        )
         assert data_absent_ext["valueCode"] == "unknown"
 
     def test_note_with_empty_text_uses_data_absent_reason(self) -> None:
@@ -1099,4 +1090,6 @@ class TestNoteMissingContent:
         assert ext["valueCode"] == "unknown"
 
         # Ensure no actual 'data' field is present when using data-absent-reason
-        assert "data" not in attachment, "Should not have 'data' field when using _data with extension"
+        assert "data" not in attachment, (
+            "Should not have 'data' field when using _data with extension"
+        )

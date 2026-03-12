@@ -143,9 +143,7 @@ class ResourceValidationError(CCDAConversionError):
         self.errors = errors
 
         error_list = "\n  - ".join(errors)
-        message = (
-            f"FHIR {resource_type} validation failed (id: {resource_id}):\n  - {error_list}"
-        )
+        message = f"FHIR {resource_type} validation failed (id: {resource_id}):\n  - {error_list}"
 
         super().__init__(message)
 

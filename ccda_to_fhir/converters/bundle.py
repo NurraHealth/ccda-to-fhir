@@ -22,6 +22,7 @@ def create_bundle(
     """
     if bundle_id is None:
         from ccda_to_fhir.id_generator import generate_id
+
         bundle_id = generate_id()
 
     entries: list[JSONObject] = []

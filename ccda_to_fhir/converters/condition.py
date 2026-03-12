@@ -69,10 +69,10 @@ def generate_id_from_observation_content(observation: Observation) -> str:
     # Add value (diagnosis code)
     if observation.value:
         # Use getattr since value can be various types (CD, CE, PQ, etc.)
-        value_code = getattr(observation.value, 'code', None)
+        value_code = getattr(observation.value, "code", None)
         if value_code:
             parts.append(f"value:{value_code}")
-        value_sys = getattr(observation.value, 'code_system', None)
+        value_sys = getattr(observation.value, "code_system", None)
         if value_sys:
             parts.append(f"valuesys:{value_sys}")
         # For string values
@@ -104,7 +104,15 @@ class ConditionConverter(BaseConverter[Observation]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-problems.html
     """
 
-    def __init__(self, *args, section_code: str | None = None, concern_act: Act | None = None, section=None, seen_observation_ids: set | None = None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        section_code: str | None = None,
+        concern_act: Act | None = None,
+        section=None,
+        seen_observation_ids: set | None = None,
+        **kwargs,
+    ):
         """Initialize the condition converter.
 
         Args:
@@ -118,7 +126,9 @@ class ConditionConverter(BaseConverter[Observation]):
         self.concern_act = concern_act
         self.section = section
         # Track seen observation IDs to detect invalid C-CDA documents that reuse IDs
-        self.seen_observation_ids = seen_observation_ids if seen_observation_ids is not None else set()
+        self.seen_observation_ids = (
+            seen_observation_ids if seen_observation_ids is not None else set()
+        )
 
     def convert(self, ccda_model: Observation) -> FHIRResourceDict:
         """Convert a C-CDA Problem Observation to a FHIR Condition resource.
@@ -137,7 +147,7 @@ class ConditionConverter(BaseConverter[Observation]):
             raise MissingRequiredFieldError(
                 field_name="value",
                 resource_type="Problem Observation (Condition)",
-                details="Diagnosis code is required for Problem Observation"
+                details="Diagnosis code is required for Problem Observation",
             )
 
         condition: JSONObject = {
@@ -189,13 +199,10 @@ class ConditionConverter(BaseConverter[Observation]):
             }
             if display:
                 coding["display"] = display
-            condition["clinicalStatus"] = {
-                "coding": [coding]
-            }
+            condition["clinicalStatus"] = {"coding": [coding]}
 
         # Handle negation: Check if this is a generic "no known problems" scenario
         # or a specific condition being refuted
-        uses_negated_concept_code = False
         if observation.negation_ind and observation.value:
             # Check if the value is a generic problem code
             if isinstance(observation.value, (CD, CE)) and observation.value.code in (
@@ -204,7 +211,6 @@ class ConditionConverter(BaseConverter[Observation]):
                 SnomedCodes.CONDITION,  # 64572001
             ):
                 # Use negated concept code for generic problems
-                uses_negated_concept_code = True
                 negated_concept = self.create_codeable_concept(
                     code=SnomedCodes.NO_CURRENT_PROBLEMS,
                     code_system="2.16.840.1.113883.6.96",  # SNOMED CT
@@ -216,8 +222,7 @@ class ConditionConverter(BaseConverter[Observation]):
                 # For specific conditions, set verification status to refuted
                 # ENHANCEMENT: Include display text from terminology map
                 display = get_display_for_code(
-                    FHIRSystems.CONDITION_VERIFICATION,
-                    FHIRCodes.ConditionVerification.REFUTED
+                    FHIRSystems.CONDITION_VERIFICATION, FHIRCodes.ConditionVerification.REFUTED
                 )
                 coding = {
                     "system": FHIRSystems.CONDITION_VERIFICATION,
@@ -225,17 +230,14 @@ class ConditionConverter(BaseConverter[Observation]):
                 }
                 if display:
                     coding["display"] = display
-                condition["verificationStatus"] = {
-                    "coding": [coding]
-                }
+                condition["verificationStatus"] = {"coding": [coding]}
 
         # Default verificationStatus if not already set (US Core requirement)
         # Per US Core, verificationStatus is required (SHALL support)
         # Default to "confirmed" for non-negated conditions
         if "verificationStatus" not in condition:
             display = get_display_for_code(
-                FHIRSystems.CONDITION_VERIFICATION,
-                FHIRCodes.ConditionVerification.CONFIRMED
+                FHIRSystems.CONDITION_VERIFICATION, FHIRCodes.ConditionVerification.CONFIRMED
             )
             coding = {
                 "system": FHIRSystems.CONDITION_VERIFICATION,
@@ -243,9 +245,7 @@ class ConditionConverter(BaseConverter[Observation]):
             }
             if display:
                 coding["display"] = display
-            condition["verificationStatus"] = {
-                "coding": [coding]
-            }
+            condition["verificationStatus"] = {"coding": [coding]}
 
         # Category (from section code)
         categories = self._determine_categories(observation)
@@ -279,8 +279,7 @@ class ConditionConverter(BaseConverter[Observation]):
         # Patient reference (from recordTarget in document header)
         if not self.reference_registry:
             raise ValueError(
-                "reference_registry is required. "
-                "Cannot create Condition without patient reference."
+                "reference_registry is required. Cannot create Condition without patient reference."
             )
         condition["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
@@ -308,10 +307,9 @@ class ConditionConverter(BaseConverter[Observation]):
         if asserted_date:
             if "extension" not in condition:
                 condition["extension"] = []
-            condition["extension"].append({
-                "url": FHIRSystems.CONDITION_ASSERTED_DATE,
-                "valueDateTime": asserted_date
-            })
+            condition["extension"].append(
+                {"url": FHIRSystems.CONDITION_ASSERTED_DATE, "valueDateTime": asserted_date}
+            )
 
         # Recorder (from latest author - both concern act and observation)
         extractor = AuthorExtractor()
@@ -324,7 +322,8 @@ class ConditionConverter(BaseConverter[Observation]):
 
             if latest_author.practitioner_id:
                 recorder_ref = FHIRReference(
-                    reference=f"urn:uuid:{latest_author.practitioner_id}", display=latest_author.display
+                    reference=f"urn:uuid:{latest_author.practitioner_id}",
+                    display=latest_author.display,
                 )
                 condition["recorder"] = recorder_ref.to_dict()
             elif latest_author.device_id:
@@ -459,9 +458,7 @@ class ConditionConverter(BaseConverter[Observation]):
         Returns:
             FHIR clinical status code
         """
-        return SNOMED_PROBLEM_STATUS_TO_FHIR.get(
-            snomed_code, FHIRCodes.ConditionClinical.ACTIVE
-        )
+        return SNOMED_PROBLEM_STATUS_TO_FHIR.get(snomed_code, FHIRCodes.ConditionClinical.ACTIVE)
 
     def _map_concern_status_to_clinical_status(
         self, concern_status: str | None, has_abatement: bool = False
@@ -564,7 +561,9 @@ class ConditionConverter(BaseConverter[Observation]):
         Returns:
             FHIR condition category code
         """
-        return PROBLEM_TYPE_TO_CONDITION_CATEGORY.get(problem_type_code) if problem_type_code else None
+        return (
+            PROBLEM_TYPE_TO_CONDITION_CATEGORY.get(problem_type_code) if problem_type_code else None
+        )
 
     def _convert_diagnosis_code(self, value: CD | CE) -> FHIRResourceDict:
         """Convert observation value to FHIR diagnosis code.
@@ -683,12 +682,7 @@ class ConditionConverter(BaseConverter[Observation]):
             end_date = self.convert_date(eff_time.high.value)
             if onset_date and end_date:
                 # Use onsetPeriod for date range
-                onset = {
-                    "onsetPeriod": {
-                        "start": onset_date,
-                        "end": end_date
-                    }
-                }
+                onset = {"onsetPeriod": {"start": onset_date, "end": end_date}}
                 # Don't set abatement if we used high date in onsetPeriod
                 # The high date represents end of onset period, not abatement
             elif onset_date:
@@ -815,7 +809,9 @@ class ConditionConverter(BaseConverter[Observation]):
                     if supporting_obs.id:
                         for id_elem in supporting_obs.id:
                             if id_elem.root:
-                                obs_id = self._generate_observation_id(id_elem.root, id_elem.extension)
+                                obs_id = self._generate_observation_id(
+                                    id_elem.root, id_elem.extension
+                                )
                                 break
 
                     # Skip evidence entry if we cannot generate a valid ID
@@ -827,17 +823,13 @@ class ConditionConverter(BaseConverter[Observation]):
                         continue
 
                     # Add evidence detail reference
-                    detail_ref: JSONObject = {
-                        "reference": f"urn:uuid:{obs_id}"
-                    }
+                    detail_ref: JSONObject = {"reference": f"urn:uuid:{obs_id}"}
 
                     # Add display from supporting observation code
                     if supporting_obs.code and supporting_obs.code.display_name:
                         detail_ref["display"] = supporting_obs.code.display_name
 
-                    evidence_list.append({
-                        "detail": [detail_ref]
-                    })
+                    evidence_list.append({"detail": [detail_ref]})
 
         return evidence_list if evidence_list else None
 

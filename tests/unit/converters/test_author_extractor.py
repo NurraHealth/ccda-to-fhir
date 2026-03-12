@@ -93,9 +93,7 @@ class TestExtractFromObservation:
         sample_observation_with_author: Observation,
     ) -> None:
         """Test extracting a single author from an observation."""
-        authors = author_extractor.extract_from_observation(
-            sample_observation_with_author
-        )
+        authors = author_extractor.extract_from_observation(sample_observation_with_author)
 
         assert authors is not None
         assert len(authors) == 1
@@ -120,9 +118,7 @@ class TestExtractFromObservation:
         assert authors[0].practitioner_id is not None
         assert authors[1].device_id is not None
 
-    def test_extract_from_observation_no_author(
-        self, author_extractor: AuthorExtractor
-    ) -> None:
+    def test_extract_from_observation_no_author(self, author_extractor: AuthorExtractor) -> None:
         """Test extracting from observation with no author."""
         observation = Observation()
         observation.author = None
@@ -178,9 +174,7 @@ class TestExtractFromConcernAct:
             pytest.fail(f"ID {authors[0].device_id} is not a valid UUID v4")
         assert authors[0].practitioner_id is None
 
-    def test_extract_from_concern_act_no_author(
-        self, author_extractor: AuthorExtractor
-    ) -> None:
+    def test_extract_from_concern_act_no_author(self, author_extractor: AuthorExtractor) -> None:
         """Test extracting from concern act with no author."""
         act = Act()
         act.author = None
@@ -307,9 +301,7 @@ class TestIDGeneration:
 class TestRoleCodeExtraction:
     """Test extracting role/function codes from authors."""
 
-    def test_extract_role_code_from_function_code(
-        self, author_extractor: AuthorExtractor
-    ) -> None:
+    def test_extract_role_code_from_function_code(self, author_extractor: AuthorExtractor) -> None:
         """Test extracting role code from author.functionCode."""
         author = Author(
             time=TS(value="20240115090000"),
@@ -391,9 +383,7 @@ class TestExtractFromOtherTypes:
 class TestEdgeCases:
     """Test edge cases in author extraction."""
 
-    def test_handles_missing_author_gracefully(
-        self, author_extractor: AuthorExtractor
-    ) -> None:
+    def test_handles_missing_author_gracefully(self, author_extractor: AuthorExtractor) -> None:
         """Test handling of None author list."""
         observation = Observation()
         observation.author = None
@@ -403,9 +393,7 @@ class TestEdgeCases:
 
         assert authors == []
 
-    def test_author_without_time_uses_none(
-        self, author_extractor: AuthorExtractor
-    ) -> None:
+    def test_author_without_time_uses_none(self, author_extractor: AuthorExtractor) -> None:
         """Test that author without time has None as time value."""
         author = Author(
             time=None,  # No time

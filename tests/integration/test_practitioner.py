@@ -32,9 +32,7 @@ class TestAuthorConversion:
         assert practitioner is not None
         assert practitioner["resourceType"] == "Practitioner"
 
-    def test_converts_npi_identifier(
-        self, ccda_author: str, fhir_practitioner: JSONObject
-    ) -> None:
+    def test_converts_npi_identifier(self, ccda_author: str, fhir_practitioner: JSONObject) -> None:
         """Test that NPI is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -43,16 +41,17 @@ class TestAuthorConversion:
         assert practitioner is not None
         assert "identifier" in practitioner
         npi = next(
-            (i for i in practitioner["identifier"]
-             if i.get("system") == "http://hl7.org/fhir/sid/us-npi"),
-            None
+            (
+                i
+                for i in practitioner["identifier"]
+                if i.get("system") == "http://hl7.org/fhir/sid/us-npi"
+            ),
+            None,
         )
         assert npi is not None
         assert npi["value"] == "99999999"
 
-    def test_converts_name(
-        self, ccda_author: str, fhir_practitioner: JSONObject
-    ) -> None:
+    def test_converts_name(self, ccda_author: str, fhir_practitioner: JSONObject) -> None:
         """Test that name is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -65,9 +64,7 @@ class TestAuthorConversion:
         assert name["family"] == "Seven"
         assert "Henry" in name["given"]
 
-    def test_converts_name_prefix(
-        self, ccda_author: str, fhir_practitioner: JSONObject
-    ) -> None:
+    def test_converts_name_prefix(self, ccda_author: str, fhir_practitioner: JSONObject) -> None:
         """Test that name prefix is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -79,9 +76,7 @@ class TestAuthorConversion:
         assert "prefix" in name
         assert "Dr." in name["prefix"]
 
-    def test_converts_name_suffix(
-        self, ccda_author: str, fhir_practitioner: JSONObject
-    ) -> None:
+    def test_converts_name_suffix(self, ccda_author: str, fhir_practitioner: JSONObject) -> None:
         """Test that name suffix is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -93,9 +88,7 @@ class TestAuthorConversion:
         assert "suffix" in name
         assert "MD" in name["suffix"]
 
-    def test_converts_telecom(
-        self, ccda_author: str, fhir_practitioner: JSONObject
-    ) -> None:
+    def test_converts_telecom(self, ccda_author: str, fhir_practitioner: JSONObject) -> None:
         """Test that telecom is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -108,9 +101,7 @@ class TestAuthorConversion:
         assert phone["use"] == "work"
         assert "555-555-1002" in phone["value"]
 
-    def test_converts_address(
-        self, ccda_author: str, fhir_practitioner: JSONObject
-    ) -> None:
+    def test_converts_address(self, ccda_author: str, fhir_practitioner: JSONObject) -> None:
         """Test that address is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -144,12 +135,12 @@ class TestAuthorConversion:
         assert practitioner_role is not None
 
         # ❌ Specialty should NOT be in Practitioner.qualification
-        assert "qualification" not in practitioner, \
+        assert "qualification" not in practitioner, (
             "Specialty should be in PractitionerRole.specialty, NOT Practitioner.qualification"
+        )
 
         # ✅ Specialty SHOULD be in PractitionerRole.specialty
-        assert "specialty" in practitioner_role, \
-            "Specialty should be in PractitionerRole.specialty"
+        assert "specialty" in practitioner_role, "Specialty should be in PractitionerRole.specialty"
 
         # Verify the specialty values are correct (from author.xml fixture)
         specialty = practitioner_role["specialty"][0]
@@ -163,9 +154,7 @@ class TestAuthorConversion:
 class TestOrganizationConversion:
     """E2E tests for C-CDA representedOrganization to FHIR Organization conversion."""
 
-    def test_converts_represented_organization(
-        self, ccda_author: str
-    ) -> None:
+    def test_converts_represented_organization(self, ccda_author: str) -> None:
         """Test that represented organization is converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -175,9 +164,7 @@ class TestOrganizationConversion:
         assert organization["resourceType"] == "Organization"
         assert organization["name"] == "Good Health Clinic"
 
-    def test_organization_has_identifier(
-        self, ccda_author: str
-    ) -> None:
+    def test_organization_has_identifier(self, ccda_author: str) -> None:
         """Test that organization identifier is converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -186,16 +173,17 @@ class TestOrganizationConversion:
         assert organization is not None
         assert "identifier" in organization
         npi = next(
-            (i for i in organization["identifier"]
-             if i.get("system") == "http://hl7.org/fhir/sid/us-npi"),
-            None
+            (
+                i
+                for i in organization["identifier"]
+                if i.get("system") == "http://hl7.org/fhir/sid/us-npi"
+            ),
+            None,
         )
         assert npi is not None
         assert npi["value"] == "12345"
 
-    def test_organization_has_telecom(
-        self, ccda_author: str
-    ) -> None:
+    def test_organization_has_telecom(self, ccda_author: str) -> None:
         """Test that organization telecom is converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -205,9 +193,7 @@ class TestOrganizationConversion:
         assert "telecom" in organization
         assert organization["telecom"][0]["system"] == "phone"
 
-    def test_organization_has_address(
-        self, ccda_author: str
-    ) -> None:
+    def test_organization_has_address(self, ccda_author: str) -> None:
         """Test that organization address is converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]

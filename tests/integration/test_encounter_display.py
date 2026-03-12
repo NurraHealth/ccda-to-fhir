@@ -149,7 +149,8 @@ class TestEncounterDisplayEndToEnd:
         assert len(doc_refs) >= 1, "Expected at least one DocumentReference from HPI"
 
         hpi_refs = [
-            dr for dr in doc_refs
+            dr
+            for dr in doc_refs
             if dr.get("type", {}).get("coding", [{}])[0].get("code") == "10164-2"
         ]
         assert len(hpi_refs) == 1, "Expected exactly one HPI DocumentReference"
@@ -178,7 +179,8 @@ class TestEncounterDisplayEndToEnd:
 
         doc_refs = _get_doc_refs(bundle)
         hpi_refs = [
-            dr for dr in doc_refs
+            dr
+            for dr in doc_refs
             if dr.get("type", {}).get("coding", [{}])[0].get("code") == "10164-2"
         ]
         assert len(hpi_refs) == 1

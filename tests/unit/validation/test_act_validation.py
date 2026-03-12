@@ -122,7 +122,9 @@ class TestProblemConcernActValidation:
             </entryRelationship>
         </act>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"
+        ):
             parse_ccda_fragment(xml, Act)
 
     def test_problem_concern_act_with_loinc_code(self) -> None:
@@ -173,7 +175,9 @@ class TestProblemConcernActValidation:
             </entryRelationship>
         </act>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"
+        ):
             parse_ccda_fragment(xml, Act)
 
     def test_problem_concern_act_missing_effective_time(self) -> None:
@@ -193,7 +197,9 @@ class TestProblemConcernActValidation:
             </entryRelationship>
         </act>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"
+        ):
             parse_ccda_fragment(xml, Act)
 
     def test_problem_concern_act_missing_effective_time_low(self) -> None:
@@ -216,7 +222,9 @@ class TestProblemConcernActValidation:
             </entryRelationship>
         </act>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="effectiveTime SHALL contain low"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="effectiveTime SHALL contain low"
+        ):
             parse_ccda_fragment(xml, Act)
 
     def test_problem_concern_act_completed_without_high(self) -> None:
@@ -265,7 +273,9 @@ class TestProblemConcernActValidation:
             </effectiveTime>
         </act>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*entryRelationship"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain at least one.*entryRelationship"
+        ):
             parse_ccda_fragment(xml, Act)
 
 
@@ -395,7 +405,9 @@ class TestAllergyConcernActValidation:
             </entryRelationship>
         </act>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain high.*CONF:1198-10085"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain high.*CONF:1198-10085"
+        ):
             parse_ccda_fragment(xml, Act)
 
     def test_allergy_concern_act_completed_with_high(self) -> None:

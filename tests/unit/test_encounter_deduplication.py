@@ -74,15 +74,18 @@ class TestEncounterDeduplication:
 </ClinicalDocument>"""
 
         result = convert_document(ccda)
-        encounters = [e for e in result['bundle']['entry']
-                     if e['resource']['resourceType'] == 'Encounter']
+        encounters = [
+            e for e in result["bundle"]["entry"] if e["resource"]["resourceType"] == "Encounter"
+        ]
 
         assert len(encounters) == 1, "Should create exactly ONE encounter (deduplicated)"
-        encounter = encounters[0]['resource']
+        encounter = encounters[0]["resource"]
         # Should have body's rich data (type code and precise times)
-        assert encounter.get('type') is not None, "Should have type from body"
+        assert encounter.get("type") is not None, "Should have type from body"
         # Check that we have the body's precise timestamp (not just date)
-        assert 'T12:00:00' in encounter['period']['start'], "Should have precise start time from body"
+        assert "T12:00:00" in encounter["period"]["start"], (
+            "Should have precise start time from body"
+        )
 
     def test_same_day_different_ids_deduplicates(self):
         """Header and body on same day with different IDs should create ONE encounter."""
@@ -148,14 +151,15 @@ class TestEncounterDeduplication:
 </ClinicalDocument>"""
 
         result = convert_document(ccda)
-        encounters = [e for e in result['bundle']['entry']
-                     if e['resource']['resourceType'] == 'Encounter']
+        encounters = [
+            e for e in result["bundle"]["entry"] if e["resource"]["resourceType"] == "Encounter"
+        ]
 
         assert len(encounters) == 1, "Should create ONE encounter (same day deduplication)"
-        encounter = encounters[0]['resource']
+        encounter = encounters[0]["resource"]
         # Should prefer body's precise times
-        assert '12:02:39' in encounter['period']['start'], "Should use body's precise start time"
-        assert encounter.get('type') is not None, "Should have type from body"
+        assert "12:02:39" in encounter["period"]["start"], "Should use body's precise start time"
+        assert encounter.get("type") is not None, "Should have type from body"
 
     def test_different_days_creates_two_encounters(self):
         """Header and body on different days should create TWO encounters."""
@@ -221,13 +225,14 @@ class TestEncounterDeduplication:
 </ClinicalDocument>"""
 
         result = convert_document(ccda)
-        encounters = [e for e in result['bundle']['entry']
-                     if e['resource']['resourceType'] == 'Encounter']
+        encounters = [
+            e for e in result["bundle"]["entry"] if e["resource"]["resourceType"] == "Encounter"
+        ]
 
         assert len(encounters) == 2, "Should create TWO encounters (different dates)"
-        dates = {e['resource']['period']['start'][:10] for e in encounters}
-        assert '2025-08-15' in dates, "Should have header encounter on 2025-08-15"
-        assert '2025-08-22' in dates, "Should have body encounter on 2025-08-22"
+        dates = {e["resource"]["period"]["start"][:10] for e in encounters}
+        assert "2025-08-15" in dates, "Should have header encounter on 2025-08-15"
+        assert "2025-08-22" in dates, "Should have body encounter on 2025-08-22"
 
     def test_only_header_creates_one_encounter(self):
         """Only header encompassingEncounter should create ONE encounter."""
@@ -281,8 +286,9 @@ class TestEncounterDeduplication:
 </ClinicalDocument>"""
 
         result = convert_document(ccda)
-        encounters = [e for e in result['bundle']['entry']
-                     if e['resource']['resourceType'] == 'Encounter']
+        encounters = [
+            e for e in result["bundle"]["entry"] if e["resource"]["resourceType"] == "Encounter"
+        ]
 
         assert len(encounters) == 1, "Should create exactly ONE encounter from header"
 
@@ -344,8 +350,9 @@ class TestEncounterDeduplication:
 </ClinicalDocument>"""
 
         result = convert_document(ccda)
-        encounters = [e for e in result['bundle']['entry']
-                     if e['resource']['resourceType'] == 'Encounter']
+        encounters = [
+            e for e in result["bundle"]["entry"] if e["resource"]["resourceType"] == "Encounter"
+        ]
 
         assert len(encounters) == 1, "Should create exactly ONE encounter from body"
 
@@ -421,19 +428,20 @@ class TestEncounterDeduplication:
 </ClinicalDocument>"""
 
         result = convert_document(ccda)
-        encounters = [e for e in result['bundle']['entry']
-                     if e['resource']['resourceType'] == 'Encounter']
+        encounters = [
+            e for e in result["bundle"]["entry"] if e["resource"]["resourceType"] == "Encounter"
+        ]
 
         assert len(encounters) == 1, "Should create ONE encounter (merged)"
-        encounter = encounters[0]['resource']
+        encounter = encounters[0]["resource"]
 
         # Should have body's precise times and type
-        assert '12:02:39' in encounter['period']['start'], "Should have body's precise time"
-        assert encounter.get('type') is not None, "Should have type from body"
+        assert "12:02:39" in encounter["period"]["start"], "Should have body's precise time"
+        assert encounter.get("type") is not None, "Should have type from body"
 
         # Should have participant from header
-        assert encounter.get('participant') is not None, "Should have participant from header"
-        assert len(encounter['participant']) > 0, "Should have at least one participant"
+        assert encounter.get("participant") is not None, "Should have participant from header"
+        assert len(encounter["participant"]) > 0, "Should have at least one participant"
 
     def test_no_encounters_creates_none(self):
         """Document with no encounters should create zero Encounter resources."""
@@ -481,7 +489,8 @@ class TestEncounterDeduplication:
 </ClinicalDocument>"""
 
         result = convert_document(ccda)
-        encounters = [e for e in result['bundle']['entry']
-                     if e['resource']['resourceType'] == 'Encounter']
+        encounters = [
+            e for e in result["bundle"]["entry"] if e["resource"]["resourceType"] == "Encounter"
+        ]
 
         assert len(encounters) == 0, "Should create zero encounters"

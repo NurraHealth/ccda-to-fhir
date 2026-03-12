@@ -73,9 +73,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
         }
 
         # Generate ID combining practitioner and organization for uniqueness
-        practitioner_role["id"] = self._generate_role_id(
-            practitioner_id, organization_id
-        )
+        practitioner_role["id"] = self._generate_role_id(practitioner_id, organization_id)
 
         # Create reference to Practitioner
         practitioner_role["practitioner"] = self._create_practitioner_reference(

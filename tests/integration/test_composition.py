@@ -183,7 +183,7 @@ class TestCompositionConversion:
                     </assignedPerson>
                 </assignedEntity>
             </legalAuthenticator>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -209,29 +209,40 @@ class TestCompositionConversion:
 
         # Capture the generated UUID and verify it's consistent
         import uuid as uuid_module
+
         practitioner_id = attester["party"]["reference"].replace("urn:uuid:", "")
 
         # Validate UUID v4 format
         try:
             uuid_module.UUID(practitioner_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Practitioner ID {practitioner_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(
+                f"Practitioner ID {practitioner_id} is not a valid UUID v4"
+            ) from err
 
         # Find the legal authenticator's practitioner using the captured ID
         legal_auth_practitioner = None
         for entry in bundle.get("entry", []):
             resource = entry.get("resource", {})
-            if resource.get("resourceType") == "Practitioner" and resource.get("id") == practitioner_id:
+            if (
+                resource.get("resourceType") == "Practitioner"
+                and resource.get("id") == practitioner_id
+            ):
                 legal_auth_practitioner = resource
                 break
 
-        assert legal_auth_practitioner is not None, f"Practitioner {practitioner_id} should exist in bundle"
+        assert legal_auth_practitioner is not None, (
+            f"Practitioner {practitioner_id} should exist in bundle"
+        )
         assert "identifier" in legal_auth_practitioner
         # Verify NPI identifier
         npi_identifier = next(
-            (id for id in legal_auth_practitioner["identifier"]
-             if id.get("system") == "http://hl7.org/fhir/sid/us-npi"),
-            None
+            (
+                id
+                for id in legal_auth_practitioner["identifier"]
+                if id.get("system") == "http://hl7.org/fhir/sid/us-npi"
+            ),
+            None,
         )
         assert npi_identifier is not None
         assert npi_identifier["value"] == "1234567890"
@@ -253,7 +264,7 @@ class TestCompositionConversion:
                     </assignedPerson>
                 </assignedEntity>
             </legalAuthenticator>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -282,7 +293,7 @@ class TestCompositionConversion:
                 <time value="20200301"/>
                 <signatureCode code="S"/>
             </legalAuthenticator>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -319,7 +330,7 @@ class TestCompositionConversion:
                     </assignedPerson>
                 </assignedEntity>
             </authenticator>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -374,7 +385,7 @@ class TestCompositionConversion:
                     </assignedPerson>
                 </assignedEntity>
             </authenticator>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -426,7 +437,7 @@ class TestCompositionConversion:
                     </assignedPerson>
                 </assignedEntity>
             </authenticator>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -439,7 +450,9 @@ class TestCompositionConversion:
 
         # Find legal and professional attesters
         legal_attester = next((a for a in composition["attester"] if a["mode"] == "legal"), None)
-        professional_attester = next((a for a in composition["attester"] if a["mode"] == "professional"), None)
+        professional_attester = next(
+            (a for a in composition["attester"] if a["mode"] == "professional"), None
+        )
 
         assert legal_attester is not None
         assert legal_attester["time"] == "2020-03-01"
@@ -464,7 +477,7 @@ class TestCompositionConversion:
                     </assignedPerson>
                 </assignedEntity>
             </authenticator>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -493,7 +506,7 @@ class TestCompositionConversion:
                 <time value="20200302"/>
                 <signatureCode code="S"/>
             </authenticator>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -639,7 +652,9 @@ class TestCompositionConversion:
         assert composition is not None
 
         # Subject should be present when recordTarget exists (0..1 cardinality)
-        assert "subject" in composition, "Composition.subject should be present when recordTarget exists"
+        assert "subject" in composition, (
+            "Composition.subject should be present when recordTarget exists"
+        )
 
         # Should reference the actual Patient resource
         assert "reference" in composition["subject"]
@@ -1072,19 +1087,19 @@ class TestCompositionSections:
         assert 'xmlns="http://www.w3.org/1999/xhtml"' in div_content
 
         # Verify paragraph with ID and styled content
-        assert '<p' in div_content
+        assert "<p" in div_content
         assert 'id="p1"' in div_content
         assert 'class="Bold"' in div_content
-        assert 'Active Problems:' in div_content
+        assert "Active Problems:" in div_content
 
         # Verify table structure
-        assert '<table' in div_content
-        assert '<tbody>' in div_content
-        assert '<tr' in div_content
+        assert "<table" in div_content
+        assert "<tbody>" in div_content
+        assert "<tr" in div_content
         assert 'id="prob-1"' in div_content
-        assert '<td>' in div_content
-        assert 'Hypertension' in div_content
-        assert 'Type 2 Diabetes' in div_content
+        assert "<td>" in div_content
+        assert "Hypertension" in div_content
+        assert "Type 2 Diabetes" in div_content
 
 
 class TestEmptySectionsWithNullFlavor:
@@ -1160,7 +1175,10 @@ class TestEmptySectionsWithNullFlavor:
         # Should have emptyReason
         assert "emptyReason" in section
         assert section["emptyReason"]["coding"][0]["code"] == "notasked"
-        assert section["emptyReason"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/list-empty-reason"
+        assert (
+            section["emptyReason"]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/list-empty-reason"
+        )
         assert section["emptyReason"]["coding"][0]["display"] == "Not Asked"
 
     def test_empty_section_with_unk_maps_to_unavailable(self) -> None:
@@ -1512,7 +1530,7 @@ class TestParticipantExtensions:
                     </assignedPerson>
                 </assignedEntity>
             </dataEnterer>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
@@ -1524,9 +1542,13 @@ class TestParticipantExtensions:
 
         # Find DataEnterer extension
         data_enterer_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"
+            ),
+            None,
         )
         assert data_enterer_ext is not None
         assert "valueReference" in data_enterer_ext
@@ -1548,7 +1570,7 @@ class TestParticipantExtensions:
                     </assignedPerson>
                 </assignedEntity>
             </informant>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
@@ -1557,9 +1579,13 @@ class TestParticipantExtensions:
         # Find Informant extension
         assert "extension" in composition
         informant_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension"
+            ),
+            None,
         )
         assert informant_ext is not None
         assert "valueReference" in informant_ext
@@ -1581,7 +1607,7 @@ class TestParticipantExtensions:
                     </relatedPerson>
                 </relatedEntity>
             </informant>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
@@ -1590,9 +1616,13 @@ class TestParticipantExtensions:
         # Find Informant extension
         assert "extension" in composition
         informant_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension"
+            ),
+            None,
         )
         assert informant_ext is not None
         assert "valueReference" in informant_ext
@@ -1616,7 +1646,7 @@ class TestParticipantExtensions:
                     </informationRecipient>
                 </intendedRecipient>
             </informationRecipient>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
@@ -1625,9 +1655,13 @@ class TestParticipantExtensions:
         # Find InformationRecipient extension
         assert "extension" in composition
         recipient_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformationRecipientExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformationRecipientExtension"
+            ),
+            None,
         )
         assert recipient_ext is not None
         assert "valueReference" in recipient_ext
@@ -1652,7 +1686,7 @@ class TestParticipantExtensions:
                     </associatedPerson>
                 </associatedEntity>
             </participant>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
@@ -1661,9 +1695,13 @@ class TestParticipantExtensions:
         # Find Participant extension
         assert "extension" in composition
         participant_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/ParticipantExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/ParticipantExtension"
+            ),
+            None,
         )
         assert participant_ext is not None
         assert "valueReference" in participant_ext
@@ -1696,7 +1734,7 @@ class TestParticipantExtensions:
                     </performer>
                 </serviceEvent>
             </documentationOf>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
@@ -1705,9 +1743,13 @@ class TestParticipantExtensions:
         # Find Performer extension
         assert "extension" in composition
         performer_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/PerformerExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/PerformerExtension"
+            ),
+            None,
         )
         assert performer_ext is not None
         assert "valueReference" in performer_ext
@@ -1725,7 +1767,7 @@ class TestParticipantExtensions:
                     <statusCode code="completed"/>
                 </consent>
             </authorization>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
@@ -1734,9 +1776,13 @@ class TestParticipantExtensions:
         # Find Authorization extension
         assert "extension" in composition
         auth_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/AuthorizationExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/AuthorizationExtension"
+            ),
+            None,
         )
         assert auth_ext is not None
         assert "valueReference" in auth_ext
@@ -1754,7 +1800,7 @@ class TestParticipantExtensions:
                     <priorityCode code="R" codeSystem="2.16.840.1.113883.5.7" displayName="Routine"/>
                 </order>
             </inFulfillmentOf>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
@@ -1763,9 +1809,13 @@ class TestParticipantExtensions:
         # Find Order extension
         assert "extension" in composition
         order_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/OrderExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/OrderExtension"
+            ),
+            None,
         )
         assert order_ext is not None
         assert "valueReference" in order_ext
@@ -1804,7 +1854,7 @@ class TestParticipantExtensions:
                     </informationRecipient>
                 </intendedRecipient>
             </informationRecipient>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         composition = _find_resource_in_bundle(bundle, "Composition")
@@ -1816,25 +1866,37 @@ class TestParticipantExtensions:
 
         # Check for DataEnterer
         data_enterer_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"
+            ),
+            None,
         )
         assert data_enterer_ext is not None
 
         # Check for Informant
         informant_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformantExtension"
+            ),
+            None,
         )
         assert informant_ext is not None
 
         # Check for InformationRecipient
         recipient_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformationRecipientExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/InformationRecipientExtension"
+            ),
+            None,
         )
         assert recipient_ext is not None
 
@@ -1944,7 +2006,7 @@ class TestBundleEdgeCases:
         """
         from ccda_to_fhir.ccda.parser import parse_ccda
 
-        ccda_xml = '''<?xml version="1.0" encoding="UTF-8"?>
+        ccda_xml = """<?xml version="1.0" encoding="UTF-8"?>
 <ClinicalDocument xmlns="urn:hl7-org:v3">
   <realmCode code="US"/>
   <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
@@ -1981,7 +2043,7 @@ class TestBundleEdgeCases:
     </assignedCustodian>
   </custodian>
 </ClinicalDocument>
-'''
+"""
 
         ccda_doc = parse_ccda(ccda_xml)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -1998,7 +2060,7 @@ class TestBundleEdgeCases:
         assert "timestamp" in bundle
         # Verify it's a valid instant (has timezone)
         assert "T" in bundle["timestamp"]
-        assert ("+" in bundle["timestamp"] or "-" in bundle["timestamp"])
+        assert "+" in bundle["timestamp"] or "-" in bundle["timestamp"]
 
     def test_bundle_identifier_without_extension_uses_system_only(self) -> None:
         """Bundle.identifier should have system when extension is absent.
@@ -2007,7 +2069,7 @@ class TestBundleEdgeCases:
         """
         from ccda_to_fhir.ccda.parser import parse_ccda
 
-        ccda_xml = '''<?xml version="1.0" encoding="UTF-8"?>
+        ccda_xml = """<?xml version="1.0" encoding="UTF-8"?>
 <ClinicalDocument xmlns="urn:hl7-org:v3">
   <realmCode code="US"/>
   <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040"/>
@@ -2044,7 +2106,7 @@ class TestBundleEdgeCases:
     </assignedCustodian>
   </custodian>
 </ClinicalDocument>
-'''
+"""
 
         ccda_doc = parse_ccda(ccda_xml)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -2063,5 +2125,6 @@ class TestBundleEdgeCases:
             timestamp = bundle["timestamp"]
             # FHIR instant format: YYYY-MM-DDThh:mm:ss+zz:zz
             import re
-            instant_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$'
+
+            instant_pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$"
             assert re.match(instant_pattern, timestamp), f"Invalid instant format: {timestamp}"

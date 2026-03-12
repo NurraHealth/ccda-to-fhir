@@ -73,10 +73,10 @@ def test_athena_ccd_validation():
 
     # Validate we have clinical data (not just metadata)
     clinical_count = (
-        summary.get("Condition", 0) +
-        summary.get("AllergyIntolerance", 0) +
-        summary.get("MedicationStatement", 0) +
-        summary.get("Procedure", 0)
+        summary.get("Condition", 0)
+        + summary.get("AllergyIntolerance", 0)
+        + summary.get("MedicationStatement", 0)
+        + summary.get("Procedure", 0)
     )
     assert clinical_count > 0, "Should have clinical data"
 
@@ -120,10 +120,7 @@ def test_athena_ccd_critical_bugs_fixed():
         if resource.get("resourceType") == "Procedure":
             code = resource.get("code")
             # Code must exist and not be empty
-            if not code or code == {}:
-                empty_procedure_codes.append(resource.get("id", "unknown"))
-            # Code must have either coding or text
-            elif not code.get("coding") and not code.get("text"):
+            if not code or code == {} or not code.get("coding") and not code.get("text"):
                 empty_procedure_codes.append(resource.get("id", "unknown"))
 
     assert len(empty_procedure_codes) == 0, (
@@ -135,24 +132,18 @@ def test_athena_ccd_critical_bugs_fixed():
     invalid_timing = []
     for entry in bundle.get("entry", []):
         resource = entry.get("resource", {})
-        if resource.get("resourceType") == "MedicationStatement":
-            if "dosage" in resource:
-                for dosage in resource["dosage"]:
-                    timing = dosage.get("timing", {}).get("repeat", {})
-                    period = timing.get("period")
-                    period_unit = timing.get("periodUnit")
+        if resource.get("resourceType") == "MedicationStatement" and "dosage" in resource:
+            for dosage in resource["dosage"]:
+                timing = dosage.get("timing", {}).get("repeat", {})
+                period = timing.get("period")
+                period_unit = timing.get("periodUnit")
 
-                    # Check for absurdly large periods
-                    if period:
-                        # More than 10 years in any unit is suspicious
-                        if period_unit == "m" and period > 120:  # 10 years in months
-                            invalid_timing.append(
-                                f"{resource.get('id')}: {period} {period_unit}"
-                            )
-                        elif period_unit == "d" and period > 3650:  # 10 years in days
-                            invalid_timing.append(
-                                f"{resource.get('id')}: {period} {period_unit}"
-                            )
+                # Check for absurdly large periods
+                # More than 10 years in any unit is suspicious
+                if period and (
+                    period_unit == "m" and period > 120 or period_unit == "d" and period > 3650
+                ):  # 10 years in months
+                    invalid_timing.append(f"{resource.get('id')}: {period} {period_unit}")
 
     assert len(invalid_timing) == 0, (
         f"Bug #3 NOT FIXED: {len(invalid_timing)} medication(s) with invalid timing: "

@@ -42,7 +42,7 @@ class TestPreprocessingFunctionDirectly:
 </ClinicalDocument>"""
 
         # Verify original is missing namespace
-        assert 'xmlns:xsi=' not in xml_string
+        assert "xmlns:xsi=" not in xml_string
 
         # Preprocess
         preprocessed = preprocess_ccda_namespaces(xml_string)
@@ -83,8 +83,8 @@ class TestPreprocessingFunctionDirectly:
 
         # Should be unchanged (idempotent)
         # Count namespace declarations
-        original_xsi_count = xml_string.count('xmlns:xsi=')
-        preprocessed_xsi_count = preprocessed.count('xmlns:xsi=')
+        original_xsi_count = xml_string.count("xmlns:xsi=")
+        preprocessed_xsi_count = preprocessed.count("xmlns:xsi=")
 
         assert original_xsi_count == preprocessed_xsi_count == 1
 

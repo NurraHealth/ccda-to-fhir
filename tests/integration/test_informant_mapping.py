@@ -14,12 +14,16 @@ from ccda_to_fhir.convert import convert_document
 class TestInformantPractitionerMapping:
     """Test mapping of informant.assignedEntity to Practitioner."""
 
-    def test_informant_with_assigned_entity_creates_practitioner(self, sample_ccda_with_practitioner_informant):
+    def test_informant_with_assigned_entity_creates_practitioner(
+        self, sample_ccda_with_practitioner_informant
+    ):
         """Test that informant with assignedEntity creates Practitioner resource."""
         bundle = convert_document(sample_ccda_with_practitioner_informant)["bundle"]
 
         # Find Practitioner resources
-        practitioners = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "Practitioner"]
+        practitioners = [
+            r for r in bundle["entry"] if r["resource"]["resourceType"] == "Practitioner"
+        ]
 
         # Should have at least one practitioner from informant
         assert len(practitioners) >= 1
@@ -29,18 +33,25 @@ class TestInformantPractitionerMapping:
         assert "identifier" in practitioner
         assert "name" in practitioner
 
-    def test_informant_practitioner_has_correct_identifiers(self, sample_ccda_with_practitioner_informant):
+    def test_informant_practitioner_has_correct_identifiers(
+        self, sample_ccda_with_practitioner_informant
+    ):
         """Test that informant practitioner has correct NPI identifier."""
         bundle = convert_document(sample_ccda_with_practitioner_informant)["bundle"]
 
-        practitioners = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "Practitioner"]
+        practitioners = [
+            r for r in bundle["entry"] if r["resource"]["resourceType"] == "Practitioner"
+        ]
         practitioner = practitioners[0]["resource"]
 
         # Verify identifier system for NPI
         npi_identifier = next(
-            (id for id in practitioner.get("identifier", [])
-             if id.get("system") == "http://hl7.org/fhir/sid/us-npi"),
-            None
+            (
+                id
+                for id in practitioner.get("identifier", [])
+                if id.get("system") == "http://hl7.org/fhir/sid/us-npi"
+            ),
+            None,
         )
         assert npi_identifier is not None
         assert "value" in npi_identifier
@@ -49,12 +60,16 @@ class TestInformantPractitionerMapping:
 class TestInformantRelatedPersonMapping:
     """Test mapping of informant.relatedEntity to RelatedPerson."""
 
-    def test_informant_with_related_entity_creates_related_person(self, sample_ccda_with_related_person_informant):
+    def test_informant_with_related_entity_creates_related_person(
+        self, sample_ccda_with_related_person_informant
+    ):
         """Test that informant with relatedEntity creates RelatedPerson resource."""
         bundle = convert_document(sample_ccda_with_related_person_informant)["bundle"]
 
         # Find RelatedPerson resources
-        related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
+        related_persons = [
+            r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"
+        ]
 
         # Should have exactly one related person from informant
         assert len(related_persons) == 1
@@ -67,7 +82,9 @@ class TestInformantRelatedPersonMapping:
         """Test that RelatedPerson has correct patient reference."""
         bundle = convert_document(sample_ccda_with_related_person_informant)["bundle"]
 
-        related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
+        related_persons = [
+            r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"
+        ]
         related_person = related_persons[0]["resource"]
 
         # Verify patient reference exists and has correct format
@@ -77,16 +94,20 @@ class TestInformantRelatedPersonMapping:
 
         # Verify referenced patient exists in bundle
         patient_id = related_person["patient"]["reference"].replace("urn:uuid:", "")
-        patients = [r for r in bundle["entry"]
-                   if r["resource"]["resourceType"] == "Patient"
-                   and r["resource"]["id"] == patient_id]
+        patients = [
+            r
+            for r in bundle["entry"]
+            if r["resource"]["resourceType"] == "Patient" and r["resource"]["id"] == patient_id
+        ]
         assert len(patients) == 1
 
     def test_related_person_has_relationship_code(self, sample_ccda_with_mother_informant):
         """Test that RelatedPerson has relationship code (e.g., MTH for Mother)."""
         bundle = convert_document(sample_ccda_with_mother_informant)["bundle"]
 
-        related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
+        related_persons = [
+            r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"
+        ]
         related_person = related_persons[0]["resource"]
 
         # Verify relationship exists
@@ -97,10 +118,7 @@ class TestInformantRelatedPersonMapping:
         relationship = related_person["relationship"][0]
         assert "coding" in relationship
 
-        mth_coding = next(
-            (c for c in relationship["coding"] if c.get("code") == "MTH"),
-            None
-        )
+        mth_coding = next((c for c in relationship["coding"] if c.get("code") == "MTH"), None)
         assert mth_coding is not None
         assert mth_coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
 
@@ -108,7 +126,9 @@ class TestInformantRelatedPersonMapping:
         """Test that RelatedPerson has name from relatedPerson.name."""
         bundle = convert_document(sample_ccda_with_mother_informant)["bundle"]
 
-        related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
+        related_persons = [
+            r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"
+        ]
         related_person = related_persons[0]["resource"]
 
         # Verify name exists
@@ -118,7 +138,9 @@ class TestInformantRelatedPersonMapping:
         name = related_person["name"][0]
         assert "family" in name or "given" in name
 
-    def test_related_person_converts_non_standard_code_system(self, sample_ccda_with_snomed_relationship_code):
+    def test_related_person_converts_non_standard_code_system(
+        self, sample_ccda_with_snomed_relationship_code
+    ):
         """Test that RelatedPerson properly converts non-standard code system OIDs.
 
         Regression test for BUG-004: RelatedPersonConverter called non-existent
@@ -126,7 +148,9 @@ class TestInformantRelatedPersonMapping:
         """
         bundle = convert_document(sample_ccda_with_snomed_relationship_code)["bundle"]
 
-        related_persons = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"]
+        related_persons = [
+            r for r in bundle["entry"] if r["resource"]["resourceType"] == "RelatedPerson"
+        ]
         assert len(related_persons) == 1
 
         related_person = related_persons[0]["resource"]
@@ -140,8 +164,7 @@ class TestInformantRelatedPersonMapping:
 
         # Should have converted SNOMED CT OID to proper URI
         snomed_coding = next(
-            (c for c in relationship["coding"] if c.get("code") == "444301002"),
-            None
+            (c for c in relationship["coding"] if c.get("code") == "444301002"), None
         )
         assert snomed_coding is not None
         # OID 2.16.840.1.113883.6.96 should map to http://snomed.info/sct
@@ -156,9 +179,13 @@ class TestInformantDeduplication:
         self, sample_ccda_with_same_practitioner_as_author_and_informant
     ):
         """Test that same practitioner appearing as both author and informant is not duplicated."""
-        bundle = convert_document(sample_ccda_with_same_practitioner_as_author_and_informant)["bundle"]
+        bundle = convert_document(sample_ccda_with_same_practitioner_as_author_and_informant)[
+            "bundle"
+        ]
 
-        practitioners = [r for r in bundle["entry"] if r["resource"]["resourceType"] == "Practitioner"]
+        practitioners = [
+            r for r in bundle["entry"] if r["resource"]["resourceType"] == "Practitioner"
+        ]
 
         # Should only have one practitioner (deduplicated)
         # Count practitioners with the same identifier

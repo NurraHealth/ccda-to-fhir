@@ -27,9 +27,7 @@ def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> lis
 
 
 class TestObservationValueInteger:
-    def test_converts_int_value_to_value_integer(
-        self
-    ) -> None:
+    def test_converts_int_value_to_value_integer(self) -> None:
         """Test that INT observation value is converted to valueInteger.
 
         Tests rare but valid C-CDA INT type conversion to FHIR valueInteger.
@@ -77,11 +75,11 @@ class TestObservationValueInteger:
         # Ensure no other value types are present
         assert "valueQuantity" not in observation, "Should not have valueQuantity for INT type"
         assert "valueString" not in observation, "Should not have valueString for INT type"
-        assert "valueCodeableConcept" not in observation, "Should not have valueCodeableConcept for INT type"
+        assert "valueCodeableConcept" not in observation, (
+            "Should not have valueCodeableConcept for INT type"
+        )
 
-    def test_converts_int_value_zero(
-        self
-    ) -> None:
+    def test_converts_int_value_zero(self) -> None:
         """Test that INT value of 0 is correctly converted."""
         observation_xml = """
         <organizer classCode="BATTERY" moodCode="EVN" xmlns="urn:hl7-org:v3">

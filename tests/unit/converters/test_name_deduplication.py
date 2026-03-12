@@ -45,54 +45,78 @@ class TestFormatPersonDisplayDeduplication:
 
     def test_athena_style_given_contains_family(self) -> None:
         """<given>John Doe, MD</given><family>Doe</family> -> 'John Doe, MD'"""
-        person = AssignedPerson(name=[PN(
-            given=[ENXP(value="John Doe, MD")],
-            family=ENXP(value="Doe"),
-        )])
+        person = AssignedPerson(
+            name=[
+                PN(
+                    given=[ENXP(value="John Doe, MD")],
+                    family=ENXP(value="Doe"),
+                )
+            ]
+        )
         result = format_person_display(person)
         assert result == "John Doe, MD"
 
     def test_athena_style_uppercase_family(self) -> None:
         """<given>HENRY CHENG, MD</given><family>Cheng</family> -> 'HENRY CHENG, MD'"""
-        person = AssignedPerson(name=[PN(
-            given=[ENXP(value="HENRY CHENG, MD")],
-            family=ENXP(value="Cheng"),
-        )])
+        person = AssignedPerson(
+            name=[
+                PN(
+                    given=[ENXP(value="HENRY CHENG, MD")],
+                    family=ENXP(value="Cheng"),
+                )
+            ]
+        )
         result = format_person_display(person)
         assert result == "HENRY CHENG, MD"
 
     def test_normal_name_not_deduplicated(self) -> None:
         """<given>Henry</given><family>Doe</family> -> 'Henry Doe'"""
-        person = AssignedPerson(name=[PN(
-            given=[ENXP(value="Henry")],
-            family=ENXP(value="Doe"),
-        )])
+        person = AssignedPerson(
+            name=[
+                PN(
+                    given=[ENXP(value="Henry")],
+                    family=ENXP(value="Doe"),
+                )
+            ]
+        )
         result = format_person_display(person)
         assert result == "Henry Doe"
 
     def test_normal_name_with_suffix(self) -> None:
         """<given>Henry</given><family>Doe</family><suffix>MD</suffix> -> 'Henry Doe MD'"""
-        person = AssignedPerson(name=[PN(
-            given=[ENXP(value="Henry")],
-            family=ENXP(value="Doe"),
-            suffix=[ENXP(value="MD")],
-        )])
+        person = AssignedPerson(
+            name=[
+                PN(
+                    given=[ENXP(value="Henry")],
+                    family=ENXP(value="Doe"),
+                    suffix=[ENXP(value="MD")],
+                )
+            ]
+        )
         result = format_person_display(person)
         assert result == "Henry Doe MD"
 
     def test_given_only(self) -> None:
         """<given>John</given> -> 'John'"""
-        person = AssignedPerson(name=[PN(
-            given=[ENXP(value="John")],
-        )])
+        person = AssignedPerson(
+            name=[
+                PN(
+                    given=[ENXP(value="John")],
+                )
+            ]
+        )
         result = format_person_display(person)
         assert result == "John"
 
     def test_different_family_name_not_in_given(self) -> None:
         """<given>Mary Johnson</given><family>Fonseca</family> -> 'Mary Johnson Fonseca'"""
-        person = AssignedPerson(name=[PN(
-            given=[ENXP(value="Mary Johnson")],
-            family=ENXP(value="Fonseca"),
-        )])
+        person = AssignedPerson(
+            name=[
+                PN(
+                    given=[ENXP(value="Mary Johnson")],
+                    family=ENXP(value="Fonseca"),
+                )
+            ]
+        )
         result = format_person_display(person)
         assert result == "Mary Johnson Fonseca"

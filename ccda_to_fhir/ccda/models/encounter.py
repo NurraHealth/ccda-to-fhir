@@ -102,12 +102,11 @@ class Encounter(CDAModel):
             return False
 
         for tid in self.template_id:
-            if tid.root == template_id:
-                if extension is None or tid.extension == extension:
-                    return True
+            if tid.root == template_id and (extension is None or tid.extension == extension):
+                return True
         return False
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_encounter_activity(self) -> Encounter:
         """Validate Encounter Activity template (2.16.840.1.113883.10.20.22.4.49).
 

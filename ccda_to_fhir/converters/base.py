@@ -46,7 +46,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
     """
 
     # FHIR ID regex: [A-Za-z0-9\-\.]{1,64}
-    FHIR_ID_PATTERN: ClassVar[re.Pattern] = re.compile(r'^[A-Za-z0-9\-\.]{1,64}$')
+    FHIR_ID_PATTERN: ClassVar[re.Pattern] = re.compile(r"^[A-Za-z0-9\-\.]{1,64}$")
 
     def __init__(
         self,
@@ -102,7 +102,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             '8-Body-temperature'
         """
         # Replace any character that's not alphanumeric, dash, or period with hyphen
-        sanitized = re.sub(r'[^A-Za-z0-9\-\.]', '-', value)
+        sanitized = re.sub(r"[^A-Za-z0-9\-\.]", "-", value)
         # Truncate to 64 characters max
         return sanitized[:64]
 
@@ -190,9 +190,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return fhir_identifiers
 
-    def create_identifier(
-        self, root: str | None, extension: str | None = None
-    ) -> JSONObject:
+    def create_identifier(self, root: str | None, extension: str | None = None) -> JSONObject:
         """Convert C-CDA II (Instance Identifier) to FHIR Identifier.
 
         Args:
@@ -266,12 +264,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 resolved_display = display_name.strip()
             else:
                 from ccda_to_fhir.utils.terminology import get_display_for_code
+
                 resolved_display = get_display_for_code(system_uri, sanitized_code)
-            codings.append(FHIRCoding(
-                system=system_uri,
-                code=sanitized_code,
-                display=resolved_display,
-            ))
+            codings.append(
+                FHIRCoding(
+                    system=system_uri,
+                    code=sanitized_code,
+                    display=resolved_display,
+                )
+            )
 
         # Translation codings
         if translations:
@@ -292,12 +293,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     resolved_trans_display = trans_display_raw.strip()
                 else:
                     from ccda_to_fhir.utils.terminology import get_display_for_code
+
                     resolved_trans_display = get_display_for_code(trans_system_uri, trans_code)
-                codings.append(FHIRCoding(
-                    system=trans_system_uri,
-                    code=trans_code,
-                    display=resolved_trans_display,
-                ))
+                codings.append(
+                    FHIRCoding(
+                        system=trans_system_uri,
+                        code=trans_code,
+                        display=resolved_trans_display,
+                    )
+                )
 
         # Determine text
         text: str | None = None
@@ -313,9 +317,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return FHIRCodeableConcept(coding=codings, text=text)
 
-    def create_quantity(
-        self, value: float | int | None, unit: str | None = None
-    ) -> JSONObject:
+    def create_quantity(self, value: float | int | None, unit: str | None = None) -> JSONObject:
         """Create a FHIR Quantity from C-CDA PQ (Physical Quantity).
 
         Per FHIR R4 spec, Quantity.system SHALL be present if a code is present.
@@ -402,7 +404,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             # Extract numeric portion (before +/- timezone)
             tz_start = -1
             for i, char in enumerate(ccda_date):
-                if char in ('+', '-') and i > 8:  # Timezone starts after date
+                if char in ("+", "-") and i > 8:  # Timezone starts after date
                     tz_start = i
                     break
 
@@ -417,14 +419,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             # Both C-CDA and FHIR R4 support fractional seconds
             # Extract and preserve them in the output
             fractional_seconds = ""
-            if '.' in numeric_part:
-                parts = numeric_part.split('.')
+            if "." in numeric_part:
+                parts = numeric_part.split(".")
                 numeric_part = parts[0]
-                fractional_seconds = '.' + parts[1]
+                fractional_seconds = "." + parts[1]
 
             # Validate numeric portion contains only digits
             if not numeric_part.isdigit():
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.warning(f"Invalid date format (non-numeric): {ccda_date}")
                 return None
@@ -443,6 +446,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
             if length not in format_map:
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.warning(f"Unknown date format (length {length}): {ccda_date}")
                 return None
@@ -455,6 +459,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             # Sanity check year range (1800-2200)
             if not 1800 <= dt.year <= 2200:
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.warning(f"Year out of valid range: {dt.year}")
                 return None
@@ -468,6 +473,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Per C-CDA on FHIR IG guidance: When timezone is missing, reduce precision to date-only
                 # This avoids FHIR validation errors and prevents manufacturing potentially incorrect timezone data
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.info(
                     f"C-CDA timestamp '{ccda_date}' has time component but no timezone. "
@@ -505,6 +511,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                         timezone_added = True
                     else:
                         from ccda_to_fhir.logging_config import get_logger
+
                         logger = get_logger(__name__)
                         logger.warning(
                             f"Timezone offset out of valid range: {tz_part}. "
@@ -512,6 +519,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                         )
                 except ValueError:
                     from ccda_to_fhir.logging_config import get_logger
+
                     logger = get_logger(__name__)
                     logger.warning(
                         f"Invalid timezone format: {tz_part}. "
@@ -527,11 +535,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         except ValueError as e:
             from ccda_to_fhir.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.warning(f"Invalid date '{ccda_date}': {e}")
             return None
         except (IndexError, AttributeError) as e:
             from ccda_to_fhir.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.error(f"Failed to convert date '{ccda_date}': {e}", exc_info=True)
             return None
@@ -562,11 +572,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 return False
         return False
 
-    def extract_original_text(
-        self,
-        original_text_element,
-        section=None
-    ) -> str | None:
+    def extract_original_text(self, original_text_element, section=None) -> str | None:
         """Extract original text, resolving references if needed.
 
         C-CDA allows originalText to contain either:
@@ -594,9 +600,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         # Case 2: Reference to narrative
         if original_text_element.reference:
-            ref_value = original_text_element.reference.value if original_text_element.reference.value else str(original_text_element.reference)
+            ref_value = (
+                original_text_element.reference.value
+                if original_text_element.reference.value
+                else str(original_text_element.reference)
+            )
 
-            if ref_value and isinstance(ref_value, str) and ref_value.startswith('#'):
+            if ref_value and isinstance(ref_value, str) and ref_value.startswith("#"):
                 content_id = ref_value[1:]  # Remove '#' prefix
 
                 # If section provided, search narrative
@@ -608,6 +618,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Reference couldn't be resolved
                 # Log warning but don't fail
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.debug(f"Could not resolve narrative reference: {ref_value}")
 
@@ -645,7 +656,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             # Extract text, remove any inner tags
             text = match.group(1)
             # Strip HTML tags from extracted text
-            text = re.sub(r'<[^>]+>', '', text)
+            text = re.sub(r"<[^>]+>", "", text)
             return text.strip()
 
         return None
@@ -668,7 +679,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         # Check if text has a reference element
         if entry.text.reference:
             ref_value = entry.text.reference.value
-            if ref_value and ref_value.startswith('#'):
+            if ref_value and ref_value.startswith("#"):
                 # Remove '#' prefix to get the ID
                 return ref_value[1:]
 
@@ -732,7 +743,9 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 if direct_text:
                     # Scenario 3 fallback
                     escaped_text = html.escape(direct_text)
-                    xhtml_div = f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
+                    xhtml_div = (
+                        f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
+                    )
                     return {"status": "generated", "div": xhtml_div}
                 return None
 
@@ -744,7 +757,9 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Reference not found, fall back to direct text if available
                 if direct_text:
                     escaped_text = html.escape(direct_text)
-                    xhtml_div = f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
+                    xhtml_div = (
+                        f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
+                    )
                     return {"status": "generated", "div": xhtml_div}
                 return None
 
@@ -754,7 +769,9 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Empty reference, fall back to direct text if available
                 if direct_text:
                     escaped_text = html.escape(direct_text)
-                    xhtml_div = f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
+                    xhtml_div = (
+                        f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
+                    )
                     return {"status": "generated", "div": xhtml_div}
                 return None
 
@@ -765,9 +782,9 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 escaped_text = html.escape(direct_text)
                 xhtml_div = (
                     f'<div xmlns="http://www.w3.org/1999/xhtml">'
-                    f'<div><p>{escaped_text}</p></div>'
-                    f'<div>{referenced_html}</div>'
-                    f'</div>'
+                    f"<div><p>{escaped_text}</p></div>"
+                    f"<div>{referenced_html}</div>"
+                    f"</div>"
                 )
             else:
                 # Scenario 1: Reference only
@@ -930,13 +947,12 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                                 note: JSONObject = {"text": comment_text}
 
                                 # Optionally add author time
-                                if include_author_time:
-                                    if act.author and len(act.author) > 0:
-                                        author = act.author[0]
-                                        if author.time and author.time.value:
-                                            time_str = self.convert_date(author.time.value)
-                                            if time_str:
-                                                note["time"] = time_str
+                                if include_author_time and act.author and len(act.author) > 0:
+                                    author = act.author[0]
+                                    if author.time and author.time.value:
+                                        time_str = self.convert_date(author.time.value)
+                                        if time_str:
+                                            note["time"] = time_str
 
                                 notes.append(note)
                         break
@@ -1140,6 +1156,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     return self._generate_condition_id(id_elem.root, id_elem.extension)
 
         from ccda_to_fhir.logging_config import get_logger
+
         logger = get_logger(__name__)
         logger.warning(
             "Cannot generate Condition ID from Problem Observation: no identifiers provided. "
@@ -1349,9 +1366,9 @@ class BaseConverter(ABC, Generic[CCDAModel]):
     # ENXP qualifier to FHIR name use mapping
     # HL7 v3 EntityNamePartQualifier codes that affect FHIR HumanName.use
     _ENXP_QUALIFIER_TO_USE = {
-        "CL": "nickname",   # Callme - name used informally
-        "BR": "maiden",     # Birth name
-        "SP": "maiden",     # Spouse name (previous married name when remarried)
+        "CL": "nickname",  # Callme - name used informally
+        "BR": "maiden",  # Birth name
+        "SP": "maiden",  # Spouse name (previous married name when remarried)
     }
 
     def convert_human_names(self, names) -> list[JSONObject]:
@@ -1390,10 +1407,12 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
             # Handle null_flavor - name is explicitly unknown/masked
             if name.null_flavor:
-                fhir_name["extension"] = [{
-                    "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
-                    "valueCode": self._map_null_flavor_to_data_absent_reason(name.null_flavor)
-                }]
+                fhir_name["extension"] = [
+                    {
+                        "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+                        "valueCode": self._map_null_flavor_to_data_absent_reason(name.null_flavor),
+                    }
+                ]
                 fhir_names.append(fhir_name)
                 continue
 
@@ -1520,14 +1539,14 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             FHIR data-absent-reason code
         """
         mapping = {
-            "NI": "unknown",        # No Information
-            "UNK": "unknown",       # Unknown
+            "NI": "unknown",  # No Information
+            "UNK": "unknown",  # Unknown
             "ASKU": "asked-unknown",  # Asked but unknown
             "NAV": "temp-unknown",  # Temporarily unavailable
-            "NASK": "not-asked",    # Not asked
-            "MSK": "masked",        # Masked
-            "NA": "not-applicable", # Not applicable
-            "OTH": "unknown",       # Other
+            "NASK": "not-asked",  # Not asked
+            "MSK": "masked",  # Masked
+            "NA": "not-applicable",  # Not applicable
+            "OTH": "unknown",  # Other
             "NINF": "negative-infinity",
             "PINF": "positive-infinity",
         }
@@ -1620,22 +1639,23 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         pract_id = self._generate_practitioner_id(root, extension)
 
         # Create resource if requested and not already in registry
-        if create_resource and self.reference_registry:
-            if not self.reference_registry.has_resource("Practitioner", pract_id):
-                from ccda_to_fhir.converters.practitioner import PractitionerConverter
+        if (
+            create_resource
+            and self.reference_registry
+            and not self.reference_registry.has_resource("Practitioner", pract_id)
+        ):
+            from ccda_to_fhir.converters.practitioner import PractitionerConverter
 
-                pract_converter = PractitionerConverter(
-                    code_system_mapper=self.code_system_mapper
-                )
-                practitioner = pract_converter.convert(assigned_entity)
-                practitioner["id"] = pract_id
+            pract_converter = PractitionerConverter(code_system_mapper=self.code_system_mapper)
+            practitioner = pract_converter.convert(assigned_entity)
+            practitioner["id"] = pract_id
 
-                # Add to pending resources list
-                if pending_resources is not None:
-                    pending_resources.append(practitioner)
+            # Add to pending resources list
+            if pending_resources is not None:
+                pending_resources.append(practitioner)
 
-                # Register with reference registry
-                self.reference_registry.register_resource(practitioner)
+            # Register with reference registry
+            self.reference_registry.register_resource(practitioner)
 
         display = format_person_display(assigned_entity.assigned_person)
         return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
@@ -1673,22 +1693,23 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         org_id = self._generate_organization_id(root, extension)
 
         # Create resource if requested and not already in registry
-        if create_resource and self.reference_registry:
-            if not self.reference_registry.has_resource("Organization", org_id):
-                from ccda_to_fhir.converters.organization import OrganizationConverter
+        if (
+            create_resource
+            and self.reference_registry
+            and not self.reference_registry.has_resource("Organization", org_id)
+        ):
+            from ccda_to_fhir.converters.organization import OrganizationConverter
 
-                org_converter = OrganizationConverter(
-                    code_system_mapper=self.code_system_mapper
-                )
-                organization = org_converter.convert(represented_organization)
-                organization["id"] = org_id
+            org_converter = OrganizationConverter(code_system_mapper=self.code_system_mapper)
+            organization = org_converter.convert(represented_organization)
+            organization["id"] = org_id
 
-                # Add to pending resources list
-                if pending_resources is not None:
-                    pending_resources.append(organization)
+            # Add to pending resources list
+            if pending_resources is not None:
+                pending_resources.append(organization)
 
-                # Register with reference registry
-                self.reference_registry.register_resource(organization)
+            # Register with reference registry
+            self.reference_registry.register_resource(organization)
 
         display = format_organization_display(represented_organization)
         return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
@@ -1763,11 +1784,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 trans_display = trans.display_name
 
             if trans_code and trans_system:
-                translations.append({
-                    "code": trans_code,
-                    "code_system": trans_system,
-                    "display_name": trans_display,
-                })
+                translations.append(
+                    {
+                        "code": trans_code,
+                        "code_system": trans_system,
+                        "display_name": trans_display,
+                    }
+                )
 
         return translations
 
@@ -1815,10 +1838,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             )
             if root:
                 practitioner_id = self._generate_practitioner_id(root, extension)
-                display = format_person_display(
-                    performer.assigned_entity.assigned_person
+                display = format_person_display(performer.assigned_entity.assigned_person)
+                references.append(
+                    FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
                 )
-                references.append(FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display))
 
         return references
 
@@ -1852,10 +1875,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return default
 
         code = None
-        if isinstance(status_code, str):
-            code = status_code
-        else:
-            code = status_code.code
+        code = status_code if isinstance(status_code, str) else status_code.code
 
         if not code:
             return default
@@ -1941,11 +1961,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             >>> self.require_field(observation.code, "code", "Observation")
             >>> # Raises MissingRequiredFieldError if code is missing
         """
-        is_empty = (
-            value is None
-            or value == ""
-            or (isinstance(value, list) and len(value) == 0)
-        )
+        is_empty = value is None or value == "" or (isinstance(value, list) and len(value) == 0)
 
         if is_empty:
             raise MissingRequiredFieldError(
@@ -1991,8 +2007,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             return result if result is not None else default
         except (CCDAConversionError, ValueError, TypeError, AttributeError) as e:
             logger.warning(
-                f"Failed to convert optional field {field_name} "
-                f"({type(e).__name__}): {e}",
+                f"Failed to convert optional field {field_name} ({type(e).__name__}): {e}",
                 exc_info=True,
             )
             return default

@@ -35,7 +35,9 @@ if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.record_target import Organization as ProviderOrganization
 
 
-class OrganizationConverter(BaseConverter["AuthorOrganization | PerformerOrganization | ProviderOrganization"]):
+class OrganizationConverter(
+    BaseConverter["AuthorOrganization | PerformerOrganization | ProviderOrganization"]
+):
     """Convert C-CDA RepresentedOrganization to FHIR Organization.
 
     Handles RepresentedOrganization from Author, Performer, and Patient contexts.

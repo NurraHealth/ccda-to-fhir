@@ -7,16 +7,17 @@ from __future__ import annotations
 
 import pytest
 
-from ccda_to_fhir.ccda.models.datatypes import ENXP, CE, II, PN, AssignedPerson
+from ccda_to_fhir.ccda.models.datatypes import CE, ENXP, II, PN, AssignedPerson
+from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
+from ccda_to_fhir.ccda.models.encounter import Performer
 from ccda_to_fhir.ccda.models.performer import AssignedEntity
-from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter, Performer
 from ccda_to_fhir.converters.encounter import EncounterConverter
 from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.id_generator import reset_id_cache
 
 
 @pytest.fixture(autouse=True)
-def _reset_ids():
+def _reset_ids():  # pyright: ignore[reportUnusedFunction]
     reset_id_cache()
     yield
     reset_id_cache()
@@ -32,10 +33,14 @@ class TestEncounterParticipantDisplay:
                 Performer(
                     assigned_entity=AssignedEntity(
                         id=[II(root="2.16.840.1.113883.4.6", extension="9999999999")],
-                        assigned_person=AssignedPerson(name=[PN(
-                            given=[ENXP(value="Henry")],
-                            family=ENXP(value="Doe"),
-                        )]),
+                        assigned_person=AssignedPerson(
+                            name=[
+                                PN(
+                                    given=[ENXP(value="Henry")],
+                                    family=ENXP(value="Doe"),
+                                )
+                            ]
+                        ),
                     ),
                     function_code=CE(code="PCP", display_name="Primary Care Provider"),
                 ),

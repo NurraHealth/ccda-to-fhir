@@ -16,7 +16,7 @@ import base64
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import EncounterContext, FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import EncounterContext, FHIRReference, FHIRResourceDict
 from ccda_to_fhir.utils.struc_doc_utils import narrative_to_html, narrative_to_plain_text
 
 from .references import ReferenceRegistry
@@ -37,13 +37,15 @@ NARRATIVE_SECTIONS: dict[str, str] = {
 
 # Placeholder-like text that should be treated as empty.
 # Compared after stripping whitespace, lowercasing, and removing trailing periods.
-_EMPTY_PATTERNS = frozenset({
-    "no assessment recorded",
-    "no data recorded",
-    "no information",
-    "none",
-    "n/a",
-})
+_EMPTY_PATTERNS = frozenset(
+    {
+        "no assessment recorded",
+        "no data recorded",
+        "no information",
+        "none",
+        "n/a",
+    }
+)
 
 
 def _is_empty_narrative(plain_text: str) -> bool:

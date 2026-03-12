@@ -63,9 +63,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         }
 
         # Add US Core profile
-        location["meta"] = {
-            "profile": [self.US_CORE_LOCATION_PROFILE]
-        }
+        location["meta"] = {"profile": [self.US_CORE_LOCATION_PROFILE]}
 
         # Map name first (needed for synthetic ID generation)
         name = self._extract_name(participant_role)
@@ -103,6 +101,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         else:
             # Log C-CDA spec violation (code is required per C-CDA, but we accept it for real-world compatibility)
             from ccda_to_fhir.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.warning(
                 "Missing participantRole/code (required by C-CDA spec). "
@@ -162,11 +161,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         root = identifiers[0].root if identifiers and identifiers[0].root else None
         extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
 
-        return self.generate_resource_id(
-            root=root,
-            extension=extension,
-            resource_type="location"
-        )
+        return self.generate_resource_id(root=root, extension=extension, resource_type="location")
 
     def _generate_synthetic_location_id(self, name: str, address: JSONObject | None) -> str:
         """Generate synthetic FHIR Location ID from name and address.
@@ -223,18 +218,19 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             # Skip nullFlavor identifiers (handled separately if needed)
             if identifier.null_flavor:
                 # Optional: Include nullFlavor representation
-                fhir_identifiers.append({
-                    "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
-                    "value": identifier.null_flavor
-                })
+                fhir_identifiers.append(
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/v3-NullFlavor",
+                        "value": identifier.null_flavor,
+                    }
+                )
                 continue
 
             if not identifier.root:
                 continue
 
             fhir_identifier = self.create_identifier(
-                root=identifier.root,
-                extension=identifier.extension
+                root=identifier.root, extension=identifier.extension
             )
 
             if fhir_identifier:
@@ -307,6 +303,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
             if addr_parts:
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.info(
                     "Location name missing (playingEntity/name not found). "
@@ -319,6 +316,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             first_id = participant_role.id[0]
             if first_id.extension:
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.info(
                     "Location name missing (playingEntity/name and address not found). "
@@ -330,6 +328,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
                 root_parts = first_id.root.split(".")
                 fallback_name = f"Location {root_parts[-1]}"
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.info(
                     "Location name missing (playingEntity/name and address not found). "
@@ -339,6 +338,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         # Strategy 4: Final fallback
         from ccda_to_fhir.logging_config import get_logger
+
         logger = get_logger(__name__)
         logger.warning(
             "Location name missing (no name, address, or ID found). "
@@ -449,55 +449,53 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         # HSLOC codes (2.16.840.1.113883.6.259)
         hsloc_map = {
-            '1061-3': ('bu', 'Building'),  # Hospital
-            '1116-5': ('bu', 'Building'),  # Ambulatory Surgical Center
-            '1117-3': ('bu', 'Building'),  # Ambulatory Primary Care Clinic
-            '1118-1': ('wa', 'Ward'),      # Emergency Department
-            '1160-1': ('bu', 'Building'),  # Urgent Care Center
-            '1200-7': ('bu', 'Building'),  # Long Term Care
-            '1242-9': ('bu', 'Building'),  # Outpatient Clinic
-
+            "1061-3": ("bu", "Building"),  # Hospital
+            "1116-5": ("bu", "Building"),  # Ambulatory Surgical Center
+            "1117-3": ("bu", "Building"),  # Ambulatory Primary Care Clinic
+            "1118-1": ("wa", "Ward"),  # Emergency Department
+            "1160-1": ("bu", "Building"),  # Urgent Care Center
+            "1200-7": ("bu", "Building"),  # Long Term Care
+            "1242-9": ("bu", "Building"),  # Outpatient Clinic
             # Wards and units
-            '1021-7': ('wa', 'Ward'),      # Critical Care Unit
-            '1023-3': ('wa', 'Ward'),      # Inpatient Medical Ward
-            '1024-1': ('wa', 'Ward'),      # Inpatient Surgical Ward
-            '1025-8': ('wa', 'Ward'),      # Inpatient Pediatric Ward
-            '1026-6': ('wa', 'Ward'),      # Inpatient Obstetric Ward
-            '1027-4': ('wa', 'Ward'),      # Inpatient Psychiatric Ward
-            '1028-2': ('wa', 'Ward'),      # Rehabilitation Unit
-            '1029-0': ('wa', 'Ward'),      # Labor and Delivery
-            '1033-2': ('wa', 'Ward'),      # Pediatric Critical Care
-            '1034-0': ('wa', 'Ward'),      # Neonatal Critical Care (NICU)
-            '1035-7': ('wa', 'Ward'),      # Burn Unit
-
+            "1021-7": ("wa", "Ward"),  # Critical Care Unit
+            "1023-3": ("wa", "Ward"),  # Inpatient Medical Ward
+            "1024-1": ("wa", "Ward"),  # Inpatient Surgical Ward
+            "1025-8": ("wa", "Ward"),  # Inpatient Pediatric Ward
+            "1026-6": ("wa", "Ward"),  # Inpatient Obstetric Ward
+            "1027-4": ("wa", "Ward"),  # Inpatient Psychiatric Ward
+            "1028-2": ("wa", "Ward"),  # Rehabilitation Unit
+            "1029-0": ("wa", "Ward"),  # Labor and Delivery
+            "1033-2": ("wa", "Ward"),  # Pediatric Critical Care
+            "1034-0": ("wa", "Ward"),  # Neonatal Critical Care (NICU)
+            "1035-7": ("wa", "Ward"),  # Burn Unit
             # Rooms and specific areas
-            '1108-2': ('ro', 'Room'),      # Operating Room
-            '1250-2': ('area', 'Area'),    # Pharmacy
-            '1251-0': ('area', 'Area'),    # Radiology
-            '1252-8': ('area', 'Area'),    # Laboratory
+            "1108-2": ("ro", "Room"),  # Operating Room
+            "1250-2": ("area", "Area"),  # Pharmacy
+            "1251-0": ("area", "Area"),  # Radiology
+            "1252-8": ("area", "Area"),  # Laboratory
         }
 
         # RoleCode v3 codes (2.16.840.1.113883.5.111)
         rolecode_map = {
-            'PTRES': ('ho', 'House'),      # Patient's Residence
-            'AMB': ('ve', 'Vehicle'),      # Ambulance
-            'HOSP': ('bu', 'Building'),    # Hospital
-            'PHARM': ('bu', 'Building'),   # Pharmacy
-            'COMM': ('bu', 'Building'),    # Community Location
-            'SCHOOL': ('bu', 'Building'),  # School
-            'WORK': ('bu', 'Building'),    # Work Site
+            "PTRES": ("ho", "House"),  # Patient's Residence
+            "AMB": ("ve", "Vehicle"),  # Ambulance
+            "HOSP": ("bu", "Building"),  # Hospital
+            "PHARM": ("bu", "Building"),  # Pharmacy
+            "COMM": ("bu", "Building"),  # Community Location
+            "SCHOOL": ("bu", "Building"),  # School
+            "WORK": ("bu", "Building"),  # Work Site
         }
 
         # SNOMED CT codes (2.16.840.1.113883.6.96)
         snomed_map = {
-            '22232009': ('bu', 'Building'),     # Hospital
-            '225728007': ('wa', 'Ward'),        # Accident and Emergency department
-            '309904001': ('wa', 'Ward'),        # Intensive care unit
-            '309905002': ('wa', 'Ward'),        # Coronary care unit
-            '309939001': ('wa', 'Ward'),        # Palliative care unit
-            '309914001': ('ro', 'Room'),        # Operating theater
-            '225746001': ('ro', 'Room'),        # Patient room
-            '702871004': ('area', 'Area'),      # Infusion clinic
+            "22232009": ("bu", "Building"),  # Hospital
+            "225728007": ("wa", "Ward"),  # Accident and Emergency department
+            "309904001": ("wa", "Ward"),  # Intensive care unit
+            "309905002": ("wa", "Ward"),  # Coronary care unit
+            "309939001": ("wa", "Ward"),  # Palliative care unit
+            "309914001": ("ro", "Room"),  # Operating theater
+            "225746001": ("ro", "Room"),  # Patient room
+            "702871004": ("area", "Area"),  # Infusion clinic
         }
 
         # Determine which mapping to use based on code system
@@ -507,15 +505,14 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         code_system = location_code.code_system
         code_value = location_code.code
 
-        if code_system == '2.16.840.1.113883.6.259':  # HSLOC
+        if code_system == "2.16.840.1.113883.6.259":  # HSLOC
             if code_value in hsloc_map:
                 physical_type_code, display = hsloc_map[code_value]
-        elif code_system == '2.16.840.1.113883.5.111':  # RoleCode
+        elif code_system == "2.16.840.1.113883.5.111":  # RoleCode
             if code_value in rolecode_map:
                 physical_type_code, display = rolecode_map[code_value]
-        elif code_system == '2.16.840.1.113883.6.96':  # SNOMED CT
-            if code_value in snomed_map:
-                physical_type_code, display = snomed_map[code_value]
+        elif code_system == "2.16.840.1.113883.6.96" and code_value in snomed_map:  # SNOMED CT
+            physical_type_code, display = snomed_map[code_value]
 
         # If no mapping found, return None (field will be omitted)
         if not physical_type_code:
@@ -523,11 +520,13 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
 
         # Return FHIR CodeableConcept structure
         return {
-            "coding": [{
-                "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
-                "code": physical_type_code,
-                "display": display
-            }]
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
+                    "code": physical_type_code,
+                    "display": display,
+                }
+            ]
         }
 
     def _determine_mode(self, location_code: CE) -> str:
@@ -565,10 +564,10 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Codes that represent types/classes rather than specific instances
         # These should use mode "kind" per FHIR specification
         kind_codes = {
-            'PTRES',   # Patient's Residence - represents any patient home, not a specific address
-            'AMB',     # Ambulance - represents a type of vehicle, not a specific ambulance
-            'WORK',    # Work Site - represents any workplace
-            'SCHOOL',  # School - represents any school
+            "PTRES",  # Patient's Residence - represents any patient home, not a specific address
+            "AMB",  # Ambulance - represents a type of vehicle, not a specific ambulance
+            "WORK",  # Work Site - represents any workplace
+            "SCHOOL",  # School - represents any school
         }
 
         code_value = location_code.code
@@ -580,8 +579,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         return "instance"
 
     def _get_managing_organization_reference(
-        self,
-        participant_role: ParticipantRole
+        self, participant_role: ParticipantRole
     ) -> FHIRReference | None:
         """Extract managing organization reference from location's scoping entity.
 

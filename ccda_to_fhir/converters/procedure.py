@@ -13,7 +13,13 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRCodeableConcept, FHIRReference, FHIRResourceDict, JSONObject, ReasonResult
+from ccda_to_fhir.types import (
+    FHIRCodeableConcept,
+    FHIRReference,
+    FHIRResourceDict,
+    JSONObject,
+    ReasonResult,
+)
 
 from .author_references import format_device_display, format_person_display
 from .base import BaseConverter
@@ -48,7 +54,9 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         self._pending_practitioners: list[FHIRResourceDict] = []
         self._pending_organizations: list[FHIRResourceDict] = []
 
-    def convert(self, ccda_model: CCDAProcedure | CCDAObservation | CCDAAct, section=None) -> FHIRResourceDict:
+    def convert(
+        self, ccda_model: CCDAProcedure | CCDAObservation | CCDAAct, section=None
+    ) -> FHIRResourceDict:
         """Convert a C-CDA Procedure Activity to a FHIR Procedure resource.
 
         Accepts Procedure Activity Procedure, Procedure Activity Observation,
@@ -70,10 +78,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         # Check if code has null flavor (no actual code value)
         # Per C-CDA spec, code is required but may have nullFlavor
-        has_valid_code = (
-            procedure.code.code
-            and not procedure.code.null_flavor
-        )
+        has_valid_code = procedure.code.code and not procedure.code.null_flavor
 
         fhir_procedure: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.PROCEDURE,
@@ -85,11 +90,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         extension = None
         if procedure.id and len(procedure.id) > 0:
             for id_elem in procedure.id:
-                if not id_elem.null_flavor:
-                    if id_elem.root or id_elem.extension:
-                        root = id_elem.root
-                        extension = id_elem.extension
-                        break
+                if not id_elem.null_flavor and (id_elem.root or id_elem.extension):
+                    root = id_elem.root
+                    extension = id_elem.extension
+                    break
 
         # Generate fallback context if no valid identifiers
         fallback_context = ""
@@ -158,16 +162,17 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 null_flavor = procedure.code.null_flavor
                 fhir_procedure["code"] = {
                     "extension": [
-                        self.create_data_absent_reason_extension(null_flavor, default_reason="unknown")
+                        self.create_data_absent_reason_extension(
+                            null_flavor, default_reason="unknown"
+                        )
                     ],
-                    "text": "Procedure code not specified"
+                    "text": "Procedure code not specified",
                 }
 
         # Patient reference (from recordTarget in document header)
         if not self.reference_registry:
             raise ValueError(
-                "reference_registry is required. "
-                "Cannot create Procedure without patient reference."
+                "reference_registry is required. Cannot create Procedure without patient reference."
             )
         fhir_procedure["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
@@ -219,7 +224,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             # Devices (Product Instance)
             devices_result = self._extract_devices(
                 procedure.participant,
-                procedure_status=procedure.status_code.code if procedure.status_code else None
+                procedure_status=procedure.status_code.code if procedure.status_code else None,
             )
             if devices_result and devices_result.get("devices"):
                 fhir_procedure["focalDevice"] = devices_result["focal_devices"]
@@ -310,7 +315,9 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         # Special handling for planned procedures (moodCode="INT")
         # Per C-CDA on FHIR IG: INT = intent/planned, should map to "preparation"
         if mood_code and mood_code.upper() == "INT" and status_code:
-            code = getattr(status_code, "code", None) or (status_code if isinstance(status_code, str) else None)
+            code = getattr(status_code, "code", None) or (
+                status_code if isinstance(status_code, str) else None
+            )
             if code and code.lower() in ("active", "new"):
                 return FHIRCodes.ProcedureStatus.PREPARATION
 
@@ -446,52 +453,51 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         """
         for participant in participants:
             # Look for location participants (typeCode="LOC")
-            if participant.type_code == "LOC":
-                if participant.participant_role:
-                    role = participant.participant_role
+            if participant.type_code == "LOC" and participant.participant_role:
+                role = participant.participant_role
 
-                    # Generate location ID from role ID - REQUIRED
-                    location_id = None
-                    if role.id:
-                        for id_elem in role.id:
-                            if id_elem.root:
-                                location_id = self._generate_location_id(id_elem.root, id_elem.extension)
-                                break
+                # Generate location ID from role ID - REQUIRED
+                location_id = None
+                if role.id:
+                    for id_elem in role.id:
+                        if id_elem.root:
+                            location_id = self._generate_location_id(
+                                id_elem.root, id_elem.extension
+                            )
+                            break
 
-                    if not location_id:
-                        raise ValueError("Cannot create Location reference: missing location identifier")
+                if not location_id:
+                    raise ValueError(
+                        "Cannot create Location reference: missing location identifier"
+                    )
 
-                    # Extract location name from playingEntity
-                    display = None
-                    if role.playing_entity:
-                        entity = role.playing_entity
-                        if entity.name:
-                            # name is list[ON | str] | None
-                            if isinstance(entity.name, list) and len(entity.name) > 0:
-                                first_name = entity.name[0]
-                                if isinstance(first_name, str):
-                                    display = first_name
-                                elif first_name.value:
-                                    # ON (Organization Name) has value attribute
-                                    display = first_name.value
-                            elif isinstance(entity.name, str):
-                                display = entity.name
+                # Extract location name from playingEntity
+                display = None
+                if role.playing_entity:
+                    entity = role.playing_entity
+                    if entity.name:
+                        # name is list[ON | str] | None
+                        if isinstance(entity.name, list) and len(entity.name) > 0:
+                            first_name = entity.name[0]
+                            if isinstance(first_name, str):
+                                display = first_name
+                            elif first_name.value:
+                                # ON (Organization Name) has value attribute
+                                display = first_name.value
+                        elif isinstance(entity.name, str):
+                            display = entity.name
 
-                    # Create location reference (or would have raised error above)
-                    location_ref: JSONObject = {
-                        "reference": f"urn:uuid:{location_id}"
-                    }
-                    if display:
-                        location_ref["display"] = display
+                # Create location reference (or would have raised error above)
+                location_ref: JSONObject = {"reference": f"urn:uuid:{location_id}"}
+                if display:
+                    location_ref["display"] = display
 
-                    return location_ref
+                return location_ref
 
         return None
 
     def _extract_devices(
-        self,
-        participants: list,
-        procedure_status: str | None = None
+        self, participants: list, procedure_status: str | None = None
     ) -> JSONObject | None:
         """Extract FHIR devices from C-CDA participants.
 
@@ -518,69 +524,61 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         for participant in participants:
             # Look for device participants (typeCode="DEV")
-            if participant.type_code == "DEV":
-                if participant.participant_role:
-                    role = participant.participant_role
+            if participant.type_code == "DEV" and participant.participant_role:
+                role = participant.participant_role
 
-                    # Check if this is a Product Instance (has template ID)
-                    is_product_instance = False
-                    if role.template_id:
-                        for template in role.template_id:
-                            if template.root == product_instance_template:
-                                is_product_instance = True
-                                break
+                # Check if this is a Product Instance (has template ID)
+                is_product_instance = False
+                if role.template_id:
+                    for template in role.template_id:
+                        if template.root == product_instance_template:
+                            is_product_instance = True
+                            break
 
-                    # Only process Product Instance devices
-                    # (assignedAuthoringDevice is handled separately in author processing)
-                    if is_product_instance:
-                        # Get patient reference from registry
-                        patient_ref = None
-                        if self.reference_registry:
-                            patient_ref = self.reference_registry.get_patient_reference().to_dict()
+                # Only process Product Instance devices
+                # (assignedAuthoringDevice is handled separately in author processing)
+                if is_product_instance:
+                    # Get patient reference from registry
+                    patient_ref = None
+                    if self.reference_registry:
+                        patient_ref = self.reference_registry.get_patient_reference().to_dict()
 
-                        # Convert Product Instance to Device
-                        device = device_converter.convert_product_instance(
-                            role,
-                            patient_reference=patient_ref,
-                            procedure_status=procedure_status
-                        )
+                    # Convert Product Instance to Device
+                    device = device_converter.convert_product_instance(
+                        role, patient_reference=patient_ref, procedure_status=procedure_status
+                    )
 
-                        # Register device resource with reference registry
-                        if self.reference_registry:
-                            self.reference_registry.register_resource(device)
+                    # Register device resource with reference registry
+                    if self.reference_registry:
+                        self.reference_registry.register_resource(device)
 
-                        # Store device resource
-                        devices.append(device)
+                    # Store device resource
+                    devices.append(device)
 
-                        # Create focalDevice entry for Procedure
-                        focal_device: JSONObject = {
-                            "manipulated": {
-                                "reference": f"urn:uuid:{device['id']}"
-                            }
+                    # Create focalDevice entry for Procedure
+                    focal_device: JSONObject = {
+                        "manipulated": {"reference": f"urn:uuid:{device['id']}"}
+                    }
+
+                    # Infer action from device type or procedure code
+                    # For implantable devices, use "implantation"
+                    if patient_ref:
+                        focal_device["action"] = {
+                            "coding": [
+                                {
+                                    "system": "http://snomed.info/sct",
+                                    "code": "129337003",
+                                    "display": "Implantation",
+                                }
+                            ]
                         }
 
-                        # Infer action from device type or procedure code
-                        # For implantable devices, use "implantation"
-                        if patient_ref:
-                            focal_device["action"] = {
-                                "coding": [
-                                    {
-                                        "system": "http://snomed.info/sct",
-                                        "code": "129337003",
-                                        "display": "Implantation"
-                                    }
-                                ]
-                            }
-
-                        focal_devices.append(focal_device)
+                    focal_devices.append(focal_device)
 
         if not devices:
             return None
 
-        return {
-            "devices": devices,
-            "focal_devices": focal_devices
-        }
+        return {"devices": devices, "focal_devices": focal_devices}
 
     def _extract_recorder(self, authors: list) -> FHIRReference | None:
         """Extract FHIR recorder from C-CDA authors.
@@ -597,10 +595,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             return None
 
         # Filter authors with time
-        authors_with_time = [
-            a for a in authors
-            if a.time and a.time.value
-        ]
+        authors_with_time = [a for a in authors if a.time and a.time.value]
 
         if not authors_with_time:
             return None
@@ -616,14 +611,11 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 if assigned_author.id:
                     for id_elem in assigned_author.id:
                         if id_elem.root:
-                            pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                            ref: JSONObject = {
-                                "reference": f"urn:uuid:{pract_id}"
-                            }
+                            pract_id = self._generate_practitioner_id(
+                                id_elem.root, id_elem.extension
+                            )
                             display = format_person_display(assigned_author.assigned_person)
-                            if display:
-                                ref["display"] = display
-                            return ref
+                            return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
 
             # Check for device (assigned_authoring_device)
             elif assigned_author.assigned_authoring_device:
@@ -631,13 +623,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     for id_elem in assigned_author.id:
                         if id_elem.root:
                             device_id = self._generate_device_id(id_elem.root, id_elem.extension)
-                            ref = {
-                                "reference": f"urn:uuid:{device_id}"
-                            }
-                            display = format_device_display(assigned_author.assigned_authoring_device)
-                            if display:
-                                ref["display"] = display
-                            return ref
+                            display = format_device_display(
+                                assigned_author.assigned_authoring_device
+                            )
+                            return FHIRReference(reference=f"urn:uuid:{device_id}", display=display)
 
         return None
 
@@ -756,9 +745,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
     # Note: _generate_practitioner_id, _generate_organization_id, _generate_device_id,
     # and _generate_location_id methods are inherited from BaseConverter
 
-    def _convert_body_site_with_qualifiers(
-        self, code: CD
-    ) -> JSONObject | None:
+    def _convert_body_site_with_qualifiers(self, code: CD) -> JSONObject | None:
         """Convert C-CDA targetSiteCode with qualifiers to FHIR bodySite CodeableConcept.
 
         This method handles body site codes with laterality qualifiers. Per C-CDA standard,
@@ -800,11 +787,13 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                         trans_display = trans.display_name
 
                     if trans_code and trans_system:
-                        translations.append({
-                            "code": trans_code,
-                            "code_system": trans_system,
-                            "display_name": trans_display,
-                        })
+                        translations.append(
+                            {
+                                "code": trans_code,
+                                "code_system": trans_system,
+                                "display_name": trans_display,
+                            }
+                        )
 
         # Get original text if present
         original_text = None
@@ -836,10 +825,15 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if code.qualifier:
             for qualifier in code.qualifier:
                 # Check if this is a laterality qualifier
-                if qualifier.name and qualifier.name.code in laterality_qualifier_codes:
-                    if qualifier.value and qualifier.value.code and qualifier.value.code_system:
-                        laterality_value = qualifier.value
-                        break
+                if (
+                    qualifier.name
+                    and qualifier.name.code in laterality_qualifier_codes
+                    and qualifier.value
+                    and qualifier.value.code
+                    and qualifier.value.code_system
+                ):
+                    laterality_value = qualifier.value
+                    break
 
         # If we found a laterality qualifier, add it as additional coding
         if laterality_value:
@@ -860,7 +854,9 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             if laterality_value.display_name and code.display_name:
                 codeable_concept["text"] = f"{laterality_value.display_name} {code.display_name}"
             elif laterality_value.display_name and "text" in codeable_concept:
-                codeable_concept["text"] = f"{laterality_value.display_name} {codeable_concept['text']}"
+                codeable_concept["text"] = (
+                    f"{laterality_value.display_name} {codeable_concept['text']}"
+                )
 
         return codeable_concept
 

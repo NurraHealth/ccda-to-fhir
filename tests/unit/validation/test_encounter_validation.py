@@ -84,7 +84,9 @@ class TestEncounterActivityValidation:
                   displayName="Office visit"/>
         </encounter>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"
+        ):
             parse_ccda_fragment(xml, Encounter)
 
     def test_non_encounter_activity_skips_validation(self) -> None:

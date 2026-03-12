@@ -60,7 +60,7 @@ class ReferenceRegistry:
         if not isinstance(raw_resource_id, str) or not raw_resource_id:
             logger.warning(
                 f"Cannot register {raw_resource_type} without id",
-                extra={"resource_type": raw_resource_type}
+                extra={"resource_type": raw_resource_type},
             )
             return
 
@@ -81,7 +81,7 @@ class ReferenceRegistry:
                 extra={
                     "resource_type": resource_type,
                     "resource_id": resource_id,
-                }
+                },
             )
             return
 
@@ -97,7 +97,7 @@ class ReferenceRegistry:
                     "resource_type": resource_type,
                     "resource_id": resource_id,
                     "total_patients": len(self._resources["Patient"]),
-                }
+                },
             )
         else:
             logger.debug(
@@ -105,7 +105,7 @@ class ReferenceRegistry:
                 extra={
                     "resource_type": resource_type,
                     "resource_id": resource_id,
-                }
+                },
             )
 
     def resolve_reference(
@@ -131,7 +131,7 @@ class ReferenceRegistry:
             raise MissingReferenceError(
                 resource_type=resource_type,
                 resource_id=resource_id,
-                context="Resource type not registered in bundle"
+                context="Resource type not registered in bundle",
             )
 
         # Check if resource ID exists
@@ -141,7 +141,7 @@ class ReferenceRegistry:
             raise MissingReferenceError(
                 resource_type=resource_type,
                 resource_id=resource_id,
-                context=f"Resource ID not found. Available IDs: {available_ids}"
+                context=f"Resource ID not found. Available IDs: {available_ids}",
             )
 
         # Resource exists - return reference using urn:uuid format for transaction bundles
@@ -158,10 +158,7 @@ class ReferenceRegistry:
         Returns:
             True if resource exists, False otherwise
         """
-        return (
-            resource_type in self._resources
-            and resource_id in self._resources[resource_type]
-        )
+        return resource_type in self._resources and resource_id in self._resources[resource_type]
 
     def get_resource(
         self,
@@ -242,7 +239,7 @@ class ReferenceRegistry:
                 resource_type="Patient",
                 resource_id="(any)",
                 context="Patient must be extracted from recordTarget before clinical resources. "
-                        "This indicates a C-CDA document structure violation or extraction order error."
+                "This indicates a C-CDA document structure violation or extraction order error.",
             )
 
         # Get first patient (for most C-CDA documents, there's only one)
@@ -258,8 +255,8 @@ class ReferenceRegistry:
                 extra={
                     "patient_count": patient_count,
                     "selected_patient_id": patient_id,
-                    "all_patient_ids": all_patient_ids
-                }
+                    "all_patient_ids": all_patient_ids,
+                },
             )
 
         self._stats.resolved += 1

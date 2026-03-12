@@ -10,9 +10,7 @@ from .conftest import wrap_in_ccda_document
 RESULTS_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.3.1"
 
 
-def _find_all_resources_in_bundle(
-    bundle: JSONObject, resource_type: str
-) -> list[JSONObject]:
+def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> list[JSONObject]:
     """Find all resources of the given type in a FHIR Bundle."""
     resources = []
     for entry in bundle.get("entry", []):
@@ -22,17 +20,12 @@ def _find_all_resources_in_bundle(
     return resources
 
 
-def _find_observation_by_code(
-    observations: list[JSONObject], loinc_code: str
-) -> JSONObject | None:
+def _find_observation_by_code(observations: list[JSONObject], loinc_code: str) -> JSONObject | None:
     """Find an observation with a specific LOINC code."""
     for obs in observations:
         if "code" in obs:
             for coding in obs["code"].get("coding", []):
-                if (
-                    coding.get("system") == "http://loinc.org"
-                    and coding.get("code") == loinc_code
-                ):
+                if coding.get("system") == "http://loinc.org" and coding.get("code") == loinc_code:
                     return obs
     return None
 
@@ -72,7 +65,10 @@ class TestObservationEDValue:
         # Find the valueAttachment extension
         value_ext = None
         for ext in obs["extension"]:
-            if ext["url"] == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value"
+            ):
                 value_ext = ext
                 break
 
@@ -83,6 +79,7 @@ class TestObservationEDValue:
 
         # Verify base64 decoding
         import base64
+
         decoded = base64.b64decode(value_ext["valueAttachment"]["data"]).decode("utf-8")
         assert decoded == "Yellow"
 
@@ -121,7 +118,10 @@ class TestObservationEDValue:
         # Find the valueAttachment extension
         value_ext = None
         for ext in obs["extension"]:
-            if ext["url"] == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value"
+            ):
                 value_ext = ext
                 break
 
@@ -132,6 +132,7 @@ class TestObservationEDValue:
 
         # Verify decoding
         import base64
+
         decoded = base64.b64decode(value_ext["valueAttachment"]["data"]).decode("utf-8")
         assert decoded == "Hello World"
 
@@ -167,7 +168,10 @@ class TestObservationEDValue:
         # Find the valueAttachment extension
         value_ext = None
         for ext in obs["extension"]:
-            if ext["url"] == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value"
+            ):
                 value_ext = ext
                 break
 
@@ -207,7 +211,10 @@ class TestObservationEDValue:
         # Find the valueAttachment extension
         value_ext = None
         for ext in obs["extension"]:
-            if ext["url"] == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value"
+            ):
                 value_ext = ext
                 break
 
@@ -246,8 +253,10 @@ class TestObservationEDValue:
         # Should not have valueAttachment extension
         if "extension" in obs:
             value_exts = [
-                ext for ext in obs["extension"]
-                if ext["url"] == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value"
+                ext
+                for ext in obs["extension"]
+                if ext["url"]
+                == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value"
             ]
             assert len(value_exts) == 0
 
@@ -283,7 +292,10 @@ class TestObservationEDValue:
         # Find the valueAttachment extension
         value_ext = None
         for ext in obs["extension"]:
-            if ext["url"] == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value"
+            ):
                 value_ext = ext
                 break
 
@@ -330,7 +342,10 @@ class TestObservationEDValue:
         # Find the valueAttachment extension
         value_ext = None
         for ext in obs["extension"]:
-            if ext["url"] == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value"
+            ):
                 value_ext = ext
                 break
 
@@ -341,5 +356,6 @@ class TestObservationEDValue:
 
         # Verify decoding still works
         import base64
+
         decoded = base64.b64decode(value_ext["valueAttachment"]["data"]).decode("utf-8")
         assert decoded == "Hello World"

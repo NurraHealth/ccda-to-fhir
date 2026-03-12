@@ -87,9 +87,12 @@ class TestHistoricalMedicationConversion:
         assert "medicationCodeableConcept" in med_statement
 
         rxnorm = next(
-            (c for c in med_statement["medicationCodeableConcept"]["coding"]
-             if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"),
-            None
+            (
+                c
+                for c in med_statement["medicationCodeableConcept"]["coding"]
+                if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"
+            ),
+            None,
         )
         assert rxnorm is not None
         assert rxnorm["code"] == "197361"
@@ -396,7 +399,7 @@ class TestMedicationStatementMissingMedication:
                     </manufacturedProduct>
                 </consumable>
             </substanceAdministration>""",
-            TemplateIds.MEDICATIONS_SECTION
+            TemplateIds.MEDICATIONS_SECTION,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
@@ -407,11 +410,16 @@ class TestMedicationStatementMissingMedication:
 
         # Should have fallback text
         assert "text" in med_statement["medicationCodeableConcept"]
-        assert med_statement["medicationCodeableConcept"]["text"] == "Medication information not available"
+        assert (
+            med_statement["medicationCodeableConcept"]["text"]
+            == "Medication information not available"
+        )
 
         # Should not have any coding (no code available)
-        assert "coding" not in med_statement["medicationCodeableConcept"] or \
-               len(med_statement["medicationCodeableConcept"].get("coding", [])) == 0
+        assert (
+            "coding" not in med_statement["medicationCodeableConcept"]
+            or len(med_statement["medicationCodeableConcept"].get("coding", [])) == 0
+        )
 
 
 class TestMedicationStatementIDSanitization:
@@ -442,7 +450,7 @@ class TestMedicationStatementIDSanitization:
                     </manufacturedProduct>
                 </consumable>
             </substanceAdministration>""",
-            TemplateIds.MEDICATIONS_SECTION
+            TemplateIds.MEDICATIONS_SECTION,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
@@ -451,6 +459,7 @@ class TestMedicationStatementIDSanitization:
         assert med_statement is not None
         # ID should be a valid UUID v4
         import uuid
+
         assert "id" in med_statement
         try:
             uuid.UUID(med_statement["id"], version=4)
@@ -479,7 +488,7 @@ class TestMedicationStatementIDSanitization:
                     </manufacturedProduct>
                 </consumable>
             </substanceAdministration>""",
-            TemplateIds.MEDICATIONS_SECTION
+            TemplateIds.MEDICATIONS_SECTION,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
@@ -488,6 +497,7 @@ class TestMedicationStatementIDSanitization:
         assert med_statement is not None
         # ID should be a valid UUID v4
         import uuid
+
         assert "id" in med_statement
         try:
             uuid.UUID(med_statement["id"], version=4)

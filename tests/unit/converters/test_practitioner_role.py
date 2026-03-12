@@ -38,7 +38,7 @@ class TestPractitionerRoleConverter:
         specialty_code = CE(
             code="207Q00000X",
             code_system="2.16.840.1.113883.6.101",  # NUCC Taxonomy OID
-            display_name="Family Medicine"
+            display_name="Family Medicine",
         )
 
         # Create person
@@ -46,16 +46,12 @@ class TestPractitionerRoleConverter:
 
         # Create organization
         org = RepresentedOrganization(
-            id=[II(root=CodeSystemOIDs.NPI, extension="9999999999")],
-            name=["Test Clinic"]
+            id=[II(root=CodeSystemOIDs.NPI, extension="9999999999")], name=["Test Clinic"]
         )
 
         # Create assigned author
         assigned_author = AssignedAuthor(
-            id=[npi_id],
-            code=specialty_code,
-            assigned_person=person,
-            represented_organization=org
+            id=[npi_id], code=specialty_code, assigned_person=person, represented_organization=org
         )
 
         return assigned_author
@@ -65,9 +61,7 @@ class TestPractitionerRoleConverter:
     ) -> None:
         """Test that converter creates a PractitionerRole resource."""
         result = converter.convert(
-            sample_assigned_author,
-            practitioner_id="practitioner-123",
-            organization_id="org-456"
+            sample_assigned_author, practitioner_id="practitioner-123", organization_id="org-456"
         )
 
         assert result["resourceType"] == FHIRCodes.ResourceTypes.PRACTITIONER_ROLE
@@ -79,7 +73,7 @@ class TestPractitionerRoleConverter:
         result = converter.convert(
             sample_assigned_author,
             practitioner_id="practitioner-npi-1234567890",
-            organization_id="org-npi-9999999999"
+            organization_id="org-npi-9999999999",
         )
 
         assert "id" in result
@@ -93,9 +87,7 @@ class TestPractitionerRoleConverter:
         """Test that practitioner reference is created correctly."""
         practitioner_id = "practitioner-test-123"
         result = converter.convert(
-            sample_assigned_author,
-            practitioner_id=practitioner_id,
-            organization_id="org-456"
+            sample_assigned_author, practitioner_id=practitioner_id, organization_id="org-456"
         )
 
         assert "practitioner" in result
@@ -109,7 +101,7 @@ class TestPractitionerRoleConverter:
         result = converter.convert(
             sample_assigned_author,
             practitioner_id="practitioner-123",
-            organization_id=organization_id
+            organization_id=organization_id,
         )
 
         assert "organization" in result
@@ -120,9 +112,7 @@ class TestPractitionerRoleConverter:
     ) -> None:
         """Test that specialty code is correctly converted."""
         result = converter.convert(
-            sample_assigned_author,
-            practitioner_id="practitioner-123",
-            organization_id="org-456"
+            sample_assigned_author, practitioner_id="practitioner-123", organization_id="org-456"
         )
 
         assert "specialty" in result
@@ -138,9 +128,7 @@ class TestPractitionerRoleConverter:
     ) -> None:
         """Test that specialty display name is included."""
         result = converter.convert(
-            sample_assigned_author,
-            practitioner_id="practitioner-123",
-            organization_id="org-456"
+            sample_assigned_author, practitioner_id="practitioner-123", organization_id="org-456"
         )
 
         coding = result["specialty"][0]["coding"][0]
@@ -151,40 +139,32 @@ class TestPractitionerRoleConverter:
     ) -> None:
         """Test that NUCC taxonomy OID is mapped to correct FHIR URI."""
         result = converter.convert(
-            sample_assigned_author,
-            practitioner_id="practitioner-123",
-            organization_id="org-456"
+            sample_assigned_author, practitioner_id="practitioner-123", organization_id="org-456"
         )
 
         coding = result["specialty"][0]["coding"][0]
         # NUCC Taxonomy OID (2.16.840.1.113883.6.101) should map to NUCC URI
         assert coding["system"] == FHIRSystems.NUCC_TAXONOMY
 
-    def test_handles_missing_specialty(
-        self, converter: PractitionerRoleConverter
-    ) -> None:
+    def test_handles_missing_specialty(self, converter: PractitionerRoleConverter) -> None:
         """Test that missing specialty code is handled gracefully."""
         # Create assigned author without specialty code
         assigned_author = AssignedAuthor(
             id=[II(root=CodeSystemOIDs.NPI, extension="1234567890")],
             code=None,  # No specialty
             assigned_person=AssignedPerson(name=[]),
-            represented_organization=RepresentedOrganization(id=[], name=["Test"])
+            represented_organization=RepresentedOrganization(id=[], name=["Test"]),
         )
 
         result = converter.convert(
-            assigned_author,
-            practitioner_id="practitioner-123",
-            organization_id="org-456"
+            assigned_author, practitioner_id="practitioner-123", organization_id="org-456"
         )
 
         # Should still create resource, but specialty field should be empty or absent
         assert result["resourceType"] == FHIRCodes.ResourceTypes.PRACTITIONER_ROLE
         assert "specialty" not in result or result.get("specialty") == []
 
-    def test_handles_multiple_specialties(
-        self, converter: PractitionerRoleConverter
-    ) -> None:
+    def test_handles_multiple_specialties(self, converter: PractitionerRoleConverter) -> None:
         """Test that multiple specialties from SDTC extension are handled.
 
         Note: This tests the SDTC specialty extension which may appear in
@@ -192,31 +172,27 @@ class TestPractitionerRoleConverter:
         """
         # Create assigned author with primary specialty
         primary_specialty = CE(
-            code="207Q00000X",
-            code_system="2.16.840.1.113883.6.101",
-            display_name="Family Medicine"
+            code="207Q00000X", code_system="2.16.840.1.113883.6.101", display_name="Family Medicine"
         )
 
         assigned_author = AssignedAuthor(
             id=[II(root=CodeSystemOIDs.NPI, extension="1234567890")],
             code=primary_specialty,
             assigned_person=AssignedPerson(name=[]),
-            represented_organization=RepresentedOrganization(id=[], name=["Test"])
+            represented_organization=RepresentedOrganization(id=[], name=["Test"]),
         )
 
         # Add SDTC specialty if the model supports it
-        if hasattr(assigned_author, 'sdtc_specialty'):
+        if hasattr(assigned_author, "sdtc_specialty"):
             secondary_specialty = CE(
                 code="207R00000X",
                 code_system="2.16.840.1.113883.6.101",
-                display_name="Internal Medicine"
+                display_name="Internal Medicine",
             )
             assigned_author.sdtc_specialty = [secondary_specialty]
 
         result = converter.convert(
-            assigned_author,
-            practitioner_id="practitioner-123",
-            organization_id="org-456"
+            assigned_author, practitioner_id="practitioner-123", organization_id="org-456"
         )
 
         # Should have at least the primary specialty
@@ -224,7 +200,7 @@ class TestPractitionerRoleConverter:
         assert len(result["specialty"]) >= 1
 
         # If SDTC supported, should have both
-        if hasattr(assigned_author, 'sdtc_specialty') and assigned_author.sdtc_specialty:
+        if hasattr(assigned_author, "sdtc_specialty") and assigned_author.sdtc_specialty:
             assert len(result["specialty"]) == 2
             codes = [s["coding"][0]["code"] for s in result["specialty"]]
             assert "207Q00000X" in codes
@@ -239,9 +215,7 @@ class TestPractitionerRoleConverter:
         to this role context (different from the Practitioner's own identifiers).
         """
         result = converter.convert(
-            sample_assigned_author,
-            practitioner_id="practitioner-123",
-            organization_id="org-456"
+            sample_assigned_author, practitioner_id="practitioner-123", organization_id="org-456"
         )
 
         # PractitionerRole.identifier is optional - may or may not be present
@@ -257,20 +231,14 @@ class TestPractitionerRoleConverter:
     ) -> None:
         """Test that empty practitioner_id raises appropriate error."""
         with pytest.raises(ValueError):
-            converter.convert(
-                sample_assigned_author,
-                practitioner_id="",
-                organization_id="org-456"
-            )
+            converter.convert(sample_assigned_author, practitioner_id="", organization_id="org-456")
 
     def test_handles_missing_organization_id(
         self, converter: PractitionerRoleConverter, sample_assigned_author: AssignedAuthor
     ) -> None:
         """Test that PractitionerRole can be created without organization reference."""
         role = converter.convert(
-            sample_assigned_author,
-            practitioner_id="practitioner-123",
-            organization_id=None
+            sample_assigned_author, practitioner_id="practitioner-123", organization_id=None
         )
 
         assert role["resourceType"] == "PractitionerRole"
@@ -283,15 +251,11 @@ class TestPractitionerRoleConverter:
     ) -> None:
         """Test that ID generation is deterministic for deduplication."""
         result1 = converter.convert(
-            sample_assigned_author,
-            practitioner_id="practitioner-abc",
-            organization_id="org-xyz"
+            sample_assigned_author, practitioner_id="practitioner-abc", organization_id="org-xyz"
         )
 
         result2 = converter.convert(
-            sample_assigned_author,
-            practitioner_id="practitioner-abc",
-            organization_id="org-xyz"
+            sample_assigned_author, practitioner_id="practitioner-abc", organization_id="org-xyz"
         )
 
         # Same inputs should produce same ID
@@ -302,42 +266,36 @@ class TestPractitionerRoleConverter:
     ) -> None:
         """Test that same practitioner with different orgs produces different IDs."""
         result1 = converter.convert(
-            sample_assigned_author,
-            practitioner_id="practitioner-abc",
-            organization_id="org-xyz"
+            sample_assigned_author, practitioner_id="practitioner-abc", organization_id="org-xyz"
         )
 
         result2 = converter.convert(
             sample_assigned_author,
             practitioner_id="practitioner-abc",
-            organization_id="org-different"
+            organization_id="org-different",
         )
 
         # Different organization should produce different ID
         assert result1["id"] != result2["id"]
 
-    def test_specialty_with_original_text(
-        self, converter: PractitionerRoleConverter
-    ) -> None:
+    def test_specialty_with_original_text(self, converter: PractitionerRoleConverter) -> None:
         """Test that original text from specialty code is preserved."""
         specialty_with_text = CE(
             code="207Q00000X",
             code_system="2.16.840.1.113883.6.101",
             display_name="Family Medicine",
-            original_text=ED(value="Family Practice Physician")
+            original_text=ED(value="Family Practice Physician"),
         )
 
         assigned_author = AssignedAuthor(
             id=[II(root=CodeSystemOIDs.NPI, extension="1234567890")],
             code=specialty_with_text,
             assigned_person=AssignedPerson(name=[]),
-            represented_organization=RepresentedOrganization(id=[], name=["Test"])
+            represented_organization=RepresentedOrganization(id=[], name=["Test"]),
         )
 
         result = converter.convert(
-            assigned_author,
-            practitioner_id="practitioner-123",
-            organization_id="org-456"
+            assigned_author, practitioner_id="practitioner-123", organization_id="org-456"
         )
 
         # Original text should be preserved in CodeableConcept.text

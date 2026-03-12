@@ -50,12 +50,16 @@ class TestSubstanceExposureRiskExtension:
         extensions = allergy.get("extension", [])
         exposure_risk_ext = None
         for ext in extensions:
-            if ext["url"] == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk"
+            ):
                 exposure_risk_ext = ext
                 break
 
-        assert exposure_risk_ext is not None, \
+        assert exposure_risk_ext is not None, (
             "substanceExposureRisk extension should be present for specific substance no-known allergy"
+        )
 
     def test_substance_exposure_risk_has_substance_sub_extension(self) -> None:
         """Test that substanceExposureRisk extension contains substance sub-extension."""
@@ -70,7 +74,10 @@ class TestSubstanceExposureRiskExtension:
         # Get the substanceExposureRisk extension
         exposure_risk_ext = None
         for ext in allergy.get("extension", []):
-            if ext["url"] == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk"
+            ):
                 exposure_risk_ext = ext
                 break
 
@@ -110,7 +117,10 @@ class TestSubstanceExposureRiskExtension:
         # Get the substanceExposureRisk extension
         exposure_risk_ext = None
         for ext in allergy.get("extension", []):
-            if ext["url"] == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk"
+            ):
                 exposure_risk_ext = ext
                 break
 
@@ -123,12 +133,17 @@ class TestSubstanceExposureRiskExtension:
                 break
 
         assert exposure_risk_sub_ext is not None, "exposureRisk sub-extension should be present"
-        assert "valueCodeableConcept" in exposure_risk_sub_ext, "exposureRisk should be a CodeableConcept"
+        assert "valueCodeableConcept" in exposure_risk_sub_ext, (
+            "exposureRisk should be a CodeableConcept"
+        )
 
         # Verify exposureRisk value
         concept = exposure_risk_sub_ext["valueCodeableConcept"]
         coding = concept["coding"][0]
-        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/allerg-intol-substance-exp-risk"
+        assert (
+            coding["system"]
+            == "http://terminology.hl7.org/CodeSystem/allerg-intol-substance-exp-risk"
+        )
         assert coding["code"] == "no-known-reaction-risk"
         assert coding["display"] == "No Known Reaction Risk"
 
@@ -146,8 +161,9 @@ class TestSubstanceExposureRiskExtension:
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
 
-        assert "code" not in allergy, \
+        assert "code" not in allergy, (
             "AllergyIntolerance.code SHALL be omitted when substanceExposureRisk extension is used"
+        )
 
     def test_substance_exposure_risk_preserves_type_and_category(self) -> None:
         """Test that type and category are preserved when using substanceExposureRisk extension."""
@@ -177,7 +193,10 @@ class TestSubstanceExposureRiskExtension:
         # Verify extension exists
         exposure_risk_ext = None
         for ext in allergy.get("extension", []):
-            if ext["url"] == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk"
+            ):
                 exposure_risk_ext = ext
                 break
 
@@ -223,15 +242,21 @@ class TestSubstanceExposureRiskExtension:
         # Verify substanceExposureRisk extension is NOT present
         has_exposure_risk_ext = False
         for ext in allergy.get("extension", []):
-            if ext["url"] == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk":
+            if (
+                ext["url"]
+                == "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk"
+            ):
                 has_exposure_risk_ext = True
                 break
 
-        assert not has_exposure_risk_ext, \
+        assert not has_exposure_risk_ext, (
             "substanceExposureRisk extension should NOT be used for general no known allergy"
+        )
 
         # Verify code is present (negated concept)
-        assert "code" in allergy, "AllergyIntolerance.code should be present for general no known allergy"
+        assert "code" in allergy, (
+            "AllergyIntolerance.code should be present for general no known allergy"
+        )
 
         # Verify it's the correct negated concept code
         snomed_coding = None

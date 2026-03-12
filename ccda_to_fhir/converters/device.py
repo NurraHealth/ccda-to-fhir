@@ -81,7 +81,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         if assigned.assigned_authoring_device:
             device_names = self._convert_device_names(
                 assigned.assigned_authoring_device.manufacturer_model_name,
-                assigned.assigned_authoring_device.software_name
+                assigned.assigned_authoring_device.software_name,
             )
             device["deviceName"] = device_names
 
@@ -90,18 +90,18 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
             # This identifies assignedAuthoringDevice elements as EHR software systems
             # Note: Device.type has "Example" binding strength per FHIR R4, allowing this usage
             device["type"] = {
-                "coding": [{
-                    "system": "http://snomed.info/sct",
-                    "code": "706689003",
-                    "display": "Electronic health record"
-                }],
-                "text": "Electronic Health Record System"
+                "coding": [
+                    {
+                        "system": "http://snomed.info/sct",
+                        "code": "706689003",
+                        "display": "Electronic health record",
+                    }
+                ],
+                "text": "Electronic Health Record System",
             }
 
             # Extract and add version if available from softwareName
-            version = self._extract_device_version(
-                assigned.assigned_authoring_device.software_name
-            )
+            version = self._extract_device_version(assigned.assigned_authoring_device.software_name)
             if version:
                 device["version"] = version
 
@@ -131,9 +131,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         return generate_id_from_identifiers("Device", root, extension)
 
     def _convert_device_names(
-        self,
-        manufacturer_model_name: str | None,
-        software_name: str | None
+        self, manufacturer_model_name: str | None, software_name: str | None
     ) -> list[JSONObject]:
         """Convert device names to FHIR Device.deviceName.
 
@@ -151,16 +149,10 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         device_names: list[JSONObject] = []
 
         if manufacturer_model_name:
-            device_names.append({
-                "name": manufacturer_model_name,
-                "type": "manufacturer-name"
-            })
+            device_names.append({"name": manufacturer_model_name, "type": "manufacturer-name"})
 
         if software_name:
-            device_names.append({
-                "name": software_name,
-                "type": "model-name"
-            })
+            device_names.append({"name": software_name, "type": "model-name"})
 
         return device_names
 
@@ -188,27 +180,31 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
 
         # Pattern matches: v1.2, version 1.2, (1.2), 1.2.3, etc.
         version_patterns = [
-            r'v\.?\s*(\d+(?:\.\d+)*)',  # v1.2 or v.1.2
-            r'version\s+(\d+(?:\.\d+)*)',  # version 1.2
-            r'\((\d+(?:\.\d+)*)\)',  # (1.2)
-            r'\s(\d+\.\d+(?:\.\d+)?)\s*$',  # 1.2.3 at end
+            r"v\.?\s*(\d+(?:\.\d+)*)",  # v1.2 or v.1.2
+            r"version\s+(\d+(?:\.\d+)*)",  # version 1.2
+            r"\((\d+(?:\.\d+)*)\)",  # (1.2)
+            r"\s(\d+\.\d+(?:\.\d+)?)\s*$",  # 1.2.3 at end
         ]
 
         for pattern in version_patterns:
             match = re.search(pattern, software_name, re.IGNORECASE)
             if match:
                 version_number = match.group(1)
-                return [{
-                    "type": {
-                        "coding": [{
-                            "system": "http://terminology.hl7.org/CodeSystem/device-version-type",
-                            "code": "software",
-                            "display": "Software Version"
-                        }],
-                        "text": "software"
-                    },
-                    "value": version_number
-                }]
+                return [
+                    {
+                        "type": {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/device-version-type",
+                                    "code": "software",
+                                    "display": "Software Version",
+                                }
+                            ],
+                            "text": "software",
+                        },
+                        "value": version_number,
+                    }
+                ]
 
         return None
 
@@ -216,7 +212,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         self,
         participant_role: ParticipantRole,
         patient_reference: JSONObject | None = None,
-        procedure_status: str | None = None
+        procedure_status: str | None = None,
     ) -> FHIRResourceDict:
         """Convert C-CDA Product Instance to FHIR Device resource.
 
@@ -275,7 +271,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
                 code=code.code,
                 code_system=code.code_system,
                 display_name=code.display_name,
-                original_text=original_text
+                original_text=original_text,
             )
             if device_type:
                 device["type"] = device_type.to_dict()
@@ -351,7 +347,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         # Build UDI carrier
         udi_carrier: JSONObject = {
             "carrierHRF": udi_string,
-            "entryType": "unknown"  # Not specified in C-CDA
+            "entryType": "unknown",  # Not specified in C-CDA
         }
 
         # Add device identifier if parsed
@@ -367,9 +363,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
         # Set jurisdiction to FDA for US devices
         udi_carrier["jurisdiction"] = FHIRSystems.FDA_UDI
 
-        result: JSONObject = {
-            "udi_carrier": udi_carrier
-        }
+        result: JSONObject = {"udi_carrier": udi_carrier}
 
         # Add parsed production identifiers
         manufacture_date = parsed.get("manufacture_date")
@@ -400,10 +394,9 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
 
         # Model name from manufacturerModelName
         if playing_device.manufacturer_model_name:
-            device_names.append({
-                "name": playing_device.manufacturer_model_name,
-                "type": "model-name"
-            })
+            device_names.append(
+                {"name": playing_device.manufacturer_model_name, "type": "model-name"}
+            )
 
         # User-friendly name from device code display
         if playing_device.code:
@@ -416,10 +409,7 @@ class DeviceConverter(BaseConverter["AssignedAuthor"]):
                 display_name = playing_device.code.display_name
 
             if display_name:
-                device_names.append({
-                    "name": display_name,
-                    "type": "user-friendly-name"
-                })
+                device_names.append({"name": display_name, "type": "user-friendly-name"})
 
         return device_names
 

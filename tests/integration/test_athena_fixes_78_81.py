@@ -42,9 +42,7 @@ class TestNameDeduplication:
                     if text:
                         # Count occurrences of family name
                         count = text.upper().count(family.upper())
-                        assert count <= 1, (
-                            f"Family name '{family}' duplicated in text '{text}'"
-                        )
+                        assert count <= 1, f"Family name '{family}' duplicated in text '{text}'"
 
     def test_author_display_not_duplicated(self) -> None:
         """DocumentReference author display should not duplicate family names."""
@@ -62,7 +60,7 @@ class TestNameDeduplication:
                 # Check no consecutive duplicate words (simple heuristic)
                 for i in range(len(words) - 1):
                     if words[i].rstrip(",").upper() == words[i + 1].upper():
-                        assert False, (
+                        raise AssertionError(
                             f"Possible duplicated name in author display: '{display}'"
                         )
 
@@ -88,9 +86,7 @@ class TestEncounterDisplayFallback:
                     assert enc_ref["display"] == "Family Medicine visit"
                     refs_with_display += 1
 
-        assert refs_with_display >= 1, (
-            "Expected at least one encounter ref with fallback display"
-        )
+        assert refs_with_display >= 1, "Expected at least one encounter ref with fallback display"
 
 
 class TestRecorderAndParticipantDisplay:
@@ -147,8 +143,7 @@ class TestDiagnosisNoteFallback:
         doc_refs = by_type.get("DocumentReference", [])
 
         diagnosis_notes = [
-            dr for dr in doc_refs
-            if "Diagnosis Note" in str(dr.get("description", ""))
+            dr for dr in doc_refs if "Diagnosis Note" in str(dr.get("description", ""))
         ]
 
         if not diagnosis_notes:
@@ -171,8 +166,7 @@ class TestDiagnosisNoteFallback:
         doc_refs = by_type.get("DocumentReference", [])
 
         diagnosis_notes = [
-            dr for dr in doc_refs
-            if "Diagnosis Note" in str(dr.get("description", ""))
+            dr for dr in doc_refs if "Diagnosis Note" in str(dr.get("description", ""))
         ]
 
         if not diagnosis_notes:
@@ -183,6 +177,4 @@ class TestDiagnosisNoteFallback:
             if "date" not in note:
                 notes_without_date.append(note.get("description", "unknown"))
 
-        assert len(notes_without_date) == 0, (
-            f"Diagnosis notes missing date: {notes_without_date}"
-        )
+        assert len(notes_without_date) == 0, f"Diagnosis notes missing date: {notes_without_date}"

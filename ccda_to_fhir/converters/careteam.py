@@ -16,9 +16,7 @@ from typing import TYPE_CHECKING
 
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
-from ccda_to_fhir.types import FHIRReference
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .author_references import format_organization_display
 from .base import BaseConverter
@@ -125,7 +123,10 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         # Validate required code (SHALL be LOINC 86744-0 per C-CDA)
         if not organizer.code:
             raise ValueError("Care Team Organizer code is required")
-        if organizer.code.code != "86744-0" or organizer.code.code_system != "2.16.840.1.113883.6.1":
+        if (
+            organizer.code.code != "86744-0"
+            or organizer.code.code_system != "2.16.840.1.113883.6.1"
+        ):
             raise ValueError(
                 f"Care Team Organizer code SHALL be LOINC 86744-0, got {organizer.code.code} from {organizer.code.code_system}"
             )
@@ -162,9 +163,12 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         # Validate effectiveTime.low when effectiveTime is present
         if organizer.effective_time:
             from ccda_to_fhir.ccda.models.datatypes import IVL_TS, TS
+
             if isinstance(organizer.effective_time, IVL_TS):
                 if not organizer.effective_time.low:
-                    raise ValueError("Care Team Organizer effectiveTime.low is required when effectiveTime is present")
+                    raise ValueError(
+                        "Care Team Organizer effectiveTime.low is required when effectiveTime is present"
+                    )
             elif not isinstance(organizer.effective_time, TS) or not organizer.effective_time.value:
                 raise ValueError("Care Team Organizer effectiveTime must have low or value")
 
@@ -173,9 +177,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         }
 
         # Add US Core profile
-        careteam["meta"] = {
-            "profile": [self.US_CORE_CARETEAM_PROFILE]
-        }
+        careteam["meta"] = {"profile": [self.US_CORE_CARETEAM_PROFILE]}
 
         # Generate ID from identifiers
         careteam["id"] = self._generate_careteam_id(organizer.id)
@@ -262,15 +264,16 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         # Check for valid template (root + extension)
         has_valid_template = any(
-            tid.root == self.CARE_TEAM_ORGANIZER_TEMPLATE and
-            tid.extension in self.CARE_TEAM_ORGANIZER_EXTENSIONS
+            tid.root == self.CARE_TEAM_ORGANIZER_TEMPLATE
+            and tid.extension in self.CARE_TEAM_ORGANIZER_EXTENSIONS
             for tid in organizer.template_id
         )
 
         if not has_valid_template:
             # Provide helpful error message
             found_templates = [
-                f"{tid.root}" + (f" extension={tid.extension}" if tid.extension else " (no extension)")
+                f"{tid.root}"
+                + (f" extension={tid.extension}" if tid.extension else " (no extension)")
                 for tid in organizer.template_id
             ]
             raise ValueError(
@@ -385,6 +388,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             FHIR Period or None
         """
         from ccda_to_fhir.ccda.models.datatypes import IVL_TS
+
         period: JSONObject = {}
 
         if isinstance(effective_time, IVL_TS):
@@ -464,8 +468,8 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
             # Validate template root and extension
             is_type_obs = any(
-                tid.root == self.CARE_TEAM_TYPE_OBSERVATION_TEMPLATE and
-                tid.extension == self.CARE_TEAM_TYPE_OBSERVATION_EXTENSION
+                tid.root == self.CARE_TEAM_TYPE_OBSERVATION_TEMPLATE
+                and tid.extension == self.CARE_TEAM_TYPE_OBSERVATION_EXTENSION
                 for tid in observation.template_id
             )
 
@@ -478,6 +482,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 if has_matching_root:
                     # Log warning but continue (lenient for real-world data)
                     import logging
+
                     logger = logging.getLogger(__name__)
                     logger.warning(
                         f"Care Team Type Observation has correct root "
@@ -528,16 +533,15 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
             # Validate template root and extension
             is_member_act = any(
-                tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE and
-                tid.extension in self.CARE_TEAM_MEMBER_ACT_EXTENSIONS
+                tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE
+                and tid.extension in self.CARE_TEAM_MEMBER_ACT_EXTENSIONS
                 for tid in act.template_id
             )
 
             if not is_member_act:
                 # Check if root matches but extension is wrong/missing (lenient)
                 has_matching_root = any(
-                    tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE
-                    for tid in act.template_id
+                    tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE for tid in act.template_id
                 )
                 if not has_matching_root:
                     # Different template, skip
@@ -563,13 +567,18 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     display = format_organization_display(org)
                     # Check if we already created this organization
                     if org_oid in self.organization_registry:
-                        return FHIRReference(reference=f"urn:uuid:{self.organization_registry[org_oid]}", display=display)
+                        return FHIRReference(
+                            reference=f"urn:uuid:{self.organization_registry[org_oid]}",
+                            display=display,
+                        )
                     # Try to convert it
                     try:
                         organization = self.organization_converter.convert(org)
                         organization_id = organization.get("id", f"org-{org_oid.replace('.', '-')}")
                         self.organization_registry[org_oid] = organization_id
-                        return FHIRReference(reference=f"urn:uuid:{organization_id}", display=display)
+                        return FHIRReference(
+                            reference=f"urn:uuid:{organization_id}", display=display
+                        )
                     except Exception:
                         # Organization conversion failed, continue to next member
                         continue
@@ -607,20 +616,20 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
             # Validate template root and extension
             is_member_act = any(
-                tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE and
-                tid.extension in self.CARE_TEAM_MEMBER_ACT_EXTENSIONS
+                tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE
+                and tid.extension in self.CARE_TEAM_MEMBER_ACT_EXTENSIONS
                 for tid in act.template_id
             )
 
             if not is_member_act:
                 # Check if root matches but extension is wrong/missing
                 has_matching_root = any(
-                    tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE
-                    for tid in act.template_id
+                    tid.root == self.CARE_TEAM_MEMBER_ACT_TEMPLATE for tid in act.template_id
                 )
                 if has_matching_root:
                     # Log warning but continue (lenient for real-world data)
                     import logging
+
                     logger = logging.getLogger(__name__)
                     logger.warning(
                         f"Care Team Member Act has correct root "
@@ -635,10 +644,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             # Validate Care Team Member Act code (SHALL be LOINC 86744-0)
             # This is a C-CDA requirement, but we'll be lenient and allow conversion
             # even if code is missing or incorrect
-            if act.code:
-                if act.code.code != "86744-0" or act.code.code_system != "2.16.840.1.113883.6.1":
-                    # Code doesn't match expected value, but continue anyway
-                    pass
+            if act.code and (
+                act.code.code != "86744-0" or act.code.code_system != "2.16.840.1.113883.6.1"
+            ):
+                # Code doesn't match expected value, but continue anyway
+                pass
 
             # Extract participant from this member act
             if not act.performer or len(act.performer) == 0:
@@ -650,9 +660,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 continue
 
             # Create participant
-            participant = self._create_participant_from_performer(
-                performer, act.effective_time
-            )
+            participant = self._create_participant_from_performer(performer, act.effective_time)
 
             if not participant:
                 continue
@@ -661,8 +669,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             is_lead = False
             if lead_id and performer.assigned_entity.id:
                 for entity_id in performer.assigned_entity.id:
-                    if (entity_id.root == lead_id.root and
-                        entity_id.extension == lead_id.extension):
+                    if entity_id.root == lead_id.root and entity_id.extension == lead_id.extension:
                         is_lead = True
                         break
 
@@ -690,15 +697,16 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             return None
 
         for participant in organizer.participant:
-            if participant.type_code == "PPRF" and participant.participant_role:
-                if participant.participant_role.id:
-                    return participant.participant_role.id[0]
+            if (
+                participant.type_code == "PPRF"
+                and participant.participant_role
+                and participant.participant_role.id
+            ):
+                return participant.participant_role.id[0]
 
         return None
 
-    def _create_participant_from_performer(
-        self, performer, effective_time
-    ) -> JSONObject | None:
+    def _create_participant_from_performer(self, performer, effective_time) -> JSONObject | None:
         """Create CareTeam participant from Care Team Member Act performer.
 
         Args:
@@ -890,7 +898,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         # Build participant list
         participant_lines = []
-        for i, participant in enumerate(participants[:5]):  # Limit to first 5
+        for _i, participant in enumerate(participants[:5]):  # Limit to first 5
             role_display = "Team Member"
             if "role" in participant and participant["role"]:
                 role_data = participant["role"]

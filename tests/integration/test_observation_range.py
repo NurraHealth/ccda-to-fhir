@@ -17,6 +17,7 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
             return resource
     return None
 
+
 def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> list[JSONObject]:
     """Find all resources of the given type in a FHIR Bundle."""
     resources = []
@@ -26,10 +27,9 @@ def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> lis
             resources.append(resource)
     return resources
 
+
 class TestObservationRange:
-    def test_converts_ivl_pq_value_range(
-        self, ccda_observation_ivl_pq: str
-    ) -> None:
+    def test_converts_ivl_pq_value_range(self, ccda_observation_ivl_pq: str) -> None:
         """Test that IVL_PQ observation value is converted to valueRange.
 
         Result Observations must be within Result Organizers per C-CDA spec.
@@ -197,7 +197,9 @@ class TestObservationRange:
 
     def test_effective_period_with_date_only(self) -> None:
         """Test that IVL_TS effectiveTime with date-only values converts to effectivePeriod."""
-        with open("tests/integration/fixtures/ccda/observation_effective_period_date_only.xml") as f:
+        with open(
+            "tests/integration/fixtures/ccda/observation_effective_period_date_only.xml"
+        ) as f:
             organizer_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(organizer_xml, TemplateIds.RESULTS_SECTION)
@@ -265,18 +267,26 @@ class TestObservationIDSanitization:
                     </observation>
                 </component>
             </organizer>""",
-            TemplateIds.VITAL_SIGNS_SECTION
+            TemplateIds.VITAL_SIGNS_SECTION,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
         observations = _find_all_resources_in_bundle(bundle, "Observation")
 
         # Find the Height observation by code
-        height_obs = next((obs for obs in observations if obs.get("code", {}).get("coding", [{}])[0].get("code") == "8302-2"), None)
+        height_obs = next(
+            (
+                obs
+                for obs in observations
+                if obs.get("code", {}).get("coding", [{}])[0].get("code") == "8302-2"
+            ),
+            None,
+        )
 
         assert height_obs is not None, "Should find Height observation"
         # ID should be a valid UUID v4
         import uuid
+
         assert "id" in height_obs
         try:
             uuid.UUID(height_obs["id"], version=4)
@@ -303,18 +313,26 @@ class TestObservationIDSanitization:
                     </observation>
                 </component>
             </organizer>""",
-            TemplateIds.VITAL_SIGNS_SECTION
+            TemplateIds.VITAL_SIGNS_SECTION,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
         observations = _find_all_resources_in_bundle(bundle, "Observation")
 
         # Find the temperature observation by code
-        temp_obs = next((obs for obs in observations if obs.get("code", {}).get("coding", [{}])[0].get("code") == "8310-5"), None)
+        temp_obs = next(
+            (
+                obs
+                for obs in observations
+                if obs.get("code", {}).get("coding", [{}])[0].get("code") == "8310-5"
+            ),
+            None,
+        )
 
         assert temp_obs is not None, "Should find Body Temperature observation"
         # ID should be a valid UUID v4
         import uuid
+
         assert "id" in temp_obs
         try:
             uuid.UUID(temp_obs["id"], version=4)

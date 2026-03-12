@@ -27,7 +27,13 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-results.html
     """
 
-    def __init__(self, *args, seen_observation_ids: set | None = None, seen_diagnostic_report_ids: set | None = None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        seen_observation_ids: set | None = None,
+        seen_diagnostic_report_ids: set | None = None,
+        **kwargs,
+    ):
         """Initialize the diagnostic report converter.
 
         Args:
@@ -41,9 +47,13 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
             seen_observation_ids=seen_observation_ids,
         )
         # Track seen diagnostic report IDs to detect invalid C-CDA documents that reuse IDs
-        self.seen_diagnostic_report_ids = seen_diagnostic_report_ids if seen_diagnostic_report_ids is not None else set()
+        self.seen_diagnostic_report_ids = (
+            seen_diagnostic_report_ids if seen_diagnostic_report_ids is not None else set()
+        )
 
-    def convert(self, ccda_model: Organizer, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
+    def convert(
+        self, ccda_model: Organizer, section=None
+    ) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
         """Convert a C-CDA Result Organizer to a FHIR DiagnosticReport and Observations.
 
         Args:
@@ -72,12 +82,14 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
             if dr_id_key in self.seen_diagnostic_report_ids:
                 # ID reuse detected - fall back to generating a unique ID
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.warning(
                     f"DiagnosticReport ID {first_id.root} (extension={first_id.extension}) is reused in C-CDA document. "
                     f"Generating unique ID to avoid duplicate DiagnosticReport resources."
                 )
                 from ccda_to_fhir.id_generator import generate_id
+
                 report["id"] = generate_id()
             else:
                 # First time seeing this diagnostic report ID - use it
@@ -123,12 +135,14 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
             # Real-world C-CDA documents may have valid organizers without usable codes
             # Per FHIR requirement, use a generic fallback code
             code_cc = {
-                "coding": [{
-                    "system": "http://loinc.org",
-                    "code": "11502-2",
-                    "display": "Laboratory report"
-                }],
-                "text": "Laboratory report"
+                "coding": [
+                    {
+                        "system": "http://loinc.org",
+                        "code": "11502-2",
+                        "display": "Laboratory report",
+                    }
+                ],
+                "text": "Laboratory report",
             }
 
         report["code"] = code_cc
@@ -160,12 +174,17 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
                             practitioner_id = self._generate_practitioner_id(
                                 id_elem.root, id_elem.extension
                             )
-                            from ccda_to_fhir.converters.author_references import format_person_display
+                            from ccda_to_fhir.converters.author_references import (
+                                format_person_display,
+                            )
                             from ccda_to_fhir.types import FHIRReference
+
                             display = format_person_display(
                                 performer.assigned_entity.assigned_person
                             )
-                            interpreter_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
+                            interpreter_ref = FHIRReference(
+                                reference=f"urn:uuid:{practitioner_id}", display=display
+                            )
                             interpreters.append(interpreter_ref.to_dict())
                             break  # Use first valid ID
             if interpreters:
@@ -189,9 +208,7 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
 
                     # Add reference to this observation
                     if "id" in observation:
-                        result_ref: JSONObject = {
-                            "reference": f"urn:uuid:{observation['id']}"
-                        }
+                        result_ref: JSONObject = {"reference": f"urn:uuid:{observation['id']}"}
 
                         # Add display from C-CDA observation code
                         if component.observation.code and component.observation.code.display_name:
@@ -222,9 +239,7 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
             A valid FHIR ID string
         """
         return self.generate_resource_id(
-            root=root,
-            extension=extension,
-            resource_type="diagnosticreport"
+            root=root, extension=extension, resource_type="diagnosticreport"
         )
 
     def _determine_status(self, organizer: Organizer) -> str:
@@ -320,4 +335,3 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
             return self.convert_date(eff_time.value)
 
         return None
-

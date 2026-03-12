@@ -138,8 +138,9 @@ class TestCareTeamExtraction:
         # Participants should reference PractitionerRole
         for participant in careteam["participant"]:
             member_ref = participant["member"]["reference"]
-            assert member_ref.startswith("urn:uuid:"), \
+            assert member_ref.startswith("urn:uuid:"), (
                 f"Participant should reference PractitionerRole, got {member_ref}"
+            )
 
     def test_careteam_has_managing_organization(self, careteam_document):
         """Test that CareTeam has managing organization extracted."""
@@ -168,8 +169,9 @@ class TestCareTeamExtraction:
         ]
 
         org_id = org_ref.replace("urn:uuid:", "")
-        assert any(org.get("id") == org_id for org in organizations), \
+        assert any(org.get("id") == org_id for org in organizations), (
             "Referenced Organization should exist in bundle"
+        )
 
     def test_careteam_team_lead_is_first_participant(self, careteam_document):
         """Test that team lead (typeCode='PPRF') is placed first in participants list."""
@@ -247,8 +249,9 @@ class TestCareTeamExtraction:
                     ref = obj["reference"]
                     # Skip external references (http, urn)
                     if not ref.startswith("http") and not ref.startswith("urn"):
-                        assert ref in resource_ids, \
+                        assert ref in resource_ids, (
                             f"Broken reference at {path}: {ref} not in bundle"
+                        )
 
                 for key, value in obj.items():
                     check_references(value, f"{path}.{key}" if path else key)

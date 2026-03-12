@@ -62,9 +62,7 @@ class ProvenanceConverter(BaseConverter[None]):
         resource_id = target_resource["id"]
         # Use target resource type and ID as cache key for consistency
         provenance["id"] = generate_id_from_identifiers(
-            "Provenance",
-            f"target-{resource_type}",
-            resource_id
+            "Provenance", f"target-{resource_type}", resource_id
         )
 
         # Target - reference to the resource(s) this Provenance is about
@@ -150,7 +148,8 @@ class ProvenanceConverter(BaseConverter[None]):
         # OnBehalfOf - reference to Organization (optional)
         if author_info.organization_id:
             on_behalf_of_ref = FHIRReference(
-                reference=f"urn:uuid:{author_info.organization_id}", display=author_info.organization_display
+                reference=f"urn:uuid:{author_info.organization_id}",
+                display=author_info.organization_display,
             )
             agent["onBehalfOf"] = on_behalf_of_ref.to_dict()
 

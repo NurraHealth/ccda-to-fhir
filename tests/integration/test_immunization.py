@@ -33,9 +33,12 @@ class TestImmunizationConversion:
         assert immunization is not None
         assert "vaccineCode" in immunization
         cvx = next(
-            (c for c in immunization["vaccineCode"]["coding"]
-             if c.get("system") == "http://hl7.org/fhir/sid/cvx"),
-            None
+            (
+                c
+                for c in immunization["vaccineCode"]["coding"]
+                if c.get("system") == "http://hl7.org/fhir/sid/cvx"
+            ),
+            None,
         )
         assert cvx is not None
         assert cvx["code"] == "88"
@@ -100,9 +103,7 @@ class TestImmunizationConversion:
         assert "manufacturer" in immunization
         assert immunization["manufacturer"]["display"] == "Health LS - Immuno Inc."
 
-    def test_converts_route(
-        self, ccda_immunization: str, fhir_immunization: JSONObject
-    ) -> None:
+    def test_converts_route(self, ccda_immunization: str, fhir_immunization: JSONObject) -> None:
         """Test that route code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -112,9 +113,7 @@ class TestImmunizationConversion:
         assert "route" in immunization
         assert immunization["route"]["coding"][0]["code"] == "C28161"
 
-    def test_converts_site(
-        self, ccda_immunization: str, fhir_immunization: JSONObject
-    ) -> None:
+    def test_converts_site(self, ccda_immunization: str, fhir_immunization: JSONObject) -> None:
         """Test that approach site is converted to site."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -159,9 +158,12 @@ class TestImmunizationConversion:
         assert immunization is not None
         assert "vaccineCode" in immunization
         ndc = next(
-            (c for c in immunization["vaccineCode"]["coding"]
-             if c.get("system") == "http://hl7.org/fhir/sid/ndc"),
-            None
+            (
+                c
+                for c in immunization["vaccineCode"]["coding"]
+                if c.get("system") == "http://hl7.org/fhir/sid/ndc"
+            ),
+            None,
         )
         assert ndc is not None
         assert ndc["code"] == "49281-0422-50"
@@ -177,9 +179,7 @@ class TestImmunizationConversion:
         assert immunization is not None
         assert immunization["resourceType"] == "Immunization"
 
-    def test_provenance_has_recorded_date(
-        self, ccda_immunization: str
-    ) -> None:
+    def test_provenance_has_recorded_date(self, ccda_immunization: str) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -206,9 +206,7 @@ class TestImmunizationConversion:
         # Should have a valid ISO datetime
         assert len(immun_provenance["recorded"]) > 0
 
-    def test_provenance_agent_has_correct_type(
-        self, ccda_immunization: str
-    ) -> None:
+    def test_provenance_agent_has_correct_type(self, ccda_immunization: str) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -245,7 +243,9 @@ class TestImmunizationConversion:
         self, ccda_immunization_multiple_authors: str
     ) -> None:
         """Test that multiple authors create multiple Provenance agents."""
-        ccda_doc = wrap_in_ccda_document(ccda_immunization_multiple_authors, IMMUNIZATIONS_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_immunization_multiple_authors, IMMUNIZATIONS_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
@@ -276,9 +276,7 @@ class TestImmunizationConversion:
             assert "reference" in agent["who"]
             assert agent["who"]["reference"].startswith("urn:uuid:")
 
-    def test_primary_source_omitted_when_not_available(
-        self, ccda_immunization: str
-    ) -> None:
+    def test_primary_source_omitted_when_not_available(self, ccda_immunization: str) -> None:
         """Test that primarySource is omitted when not available.
 
         Per FHIR R4B spec, primarySource is optional (0..1 cardinality).
@@ -296,9 +294,7 @@ class TestImmunizationConversion:
         assert "primarySource" not in immunization
         assert "_primarySource" not in immunization
 
-    def test_reaction_creates_observation_reference(
-        self, ccda_immunization: str
-    ) -> None:
+    def test_reaction_creates_observation_reference(self, ccda_immunization: str) -> None:
         """Test that reaction creates a reference to an Observation resource."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -320,9 +316,7 @@ class TestImmunizationConversion:
         assert "reference" in reaction["detail"]
         assert reaction["detail"]["reference"].startswith("urn:uuid:")
 
-    def test_reaction_observation_created_in_bundle(
-        self, ccda_immunization: str
-    ) -> None:
+    def test_reaction_observation_created_in_bundle(self, ccda_immunization: str) -> None:
         """Test that reaction Observation resource is created in the bundle."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -353,9 +347,7 @@ class TestImmunizationConversion:
         assert reaction_observation["resourceType"] == "Observation"
         assert reaction_observation["status"] == "final"
 
-    def test_reaction_observation_has_correct_code(
-        self, ccda_immunization: str
-    ) -> None:
+    def test_reaction_observation_has_correct_code(self, ccda_immunization: str) -> None:
         """Test that reaction Observation has the correct code from C-CDA value."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -384,9 +376,7 @@ class TestImmunizationConversion:
         assert observation["code"]["coding"][0]["code"] == "247472004"
         assert observation["code"]["coding"][0]["display"] == "Wheal"
 
-    def test_reaction_observation_has_value_codeable_concept(
-        self, ccda_immunization: str
-    ) -> None:
+    def test_reaction_observation_has_value_codeable_concept(self, ccda_immunization: str) -> None:
         """Test that reaction Observation has valueCodeableConcept."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -411,9 +401,7 @@ class TestImmunizationConversion:
         assert "valueCodeableConcept" in observation
         assert observation["valueCodeableConcept"]["coding"][0]["code"] == "247472004"
 
-    def test_reaction_has_date_from_effective_time(
-        self, ccda_immunization: str
-    ) -> None:
+    def test_reaction_has_date_from_effective_time(self, ccda_immunization: str) -> None:
         """Test that reaction includes date from effectiveTime."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -426,9 +414,7 @@ class TestImmunizationConversion:
         assert "date" in reaction
         assert reaction["date"] == "2008-05-01"
 
-    def test_reaction_observation_has_effective_date_time(
-        self, ccda_immunization: str
-    ) -> None:
+    def test_reaction_observation_has_effective_date_time(self, ccda_immunization: str) -> None:
         """Test that reaction Observation has effectiveDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -453,9 +439,7 @@ class TestImmunizationConversion:
         assert "effectiveDateTime" in observation
         assert observation["effectiveDateTime"] == "2008-05-01"
 
-    def test_converts_comment_activity_to_note(
-        self, ccda_immunization_with_comment: str
-    ) -> None:
+    def test_converts_comment_activity_to_note(self, ccda_immunization_with_comment: str) -> None:
         """Test that Comment Activity is converted to Immunization.note."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_with_comment, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -470,7 +454,10 @@ class TestImmunizationConversion:
         # Check note content
         note = immunization["note"][0]
         assert "text" in note
-        assert note["text"] == "Patient tolerated the vaccine well. No immediate adverse reactions observed."
+        assert (
+            note["text"]
+            == "Patient tolerated the vaccine well. No immediate adverse reactions observed."
+        )
 
     def test_supporting_observations_create_separate_resources(
         self, ccda_immunization_with_supporting_observations: str
@@ -528,7 +515,7 @@ class TestImmunizationConversion:
         complication_obs = None
         for obs in observations:
             if "code" in obs and "coding" in obs["code"]:
-                for coding in obs["code"]["coding"]:
+                for _coding in obs["code"]["coding"]:
                     # Injection site infection: 40983000
                     if "valueCodeableConcept" in obs:
                         value_codings = obs["valueCodeableConcept"].get("coding", [])
@@ -618,7 +605,9 @@ class TestImmunizationConversion:
         assert infection_obs["valueCodeableConcept"]["coding"][0]["code"] == "40983000"
         assert "infection" in infection_obs["valueCodeableConcept"]["coding"][0]["display"].lower()
 
-    def test_vaccine_code_required_when_null_flavor(self, ccda_immunization_no_vaccine_code: str) -> None:
+    def test_vaccine_code_required_when_null_flavor(
+        self, ccda_immunization_no_vaccine_code: str
+    ) -> None:
         """Test that Immunization without vaccineCode is not created.
 
         Per FHIR R4B spec and user code review, vaccineCode is required (1..1 cardinality).
@@ -627,7 +616,9 @@ class TestImmunizationConversion:
 
         This ensures strict validation and FHIR compliance.
         """
-        ccda_doc = wrap_in_ccda_document(ccda_immunization_no_vaccine_code, IMMUNIZATIONS_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_immunization_no_vaccine_code, IMMUNIZATIONS_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         # Immunization should NOT be created when vaccine code is missing
@@ -674,7 +665,9 @@ class TestImmunizationConversion:
                 </performer>
             </substanceAdministration>
         """
-        ccda_doc = wrap_in_ccda_document(ccda_immunization_with_performer, IMMUNIZATIONS_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_immunization_with_performer, IMMUNIZATIONS_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")
@@ -692,4 +685,7 @@ class TestImmunizationConversion:
         # Verify function is set to Administering Provider
         assert "function" in performer
         assert performer["function"]["coding"][0]["code"] == "AP"
-        assert performer["function"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/v2-0443"
+        assert (
+            performer["function"]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/v2-0443"
+        )

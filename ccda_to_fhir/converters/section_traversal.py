@@ -27,7 +27,9 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 # Union type for template-bearing entry elements
-ClinicalStatement = Act | Observation | Organizer | Procedure | CDAEncounter | SubstanceAdministration
+ClinicalStatement = (
+    Act | Observation | Organizer | Procedure | CDAEncounter | SubstanceAdministration
+)
 
 
 def _iter_sections(body: StructuredBody) -> Iterator[tuple[Section, str | None]]:
@@ -125,14 +127,16 @@ def iter_matching_substance_administrations(
             yield sa, section, section_code
 
 
-def scan_skipped_templates(
-    body: StructuredBody, metadata: ConversionMetadata
-) -> None:
+def scan_skipped_templates(body: StructuredBody, metadata: ConversionMetadata) -> None:
     """Scan all entries and track unsupported templates as skipped."""
     for entry, _section, _section_code in _iter_entries(body):
         for element in (
-            entry.act, entry.observation, entry.organizer,
-            entry.procedure, entry.encounter, entry.substance_administration,
+            entry.act,
+            entry.observation,
+            entry.organizer,
+            entry.procedure,
+            entry.encounter,
+            entry.substance_administration,
         ):
             if element is None or not element.template_id:
                 continue
@@ -147,9 +151,13 @@ def scan_skipped_templates(
 
 # --- Result collection helpers ---
 
+
 def collect_results(
     resources: list[FHIRResourceDict],
-    result: FHIRResourceDict | list[FHIRResourceDict] | tuple[FHIRResourceDict, list[FHIRResourceDict]] | None,
+    result: FHIRResourceDict
+    | list[FHIRResourceDict]
+    | tuple[FHIRResourceDict, list[FHIRResourceDict]]
+    | None,
 ) -> None:
     """Append converter result(s) to the resources list."""
     if isinstance(result, tuple):
@@ -163,6 +171,7 @@ def collect_results(
 
 
 # --- Error handling ---
+
 
 @contextmanager
 def converting(
@@ -192,6 +201,7 @@ def converting(
 
 
 # --- Metadata tracking helpers ---
+
 
 def track_processed(metadata: ConversionMetadata, template_id: str) -> None:
     """Track a successfully processed template."""
@@ -227,9 +237,11 @@ def track_error(
         first = element_ids[0]
         if first:
             entry_id = f"{first.root}/{first.extension or ''}"
-    metadata["errors"].append({
-        "template_id": template_id,
-        "entry_id": entry_id,
-        "error_type": type(error).__name__,
-        "error_message": str(error),
-    })
+    metadata["errors"].append(
+        {
+            "template_id": template_id,
+            "entry_id": entry_id,
+            "error_type": type(error).__name__,
+            "error_message": str(error),
+        }
+    )

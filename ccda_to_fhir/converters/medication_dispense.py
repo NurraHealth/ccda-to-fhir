@@ -49,7 +49,9 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         """Initialize the medication dispense converter."""
         super().__init__(*args, **kwargs)
 
-    def convert(self, ccda_model: Supply, parent_medication_request_id: str | None = None) -> FHIRResourceDict:
+    def convert(
+        self, ccda_model: Supply, parent_medication_request_id: str | None = None
+    ) -> FHIRResourceDict:
         """Convert a C-CDA Medication Dispense to a FHIR MedicationDispense.
 
         Args:
@@ -86,6 +88,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         # 1. Generate ID from supply identifier
         if supply.id and len(supply.id) > 0:
             from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
             first_id = supply.id[0]
             med_dispense["id"] = generate_id_from_identifiers(
                 "MedicationDispense",
@@ -166,7 +169,11 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         if supply.quantity and supply.quantity.value:
             # Convert value to number if it's a string
             try:
-                value = float(supply.quantity.value) if isinstance(supply.quantity.value, str) else supply.quantity.value
+                value = (
+                    float(supply.quantity.value)
+                    if isinstance(supply.quantity.value, str)
+                    else supply.quantity.value
+                )
             except (ValueError, TypeError):
                 value = None
 
@@ -190,14 +197,17 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         # FHIR invariant mdd-1: whenHandedOver cannot be before whenPrepared
         # FHIRPath: whenHandedOver.empty() or whenPrepared.empty() or whenHandedOver >= whenPrepared
-        if "whenPrepared" in med_dispense and "whenHandedOver" in med_dispense:
-            if med_dispense["whenHandedOver"] < med_dispense["whenPrepared"]:
-                logger.warning(
-                    f"FHIR invariant mdd-1 violation: whenHandedOver ({med_dispense['whenHandedOver']}) "
-                    f"cannot be before whenPrepared ({med_dispense['whenPrepared']}). "
-                    "Removing whenHandedOver to maintain FHIR validity."
-                )
-                del med_dispense["whenHandedOver"]
+        if (
+            "whenPrepared" in med_dispense
+            and "whenHandedOver" in med_dispense
+            and med_dispense["whenHandedOver"] < med_dispense["whenPrepared"]
+        ):
+            logger.warning(
+                f"FHIR invariant mdd-1 violation: whenHandedOver ({med_dispense['whenHandedOver']}) "
+                f"cannot be before whenPrepared ({med_dispense['whenPrepared']}). "
+                "Removing whenHandedOver to maintain FHIR validity."
+            )
+            del med_dispense["whenHandedOver"]
 
         # US Core constraint: whenHandedOver SHALL be present if status='completed'
         # If status is completed but no whenHandedOver, adjust status to in-progress
@@ -236,20 +246,22 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         # Extract status from code element (required per C-CDA)
         if not supply.code or not supply.code.code:
             logger.warning(
-                "Medication Dispense missing required code element. "
-                "Defaulting to 'completed'."
+                "Medication Dispense missing required code element. Defaulting to 'completed'."
             )
             return FHIRCodes.MedicationDispenseStatus.COMPLETED
 
         code_value = supply.code.code
 
         # Validate statusCode if present (should always be "completed" per C-CDA)
-        if supply.status_code:
-            if supply.status_code.code and supply.status_code.code != "completed":
-                logger.warning(
-                    f"Medication Dispense statusCode should be 'completed' per C-CDA spec, "
-                    f"found '{supply.status_code.code}'"
-                )
+        if (
+            supply.status_code
+            and supply.status_code.code
+            and supply.status_code.code != "completed"
+        ):
+            logger.warning(
+                f"Medication Dispense statusCode should be 'completed' per C-CDA spec, "
+                f"found '{supply.status_code.code}'"
+            )
 
         # Check if code_value is already a FHIR status code (preferred per spec)
         valid_fhir_codes = {
@@ -333,7 +345,9 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         )
         return concept.to_dict() if concept else None
 
-    def _extract_performers_and_location(self, supply: Supply) -> tuple[list[JSONObject] | None, str | None]:
+    def _extract_performers_and_location(
+        self, supply: Supply
+    ) -> tuple[list[JSONObject] | None, str | None]:
         """Extract performers (pharmacy/pharmacist) and location (pharmacy) from supply.
 
         Also creates Location resource for pharmacy when representedOrganization is present.
@@ -371,7 +385,9 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                         performer_obj["actor"] = actor_ref.to_dict()
 
                     # Determine function from C-CDA functionCode or use context-based default
-                    performer_obj["function"] = self._determine_performer_function(perf, context="performer")
+                    performer_obj["function"] = self._determine_performer_function(
+                        perf, context="performer"
+                    )
 
                     if performer_obj.get("actor"):
                         performers.append(performer_obj)
@@ -385,7 +401,9 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                         actor_ref = FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
                         performer_obj["actor"] = actor_ref.to_dict()
                         # Determine function from C-CDA functionCode or use context-based default
-                        performer_obj["function"] = self._determine_performer_function(perf, context="performer")
+                        performer_obj["function"] = self._determine_performer_function(
+                            perf, context="performer"
+                        )
                         performers.append(performer_obj)
 
                 # Create Location resource from representedOrganization
@@ -408,7 +426,9 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                         display = format_person_display(assigned.assigned_person)
                         actor_ref = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
                         performer_obj = {
-                            "function": self._determine_performer_function(author, context="author"),
+                            "function": self._determine_performer_function(
+                                author, context="author"
+                            ),
                             "actor": actor_ref.to_dict(),
                         }
                         performers.append(performer_obj)
@@ -493,24 +513,27 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             # Check if it's a Days Supply template
             if nested_supply.template_id:
                 for template_id in nested_supply.template_id:
-                    if template_id.root == "2.16.840.1.113883.10.20.37.3.10":
+                    if (
+                        template_id.root == "2.16.840.1.113883.10.20.37.3.10"
                         # This is a Days Supply
-                        if nested_supply.quantity and nested_supply.quantity.value:
-                            # Convert value to number if it's a string
-                            try:
-                                value = (
-                                    float(nested_supply.quantity.value)
-                                    if isinstance(nested_supply.quantity.value, str)
-                                    else nested_supply.quantity.value
-                                )
-                            except (ValueError, TypeError):
-                                value = None
+                        and nested_supply.quantity
+                        and nested_supply.quantity.value
+                    ):
+                        # Convert value to number if it's a string
+                        try:
+                            value = (
+                                float(nested_supply.quantity.value)
+                                if isinstance(nested_supply.quantity.value, str)
+                                else nested_supply.quantity.value
+                            )
+                        except (ValueError, TypeError):
+                            value = None
 
-                            if value is not None:
-                                return self.create_quantity(
-                                    value,
-                                    nested_supply.quantity.unit,
-                                )
+                        if value is not None:
+                            return self.create_quantity(
+                                value,
+                                nested_supply.quantity.unit,
+                            )
 
         return None
 
@@ -550,10 +573,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         return timing if timing else None
 
-    def _create_pharmacy_location(
-        self,
-        organization: RepresentedOrganization
-    ) -> str | None:
+    def _create_pharmacy_location(self, organization: RepresentedOrganization) -> str | None:
         """Create Location resource for pharmacy organization.
 
         Maps C-CDA performer/representedOrganization to FHIR Location resource
@@ -602,13 +622,17 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         # Add type (pharmacy location)
         # Per FHIR standards, use RoleCode "PHARM" for pharmacy locations
-        location["type"] = [{
-            "coding": [{
-                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
-                "code": "PHARM",
-                "display": "Pharmacy"
-            }]
-        }]
+        location["type"] = [
+            {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                        "code": "PHARM",
+                        "display": "Pharmacy",
+                    }
+                ]
+            }
+        ]
 
         # Add address if available
         if organization.addr:
@@ -648,10 +672,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         return f"urn:uuid:{location_id}"
 
-    def _create_pharmacy_organization(
-        self,
-        organization: RepresentedOrganization
-    ) -> str | None:
+    def _create_pharmacy_organization(self, organization: RepresentedOrganization) -> str | None:
         """Create Organization resource for pharmacy.
 
         Maps C-CDA performer/representedOrganization to FHIR Organization resource.
@@ -687,9 +708,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             for id_elem in organization.id:
                 if id_elem.root:
                     org_id = generate_id_from_identifiers(
-                        "Organization",
-                        id_elem.root,
-                        id_elem.extension
+                        "Organization", id_elem.root, id_elem.extension
                     )
                     break
 
@@ -746,21 +765,13 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
         if organization.id:
             for id_elem in organization.id:
                 if id_elem.root:
-                    return generate_id_from_identifiers(
-                        "Location",
-                        id_elem.root,
-                        id_elem.extension
-                    )
+                    return generate_id_from_identifiers("Location", id_elem.root, id_elem.extension)
 
         # Fallback: Generate from organization name
         name = self._extract_organization_name(organization)
         if name:
             # Use name as fallback context for deterministic ID generation
-            return generate_id_from_identifiers(
-                "Location",
-                None,
-                name
-            )
+            return generate_id_from_identifiers("Location", None, name)
 
         # Ultimate fallback: Generate random ID
         return generate_id_from_identifiers("Location", None, None)
@@ -891,17 +902,8 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                 )
 
         # Use mapped function if available, otherwise use context-based default
-        if mapped_function:
-            function_code = mapped_function
-        else:
-            # Context-based defaults
-            if context == "author":
-                # Author typically represents the person who packaged/prepared the medication
-                function_code = "packager"
-            else:
-                # Performer (from supply.performer) represents the dispensing pharmacy/pharmacist
-                # who verified and finalized the dispense
-                function_code = "finalchecker"
+        # Author = packager; performer = final checker (dispensing pharmacist)
+        function_code = mapped_function or ("packager" if context == "author" else "finalchecker")
 
         # Map to display names
         display_map = {
@@ -954,32 +956,28 @@ def extract_medication_dispenses(
             supply = rel.supply
 
             # Check if this is a Medication Dispense (moodCode="EVN")
-            if supply.mood_code == "EVN":
-                # Check for Medication Dispense template
-                if supply.template_id:
-                    is_dispense = any(
-                        tid.root == TemplateIds.MEDICATION_DISPENSE
-                        for tid in supply.template_id
-                        if tid.root
-                    )
+            # Check for Medication Dispense template
+            if supply.mood_code == "EVN" and supply.template_id:
+                is_dispense = any(
+                    tid.root == TemplateIds.MEDICATION_DISPENSE
+                    for tid in supply.template_id
+                    if tid.root
+                )
 
-                    if is_dispense:
-                        try:
-                            converter = MedicationDispenseConverter(
-                                code_system_mapper=code_system_mapper,
-                                reference_registry=reference_registry,
-                            )
-                            dispense = converter.convert(supply)
+                if is_dispense:
+                    try:
+                        converter = MedicationDispenseConverter(
+                            code_system_mapper=code_system_mapper,
+                            reference_registry=reference_registry,
+                        )
+                        dispense = converter.convert(supply)
 
-                            # Store in global registry
-                            if dispense.get("id"):
-                                _dispense_registry[dispense["id"]] = dispense
-                                logger.debug(f"Extracted MedicationDispense: {dispense['id']}")
-                        except Exception as e:
-                            logger.warning(
-                                f"Failed to extract medication dispense: {e}",
-                                exc_info=True
-                            )
+                        # Store in global registry
+                        if dispense.get("id"):
+                            _dispense_registry[dispense["id"]] = dispense
+                            logger.debug(f"Extracted MedicationDispense: {dispense['id']}")
+                    except Exception as e:
+                        logger.warning(f"Failed to extract medication dispense: {e}", exc_info=True)
 
 
 def get_medication_dispense_resources() -> list[FHIRResourceDict]:

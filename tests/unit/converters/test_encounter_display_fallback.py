@@ -20,7 +20,7 @@ from ccda_to_fhir.id_generator import reset_id_cache
 
 
 @pytest.fixture(autouse=True)
-def _reset_ids():
+def _reset_ids():  # pyright: ignore[reportUnusedFunction]
     reset_id_cache()
     yield
     reset_id_cache()

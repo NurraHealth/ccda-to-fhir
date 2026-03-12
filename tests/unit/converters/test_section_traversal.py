@@ -38,7 +38,6 @@ from ccda_to_fhir.converters.section_traversal import (
 )
 from ccda_to_fhir.types import ConversionMetadata
 
-
 TEMPLATE_A = "2.16.840.1.113883.10.20.22.4.999"
 TEMPLATE_B = "2.16.840.1.113883.10.20.22.4.888"
 
@@ -63,9 +62,7 @@ def _make_section(
 
 
 def _make_body(*sections: Section) -> StructuredBody:
-    return StructuredBody(
-        component=[SectionComponent(section=s) for s in sections]
-    )
+    return StructuredBody(component=[SectionComponent(section=s) for s in sections])
 
 
 def _make_metadata() -> ConversionMetadata:
@@ -247,9 +244,7 @@ class TestIterMatchingEncounters:
 class TestIterMatchingSubstanceAdministrations:
     def test_yields_matching(self):
         sa = SubstanceAdministration(template_id=[_make_ii(TEMPLATE_A)])
-        body = _make_body(
-            _make_section(entries=[Entry(substance_administration=sa)])
-        )
+        body = _make_body(_make_section(entries=[Entry(substance_administration=sa)]))
         results = list(iter_matching_substance_administrations(body, TEMPLATE_A))
         assert len(results) == 1
         assert results[0][0] is sa
@@ -309,9 +304,8 @@ class TestConverting:
 
     def test_logs_error(self, caplog):
         metadata = _make_metadata()
-        with caplog.at_level(logging.ERROR):
-            with converting(metadata, TEMPLATE_A, None, "test thing"):
-                raise ValueError("x")
+        with caplog.at_level(logging.ERROR), converting(metadata, TEMPLATE_A, None, "test thing"):
+            raise ValueError("x")
         assert "Error converting test thing" in caplog.text
 
     def test_none_metadata_skips_tracking(self):
@@ -320,9 +314,8 @@ class TestConverting:
             pass
 
     def test_none_metadata_exception_still_logged(self, caplog):
-        with caplog.at_level(logging.ERROR):
-            with converting(None, TEMPLATE_A, None, "test thing"):
-                raise ValueError("x")
+        with caplog.at_level(logging.ERROR), converting(None, TEMPLATE_A, None, "test thing"):
+            raise ValueError("x")
         assert "Error converting test thing" in caplog.text
 
     def test_tracks_element_ids_in_error(self):
@@ -445,9 +438,7 @@ class TestScanSkippedTemplates:
             Entry(procedure=Procedure(template_id=[_make_ii(oids[3])])),
             Entry(encounter=CDAEncounter(template_id=[_make_ii(oids[4])])),
             Entry(
-                substance_administration=SubstanceAdministration(
-                    template_id=[_make_ii(oids[5])]
-                )
+                substance_administration=SubstanceAdministration(template_id=[_make_ii(oids[5])])
             ),
         ]
         body = _make_body(_make_section(entries=entries))

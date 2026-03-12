@@ -29,7 +29,6 @@ class SupportedTemplates:
         TemplateIds.PROBLEM_OBSERVATION: "Problem Observation",
         TemplateIds.PROBLEM_STATUS_OBSERVATION: "Problem Status Observation",
         "2.16.840.1.113883.10.20.22.4.502": "Date of Diagnosis Act",
-
         # Allergies (03-allergy-intolerance.md)
         TemplateIds.ALLERGY_CONCERN_ACT: "Allergy Concern Act",
         TemplateIds.ALLERGY_INTOLERANCE_OBSERVATION: "Allergy Intolerance Observation",
@@ -37,7 +36,6 @@ class SupportedTemplates:
         TemplateIds.SEVERITY_OBSERVATION: "Severity Observation",
         TemplateIds.REACTION_OBSERVATION: "Reaction Observation",
         TemplateIds.CRITICALITY_OBSERVATION: "Criticality Observation",
-
         # Observations (04-observation.md, 11-social-history.md, 12-vital-signs.md)
         TemplateIds.RESULT_ORGANIZER: "Result Organizer",
         TemplateIds.RESULT_OBSERVATION: "Result Observation",
@@ -50,19 +48,16 @@ class SupportedTemplates:
         TemplateIds.BIRTH_SEX_OBSERVATION: "Birth Sex Observation",
         TemplateIds.TRIBAL_AFFILIATION_OBSERVATION: "Tribal Affiliation Observation",
         TemplateIds.SEX_PARAMETER_FOR_CLINICAL_USE_OBSERVATION: "Sex Parameter for Clinical Use",
-
         # Procedures (05-procedure.md, 18-service-request.md)
         TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE: "Procedure Activity Procedure",
         TemplateIds.PROCEDURE_ACTIVITY_ACT: "Procedure Activity Act",
         TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION: "Procedure Activity Observation",
         TemplateIds.PLANNED_PROCEDURE: "Planned Procedure",
         TemplateIds.PLANNED_ACT: "Planned Act",
-
         # Immunizations (06-immunization.md)
         TemplateIds.IMMUNIZATION_ACTIVITY: "Immunization Activity",
         TemplateIds.IMMUNIZATION_MEDICATION_INFORMATION: "Immunization Medication Information",
         TemplateIds.IMMUNIZATION_REFUSAL_REASON: "Immunization Refusal Reason",
-
         # Medications (07-medication-request.md, 15-medication-dispense.md, 23-medication.md, 24-medication-statement.md)
         TemplateIds.MEDICATION_ACTIVITY: "Medication Activity",
         TemplateIds.MEDICATION_INFORMATION: "Medication Information",
@@ -70,30 +65,24 @@ class SupportedTemplates:
         TemplateIds.INSTRUCTION_ACT: "Instruction Act",
         TemplateIds.MEDICATION_SUPPLY_ORDER: "Medication Supply Order",
         TemplateIds.MEDICATION_DISPENSE: "Medication Dispense",
-
         # Encounters (08-encounter.md)
         TemplateIds.ENCOUNTER_ACTIVITY: "Encounter Activity",
         TemplateIds.ENCOUNTER_DIAGNOSIS: "Encounter Diagnosis",
-
         # Notes (10-notes.md, 26-document-reference.md)
         TemplateIds.NOTE_ACTIVITY: "Note Activity",
-
         # Goals (13-goal.md)
         TemplateIds.GOAL_OBSERVATION: "Goal Observation",
         TemplateIds.PRIORITY_PREFERENCE: "Priority Preference",
         TemplateIds.PROGRESS_TOWARD_GOAL: "Progress Toward Goal Observation",
         TemplateIds.ENTRY_REFERENCE: "Entry Reference",
-
         # Care Plans (14-careplan.md)
         TemplateIds.HEALTH_CONCERN_ACT: "Health Concern Act",
         TemplateIds.INTERVENTION_ACT: "Intervention Act",
         "2.16.840.1.113883.10.20.22.4.146": "Planned Intervention Act",
-
         # Care Teams (17-careteam.md)
         TemplateIds.CARE_TEAM_ORGANIZER: "Care Team Organizer",
         "2.16.840.1.113883.10.20.22.4.500.1": "Care Team Member Act",
         "2.16.840.1.113883.10.20.22.4.500.2": "Care Team Member Schedule Observation",
-
         # Coverage/Payers
         TemplateIds.COVERAGE_ACTIVITY: "Coverage Activity",
         TemplateIds.POLICY_ACTIVITY: "Policy Activity",
@@ -101,10 +90,8 @@ class SupportedTemplates:
         TemplateIds.GUARANTOR_PERFORMER: "Guarantor Performer",
         TemplateIds.COVERED_PARTY: "Covered Party Participant",
         TemplateIds.POLICY_HOLDER: "Policy Holder Participant",
-
         # Devices (22-device.md)
         "2.16.840.1.113883.10.20.22.4.37": "Product Instance",
-
         # Supporting templates
         TemplateIds.AGE_OBSERVATION: "Age Observation",
         TemplateIds.COMMENT_ACTIVITY: "Comment Activity",

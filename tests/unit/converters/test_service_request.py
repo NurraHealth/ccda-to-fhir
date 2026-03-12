@@ -390,15 +390,16 @@ class TestOccurrenceTime:
 
         # Should have either occurrenceDateTime or occurrencePeriod
         has_occurrence = (
-            "occurrenceDateTime" in service_request
-            or "occurrencePeriod" in service_request
+            "occurrenceDateTime" in service_request or "occurrencePeriod" in service_request
         )
         assert has_occurrence
 
-    def test_occurrence_missing_when_no_effective_time(self, basic_planned_procedure, mock_reference_registry):
+    def test_occurrence_missing_when_no_effective_time(
+        self, basic_planned_procedure, mock_reference_registry
+    ):
         """Test missing effectiveTime results in no occurrence field."""
         converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
-        service_request = converter.convert(basic_planned_procedure)
+        converter.convert(basic_planned_procedure)
 
         # Occurrence fields should be optional
         # Test passes regardless of whether they're present
@@ -423,7 +424,9 @@ class TestRequiredFields:
         assert "code" in service_request
         assert "subject" in service_request
 
-    def test_resource_type_is_service_request(self, basic_planned_procedure, mock_reference_registry):
+    def test_resource_type_is_service_request(
+        self, basic_planned_procedure, mock_reference_registry
+    ):
         """Test resourceType is 'ServiceRequest'."""
         converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(basic_planned_procedure)
@@ -449,9 +452,7 @@ class TestUSCoreProfile:
         assert isinstance(service_request["meta"]["profile"], list)
 
         # Verify US Core profile URL
-        profile_url = (
-            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest"
-        )
+        profile_url = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest"
         assert profile_url in service_request["meta"]["profile"]
 
     def test_subject_reference_present(self, basic_planned_procedure, mock_reference_registry):

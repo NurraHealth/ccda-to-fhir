@@ -62,7 +62,7 @@ class TestParseTimeValidation:
             </ClinicalDocument>
         """
 
-        with pytest.raises(Exception):  # XML parsing error
+        with pytest.raises(Exception, match=""):  # XML parsing error
             convert_document(invalid_xml)
 
 
@@ -149,7 +149,7 @@ class TestConverterErrorMessages:
             templateId=[II(root="2.16.840.1.113883.10.20.22.4.14")],
             id=[II(root="test-procedure")],
             code=CD(code="80146002", codeSystem="2.16.840.1.113883.6.96"),
-            statusCode=CS(code="completed")
+            statusCode=CS(code="completed"),
         )
 
         with pytest.raises(ValueError) as exc_info:
@@ -158,7 +158,6 @@ class TestConverterErrorMessages:
         error_message = str(exc_info.value)
         assert "reference_registry" in error_message.lower()
         assert "required" in error_message.lower()
-
 
 
 class TestErrorMessageQuality:

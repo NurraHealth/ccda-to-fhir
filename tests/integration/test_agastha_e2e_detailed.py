@@ -27,9 +27,9 @@ Key Features Tested:
 from pathlib import Path
 
 import pytest
+from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
-from fhir.resources.bundle import Bundle
 from tests.integration.helpers.codeable_concept_validators import (
     assert_allergy_clinical_status,
     assert_immunization_status_reason,
@@ -73,13 +73,16 @@ class TestAgasthaE2E:
 
         # Verify has Patient and Composition
         has_patient = any(e.resource.get_resource_type() == "Patient" for e in agastha_bundle.entry)
-        has_composition = any(e.resource.get_resource_type() == "Composition" for e in agastha_bundle.entry)
+        has_composition = any(
+            e.resource.get_resource_type() == "Composition" for e in agastha_bundle.entry
+        )
         assert has_patient, "Bundle must contain Patient resource"
         assert has_composition, "Bundle must contain Composition resource"
 
     def test_resource_counts(self, agastha_bundle):
         """Validate exact resource counts for each type."""
         from collections import Counter
+
         resource_types = Counter(e.resource.get_resource_type() for e in agastha_bundle.entry)
 
         assert resource_types["Patient"] == 1
@@ -97,7 +100,9 @@ class TestAgasthaE2E:
         assert resource_types["Encounter"] == 1
         assert resource_types["Location"] == 1
         assert resource_types["Organization"] == 2
-        assert resource_types["Practitioner"] == 1  # Properly deduplicated - same NPI appears 15 times
+        assert (
+            resource_types["Practitioner"] == 1
+        )  # Properly deduplicated - same NPI appears 15 times
 
     # ========================================================================
     # PATIENT - Alice Newman
@@ -106,9 +111,12 @@ class TestAgasthaE2E:
     def test_patient_alice_newman_demographics(self, agastha_bundle):
         """Validate patient Alice Newman has correct demographics."""
         patient = next(
-            (e.resource for e in agastha_bundle.entry
-             if e.resource.get_resource_type() == "Patient"),
-            None
+            (
+                e.resource
+                for e in agastha_bundle.entry
+                if e.resource.get_resource_type() == "Patient"
+            ),
+            None,
         )
 
         assert patient is not None, "Bundle must contain Patient"
@@ -127,9 +135,12 @@ class TestAgasthaE2E:
     def test_patient_address_beaverton_oregon(self, agastha_bundle):
         """Validate patient address in Beaverton, Oregon."""
         patient = next(
-            (e.resource for e in agastha_bundle.entry
-             if e.resource.get_resource_type() == "Patient"),
-            None
+            (
+                e.resource
+                for e in agastha_bundle.entry
+                if e.resource.get_resource_type() == "Patient"
+            ),
+            None,
         )
 
         assert len(patient.address) > 0, "Patient must have address"
@@ -141,7 +152,8 @@ class TestAgasthaE2E:
     def test_patient_has_related_person_contact(self, agastha_bundle):
         """Validate patient has RelatedPerson contact."""
         related_persons = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "RelatedPerson"
         ]
 
@@ -156,14 +168,14 @@ class TestAgasthaE2E:
     def test_condition_fever(self, agastha_bundle):
         """Validate Condition: Fever (SNOMED 386661006)."""
         conditions = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Condition"
         ]
 
         fever = next(
-            (c for c in conditions
-             if any(coding.code == "386661006" for coding in c.code.coding)),
-            None
+            (c for c in conditions if any(coding.code == "386661006" for coding in c.code.coding)),
+            None,
         )
 
         assert fever is not None, "Must have Fever condition"
@@ -173,23 +185,26 @@ class TestAgasthaE2E:
     def test_condition_chronic_renal_transplant_rejection(self, agastha_bundle):
         """Validate Condition: Chronic rejection of renal transplant (SNOMED 236578006)."""
         conditions = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Condition"
         ]
 
         rejection = next(
-            (c for c in conditions
-             if any(coding.code == "236578006" for coding in c.code.coding)),
-            None
+            (c for c in conditions if any(coding.code == "236578006" for coding in c.code.coding)),
+            None,
         )
 
         assert rejection is not None, "Must have chronic renal transplant rejection condition"
 
         # Verify SNOMED coding
         snomed_coding = next(
-            (coding for coding in rejection.code.coding
-             if coding.system == "http://snomed.info/sct"),
-            None
+            (
+                coding
+                for coding in rejection.code.coding
+                if coding.system == "http://snomed.info/sct"
+            ),
+            None,
         )
         assert snomed_coding is not None, "Must have SNOMED coding"
         assert snomed_coding.display == "Chronic rejection of renal transplant"
@@ -197,14 +212,14 @@ class TestAgasthaE2E:
     def test_condition_essential_hypertension(self, agastha_bundle):
         """Validate Condition: Essential Hypertension (SNOMED 59621000)."""
         conditions = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Condition"
         ]
 
         htn = next(
-            (c for c in conditions
-             if any(coding.code == "59621000" for coding in c.code.coding)),
-            None
+            (c for c in conditions if any(coding.code == "59621000" for coding in c.code.coding)),
+            None,
         )
 
         assert htn is not None, "Must have Essential Hypertension condition"
@@ -212,14 +227,14 @@ class TestAgasthaE2E:
     def test_condition_overweight(self, agastha_bundle):
         """Validate Condition: Overweight (SNOMED 238131007)."""
         conditions = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Condition"
         ]
 
         overweight = next(
-            (c for c in conditions
-             if any(coding.code == "238131007" for coding in c.code.coding)),
-            None
+            (c for c in conditions if any(coding.code == "238131007" for coding in c.code.coding)),
+            None,
         )
 
         assert overweight is not None, "Must have Overweight condition"
@@ -227,14 +242,14 @@ class TestAgasthaE2E:
     def test_condition_severe_hypothyroidism(self, agastha_bundle):
         """Validate Condition: Severe Hypothyroidism (SNOMED 83986005)."""
         conditions = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Condition"
         ]
 
         hypothyroid = next(
-            (c for c in conditions
-             if any(coding.code == "83986005" for coding in c.code.coding)),
-            None
+            (c for c in conditions if any(coding.code == "83986005" for coding in c.code.coding)),
+            None,
         )
 
         assert hypothyroid is not None, "Must have Severe Hypothyroidism condition"
@@ -242,24 +257,27 @@ class TestAgasthaE2E:
     def test_conditions_have_category(self, agastha_bundle):
         """Validate all Conditions have exact category CodeableConcept."""
         conditions = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Condition"
         ]
 
         for condition in conditions:
-            assert condition.category is not None, \
-                f"Condition {condition.id} must have category"
-            assert len(condition.category) > 0, \
+            assert condition.category is not None, f"Condition {condition.id} must have category"
+            assert len(condition.category) > 0, (
                 f"Condition {condition.id} category must not be empty"
+            )
 
             # PHASE 1.1: Verify exact category CodeableConcept structure
             # Conditions should have either problem-list-item or encounter-diagnosis
             for category in condition.category:
                 coding = category.coding[0]
-                assert coding.system == "http://terminology.hl7.org/CodeSystem/condition-category", \
-                    f"Condition {condition.id} category must have correct system"
-                assert coding.code in ["problem-list-item", "encounter-diagnosis"], \
+                assert (
+                    coding.system == "http://terminology.hl7.org/CodeSystem/condition-category"
+                ), f"Condition {condition.id} category must have correct system"
+                assert coding.code in ["problem-list-item", "encounter-diagnosis"], (
                     f"Condition {condition.id} category code must be valid"
+                )
 
     # ========================================================================
     # ALLERGIES (2)
@@ -268,14 +286,13 @@ class TestAgasthaE2E:
     def test_allergy_penicillin_g(self, agastha_bundle):
         """Validate AllergyIntolerance: Penicillin G (RxNorm 7980)."""
         allergies = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "AllergyIntolerance"
         ]
 
         penicillin = next(
-            (a for a in allergies
-             if any(coding.code == "7980" for coding in a.code.coding)),
-            None
+            (a for a in allergies if any(coding.code == "7980" for coding in a.code.coding)), None
         )
 
         assert penicillin is not None, "Must have Penicillin G allergy"
@@ -287,14 +304,13 @@ class TestAgasthaE2E:
     def test_allergy_ampicillin(self, agastha_bundle):
         """Validate AllergyIntolerance: Ampicillin (RxNorm 733)."""
         allergies = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "AllergyIntolerance"
         ]
 
         ampicillin = next(
-            (a for a in allergies
-             if any(coding.code == "733" for coding in a.code.coding)),
-            None
+            (a for a in allergies if any(coding.code == "733" for coding in a.code.coding)), None
         )
 
         assert ampicillin is not None, "Must have Ampicillin allergy"
@@ -305,20 +321,22 @@ class TestAgasthaE2E:
     def test_allergies_have_patient_reference(self, agastha_bundle):
         """Validate all AllergyIntolerances reference the patient."""
         allergies = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "AllergyIntolerance"
         ]
 
         for allergy in allergies:
-            assert allergy.patient is not None, \
-                f"Allergy {allergy.id} must reference patient"
-            assert allergy.patient.reference is not None, \
+            assert allergy.patient is not None, f"Allergy {allergy.id} must reference patient"
+            assert allergy.patient.reference is not None, (
                 f"Allergy {allergy.id} patient reference must not be null"
+            )
 
     def test_allergy_reaction_manifestation_exact(self, agastha_bundle):
         """PHASE 1.2: Validate AllergyIntolerance.reaction.manifestation exact structure."""
         allergies = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "AllergyIntolerance"
         ]
 
@@ -328,27 +346,31 @@ class TestAgasthaE2E:
         for allergy in allergies_with_reactions:
             for reaction in allergy.reaction:
                 # Manifestation must exist and have CodeableConcept structure
-                assert reaction.manifestation is not None, \
+                assert reaction.manifestation is not None, (
                     f"Allergy {allergy.id} reaction must have manifestation"
-                assert len(reaction.manifestation) > 0, \
+                )
+                assert len(reaction.manifestation) > 0, (
                     f"Allergy {allergy.id} reaction.manifestation must not be empty"
+                )
 
                 # Each manifestation should have SNOMED coding
                 for manifestation in reaction.manifestation:
-                    assert manifestation.coding is not None, \
+                    assert manifestation.coding is not None, (
                         "Reaction manifestation must have coding"
-                    assert len(manifestation.coding) > 0, \
+                    )
+                    assert len(manifestation.coding) > 0, (
                         "Reaction manifestation must have at least one coding"
+                    )
 
                     # Find SNOMED coding (should be primary)
                     snomed_coding = next(
                         (c for c in manifestation.coding if c.system == "http://snomed.info/sct"),
-                        None
+                        None,
                     )
-                    assert snomed_coding is not None, \
+                    assert snomed_coding is not None, (
                         "Reaction manifestation must have SNOMED CT coding"
-                    assert snomed_coding.code is not None, \
-                        "SNOMED coding must have code"
+                    )
+                    assert snomed_coding.code is not None, "SNOMED coding must have code"
                     # CONVERTER FIXED: Display text now populated from C-CDA or terminology map
                     # Note: Display may still be None if C-CDA lacks it AND code not in our maps
                     # For now, just verify it exists when C-CDA provides it
@@ -356,7 +378,8 @@ class TestAgasthaE2E:
     def test_allergy_reaction_severity_exact(self, agastha_bundle):
         """PHASE 1.2: Validate AllergyIntolerance.reaction.severity exact values."""
         allergies = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "AllergyIntolerance"
         ]
 
@@ -366,27 +389,31 @@ class TestAgasthaE2E:
                 for reaction in allergy.reaction:
                     if reaction.severity:
                         # Severity must be exact value from FHIR value set
-                        assert reaction.severity in ["mild", "moderate", "severe"], \
+                        assert reaction.severity in ["mild", "moderate", "severe"], (
                             f"Reaction severity must be 'mild', 'moderate', or 'severe', got '{reaction.severity}'"
+                        )
 
     def test_allergy_type_and_category_exact(self, agastha_bundle):
         """PHASE 1.2: Validate AllergyIntolerance.type and .category exact values."""
         allergies = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "AllergyIntolerance"
         ]
 
         for allergy in allergies:
             # Type validation (if present)
             if allergy.type:
-                assert allergy.type in ["allergy", "intolerance"], \
+                assert allergy.type in ["allergy", "intolerance"], (
                     f"AllergyIntolerance.type must be 'allergy' or 'intolerance', got '{allergy.type}'"
+                )
 
             # Category validation (if present)
             if allergy.category:
                 for category in allergy.category:
-                    assert category in ["food", "medication", "environment", "biologic"], \
+                    assert category in ["food", "medication", "environment", "biologic"], (
                         f"AllergyIntolerance.category must be valid value, got '{category}'"
+                    )
 
     # ========================================================================
     # MEDICATIONS (3)
@@ -395,14 +422,18 @@ class TestAgasthaE2E:
     def test_medication_ceftriaxone(self, agastha_bundle):
         """Validate MedicationStatement: CefTRIAXone Sodium (RxNorm 309090)."""
         medications = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "MedicationStatement"
         ]
 
         ceftriaxone = next(
-            (m for m in medications
-             if any(coding.code == "309090" for coding in m.medicationCodeableConcept.coding)),
-            None
+            (
+                m
+                for m in medications
+                if any(coding.code == "309090" for coding in m.medicationCodeableConcept.coding)
+            ),
+            None,
         )
 
         assert ceftriaxone is not None, "Must have CefTRIAXone medication"
@@ -411,14 +442,18 @@ class TestAgasthaE2E:
     def test_medication_aranesp(self, agastha_bundle):
         """Validate MedicationStatement: Aranesp (RxNorm 731241)."""
         medications = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "MedicationStatement"
         ]
 
         aranesp = next(
-            (m for m in medications
-             if any(coding.code == "731241" for coding in m.medicationCodeableConcept.coding)),
-            None
+            (
+                m
+                for m in medications
+                if any(coding.code == "731241" for coding in m.medicationCodeableConcept.coding)
+            ),
+            None,
         )
 
         assert aranesp is not None, "Must have Aranesp medication"
@@ -427,14 +462,18 @@ class TestAgasthaE2E:
     def test_medication_tylenol(self, agastha_bundle):
         """Validate MedicationStatement: Tylenol Extra Strength (RxNorm 209459)."""
         medications = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "MedicationStatement"
         ]
 
         tylenol = next(
-            (m for m in medications
-             if any(coding.code == "209459" for coding in m.medicationCodeableConcept.coding)),
-            None
+            (
+                m
+                for m in medications
+                if any(coding.code == "209459" for coding in m.medicationCodeableConcept.coding)
+            ),
+            None,
         )
 
         assert tylenol is not None, "Must have Tylenol medication"
@@ -443,18 +482,19 @@ class TestAgasthaE2E:
     def test_medications_have_subject(self, agastha_bundle):
         """Validate all MedicationStatements reference the patient."""
         medications = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "MedicationStatement"
         ]
 
         for med in medications:
-            assert med.subject is not None, \
-                f"Medication {med.id} must reference patient"
+            assert med.subject is not None, f"Medication {med.id} must reference patient"
 
     def test_medication_dosage_route_exact(self, agastha_bundle):
         """PHASE 1.3: Validate MedicationStatement.dosage.route exact structure."""
         medications = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "MedicationStatement"
         ]
 
@@ -464,24 +504,29 @@ class TestAgasthaE2E:
                 for dosage in med.dosage:
                     if dosage.route:
                         # Route must have CodeableConcept structure
-                        assert dosage.route.coding is not None, \
+                        assert dosage.route.coding is not None, (
                             f"Medication {med.id} dosage.route must have coding"
-                        assert len(dosage.route.coding) > 0, \
+                        )
+                        assert len(dosage.route.coding) > 0, (
                             f"Medication {med.id} dosage.route must have at least one coding"
+                        )
 
                         # Route should have NCI Thesaurus or SNOMED system
                         route_coding = dosage.route.coding[0]
                         assert route_coding.system in [
                             "http://ncimeta.nci.nih.gov",
-                            "http://snomed.info/sct"
-                        ], f"Route system must be NCI Thesaurus or SNOMED, got '{route_coding.system}'"
+                            "http://snomed.info/sct",
+                        ], (
+                            f"Route system must be NCI Thesaurus or SNOMED, got '{route_coding.system}'"
+                        )
                         assert route_coding.code is not None, "Route must have code"
                         assert route_coding.display is not None, "Route must have display"
 
     def test_medication_dosage_quantity_exact(self, agastha_bundle):
         """PHASE 1.3: Validate MedicationStatement.dosage.doseAndRate Quantity structure."""
         medications = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "MedicationStatement"
         ]
 
@@ -497,13 +542,14 @@ class TestAgasthaE2E:
                                 assert_quantity_has_ucum(
                                     dose_rate.doseQuantity,
                                     field_name=f"Medication {med.id} doseQuantity",
-                                    strict_system=True
+                                    strict_system=True,
                                 )
 
     def test_medication_dosage_timing_exact(self, agastha_bundle):
         """PHASE 1.3: Validate MedicationStatement.dosage.timing exact structure."""
         medications = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "MedicationStatement"
         ]
 
@@ -516,21 +562,25 @@ class TestAgasthaE2E:
 
                         # Validate frequency is integer if present
                         if repeat.frequency:
-                            assert isinstance(repeat.frequency, int), \
+                            assert isinstance(repeat.frequency, int), (
                                 f"Medication {med.id} timing.repeat.frequency must be integer"
+                            )
 
                         # Validate period is numeric if present
                         # NOTE: FHIR libraries may use Decimal for precision
                         if repeat.period:
                             from decimal import Decimal
-                            assert isinstance(repeat.period, (int, float, Decimal)), \
+
+                            assert isinstance(repeat.period, (int, float, Decimal)), (
                                 f"Medication {med.id} timing.repeat.period must be numeric"
+                            )
 
                         # Validate periodUnit is valid UCUM temporal unit
                         if repeat.periodUnit:
                             valid_units = ["s", "min", "h", "d", "wk", "mo", "a"]
-                            assert repeat.periodUnit in valid_units, \
+                            assert repeat.periodUnit in valid_units, (
                                 f"Medication {med.id} timing.repeat.periodUnit must be valid UCUM unit, got '{repeat.periodUnit}'"
+                            )
 
     # ========================================================================
     # IMMUNIZATIONS (3) - Including negated with statusReason
@@ -539,7 +589,8 @@ class TestAgasthaE2E:
     def test_immunizations_count(self, agastha_bundle):
         """Validate Bundle contains expected number of immunizations."""
         immunizations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Immunization"
         ]
 
@@ -548,14 +599,18 @@ class TestAgasthaE2E:
     def test_immunization_influenza_completed(self, agastha_bundle):
         """Validate Immunization: Influenza unspecified (CVX 88) - completed."""
         immunizations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Immunization"
         ]
 
         influenza = next(
-            (imm for imm in immunizations
-             if any(coding.code == "88" for coding in imm.vaccineCode.coding)),
-            None
+            (
+                imm
+                for imm in immunizations
+                if any(coding.code == "88" for coding in imm.vaccineCode.coding)
+            ),
+            None,
         )
 
         assert influenza is not None, "Must have Influenza vaccination"
@@ -565,14 +620,18 @@ class TestAgasthaE2E:
     def test_immunization_dtap_completed(self, agastha_bundle):
         """Validate Immunization: DTaP (CVX 106) - completed."""
         immunizations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Immunization"
         ]
 
         dtap = next(
-            (imm for imm in immunizations
-             if any(coding.code == "106" for coding in imm.vaccineCode.coding)),
-            None
+            (
+                imm
+                for imm in immunizations
+                if any(coding.code == "106" for coding in imm.vaccineCode.coding)
+            ),
+            None,
         )
 
         assert dtap is not None, "Must have DTaP vaccination"
@@ -589,7 +648,8 @@ class TestAgasthaE2E:
         This is the primary reason we added this fixture - to test statusReason!
         """
         immunizations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Immunization"
         ]
 
@@ -600,8 +660,9 @@ class TestAgasthaE2E:
         negated_imm = negated_immunizations[0]
 
         # CRITICAL: Verify statusReason is present
-        assert negated_imm.statusReason is not None, \
+        assert negated_imm.statusReason is not None, (
             "Negated immunization MUST have statusReason when refusal reason is coded"
+        )
 
         # PHASE 1.1: Verify exact statusReason CodeableConcept structure
         assert_immunization_status_reason(negated_imm.statusReason, "PATOBJ")
@@ -609,7 +670,8 @@ class TestAgasthaE2E:
     def test_negated_immunization_vaccine_code(self, agastha_bundle):
         """Validate negated immunization has correct vaccine code (CVX 166)."""
         immunizations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Immunization"
         ]
 
@@ -621,23 +683,28 @@ class TestAgasthaE2E:
 
         # Find CVX coding
         cvx_coding = next(
-            (c for c in negated_imm.vaccineCode.coding if c.system == "http://hl7.org/fhir/sid/cvx"),
-            None
+            (
+                c
+                for c in negated_imm.vaccineCode.coding
+                if c.system == "http://hl7.org/fhir/sid/cvx"
+            ),
+            None,
         )
         assert cvx_coding is not None, "Must have CVX coding"
-        assert cvx_coding.code == "166", \
+        assert cvx_coding.code == "166", (
             f"Vaccine code must be '166' (Influenza Intradermal Quadrivalent), got '{cvx_coding.code}'"
+        )
 
     def test_immunizations_have_patient_reference(self, agastha_bundle):
         """Validate all Immunizations reference the patient."""
         immunizations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Immunization"
         ]
 
         for imm in immunizations:
-            assert imm.patient is not None, \
-                f"Immunization {imm.id} must reference patient"
+            assert imm.patient is not None, f"Immunization {imm.id} must reference patient"
 
     # ========================================================================
     # COMPREHENSIVE REFERENCE VALIDATION
@@ -674,14 +741,14 @@ class TestAgasthaE2E:
     def test_procedure_cardiac_pacemaker_insertion(self, agastha_bundle):
         """Validate Procedure: Introduction of cardiac pacemaker (SNOMED 175135009)."""
         procedures = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Procedure"
         ]
 
         pacemaker = next(
-            (p for p in procedures
-             if any(coding.code == "175135009" for coding in p.code.coding)),
-            None
+            (p for p in procedures if any(coding.code == "175135009" for coding in p.code.coding)),
+            None,
         )
 
         assert pacemaker is not None, "Must have cardiac pacemaker insertion procedure"
@@ -691,14 +758,14 @@ class TestAgasthaE2E:
     def test_procedure_nebulizer_therapy(self, agastha_bundle):
         """Validate Procedure: Nebulizer Therapy (SNOMED 56251003)."""
         procedures = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Procedure"
         ]
 
         nebulizer = next(
-            (p for p in procedures
-             if any(coding.code == "56251003" for coding in p.code.coding)),
-            None
+            (p for p in procedures if any(coding.code == "56251003" for coding in p.code.coding)),
+            None,
         )
 
         assert nebulizer is not None, "Must have nebulizer therapy procedure"
@@ -711,8 +778,7 @@ class TestAgasthaE2E:
     def test_device_cardiac_pacemaker(self, agastha_bundle):
         """Validate Device: Implantable cardiac pacemaker."""
         devices = [
-            e.resource for e in agastha_bundle.entry
-            if e.resource.get_resource_type() == "Device"
+            e.resource for e in agastha_bundle.entry if e.resource.get_resource_type() == "Device"
         ]
 
         assert len(devices) == 1, "Must have exactly 1 Device"
@@ -732,8 +798,7 @@ class TestAgasthaE2E:
     def test_goals_count(self, agastha_bundle):
         """Validate Bundle contains expected number of goals."""
         goals = [
-            e.resource for e in agastha_bundle.entry
-            if e.resource.get_resource_type() == "Goal"
+            e.resource for e in agastha_bundle.entry if e.resource.get_resource_type() == "Goal"
         ]
 
         assert len(goals) == 2, "Bundle must contain exactly 2 goals"
@@ -741,26 +806,23 @@ class TestAgasthaE2E:
     def test_goals_have_lifecycle_status(self, agastha_bundle):
         """Validate Goals have lifecycleStatus."""
         goals = [
-            e.resource for e in agastha_bundle.entry
-            if e.resource.get_resource_type() == "Goal"
+            e.resource for e in agastha_bundle.entry if e.resource.get_resource_type() == "Goal"
         ]
 
         for goal in goals:
-            assert goal.lifecycleStatus is not None, \
-                f"Goal {goal.id} must have lifecycleStatus"
-            assert goal.lifecycleStatus == "active", \
+            assert goal.lifecycleStatus is not None, f"Goal {goal.id} must have lifecycleStatus"
+            assert goal.lifecycleStatus == "active", (
                 f"Goal {goal.id} lifecycleStatus must be 'active', got '{goal.lifecycleStatus}'"
+            )
 
     def test_goals_have_subject(self, agastha_bundle):
         """Validate Goals reference the patient."""
         goals = [
-            e.resource for e in agastha_bundle.entry
-            if e.resource.get_resource_type() == "Goal"
+            e.resource for e in agastha_bundle.entry if e.resource.get_resource_type() == "Goal"
         ]
 
         for goal in goals:
-            assert goal.subject is not None, \
-                f"Goal {goal.id} must reference patient"
+            assert goal.subject is not None, f"Goal {goal.id} must reference patient"
 
     # ========================================================================
     # OBSERVATIONS (17) - Vital Signs and Labs
@@ -769,7 +831,8 @@ class TestAgasthaE2E:
     def test_observations_count(self, agastha_bundle):
         """Validate Bundle contains expected number of observations."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
@@ -778,14 +841,18 @@ class TestAgasthaE2E:
     def test_observation_vital_signs_panel(self, agastha_bundle):
         """Validate Observation: Vital signs panel (LOINC 85353-1)."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         panel = next(
-            (obs for obs in observations
-             if any(coding.code == "85353-1" for coding in obs.code.coding)),
-            None
+            (
+                obs
+                for obs in observations
+                if any(coding.code == "85353-1" for coding in obs.code.coding)
+            ),
+            None,
         )
 
         assert panel is not None, "Must have vital signs panel"
@@ -797,14 +864,18 @@ class TestAgasthaE2E:
     def test_observation_height(self, agastha_bundle):
         """Validate Observation: Height (LOINC 8302-2)."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         height = next(
-            (obs for obs in observations
-             if any(coding.code == "8302-2" for coding in obs.code.coding)),
-            None
+            (
+                obs
+                for obs in observations
+                if any(coding.code == "8302-2" for coding in obs.code.coding)
+            ),
+            None,
         )
 
         assert height is not None, "Must have height observation"
@@ -814,14 +885,18 @@ class TestAgasthaE2E:
     def test_observation_weight(self, agastha_bundle):
         """Validate Observation: Weight (LOINC 29463-7)."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         weight = next(
-            (obs for obs in observations
-             if any(coding.code == "29463-7" for coding in obs.code.coding)),
-            None
+            (
+                obs
+                for obs in observations
+                if any(coding.code == "29463-7" for coding in obs.code.coding)
+            ),
+            None,
         )
 
         assert weight is not None, "Must have weight observation"
@@ -830,14 +905,18 @@ class TestAgasthaE2E:
     def test_observation_bmi(self, agastha_bundle):
         """Validate Observation: BMI (LOINC 39156-5)."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         bmi = next(
-            (obs for obs in observations
-             if any(coding.code == "39156-5" for coding in obs.code.coding)),
-            None
+            (
+                obs
+                for obs in observations
+                if any(coding.code == "39156-5" for coding in obs.code.coding)
+            ),
+            None,
         )
 
         assert bmi is not None, "Must have BMI observation"
@@ -846,14 +925,18 @@ class TestAgasthaE2E:
     def test_observation_body_temperature(self, agastha_bundle):
         """Validate Observation: Body Temperature (LOINC 8310-5)."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         temp = next(
-            (obs for obs in observations
-             if any(coding.code == "8310-5" for coding in obs.code.coding)),
-            None
+            (
+                obs
+                for obs in observations
+                if any(coding.code == "8310-5" for coding in obs.code.coding)
+            ),
+            None,
         )
 
         assert temp is not None, "Must have body temperature observation"
@@ -862,7 +945,8 @@ class TestAgasthaE2E:
     def test_vital_signs_have_category(self, agastha_bundle):
         """Validate vital sign observations have vital-signs category."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
@@ -871,32 +955,31 @@ class TestAgasthaE2E:
 
         for obs in observations:
             # Check if this observation has a vital sign LOINC code
-            has_vital_loinc = any(
-                coding.code in vital_sign_codes
-                for coding in obs.code.coding
-            )
+            has_vital_loinc = any(coding.code in vital_sign_codes for coding in obs.code.coding)
 
             if has_vital_loinc:
-                assert obs.category is not None, \
+                assert obs.category is not None, (
                     f"Vital sign observation {obs.id} must have category"
+                )
 
                 has_vital_signs_cat = any(
                     any(coding.code == "vital-signs" for coding in cat.coding)
                     for cat in obs.category
                 )
-                assert has_vital_signs_cat, \
+                assert has_vital_signs_cat, (
                     f"Vital sign observation {obs.id} must have vital-signs category"
+                )
 
     def test_observations_have_status(self, agastha_bundle):
         """Validate all Observations have status."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         for obs in observations:
-            assert obs.status is not None, \
-                f"Observation {obs.id} must have status"
+            assert obs.status is not None, f"Observation {obs.id} must have status"
 
     # ========================================================================
     # DIAGNOSTIC REPORT
@@ -905,7 +988,8 @@ class TestAgasthaE2E:
     def test_diagnostic_report_present(self, agastha_bundle):
         """Validate Bundle contains DiagnosticReport."""
         reports = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "DiagnosticReport"
         ]
 
@@ -927,21 +1011,26 @@ class TestAgasthaE2E:
         Proper deduplication results in 1 unique Practitioner resource.
         """
         practitioners = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Practitioner"
         ]
 
-        assert len(practitioners) == 1, "Bundle must contain exactly 1 Practitioner (properly deduplicated)"
+        assert len(practitioners) == 1, (
+            "Bundle must contain exactly 1 Practitioner (properly deduplicated)"
+        )
 
         # Verify all have names
         for pract in practitioners:
-            assert pract.name is not None and len(pract.name) > 0, \
+            assert pract.name is not None and len(pract.name) > 0, (
                 f"Practitioner {pract.id} must have name"
+            )
 
     def test_organizations_present(self, agastha_bundle):
         """Validate Bundle contains Organizations."""
         organizations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Organization"
         ]
 
@@ -949,8 +1038,7 @@ class TestAgasthaE2E:
 
         # Verify all have names
         for org in organizations:
-            assert org.name is not None, \
-                f"Organization {org.id} must have name"
+            assert org.name is not None, f"Organization {org.id} must have name"
 
     # ========================================================================
     # ENCOUNTER AND LOCATION
@@ -959,7 +1047,8 @@ class TestAgasthaE2E:
     def test_encounter_present(self, agastha_bundle):
         """Validate Bundle contains Encounter."""
         encounters = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Encounter"
         ]
 
@@ -974,16 +1063,16 @@ class TestAgasthaE2E:
     def test_location_present(self, agastha_bundle):
         """Validate Bundle contains Location."""
         locations = [
-            e.resource for e in agastha_bundle.entry
-            if e.resource.get_resource_type() == "Location"
+            e.resource for e in agastha_bundle.entry if e.resource.get_resource_type() == "Location"
         ]
 
         assert len(locations) == 1, "Bundle must contain exactly 1 Location"
         location = locations[0]
 
         # Verify has name or address
-        assert location.name is not None or location.address is not None, \
+        assert location.name is not None or location.address is not None, (
             "Location must have name or address"
+        )
 
     def test_patient_managing_organization(self, agastha_bundle):
         """Validate Patient.managingOrganization reference - CRITICAL.
@@ -992,74 +1081,78 @@ class TestAgasthaE2E:
         The Agastha CCD has providerOrganization with NPI 1298765654.
         """
         patient = next(
-            (e.resource for e in agastha_bundle.entry
-             if e.resource.get_resource_type() == "Patient"),
-            None
+            (
+                e.resource
+                for e in agastha_bundle.entry
+                if e.resource.get_resource_type() == "Patient"
+            ),
+            None,
         )
 
-        assert patient.managingOrganization is not None, \
-            "Patient must have managingOrganization"
-        assert patient.managingOrganization.reference is not None, \
+        assert patient.managingOrganization is not None, "Patient must have managingOrganization"
+        assert patient.managingOrganization.reference is not None, (
             "managingOrganization must have reference"
-        assert patient.managingOrganization.reference.startswith("urn:uuid:"), \
+        )
+        assert patient.managingOrganization.reference.startswith("urn:uuid:"), (
             f"managingOrganization reference must use urn:uuid format, got '{patient.managingOrganization.reference}'"
-        assert patient.managingOrganization.display == "Agastha Medical Center", \
+        )
+        assert patient.managingOrganization.display == "Agastha Medical Center", (
             f"managingOrganization display must be 'Agastha Medical Center', got '{patient.managingOrganization.display}'"
+        )
 
     def test_organization_agastha_medical_center_details(self, agastha_bundle):
         """Validate Agastha Medical Center organization with NPI, address, telecom."""
         orgs = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Organization"
         ]
 
         # Find Agastha Medical Center by NPI
         agastha = next(
-            (o for o in orgs
-             if any(i.value == "1298765654" for i in o.identifier if i.value)),
-            None
+            (o for o in orgs if any(i.value == "1298765654" for i in o.identifier if i.value)), None
         )
 
         assert agastha is not None, "Must have Agastha Medical Center organization"
-        assert agastha.name == "Agastha Medical Center", \
+        assert agastha.name == "Agastha Medical Center", (
             f"Organization name must be 'Agastha Medical Center', got '{agastha.name}'"
+        )
 
         # Verify NPI identifier
         npi = next(
-            (i for i in agastha.identifier
-             if i.system == "http://hl7.org/fhir/sid/us-npi"),
-            None
+            (i for i in agastha.identifier if i.system == "http://hl7.org/fhir/sid/us-npi"), None
         )
         assert npi is not None, "Organization must have NPI identifier"
-        assert npi.value == "1298765654", \
-            f"NPI must be '1298765654', got '{npi.value}'"
+        assert npi.value == "1298765654", f"NPI must be '1298765654', got '{npi.value}'"
 
         # Verify address
         assert len(agastha.address) > 0, "Organization must have address"
         address = agastha.address[0]
         assert address.city == "Charlotte", f"City must be 'Charlotte', got '{address.city}'"
         assert address.state == "NC", f"State must be 'NC', got '{address.state}'"
-        assert address.postalCode == "28277", f"Postal code must be '28277', got '{address.postalCode}'"
+        assert address.postalCode == "28277", (
+            f"Postal code must be '28277', got '{address.postalCode}'"
+        )
 
         # Verify telecom
         assert len(agastha.telecom) > 0, "Organization must have telecom"
         phone = next((t for t in agastha.telecom if t.system == "phone"), None)
         assert phone is not None, "Organization must have phone"
-        assert "+1(704)544-6504" in phone.value, \
+        assert "+1(704)544-6504" in phone.value, (
             f"Phone must contain '+1(704)544-6504', got '{phone.value}'"
+        )
 
     def test_allergy_reaction_manifestation_and_severity(self, agastha_bundle):
         """Validate AllergyIntolerance.reaction with manifestation, severity, description."""
         allergies = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "AllergyIntolerance"
         ]
 
         # Penicillin G has reaction details
         penicillin = next(
-            (a for a in allergies
-             if any(c.code == "7980" for c in a.code.coding)),
-            None
+            (a for a in allergies if any(c.code == "7980" for c in a.code.coding)), None
         )
 
         assert penicillin.reaction is not None, "Allergy must have reaction"
@@ -1072,16 +1165,19 @@ class TestAgasthaE2E:
         assert len(reaction.manifestation) > 0, "Manifestation must not be empty"
 
         manifestation_code = reaction.manifestation[0].coding[0].code
-        assert manifestation_code == "247472004", \
+        assert manifestation_code == "247472004", (
             f"Manifestation code must be '247472004' (Hives), got '{manifestation_code}'"
+        )
 
         # Verify severity
-        assert reaction.severity == "moderate", \
+        assert reaction.severity == "moderate", (
             f"Reaction severity must be 'moderate', got '{reaction.severity}'"
+        )
 
         # Verify description
-        assert reaction.description == "Hives", \
+        assert reaction.description == "Hives", (
             f"Reaction description must be 'Hives', got '{reaction.description}'"
+        )
 
         # Verify onset
         assert reaction.onset is not None, "Reaction must have onset"
@@ -1089,15 +1185,19 @@ class TestAgasthaE2E:
     def test_medication_dosage_route_and_dose(self, agastha_bundle):
         """Validate MedicationStatement.dosage with route, timing, doseQuantity."""
         medications = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "MedicationStatement"
         ]
 
         # Tylenol has dosage with oral route
         tylenol = next(
-            (m for m in medications
-             if any(c.code == "209459" for c in m.medicationCodeableConcept.coding)),
-            None
+            (
+                m
+                for m in medications
+                if any(c.code == "209459" for c in m.medicationCodeableConcept.coding)
+            ),
+            None,
         )
 
         assert tylenol.dosage is not None, "Medication must have dosage"
@@ -1110,10 +1210,10 @@ class TestAgasthaE2E:
         assert dosage.route.coding is not None, "Route must have coding"
 
         route_code = dosage.route.coding[0].code
-        assert route_code == "C38288", \
-            f"Route code must be 'C38288' (ORAL), got '{route_code}'"
-        assert dosage.route.coding[0].display == "ORAL", \
+        assert route_code == "C38288", f"Route code must be 'C38288' (ORAL), got '{route_code}'"
+        assert dosage.route.coding[0].display == "ORAL", (
             f"Route display must be 'ORAL', got '{dosage.route.coding[0].display}'"
+        )
 
         # Verify doseAndRate
         assert dosage.doseAndRate is not None, "Dosage must have doseAndRate"
@@ -1121,116 +1221,120 @@ class TestAgasthaE2E:
 
         dose_qty = dosage.doseAndRate[0].doseQuantity
         assert dose_qty is not None, "doseAndRate must have doseQuantity"
-        assert dose_qty.value == 1, \
-            f"Dose value must be 1, got '{dose_qty.value}'"
+        assert dose_qty.value == 1, f"Dose value must be 1, got '{dose_qty.value}'"
 
         # Verify timing
         assert dosage.timing is not None, "Dosage must have timing"
         assert dosage.timing.repeat is not None, "Timing must have repeat"
-        assert dosage.timing.repeat.period == 1, \
+        assert dosage.timing.repeat.period == 1, (
             f"Period must be 1, got '{dosage.timing.repeat.period}'"
-        assert dosage.timing.repeat.periodUnit == "d", \
+        )
+        assert dosage.timing.repeat.periodUnit == "d", (
             f"Period unit must be 'd' (day), got '{dosage.timing.repeat.periodUnit}'"
+        )
 
     def test_observation_interpretation_normal(self, agastha_bundle):
         """Validate Observation.interpretation for vital signs with 'N' (Normal)."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         # Height observation has interpretation "N" (Normal)
         height = next(
-            (obs for obs in observations
-             if any(c.code == "8302-2" for c in obs.code.coding)),
-            None
+            (obs for obs in observations if any(c.code == "8302-2" for c in obs.code.coding)), None
         )
 
-        assert height.interpretation is not None, \
-            "Vital sign observation must have interpretation"
-        assert len(height.interpretation) > 0, \
-            "Interpretation must not be empty"
+        assert height.interpretation is not None, "Vital sign observation must have interpretation"
+        assert len(height.interpretation) > 0, "Interpretation must not be empty"
 
         interp_code = height.interpretation[0].coding[0].code
-        assert interp_code == "N", \
-            f"Interpretation code must be 'N' (Normal), got '{interp_code}'"
+        assert interp_code == "N", f"Interpretation code must be 'N' (Normal), got '{interp_code}'"
 
         interp_display = height.interpretation[0].coding[0].display
         if interp_display:
-            assert interp_display == "Normal", \
+            assert interp_display == "Normal", (
                 f"Interpretation display must be 'Normal', got '{interp_display}'"
+            )
 
         interp_system = height.interpretation[0].coding[0].system
-        assert "ObservationInterpretation" in interp_system, \
+        assert "ObservationInterpretation" in interp_system, (
             f"Interpretation system must be ObservationInterpretation, got '{interp_system}'"
+        )
 
     def test_observation_reference_range_lab_results(self, agastha_bundle):
         """Validate Observation.referenceRange for lab results (Specific Gravity)."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         # Find Specific Gravity observation (LOINC 5811-5)
         specific_gravity = next(
-            (obs for obs in observations
-             if any(c.code == "5811-5" for c in obs.code.coding)),
-            None
+            (obs for obs in observations if any(c.code == "5811-5" for c in obs.code.coding)), None
         )
 
         if specific_gravity is None:
             # Specific Gravity might not be in this document, skip test
             import pytest
+
             pytest.skip("Specific Gravity observation not found in this document")
 
-        assert specific_gravity.referenceRange is not None, \
+        assert specific_gravity.referenceRange is not None, (
             "Lab observation must have referenceRange"
-        assert len(specific_gravity.referenceRange) > 0, \
-            "referenceRange must not be empty"
+        )
+        assert len(specific_gravity.referenceRange) > 0, "referenceRange must not be empty"
 
         ref_range = specific_gravity.referenceRange[0]
 
         assert ref_range.low is not None, "Reference range must have low value"
-        assert ref_range.low.value == 1.005, \
+        assert ref_range.low.value == 1.005, (
             f"Reference range low must be 1.005, got '{ref_range.low.value}'"
+        )
 
         assert ref_range.high is not None, "Reference range must have high value"
-        assert ref_range.high.value == 1.03, \
+        assert ref_range.high.value == 1.03, (
             f"Reference range high must be 1.03, got '{ref_range.high.value}'"
+        )
 
     def test_encounter_diagnosis_references(self, agastha_bundle):
         """Validate Encounter.diagnosis references conditions."""
         encounters = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Encounter"
         ]
 
         assert len(encounters) == 1, "Must have exactly 1 Encounter"
         encounter = encounters[0]
 
-        assert encounter.diagnosis is not None, \
-            "Encounter must have diagnosis"
-        assert len(encounter.diagnosis) > 0, \
-            "Encounter diagnosis must not be empty"
+        assert encounter.diagnosis is not None, "Encounter must have diagnosis"
+        assert len(encounter.diagnosis) > 0, "Encounter diagnosis must not be empty"
 
         # Verify each diagnosis has a condition reference
         for diag in encounter.diagnosis:
-            assert diag.condition is not None, \
-                "Encounter diagnosis must have condition reference"
-            assert diag.condition.reference is not None, \
+            assert diag.condition is not None, "Encounter diagnosis must have condition reference"
+            assert diag.condition.reference is not None, (
                 "Diagnosis condition reference must not be null"
-            assert diag.condition.reference.startswith("urn:uuid:"), \
+            )
+            assert diag.condition.reference.startswith("urn:uuid:"), (
                 f"Diagnosis must reference Condition with urn:uuid format, got '{diag.condition.reference}'"
+            )
 
             # Verify use (role) - Agastha is outpatient, should be "billing"
             assert diag.use is not None, "Diagnosis must have use/role"
             assert len(diag.use.coding) > 0, "Diagnosis use must have coding"
-            assert diag.use.coding[0].code == "billing", \
+            assert diag.use.coding[0].code == "billing", (
                 f"Diagnosis use code must be 'billing' for outpatient, got '{diag.use.coding[0].code}'"
-            assert diag.use.coding[0].display == "Billing", \
+            )
+            assert diag.use.coding[0].display == "Billing", (
                 f"Diagnosis use display must be 'Billing', got '{diag.use.coding[0].display}'"
-            assert "diagnosis-role" in diag.use.coding[0].system, \
+            )
+            assert "diagnosis-role" in diag.use.coding[0].system, (
                 f"Diagnosis use system must be diagnosis-role CodeSystem, got '{diag.use.coding[0].system}'"
+            )
 
     def test_encounter_participant_practitioners(self, agastha_bundle):
         """Validate Encounter.participant exists and has required structure.
@@ -1240,7 +1344,8 @@ class TestAgasthaE2E:
         when the C-CDA performer has an assignedPerson element.
         """
         encounters = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Encounter"
         ]
 
@@ -1248,32 +1353,29 @@ class TestAgasthaE2E:
         encounter = encounters[0]
 
         # US Core requires participant (SHALL support)
-        assert encounter.participant is not None, \
-            "Encounter.participant is required by US Core"
-        assert len(encounter.participant) > 0, \
-            "Encounter.participant must have at least one entry"
+        assert encounter.participant is not None, "Encounter.participant is required by US Core"
+        assert len(encounter.participant) > 0, "Encounter.participant must have at least one entry"
 
         # Verify each participant has required type field
         for participant in encounter.participant:
-            assert participant.type is not None, \
-                "Participant.type is required"
-            assert len(participant.type) > 0, \
-                "Participant.type must not be empty"
+            assert participant.type is not None, "Participant.type is required"
+            assert len(participant.type) > 0, "Participant.type must not be empty"
 
         # Verify participants that have individuals have valid references
         participants_with_individual = [
-            p for p in encounter.participant
-            if p.individual is not None
+            p for p in encounter.participant if p.individual is not None
         ]
 
         for participant in participants_with_individual:
-            assert participant.individual.reference is not None, \
+            assert participant.individual.reference is not None, (
                 "Participant individual reference must not be null"
+            )
 
             # Should reference Practitioner or RelatedPerson
             ref = participant.individual.reference
-            assert "Practitioner/" in ref or "RelatedPerson/" in ref, \
+            assert "Practitioner/" in ref or "RelatedPerson/" in ref, (
                 f"Participant must reference Practitioner or RelatedPerson, got '{ref}'"
+            )
 
     # =========================================================================
     # PHASE 2: High-Priority Validations (Observation Details & US Core)
@@ -1282,14 +1384,18 @@ class TestAgasthaE2E:
     def test_observation_interpretation_exact(self, agastha_bundle):
         """PHASE 2.1: Validate Observation.interpretation with exact CodeableConcept structure."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         # Find observations with interpretation
         obs_with_interp = [
-            obs for obs in observations
-            if hasattr(obs, 'interpretation') and obs.interpretation is not None and len(obs.interpretation) > 0
+            obs
+            for obs in observations
+            if hasattr(obs, "interpretation")
+            and obs.interpretation is not None
+            and len(obs.interpretation) > 0
         ]
 
         assert len(obs_with_interp) > 0, "Must have observations with interpretation"
@@ -1298,68 +1404,86 @@ class TestAgasthaE2E:
             interp = obs.interpretation[0]
 
             # Validate coding structure
-            assert hasattr(interp, 'coding') and interp.coding is not None, \
+            assert hasattr(interp, "coding") and interp.coding is not None, (
                 "Interpretation must have coding"
-            assert len(interp.coding) > 0, \
-                "Interpretation coding must not be empty"
+            )
+            assert len(interp.coding) > 0, "Interpretation coding must not be empty"
 
             coding = interp.coding[0]
 
             # Exact system validation
-            assert coding.system == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation", \
+            assert (
+                coding.system
+                == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+            ), (
                 f"Interpretation system must be exact ObservationInterpretation URL, got '{coding.system}'"
+            )
 
             # Valid interpretation codes
             valid_codes = ["N", "L", "H", "LL", "HH", "A", "AA", "<", ">", "NEG", "POS"]
-            assert coding.code in valid_codes, \
+            assert coding.code in valid_codes, (
                 f"Interpretation code must be valid, got '{coding.code}'"
+            )
 
             # Display text should be present (from terminology.py)
             if coding.code == "N":
-                assert coding.display == "Normal", \
+                assert coding.display == "Normal", (
                     f"Interpretation display for 'N' must be 'Normal', got '{coding.display}'"
+                )
 
     def test_observation_reference_range_ucum_exact(self, agastha_bundle):
         """PHASE 2.2: Validate Observation.referenceRange has exact UCUM Quantity structure."""
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         # Find observations with reference ranges
         obs_with_ref_range = [
-            obs for obs in observations
-            if hasattr(obs, 'referenceRange') and obs.referenceRange is not None and len(obs.referenceRange) > 0
+            obs
+            for obs in observations
+            if hasattr(obs, "referenceRange")
+            and obs.referenceRange is not None
+            and len(obs.referenceRange) > 0
         ]
 
         if len(obs_with_ref_range) == 0:
             import pytest
+
             pytest.skip("No observations with reference ranges in this document")
 
         for obs in obs_with_ref_range:
             for ref_range in obs.referenceRange:
                 # Validate low Quantity structure (if present)
-                if hasattr(ref_range, 'low') and ref_range.low is not None:
+                if hasattr(ref_range, "low") and ref_range.low is not None:
                     low = ref_range.low
-                    assert hasattr(low, 'value') and low.value is not None, \
+                    assert hasattr(low, "value") and low.value is not None, (
                         "Reference range low must have value"
+                    )
 
                     # UCUM system validation using helper
-                    assert_quantity_has_ucum(low, field_name="referenceRange.low", strict_system=True)
+                    assert_quantity_has_ucum(
+                        low, field_name="referenceRange.low", strict_system=True
+                    )
 
                 # Validate high Quantity structure (if present)
-                if hasattr(ref_range, 'high') and ref_range.high is not None:
+                if hasattr(ref_range, "high") and ref_range.high is not None:
                     high = ref_range.high
-                    assert hasattr(high, 'value') and high.value is not None, \
+                    assert hasattr(high, "value") and high.value is not None, (
                         "Reference range high must have value"
+                    )
 
                     # UCUM system validation using helper
-                    assert_quantity_has_ucum(high, field_name="referenceRange.high", strict_system=True)
+                    assert_quantity_has_ucum(
+                        high, field_name="referenceRange.high", strict_system=True
+                    )
 
     def test_allergy_verification_status_exact(self, agastha_bundle):
         """PHASE 2.4: Validate AllergyIntolerance.verificationStatus exact CodeableConcept."""
         allergies = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "AllergyIntolerance"
         ]
 
@@ -1367,33 +1491,38 @@ class TestAgasthaE2E:
 
         # Find allergies with verificationStatus
         allergies_with_vs = [
-            a for a in allergies
-            if hasattr(a, 'verificationStatus') and a.verificationStatus is not None
+            a
+            for a in allergies
+            if hasattr(a, "verificationStatus") and a.verificationStatus is not None
         ]
 
         if len(allergies_with_vs) == 0:
             import pytest
+
             pytest.skip("No allergies with verificationStatus in this document")
 
         for allergy in allergies_with_vs:
             vs = allergy.verificationStatus
 
             # Validate coding structure
-            assert hasattr(vs, 'coding') and vs.coding is not None, \
+            assert hasattr(vs, "coding") and vs.coding is not None, (
                 "VerificationStatus must have coding"
-            assert len(vs.coding) > 0, \
-                "VerificationStatus coding must not be empty"
+            )
+            assert len(vs.coding) > 0, "VerificationStatus coding must not be empty"
 
             coding = vs.coding[0]
 
             # Exact system validation
-            assert coding.system == "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", \
-                f"VerificationStatus system must be exact, got '{coding.system}'"
+            assert (
+                coding.system
+                == "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification"
+            ), f"VerificationStatus system must be exact, got '{coding.system}'"
 
             # Valid codes
             valid_codes = ["confirmed", "unconfirmed", "refuted", "entered-in-error", "presumed"]
-            assert coding.code in valid_codes, \
+            assert coding.code in valid_codes, (
                 f"VerificationStatus code must be valid, got '{coding.code}'"
+            )
 
             # Display should be present
             if coding.display is not None:
@@ -1402,12 +1531,13 @@ class TestAgasthaE2E:
                     "unconfirmed": "Unconfirmed",
                     "refuted": "Refuted",
                     "entered-in-error": "Entered in Error",
-                    "presumed": "Presumed"
+                    "presumed": "Presumed",
                 }
                 expected_display = display_map.get(coding.code)
                 if expected_display:
-                    assert coding.display == expected_display, \
+                    assert coding.display == expected_display, (
                         f"VerificationStatus display for '{coding.code}' must be '{expected_display}', got '{coding.display}'"
+                    )
 
     def test_condition_verification_status_exact(self, agastha_bundle):
         """PHASE 2.4: Validate Condition.verificationStatus exact CodeableConcept.
@@ -1416,7 +1546,8 @@ class TestAgasthaE2E:
         All conditions must have verificationStatus.
         """
         conditions = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Condition"
         ]
 
@@ -1424,28 +1555,39 @@ class TestAgasthaE2E:
 
         # US Core requires verificationStatus on all conditions
         for condition in conditions:
-            assert hasattr(condition, 'verificationStatus') and condition.verificationStatus is not None, \
-                f"Condition {condition.id} missing verificationStatus (US Core requirement)"
+            assert (
+                hasattr(condition, "verificationStatus")
+                and condition.verificationStatus is not None
+            ), f"Condition {condition.id} missing verificationStatus (US Core requirement)"
 
         for condition in conditions:
             vs = condition.verificationStatus
 
             # Validate coding structure
-            assert hasattr(vs, 'coding') and vs.coding is not None, \
+            assert hasattr(vs, "coding") and vs.coding is not None, (
                 "VerificationStatus must have coding"
-            assert len(vs.coding) > 0, \
-                "VerificationStatus coding must not be empty"
+            )
+            assert len(vs.coding) > 0, "VerificationStatus coding must not be empty"
 
             coding = vs.coding[0]
 
             # Exact system validation
-            assert coding.system == "http://terminology.hl7.org/CodeSystem/condition-ver-status", \
+            assert coding.system == "http://terminology.hl7.org/CodeSystem/condition-ver-status", (
                 f"VerificationStatus system must be exact, got '{coding.system}'"
+            )
 
             # Valid codes
-            valid_codes = ["unconfirmed", "provisional", "differential", "confirmed", "refuted", "entered-in-error"]
-            assert coding.code in valid_codes, \
+            valid_codes = [
+                "unconfirmed",
+                "provisional",
+                "differential",
+                "confirmed",
+                "refuted",
+                "entered-in-error",
+            ]
+            assert coding.code in valid_codes, (
                 f"VerificationStatus code must be valid, got '{coding.code}'"
+            )
 
             # Display should be present
             if coding.display is not None:
@@ -1455,18 +1597,18 @@ class TestAgasthaE2E:
                     "provisional": "Provisional",
                     "differential": "Differential",
                     "refuted": "Refuted",
-                    "entered-in-error": "Entered in Error"
+                    "entered-in-error": "Entered in Error",
                 }
                 expected_display = display_map.get(coding.code)
                 if expected_display:
-                    assert coding.display == expected_display, \
+                    assert coding.display == expected_display, (
                         f"VerificationStatus display for '{coding.code}' must be '{expected_display}', got '{coding.display}'"
+                    )
 
     def test_patient_race_extension_exact_structure(self, agastha_bundle):
         """PHASE 2.3: Validate US Core race extension has exact structure."""
         patients = [
-            e.resource for e in agastha_bundle.entry
-            if e.resource.get_resource_type() == "Patient"
+            e.resource for e in agastha_bundle.entry if e.resource.get_resource_type() == "Patient"
         ]
 
         assert len(patients) == 1, "Must have exactly 1 Patient"
@@ -1474,22 +1616,26 @@ class TestAgasthaE2E:
 
         # Find race extension
         race_ext = None
-        if hasattr(patient, 'extension') and patient.extension is not None:
+        if hasattr(patient, "extension") and patient.extension is not None:
             race_ext = next(
-                (e for e in patient.extension
-                 if e.url == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"),
-                None
+                (
+                    e
+                    for e in patient.extension
+                    if e.url == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
+                ),
+                None,
             )
 
         if race_ext is None:
             import pytest
+
             pytest.skip("Patient does not have us-core-race extension")
 
         # Validate extension has sub-extensions
-        assert hasattr(race_ext, 'extension') and race_ext.extension is not None, \
+        assert hasattr(race_ext, "extension") and race_ext.extension is not None, (
             "Race extension must have nested extensions"
-        assert len(race_ext.extension) > 0, \
-            "Race extension must have at least one sub-extension"
+        )
+        assert len(race_ext.extension) > 0, "Race extension must have at least one sub-extension"
 
         # Find ombCategory sub-extensions
         omb_exts = [e for e in race_ext.extension if e.url == "ombCategory"]
@@ -1497,12 +1643,14 @@ class TestAgasthaE2E:
         if len(omb_exts) > 0:
             for omb in omb_exts:
                 # Validate valueCoding structure
-                assert hasattr(omb, 'valueCoding') and omb.valueCoding is not None, \
+                assert hasattr(omb, "valueCoding") and omb.valueCoding is not None, (
                     "ombCategory extension must have valueCoding"
+                )
 
                 # Exact system validation
-                assert omb.valueCoding.system == "urn:oid:2.16.840.1.113883.6.238", \
+                assert omb.valueCoding.system == "urn:oid:2.16.840.1.113883.6.238", (
                     f"ombCategory system must be exact OMB race code system, got '{omb.valueCoding.system}'"
+                )
 
                 # Valid OMB race codes
                 valid_omb_codes = [
@@ -1512,25 +1660,28 @@ class TestAgasthaE2E:
                     "2076-8",  # Native Hawaiian or Other Pacific Islander
                     "2106-3",  # White
                 ]
-                assert omb.valueCoding.code in valid_omb_codes, \
+                assert omb.valueCoding.code in valid_omb_codes, (
                     f"ombCategory code must be valid OMB code, got '{omb.valueCoding.code}'"
+                )
 
                 # Display should be present
-                assert hasattr(omb.valueCoding, 'display') and omb.valueCoding.display is not None, \
-                    "ombCategory coding must have display text"
+                assert (
+                    hasattr(omb.valueCoding, "display") and omb.valueCoding.display is not None
+                ), "ombCategory coding must have display text"
 
         # Text sub-extension is REQUIRED per US Core
         text_ext = next((e for e in race_ext.extension if e.url == "text"), None)
-        assert text_ext is not None, \
+        assert text_ext is not None, (
             "Race extension must have 'text' sub-extension (US Core required)"
-        assert hasattr(text_ext, 'valueString') and text_ext.valueString is not None, \
+        )
+        assert hasattr(text_ext, "valueString") and text_ext.valueString is not None, (
             "Race text extension must have valueString"
+        )
 
     def test_patient_ethnicity_extension_exact_structure(self, agastha_bundle):
         """PHASE 2.3: Validate US Core ethnicity extension has exact structure."""
         patients = [
-            e.resource for e in agastha_bundle.entry
-            if e.resource.get_resource_type() == "Patient"
+            e.resource for e in agastha_bundle.entry if e.resource.get_resource_type() == "Patient"
         ]
 
         assert len(patients) == 1, "Must have exactly 1 Patient"
@@ -1538,22 +1689,28 @@ class TestAgasthaE2E:
 
         # Find ethnicity extension
         ethnicity_ext = None
-        if hasattr(patient, 'extension') and patient.extension is not None:
+        if hasattr(patient, "extension") and patient.extension is not None:
             ethnicity_ext = next(
-                (e for e in patient.extension
-                 if e.url == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"),
-                None
+                (
+                    e
+                    for e in patient.extension
+                    if e.url == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
+                ),
+                None,
             )
 
         if ethnicity_ext is None:
             import pytest
+
             pytest.skip("Patient does not have us-core-ethnicity extension")
 
         # Validate extension has sub-extensions
-        assert hasattr(ethnicity_ext, 'extension') and ethnicity_ext.extension is not None, \
+        assert hasattr(ethnicity_ext, "extension") and ethnicity_ext.extension is not None, (
             "Ethnicity extension must have nested extensions"
-        assert len(ethnicity_ext.extension) > 0, \
+        )
+        assert len(ethnicity_ext.extension) > 0, (
             "Ethnicity extension must have at least one sub-extension"
+        )
 
         # Find ombCategory sub-extension
         omb_exts = [e for e in ethnicity_ext.extension if e.url == "ombCategory"]
@@ -1561,31 +1718,37 @@ class TestAgasthaE2E:
         if len(omb_exts) > 0:
             for omb in omb_exts:
                 # Validate valueCoding structure
-                assert hasattr(omb, 'valueCoding') and omb.valueCoding is not None, \
+                assert hasattr(omb, "valueCoding") and omb.valueCoding is not None, (
                     "ombCategory extension must have valueCoding"
+                )
 
                 # Exact system validation
-                assert omb.valueCoding.system == "urn:oid:2.16.840.1.113883.6.238", \
+                assert omb.valueCoding.system == "urn:oid:2.16.840.1.113883.6.238", (
                     f"ombCategory system must be exact OMB ethnicity code system, got '{omb.valueCoding.system}'"
+                )
 
                 # Valid OMB ethnicity codes
                 valid_omb_codes = [
                     "2135-2",  # Hispanic or Latino
                     "2186-5",  # Not Hispanic or Latino
                 ]
-                assert omb.valueCoding.code in valid_omb_codes, \
+                assert omb.valueCoding.code in valid_omb_codes, (
                     f"ombCategory code must be valid OMB ethnicity code, got '{omb.valueCoding.code}'"
+                )
 
                 # Display should be present
-                assert hasattr(omb.valueCoding, 'display') and omb.valueCoding.display is not None, \
-                    "ombCategory coding must have display text"
+                assert (
+                    hasattr(omb.valueCoding, "display") and omb.valueCoding.display is not None
+                ), "ombCategory coding must have display text"
 
         # Text sub-extension is REQUIRED per US Core
         text_ext = next((e for e in ethnicity_ext.extension if e.url == "text"), None)
-        assert text_ext is not None, \
+        assert text_ext is not None, (
             "Ethnicity extension must have 'text' sub-extension (US Core required)"
-        assert hasattr(text_ext, 'valueString') and text_ext.valueString is not None, \
+        )
+        assert hasattr(text_ext, "valueString") and text_ext.valueString is not None, (
             "Ethnicity text extension must have valueString"
+        )
 
     # ========================================================================
     # PHASE 3: TEMPORAL FIELD TIMEZONE VALIDATION & US CORE PROFILE COMPLIANCE
@@ -1597,7 +1760,8 @@ class TestAgasthaE2E:
         Per FHIR R4 spec: "If hours and minutes are specified, a time zone SHALL be populated"
         """
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
@@ -1605,28 +1769,32 @@ class TestAgasthaE2E:
 
         # Check effectiveDateTime timezone
         obs_with_effective_dt = [
-            obs for obs in observations
-            if hasattr(obs, 'effectiveDateTime') and obs.effectiveDateTime is not None
+            obs
+            for obs in observations
+            if hasattr(obs, "effectiveDateTime") and obs.effectiveDateTime is not None
         ]
 
         if len(obs_with_effective_dt) > 0:
             for obs in obs_with_effective_dt:
                 # effectiveDateTime can be just date or datetime with timezone
-                assert_datetime_format(obs.effectiveDateTime, field_name="Observation.effectiveDateTime")
+                assert_datetime_format(
+                    obs.effectiveDateTime, field_name="Observation.effectiveDateTime"
+                )
 
                 # If it has time component, must have timezone
                 if "T" in obs.effectiveDateTime:
-                    assert "+" in obs.effectiveDateTime or "-" in obs.effectiveDateTime[-6:], \
+                    assert "+" in obs.effectiveDateTime or "-" in obs.effectiveDateTime[-6:], (
                         f"Observation.effectiveDateTime with time must have timezone: {obs.effectiveDateTime}"
+                    )
 
         # Check issued (instant field - always requires timezone)
         obs_with_issued = [
-            obs for obs in observations
-            if hasattr(obs, 'issued') and obs.issued is not None
+            obs for obs in observations if hasattr(obs, "issued") and obs.issued is not None
         ]
 
         if len(obs_with_issued) > 0:
             from tests.integration.helpers.temporal_validators import assert_instant_format
+
             for obs in obs_with_issued:
                 # issued is instant type - must always have full timestamp + timezone
                 assert_instant_format(obs.issued, field_name="Observation.issued")
@@ -1635,7 +1803,8 @@ class TestAgasthaE2E:
         """PHASE 3.2: Validate Condition.onsetDateTime has timezone when time present."""
 
         conditions = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Condition"
         ]
 
@@ -1643,109 +1812,135 @@ class TestAgasthaE2E:
 
         # Check onsetDateTime
         conditions_with_onset_dt = [
-            c for c in conditions
-            if hasattr(c, 'onsetDateTime') and c.onsetDateTime is not None
+            c for c in conditions if hasattr(c, "onsetDateTime") and c.onsetDateTime is not None
         ]
 
         if len(conditions_with_onset_dt) > 0:
             for condition in conditions_with_onset_dt:
                 # FHIR library may parse to datetime object - convert to string for validation
-                onset_str = condition.onsetDateTime if isinstance(condition.onsetDateTime, str) else condition.onsetDateTime.isoformat()
+                onset_str = (
+                    condition.onsetDateTime
+                    if isinstance(condition.onsetDateTime, str)
+                    else condition.onsetDateTime.isoformat()
+                )
                 assert_datetime_format(onset_str, field_name="Condition.onsetDateTime")
 
                 # If it has time component, must have timezone
                 if "T" in onset_str:
-                    assert "+" in onset_str or "-" in onset_str[-6:], \
+                    assert "+" in onset_str or "-" in onset_str[-6:], (
                         f"Condition.onsetDateTime with time must have timezone: {onset_str}"
+                    )
 
         # Check abatementDateTime
         conditions_with_abatement_dt = [
-            c for c in conditions
-            if hasattr(c, 'abatementDateTime') and c.abatementDateTime is not None
+            c
+            for c in conditions
+            if hasattr(c, "abatementDateTime") and c.abatementDateTime is not None
         ]
 
         if len(conditions_with_abatement_dt) > 0:
             for condition in conditions_with_abatement_dt:
                 # FHIR library may parse to datetime object - convert to string for validation
-                abatement_str = condition.abatementDateTime if isinstance(condition.abatementDateTime, str) else condition.abatementDateTime.isoformat()
+                abatement_str = (
+                    condition.abatementDateTime
+                    if isinstance(condition.abatementDateTime, str)
+                    else condition.abatementDateTime.isoformat()
+                )
                 assert_datetime_format(abatement_str, field_name="Condition.abatementDateTime")
 
                 # If it has time component, must have timezone
                 if "T" in abatement_str:
-                    assert "+" in abatement_str or "-" in abatement_str[-6:], \
+                    assert "+" in abatement_str or "-" in abatement_str[-6:], (
                         f"Condition.abatementDateTime with time must have timezone: {abatement_str}"
+                    )
 
     def test_medication_datetime_timezone_exact(self, agastha_bundle):
         """PHASE 3.3: Validate MedicationStatement temporal fields have timezone when time present."""
         med_statements = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "MedicationStatement"
         ]
 
         if len(med_statements) == 0:
             import pytest
+
             pytest.skip("No MedicationStatement resources in document")
 
         # Check effectiveDateTime
         meds_with_effective_dt = [
-            m for m in med_statements
-            if hasattr(m, 'effectiveDateTime') and m.effectiveDateTime is not None
+            m
+            for m in med_statements
+            if hasattr(m, "effectiveDateTime") and m.effectiveDateTime is not None
         ]
 
         if len(meds_with_effective_dt) > 0:
             for med in meds_with_effective_dt:
-                assert_datetime_format(med.effectiveDateTime, field_name="MedicationStatement.effectiveDateTime")
+                assert_datetime_format(
+                    med.effectiveDateTime, field_name="MedicationStatement.effectiveDateTime"
+                )
 
                 # If it has time component, must have timezone
                 if "T" in med.effectiveDateTime:
-                    assert "+" in med.effectiveDateTime or "-" in med.effectiveDateTime[-6:], \
+                    assert "+" in med.effectiveDateTime or "-" in med.effectiveDateTime[-6:], (
                         f"MedicationStatement.effectiveDateTime with time must have timezone: {med.effectiveDateTime}"
+                    )
 
         # Check effectivePeriod
         meds_with_effective_period = [
-            m for m in med_statements
-            if hasattr(m, 'effectivePeriod') and m.effectivePeriod is not None
+            m
+            for m in med_statements
+            if hasattr(m, "effectivePeriod") and m.effectivePeriod is not None
         ]
 
         if len(meds_with_effective_period) > 0:
             from tests.integration.helpers.temporal_validators import assert_period_format
+
             for med in meds_with_effective_period:
-                assert_period_format(med.effectivePeriod, field_name="MedicationStatement.effectivePeriod")
+                assert_period_format(
+                    med.effectivePeriod, field_name="MedicationStatement.effectivePeriod"
+                )
 
     def test_procedure_datetime_timezone_exact(self, agastha_bundle):
         """PHASE 3.4: Validate Procedure.performedDateTime/Period have timezone when time present."""
         procedures = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Procedure"
         ]
 
         if len(procedures) == 0:
             import pytest
+
             pytest.skip("No Procedure resources in document")
 
         # Check performedDateTime
         procs_with_performed_dt = [
-            p for p in procedures
-            if hasattr(p, 'performedDateTime') and p.performedDateTime is not None
+            p
+            for p in procedures
+            if hasattr(p, "performedDateTime") and p.performedDateTime is not None
         ]
 
         if len(procs_with_performed_dt) > 0:
             for proc in procs_with_performed_dt:
-                assert_datetime_format(proc.performedDateTime, field_name="Procedure.performedDateTime")
+                assert_datetime_format(
+                    proc.performedDateTime, field_name="Procedure.performedDateTime"
+                )
 
                 # If it has time component, must have timezone
                 if "T" in proc.performedDateTime:
-                    assert "+" in proc.performedDateTime or "-" in proc.performedDateTime[-6:], \
+                    assert "+" in proc.performedDateTime or "-" in proc.performedDateTime[-6:], (
                         f"Procedure.performedDateTime with time must have timezone: {proc.performedDateTime}"
+                    )
 
         # Check performedPeriod
         procs_with_performed_period = [
-            p for p in procedures
-            if hasattr(p, 'performedPeriod') and p.performedPeriod is not None
+            p for p in procedures if hasattr(p, "performedPeriod") and p.performedPeriod is not None
         ]
 
         if len(procs_with_performed_period) > 0:
             from tests.integration.helpers.temporal_validators import assert_period_format
+
             for proc in procs_with_performed_period:
                 assert_period_format(proc.performedPeriod, field_name="Procedure.performedPeriod")
 
@@ -1753,7 +1948,8 @@ class TestAgasthaE2E:
         """PHASE 3.5: Validate Composition.date (instant) always has timezone."""
 
         compositions = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Composition"
         ]
 
@@ -1761,13 +1957,17 @@ class TestAgasthaE2E:
         composition = compositions[0]
 
         # Composition.date is instant type - must always have full timestamp + timezone
-        assert hasattr(composition, 'date') and composition.date is not None, \
+        assert hasattr(composition, "date") and composition.date is not None, (
             "Composition.date is required"
+        )
 
         # FHIR library may parse to datetime object - convert to string for validation
-        date_str = composition.date if isinstance(composition.date, str) else composition.date.isoformat()
+        date_str = (
+            composition.date if isinstance(composition.date, str) else composition.date.isoformat()
+        )
 
         from tests.integration.helpers.temporal_validators import assert_instant_format
+
         assert_instant_format(date_str, field_name="Composition.date")
 
     def test_observation_component_structure(self, agastha_bundle):
@@ -1776,70 +1976,83 @@ class TestAgasthaE2E:
         Examples: Blood pressure (systolic + diastolic), Panel observations
         """
         observations = [
-            e.resource for e in agastha_bundle.entry
+            e.resource
+            for e in agastha_bundle.entry
             if e.resource.get_resource_type() == "Observation"
         ]
 
         # Find observations with components
         obs_with_components = [
-            obs for obs in observations
-            if hasattr(obs, 'component') and obs.component is not None and len(obs.component) > 0
+            obs
+            for obs in observations
+            if hasattr(obs, "component") and obs.component is not None and len(obs.component) > 0
         ]
 
         if len(obs_with_components) == 0:
             import pytest
+
             pytest.skip("No observations with components in document")
 
         for obs in obs_with_components:
-            assert len(obs.component) > 0, \
-                "Observation.component must not be empty if present"
+            assert len(obs.component) > 0, "Observation.component must not be empty if present"
 
             for i, component in enumerate(obs.component):
                 # Each component must have code
-                assert hasattr(component, 'code') and component.code is not None, \
+                assert hasattr(component, "code") and component.code is not None, (
                     f"Observation.component[{i}].code is required"
+                )
 
                 # Component code must have coding
-                assert hasattr(component.code, 'coding') and component.code.coding is not None, \
+                assert hasattr(component.code, "coding") and component.code.coding is not None, (
                     f"Observation.component[{i}].code must have coding"
-                assert len(component.code.coding) > 0, \
+                )
+                assert len(component.code.coding) > 0, (
                     f"Observation.component[{i}].code.coding must not be empty"
+                )
 
                 coding = component.code.coding[0]
 
                 # Validate coding structure
-                assert hasattr(coding, 'system') and coding.system is not None, \
+                assert hasattr(coding, "system") and coding.system is not None, (
                     f"Observation.component[{i}].code.coding[0].system is required"
-                assert hasattr(coding, 'code') and coding.code is not None, \
+                )
+                assert hasattr(coding, "code") and coding.code is not None, (
                     f"Observation.component[{i}].code.coding[0].code is required"
+                )
 
                 # Component must have a value (one of: valueQuantity, valueCodeableConcept, etc.)
-                has_value = any([
-                    hasattr(component, 'valueQuantity') and component.valueQuantity is not None,
-                    hasattr(component, 'valueCodeableConcept') and component.valueCodeableConcept is not None,
-                    hasattr(component, 'valueString') and component.valueString is not None,
-                    hasattr(component, 'valueBoolean') and component.valueBoolean is not None,
-                    hasattr(component, 'valueInteger') and component.valueInteger is not None,
-                    hasattr(component, 'valueRange') and component.valueRange is not None,
-                    hasattr(component, 'valueRatio') and component.valueRatio is not None,
-                    hasattr(component, 'valueSampledData') and component.valueSampledData is not None,
-                    hasattr(component, 'valueTime') and component.valueTime is not None,
-                    hasattr(component, 'valueDateTime') and component.valueDateTime is not None,
-                    hasattr(component, 'valuePeriod') and component.valuePeriod is not None,
-                ])
+                has_value = any(
+                    [
+                        hasattr(component, "valueQuantity") and component.valueQuantity is not None,
+                        hasattr(component, "valueCodeableConcept")
+                        and component.valueCodeableConcept is not None,
+                        hasattr(component, "valueString") and component.valueString is not None,
+                        hasattr(component, "valueBoolean") and component.valueBoolean is not None,
+                        hasattr(component, "valueInteger") and component.valueInteger is not None,
+                        hasattr(component, "valueRange") and component.valueRange is not None,
+                        hasattr(component, "valueRatio") and component.valueRatio is not None,
+                        hasattr(component, "valueSampledData")
+                        and component.valueSampledData is not None,
+                        hasattr(component, "valueTime") and component.valueTime is not None,
+                        hasattr(component, "valueDateTime") and component.valueDateTime is not None,
+                        hasattr(component, "valuePeriod") and component.valuePeriod is not None,
+                    ]
+                )
 
-                assert has_value, \
-                    f"Observation.component[{i}] must have a value[x] element"
+                assert has_value, f"Observation.component[{i}] must have a value[x] element"
 
                 # If valueQuantity, validate UCUM
-                if hasattr(component, 'valueQuantity') and component.valueQuantity is not None:
+                if hasattr(component, "valueQuantity") and component.valueQuantity is not None:
                     quantity = component.valueQuantity
-                    assert hasattr(quantity, 'value') and quantity.value is not None, \
+                    assert hasattr(quantity, "value") and quantity.value is not None, (
                         f"Observation.component[{i}].valueQuantity.value is required"
+                    )
 
                     # Should have UCUM system
-                    if hasattr(quantity, 'unit') and quantity.unit is not None:
-                        assert hasattr(quantity, 'system') and quantity.system is not None, \
+                    if hasattr(quantity, "unit") and quantity.unit is not None:
+                        assert hasattr(quantity, "system") and quantity.system is not None, (
                             f"Observation.component[{i}].valueQuantity.system should be present when unit is present"
-                        assert quantity.system == "http://unitsofmeasure.org", \
+                        )
+                        assert quantity.system == "http://unitsofmeasure.org", (
                             f"Observation.component[{i}].valueQuantity.system should be UCUM"
+                        )

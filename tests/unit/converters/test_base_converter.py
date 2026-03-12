@@ -4,9 +4,9 @@ import pytest
 
 from ccda_to_fhir.ccda.models.datatypes import CS
 from ccda_to_fhir.constants import (
+    ENCOUNTER_STATUS_TO_FHIR,
     OBSERVATION_STATUS_TO_FHIR,
     PROCEDURE_STATUS_TO_FHIR,
-    ENCOUNTER_STATUS_TO_FHIR,
     FHIRCodes,
 )
 from ccda_to_fhir.converters.base import BaseConverter

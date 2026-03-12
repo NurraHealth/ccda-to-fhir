@@ -84,11 +84,9 @@ class TestDocumentReferenceAuthorDisplay:
         doc_refs = _find_resources(result["bundle"], "DocumentReference")
         # Filter for Note Activity DocumentReferences (not document-level)
         note_doc_refs = [
-            dr for dr in doc_refs
-            if any(
-                c.get("code") == "34109-9"
-                for c in dr.get("type", {}).get("coding", [])
-            )
+            dr
+            for dr in doc_refs
+            if any(c.get("code") == "34109-9" for c in dr.get("type", {}).get("coding", []))
         ]
         assert len(note_doc_refs) >= 1
         authors = note_doc_refs[0].get("author", [])

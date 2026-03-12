@@ -136,7 +136,9 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             if "medicationReference" in medication_data:
                 med_request["medicationReference"] = medication_data["medicationReference"]
             elif "medicationCodeableConcept" in medication_data:
-                med_request["medicationCodeableConcept"] = medication_data["medicationCodeableConcept"]
+                med_request["medicationCodeableConcept"] = medication_data[
+                    "medicationCodeableConcept"
+                ]
         else:
             # US Core Must Support: medication[x] is required
             # If we couldn't extract medication data, create a text-only CodeableConcept
@@ -145,7 +147,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 "extension": [
                     self.create_data_absent_reason_extension(None, default_reason="unknown")
                 ],
-                "text": "Medication information not provided"
+                "text": "Medication information not provided",
             }
 
         # 6. Subject (patient reference)
@@ -165,10 +167,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # 7b. Requester (from latest author)
         if substance_admin.author:
             # Filter authors with time
-            authors_with_time = [
-                a for a in substance_admin.author
-                if a.time and a.time.value
-            ]
+            authors_with_time = [a for a in substance_admin.author if a.time and a.time.value]
 
             if authors_with_time:
                 # Sort by time and get latest
@@ -179,15 +178,22 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
                     # Check for practitioner
                     # Only create reference if we have an explicit ID with root
-                    from ccda_to_fhir.converters.author_references import format_device_display, format_person_display
+                    from ccda_to_fhir.converters.author_references import (
+                        format_device_display,
+                        format_person_display,
+                    )
 
                     if assigned.assigned_person:
                         if assigned.id:
                             for id_elem in assigned.id:
                                 if id_elem.root:
-                                    pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                                    pract_id = self._generate_practitioner_id(
+                                        id_elem.root, id_elem.extension
+                                    )
                                     display = format_person_display(assigned.assigned_person)
-                                    requester_ref = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                                    requester_ref = FHIRReference(
+                                        reference=f"urn:uuid:{pract_id}", display=display
+                                    )
                                     med_request["requester"] = requester_ref.to_dict()
                                     break
                     # Check for device
@@ -195,9 +201,15 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                         if assigned.id:
                             for id_elem in assigned.id:
                                 if id_elem.root:
-                                    device_id = self._generate_device_id(id_elem.root, id_elem.extension)
-                                    display = format_device_display(assigned.assigned_authoring_device)
-                                    requester_ref = FHIRReference(reference=f"urn:uuid:{device_id}", display=display)
+                                    device_id = self._generate_device_id(
+                                        id_elem.root, id_elem.extension
+                                    )
+                                    display = format_device_display(
+                                        assigned.assigned_authoring_device
+                                    )
+                                    requester_ref = FHIRReference(
+                                        reference=f"urn:uuid:{device_id}", display=display
+                                    )
                                     med_request["requester"] = requester_ref.to_dict()
                                     break
 
@@ -318,9 +330,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
     def _determine_intent(self, substance_admin: SubstanceAdministration) -> str:
         """Map C-CDA moodCode to FHIR MedicationRequest intent."""
         mood_code = substance_admin.mood_code or "INT"
-        return MEDICATION_MOOD_TO_INTENT.get(
-            mood_code, FHIRCodes.MedicationRequestIntent.PLAN
-        )
+        return MEDICATION_MOOD_TO_INTENT.get(mood_code, FHIRCodes.MedicationRequestIntent.PLAN)
 
     def _extract_medication(self, substance_admin: SubstanceAdministration) -> JSONObject | None:
         """Extract medication as medicationReference or medicationCodeableConcept.
@@ -376,11 +386,13 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 translations = []
                 for trans in med_code.translation:
                     if trans.code and trans.code_system:
-                        translations.append({
-                            "code": trans.code,
-                            "code_system": trans.code_system,
-                            "display_name": trans.display_name,
-                        })
+                        translations.append(
+                            {
+                                "code": trans.code,
+                                "code_system": trans.code_system,
+                                "display_name": trans.display_name,
+                            }
+                        )
 
             codeable_concept = self.create_codeable_concept(
                 code=med_code.code,
@@ -435,10 +447,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             return True
 
         # Check for lot number (batch)
-        if manufactured_product.manufactured_material.lot_number_text:
-            return True
-
-        return False
+        return bool(manufactured_product.manufactured_material.lot_number_text)
 
     def _extract_authored_on(self, substance_admin: SubstanceAdministration) -> str | None:
         """Extract authoredOn date from author time."""
@@ -457,7 +466,9 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         return None
 
-    def _extract_reason_codes(self, substance_admin: SubstanceAdministration) -> list[FHIRResourceDict]:
+    def _extract_reason_codes(
+        self, substance_admin: SubstanceAdministration
+    ) -> list[FHIRResourceDict]:
         """Extract indication as reasonCode from RSON entry relationships."""
         reason_codes = []
 
@@ -524,7 +535,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # 6. Route (from routeCode)
         # routeCode can be CE (with code_system) or CS (without code_system)
         if substance_admin.route_code:
-            code_system = getattr(substance_admin.route_code, 'code_system', None)
+            code_system = getattr(substance_admin.route_code, "code_system", None)
             route = self.create_codeable_concept(
                 code=substance_admin.route_code.code,
                 code_system=code_system,
@@ -551,9 +562,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             return None
 
         for rel in substance_admin.entry_relationship:
-            if (rel.type_code == TypeCodes.SUBJECT and
-                rel.inversion_ind and
-                rel.act):
+            if rel.type_code == TypeCodes.SUBJECT and rel.inversion_ind and rel.act:
                 # Check if it's an Instruction Act
                 if rel.act.template_id:
                     for template in rel.act.template_id:
@@ -573,9 +582,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             return instructions
 
         for rel in substance_admin.entry_relationship:
-            if (rel.type_code == TypeCodes.SUBJECT and
-                rel.inversion_ind and
-                rel.act):
+            if rel.type_code == TypeCodes.SUBJECT and rel.inversion_ind and rel.act:
                 if rel.act.template_id:
                     for template in rel.act.template_id:
                         if template.root == TemplateIds.INSTRUCTION_ACT:
@@ -777,9 +784,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         if not ucum_unit:
             return "d"  # default to days
 
-        return UCUM_TO_FHIR_UNITS_OF_TIME.get(
-            ucum_unit, ucum_unit
-        )
+        return UCUM_TO_FHIR_UNITS_OF_TIME.get(ucum_unit, ucum_unit)
 
     def _extract_as_needed(self, substance_admin: SubstanceAdministration) -> JSONObject | None:
         """Extract PRN/as-needed indication from precondition."""
@@ -801,7 +806,9 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         return None
 
-    def _extract_dose_and_rate(self, substance_admin: SubstanceAdministration) -> list[FHIRResourceDict]:
+    def _extract_dose_and_rate(
+        self, substance_admin: SubstanceAdministration
+    ) -> list[FHIRResourceDict]:
         """Extract dose and rate from doseQuantity and rateQuantity."""
         dose_and_rate_list = []
         dose_and_rate: JSONObject = {}
@@ -811,8 +818,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             dose_qty = substance_admin.dose_quantity
             if isinstance(dose_qty, PQ):
                 quantity = self.create_quantity(
-                    value=self._extract_period_value(dose_qty),
-                    unit=dose_qty.unit
+                    value=self._extract_period_value(dose_qty), unit=dose_qty.unit
                 )
                 if quantity:
                     dose_and_rate["doseQuantity"] = quantity
@@ -820,8 +826,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 # If range, use low
                 if dose_qty.low:
                     quantity = self.create_quantity(
-                        value=self._extract_period_value(dose_qty.low),
-                        unit=dose_qty.low.unit
+                        value=self._extract_period_value(dose_qty.low), unit=dose_qty.low.unit
                     )
                     if quantity:
                         dose_and_rate["doseQuantity"] = quantity
@@ -831,8 +836,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             rate_qty = substance_admin.rate_quantity
             if isinstance(rate_qty, PQ):
                 quantity = self.create_quantity(
-                    value=self._extract_period_value(rate_qty),
-                    unit=rate_qty.unit
+                    value=self._extract_period_value(rate_qty), unit=rate_qty.unit
                 )
                 if quantity:
                     dose_and_rate["rateQuantity"] = quantity
@@ -842,7 +846,9 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         return dose_and_rate_list
 
-    def _extract_max_dose_per_period(self, substance_admin: SubstanceAdministration) -> JSONObject | None:
+    def _extract_max_dose_per_period(
+        self, substance_admin: SubstanceAdministration
+    ) -> JSONObject | None:
         """Extract maxDosePerPeriod from maxDoseQuantity (RTO type).
 
         C-CDA maxDoseQuantity is RTO with numerator and denominator.
@@ -857,8 +863,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
         if max_dose.numerator:
             numerator = self.create_quantity(
-                value=self._extract_period_value(max_dose.numerator),
-                unit=max_dose.numerator.unit
+                value=self._extract_period_value(max_dose.numerator), unit=max_dose.numerator.unit
             )
             if numerator:
                 ratio["numerator"] = numerator
@@ -866,7 +871,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         if max_dose.denominator:
             denominator = self.create_quantity(
                 value=self._extract_period_value(max_dose.denominator),
-                unit=max_dose.denominator.unit
+                unit=max_dose.denominator.unit,
             )
             if denominator:
                 ratio["denominator"] = denominator
@@ -906,7 +911,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                     if supply.quantity:
                         quantity = self.create_quantity(
                             value=self._extract_period_value(supply.quantity),
-                            unit=supply.quantity.unit
+                            unit=supply.quantity.unit,
                         )
                         if quantity:
                             dispense_request["quantity"] = quantity
@@ -937,7 +942,6 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                 pass
 
         return dispense_request if dispense_request else None
-
 
 
 def convert_medication_activity(
@@ -979,6 +983,7 @@ def convert_medication_activity(
 
         # Extract nested medication dispenses
         from ccda_to_fhir.converters.medication_dispense import extract_medication_dispenses
+
         extract_medication_dispenses(
             substance_admin,
             code_system_mapper=code_system_mapper,

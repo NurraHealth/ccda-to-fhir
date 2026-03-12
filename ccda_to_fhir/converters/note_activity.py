@@ -22,7 +22,6 @@ from .base import BaseConverter
 from .code_systems import CodeSystemMapper
 from .references import ReferenceRegistry
 
-
 # C-CDA statusCode → FHIR DocumentReference.docStatus
 _DOC_STATUS_MAP: dict[str, str] = {
     "completed": "final",
@@ -128,9 +127,7 @@ class NoteActivityConverter(BaseConverter[Act]):
                     self.create_data_absent_reason_extension
                 )
         else:
-            doc_ref["content"] = _create_missing_content(
-                self.create_data_absent_reason_extension
-            )
+            doc_ref["content"] = _create_missing_content(self.create_data_absent_reason_extension)
 
         # Context - encounter and period
         context = _create_context(
@@ -201,11 +198,13 @@ def _convert_type(code: CD | None, mapper: CodeSystemMapper) -> JSONObject:
 
     # US Core fallback
     return {
-        "coding": [{
-            "system": "http://loinc.org",
-            "code": "34133-9",
-            "display": "Summarization of Episode Note",
-        }],
+        "coding": [
+            {
+                "system": "http://loinc.org",
+                "code": "34133-9",
+                "display": "Summarization of Episode Note",
+            }
+        ],
         "text": "Clinical Note",
     }
 
@@ -240,7 +239,6 @@ def _extract_author_date(
     if first_author.time and first_author.time.value:
         return convert_date_fn(first_author.time.value)
     return None
-
 
 
 def _create_content_list(
@@ -318,11 +316,7 @@ def _create_missing_content(
         {
             "attachment": {
                 "contentType": "text/plain",
-                "_data": {
-                    "extension": [
-                        create_absent_reason_fn(None)
-                    ]
-                },
+                "_data": {"extension": [create_absent_reason_fn(None)]},
             }
         }
     ]
@@ -402,10 +396,12 @@ def _convert_relates_to(references: list[Reference]) -> list[JSONObject]:
             first_id.extension or None,
         )
         target_ref = FHIRReference(reference=f"urn:uuid:{doc_id}")
-        relates_to.append({
-            "code": fhir_code,
-            "target": target_ref.to_dict(),
-        })
+        relates_to.append(
+            {
+                "code": fhir_code,
+                "target": target_ref.to_dict(),
+            }
+        )
     return relates_to
 
 

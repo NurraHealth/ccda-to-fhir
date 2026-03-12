@@ -22,8 +22,7 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
 class TestProblemConversion:
     """E2E tests for C-CDA Problem Concern Act to FHIR Condition conversion."""
 
-    def test_converts_problem_code(
-        self, ccda_problem: str, fhir_problem: JSONObject) -> None:
+    def test_converts_problem_code(self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that the problem code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -32,16 +31,14 @@ class TestProblemConversion:
         assert condition is not None
         assert "code" in condition
         snomed = next(
-            (c for c in condition["code"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in condition["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
         )
         assert snomed is not None
         assert snomed["code"] == "233604007"
         assert snomed["display"] == "Pneumonia"
 
-    def test_converts_clinical_status(
-        self, ccda_problem: str, fhir_problem: JSONObject) -> None:
+    def test_converts_clinical_status(self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that clinical status is correctly mapped from status observation."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -51,8 +48,7 @@ class TestProblemConversion:
         assert "clinicalStatus" in condition
         assert condition["clinicalStatus"]["coding"][0]["code"] == "recurrence"
 
-    def test_converts_category(
-        self, ccda_problem: str, fhir_problem: JSONObject) -> None:
+    def test_converts_category(self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that category is set to problem-list-item."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -84,10 +80,7 @@ class TestProblemConversion:
         assert len(condition["category"]) == 2
 
         # Extract category codes
-        category_codes = [
-            cat["coding"][0]["code"]
-            for cat in condition["category"]
-        ]
+        category_codes = [cat["coding"][0]["code"] for cat in condition["category"]]
 
         # Should contain both problem-list-item (from section) and encounter-diagnosis (from problem type)
         assert "problem-list-item" in category_codes
@@ -95,10 +88,12 @@ class TestProblemConversion:
 
         # Verify system for both categories
         for cat in condition["category"]:
-            assert cat["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/condition-category"
+            assert (
+                cat["coding"][0]["system"]
+                == "http://terminology.hl7.org/CodeSystem/condition-category"
+            )
 
-    def test_converts_onset_date(
-        self, ccda_problem: str, fhir_problem: JSONObject) -> None:
+    def test_converts_onset_date(self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that onset is correctly converted (prioritizes age over date per choice type logic)."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -109,8 +104,7 @@ class TestProblemConversion:
         assert "onsetAge" in condition
         assert condition["onsetAge"]["value"] == 65
 
-    def test_converts_onset_age(
-        self, ccda_problem: str, fhir_problem: JSONObject) -> None:
+    def test_converts_onset_age(self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that age at onset is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -121,8 +115,7 @@ class TestProblemConversion:
         assert condition["onsetAge"]["value"] == 65
         assert condition["onsetAge"]["unit"] == "year"
 
-    def test_converts_recorded_date(
-        self, ccda_problem: str, fhir_problem: JSONObject) -> None:
+    def test_converts_recorded_date(self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that author time is converted to recordedDate."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -132,8 +125,7 @@ class TestProblemConversion:
         assert "recordedDate" in condition
         assert condition["recordedDate"] == "2014-01-04"
 
-    def test_converts_icd_translations(
-        self, ccda_problem: str, fhir_problem: JSONObject) -> None:
+    def test_converts_icd_translations(self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that ICD-9 and ICD-10 translations are included."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -142,23 +134,28 @@ class TestProblemConversion:
         assert condition is not None
         assert "code" in condition
         icd9 = next(
-            (c for c in condition["code"]["coding"]
-             if c.get("system") == "http://hl7.org/fhir/sid/icd-9-cm"),
-            None
+            (
+                c
+                for c in condition["code"]["coding"]
+                if c.get("system") == "http://hl7.org/fhir/sid/icd-9-cm"
+            ),
+            None,
         )
         assert icd9 is not None
         assert icd9["code"] == "486"
 
         icd10 = next(
-            (c for c in condition["code"]["coding"]
-             if c.get("system") == "http://hl7.org/fhir/sid/icd-10-cm"),
-            None
+            (
+                c
+                for c in condition["code"]["coding"]
+                if c.get("system") == "http://hl7.org/fhir/sid/icd-10-cm"
+            ),
+            None,
         )
         assert icd10 is not None
         assert icd10["code"] == "J18.9"
 
-    def test_converts_identifiers(
-        self, ccda_problem: str, fhir_problem: JSONObject) -> None:
+    def test_converts_identifiers(self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that identifiers are correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -168,8 +165,7 @@ class TestProblemConversion:
         assert "identifier" in condition
         assert condition["identifier"][0]["value"] == "545069300001"
 
-    def test_resource_type_is_condition(
-        self, ccda_problem: str, fhir_problem: JSONObject) -> None:
+    def test_resource_type_is_condition(self, ccda_problem: str, fhir_problem: JSONObject) -> None:
         """Test that the resource type is Condition."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -201,7 +197,9 @@ class TestProblemConversion:
 
         Reference: http://hl7.org/fhir/extension-data-absent-reason.html
         """
-        ccda_doc = wrap_in_ccda_document(ccda_condition_with_abatement_unknown, PROBLEMS_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_condition_with_abatement_unknown, PROBLEMS_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         condition = _find_resource_in_bundle(bundle, "Condition")
@@ -218,7 +216,9 @@ class TestProblemConversion:
         assert len(extensions) == 1
 
         data_absent_ext = extensions[0]
-        assert data_absent_ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert (
+            data_absent_ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        )
         assert data_absent_ext["valueCode"] == "unknown"
 
         # Should have resolved clinical status (per C-CDA on FHIR IG constraint)
@@ -235,9 +235,12 @@ class TestProblemConversion:
         assert "bodySite" in condition
         assert len(condition["bodySite"]) == 1
         snomed = next(
-            (c for c in condition["bodySite"][0]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (
+                c
+                for c in condition["bodySite"][0]["coding"]
+                if c.get("system") == "http://snomed.info/sct"
+            ),
+            None,
         )
         assert snomed is not None
         assert snomed["code"] == "368209003"
@@ -252,9 +255,12 @@ class TestProblemConversion:
         assert condition is not None
         assert "severity" in condition
         snomed = next(
-            (c for c in condition["severity"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (
+                c
+                for c in condition["severity"]["coding"]
+                if c.get("system") == "http://snomed.info/sct"
+            ),
+            None,
         )
         assert snomed is not None
         assert snomed["code"] == "24484000"
@@ -313,17 +319,14 @@ class TestProblemConversion:
         # Should have negated concept code
         assert "code" in condition
         snomed_coding = next(
-            (c for c in condition["code"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in condition["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "160245001"
         assert "No current problems" in snomed_coding.get("display", "")
 
-    def test_converts_asserted_date_extension(
-        self, ccda_condition_with_asserted_date: str
-    ) -> None:
+    def test_converts_asserted_date_extension(self, ccda_condition_with_asserted_date: str) -> None:
         """Test that Date of Diagnosis Act is converted to assertedDate extension."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_asserted_date, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -332,16 +335,17 @@ class TestProblemConversion:
         assert condition is not None
         assert "extension" in condition
         asserted_ext = next(
-            (e for e in condition["extension"]
-             if e.get("url") == "http://hl7.org/fhir/StructureDefinition/condition-assertedDate"),
-            None
+            (
+                e
+                for e in condition["extension"]
+                if e.get("url") == "http://hl7.org/fhir/StructureDefinition/condition-assertedDate"
+            ),
+            None,
         )
         assert asserted_ext is not None
         assert asserted_ext["valueDateTime"] == "2019-02-20"
 
-    def test_converts_comment_activity_to_note(
-        self, ccda_condition_with_comment: str
-    ) -> None:
+    def test_converts_comment_activity_to_note(self, ccda_condition_with_comment: str) -> None:
         """Test that Comment Activity is converted to note."""
         ccda_doc = wrap_in_ccda_document(ccda_condition_with_comment, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -395,7 +399,9 @@ class TestProblemConversion:
         # Verify the reference points to an Observation resource
         reference = condition["evidence"][0]["detail"][0]["reference"]
         assert reference.startswith("urn:uuid:")
-        assert "assessment-phq9-001" in reference, "Should reference the PHQ-9 assessment observation"
+        assert "assessment-phq9-001" in reference, (
+            "Should reference the PHQ-9 assessment observation"
+        )
 
     def test_converts_recorder_from_latest_author(
         self, ccda_problem: str, fhir_problem: JSONObject
@@ -411,15 +417,16 @@ class TestProblemConversion:
         assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Verify the practitioner ID is a valid UUID v4
         import uuid as uuid_module
+
         practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Practitioner ID {practitioner_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(
+                f"Practitioner ID {practitioner_id} is not a valid UUID v4"
+            ) from err
 
-    def test_recorder_and_provenance_reference_same_practitioner(
-        self, ccda_problem: str
-    ) -> None:
+    def test_recorder_and_provenance_reference_same_practitioner(self, ccda_problem: str) -> None:
         """Test that recorder and Provenance both reference the same Practitioner."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -451,14 +458,11 @@ class TestProblemConversion:
         assert len(condition_provenance["agent"]) > 0
         # Latest author should be in Provenance agents
         agent_refs = [
-            agent.get("who", {}).get("reference")
-            for agent in condition_provenance["agent"]
+            agent.get("who", {}).get("reference") for agent in condition_provenance["agent"]
         ]
         assert recorder_ref in agent_refs
 
-    def test_provenance_has_recorded_date(
-        self, ccda_problem: str
-    ) -> None:
+    def test_provenance_has_recorded_date(self, ccda_problem: str) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -485,9 +489,7 @@ class TestProblemConversion:
         # Should have a valid ISO datetime
         assert len(condition_provenance["recorded"]) > 0
 
-    def test_provenance_agent_has_correct_type(
-        self, ccda_problem: str
-    ) -> None:
+    def test_provenance_agent_has_correct_type(self, ccda_problem: str) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_problem, PROBLEMS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -568,12 +570,15 @@ class TestProblemConversion:
 
         # Recorder should reference a Practitioner with UUID v4 ID
         import uuid as uuid_module
+
         assert condition["recorder"]["reference"].startswith("urn:uuid:")
         practitioner_id = condition["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Practitioner ID {practitioner_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(
+                f"Practitioner ID {practitioner_id} is not a valid UUID v4"
+            ) from err
 
         # recordedDate uses earliest observation author time (not concern act author)
         # So it's 2023-06-15 (MIDDLE-DOC-456), not 2023-01-01 (EARLY-DOC-123 from concern act)
@@ -719,7 +724,7 @@ class TestCodeWhitespaceSanitization:
                     </observation>
                 </entryRelationship>
             </act>""",
-            PROBLEMS_TEMPLATE_ID
+            PROBLEMS_TEMPLATE_ID,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
@@ -730,13 +735,18 @@ class TestCodeWhitespaceSanitization:
 
         # Find ICD-10-CM coding
         icd10_coding = next(
-            (c for c in condition["code"]["coding"]
-             if c.get("system") == "http://hl7.org/fhir/sid/icd-10-cm"),
-            None
+            (
+                c
+                for c in condition["code"]["coding"]
+                if c.get("system") == "http://hl7.org/fhir/sid/icd-10-cm"
+            ),
+            None,
         )
 
         assert icd10_coding is not None
         # Code should be sanitized (leading space removed)
         assert icd10_coding["code"] == "R50.9", f"Expected 'R50.9' but got '{icd10_coding['code']}'"
         # Display name should be sanitized (leading/trailing spaces removed)
-        assert icd10_coding["display"] == "Fever, unspecified", f"Expected 'Fever, unspecified' but got '{icd10_coding['display']}'"
+        assert icd10_coding["display"] == "Fever, unspecified", (
+            f"Expected 'Fever, unspecified' but got '{icd10_coding['display']}'"
+        )

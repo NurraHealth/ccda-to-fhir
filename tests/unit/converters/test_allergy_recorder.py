@@ -22,16 +22,18 @@ class TestAllergyRecorder:
         """Helper to create allergy observation with given authors."""
         obs = Observation()
         obs.code = CE(code="ASSERTION", code_system="2.16.840.1.113883.5.4")
-        obs.value = CE(code="419199007", code_system="2.16.840.1.113883.6.96", display_name="Allergy to substance")
+        obs.value = CE(
+            code="419199007",
+            code_system="2.16.840.1.113883.6.96",
+            display_name="Allergy to substance",
+        )
 
         # Add participant (allergen) - required for allergy
         participant = Participant()
         participant.participant_role = ParticipantRole()
         participant.participant_role.playing_entity = PlayingEntity()
         participant.participant_role.playing_entity.code = CE(
-            code="70618",
-            code_system="2.16.840.1.113883.6.88",
-            display_name="Penicillin"
+            code="70618", code_system="2.16.840.1.113883.6.88", display_name="Penicillin"
         )
         obs.participant = [participant]
 
@@ -44,18 +46,21 @@ class TestAllergyRecorder:
         time: str | None,
         practitioner_ext: str | None = None,
         has_person: bool = True,
-        has_device: bool = False
+        has_device: bool = False,
     ) -> Author:
         """Helper to create author with specified time and identifiers."""
         assigned_author = AssignedAuthor()
-        assigned_author.id = [II(root="2.16.840.1.113883.4.6", extension=practitioner_ext)] if practitioner_ext else []
+        assigned_author.id = (
+            [II(root="2.16.840.1.113883.4.6", extension=practitioner_ext)]
+            if practitioner_ext
+            else []
+        )
 
         if has_person and not has_device:
             assigned_author.assigned_person = AssignedPerson(name=[])
         elif has_device:
             assigned_author.assigned_authoring_device = AssignedAuthoringDevice(
-                manufacturer_model_name="Test Device",
-                software_name="Test Software"
+                manufacturer_model_name="Test Device", software_name="Test Software"
             )
 
         author = Author()
@@ -76,7 +81,9 @@ class TestAllergyRecorder:
         author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
         obs = self.create_observation_with_authors([author])
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
+        converter = AllergyIntoleranceConverter(
+            code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry
+        )
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
@@ -99,7 +106,9 @@ class TestAllergyRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
+        converter = AllergyIntoleranceConverter(
+            code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry
+        )
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
@@ -121,7 +130,9 @@ class TestAllergyRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
+        converter = AllergyIntoleranceConverter(
+            code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry
+        )
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
@@ -141,7 +152,9 @@ class TestAllergyRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
+        converter = AllergyIntoleranceConverter(
+            code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry
+        )
         allergy = converter.convert(obs)
 
         assert "recorder" not in allergy
@@ -151,14 +164,13 @@ class TestAllergyRecorder:
         import uuid as uuid_module
 
         author = self.create_author(
-            time="20240115",
-            practitioner_ext="DEVICE-001",
-            has_person=False,
-            has_device=True
+            time="20240115", practitioner_ext="DEVICE-001", has_person=False, has_device=True
         )
         obs = self.create_observation_with_authors([author])
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
+        converter = AllergyIntoleranceConverter(
+            code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry
+        )
         allergy = converter.convert(obs)
 
         assert "recorder" in allergy
@@ -177,9 +189,7 @@ class TestAllergyRecorder:
         concern_act_authors = [
             self.create_author(time="20240101", practitioner_ext="CONCERN-EARLY")
         ]
-        obs_authors = [
-            self.create_author(time="20240301", practitioner_ext="OBS-LATEST")
-        ]
+        obs_authors = [self.create_author(time="20240301", practitioner_ext="OBS-LATEST")]
 
         concern_act = self.create_concern_act_with_authors(concern_act_authors)
         obs = self.create_observation_with_authors(obs_authors)
@@ -187,7 +197,7 @@ class TestAllergyRecorder:
         converter = AllergyIntoleranceConverter(
             code_system_mapper=None,
             concern_act=concern_act,
-            reference_registry=mock_reference_registry
+            reference_registry=mock_reference_registry,
         )
         allergy = converter.convert(obs)
 
@@ -207,9 +217,7 @@ class TestAllergyRecorder:
         concern_act_authors = [
             self.create_author(time="20240301", practitioner_ext="CONCERN-LATEST")
         ]
-        obs_authors = [
-            self.create_author(time="20240101", practitioner_ext="OBS-EARLY")
-        ]
+        obs_authors = [self.create_author(time="20240101", practitioner_ext="OBS-EARLY")]
 
         concern_act = self.create_concern_act_with_authors(concern_act_authors)
         obs = self.create_observation_with_authors(obs_authors)
@@ -217,7 +225,7 @@ class TestAllergyRecorder:
         converter = AllergyIntoleranceConverter(
             code_system_mapper=None,
             concern_act=concern_act,
-            reference_registry=mock_reference_registry
+            reference_registry=mock_reference_registry,
         )
         allergy = converter.convert(obs)
 
@@ -240,7 +248,9 @@ class TestAllergyRecorder:
         ]
         obs = self.create_observation_with_authors(authors)
 
-        converter = AllergyIntoleranceConverter(code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry)
+        converter = AllergyIntoleranceConverter(
+            code_system_mapper=None, concern_act=None, reference_registry=mock_reference_registry
+        )
         allergy = converter.convert(obs)
 
         # recordedDate should still use earliest

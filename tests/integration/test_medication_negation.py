@@ -15,10 +15,9 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
             return resource
     return None
 
+
 class TestMedicationNegation:
-    def test_converts_negated_medication(
-        self, ccda_medication_negated: str
-    ) -> None:
+    def test_converts_negated_medication(self, ccda_medication_negated: str) -> None:
         """Test that negationInd=true is converted to doNotPerform=True."""
         ccda_doc = wrap_in_ccda_document(ccda_medication_negated, TemplateIds.MEDICATIONS_SECTION)
         bundle = convert_document(ccda_doc)["bundle"]

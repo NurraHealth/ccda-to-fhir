@@ -16,9 +16,9 @@ Key Features Tested:
 from datetime import datetime
 
 import pytest
+from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
-from fhir.resources.bundle import Bundle
 
 
 @pytest.fixture
@@ -39,8 +39,9 @@ class TestLabReferenceRangesE2E:
         """Validate overall bundle structure and resource count."""
         assert lab_reference_ranges_bundle.type == "document"
         assert lab_reference_ranges_bundle.entry is not None
-        assert len(lab_reference_ranges_bundle.entry) >= 6, \
+        assert len(lab_reference_ranges_bundle.entry) >= 6, (
             "Bundle should contain Patient, Practitioner, Organization, Observation, DiagnosticReport, Composition"
+        )
 
         # Count resource types
         resource_types = {}
@@ -52,22 +53,33 @@ class TestLabReferenceRangesE2E:
         assert resource_types.get("Practitioner", 0) >= 1, "Must have at least 1 Practitioner"
         assert resource_types.get("Organization", 0) >= 1, "Must have at least 1 Organization"
         assert resource_types.get("Observation", 0) >= 1, "Must have at least 1 Observation"
-        assert resource_types.get("DiagnosticReport", 0) >= 1, "Must have at least 1 DiagnosticReport"
+        assert resource_types.get("DiagnosticReport", 0) >= 1, (
+            "Must have at least 1 DiagnosticReport"
+        )
         assert resource_types.get("Composition") == 1, "Must have exactly 1 Composition"
 
     def test_patient_exact_values(self, lab_reference_ranges_bundle):
         """Validate Patient resource with exact field values."""
-        patients = [e.resource for e in lab_reference_ranges_bundle.entry
-                   if e.resource.get_resource_type() == "Patient"]
+        patients = [
+            e.resource
+            for e in lab_reference_ranges_bundle.entry
+            if e.resource.get_resource_type() == "Patient"
+        ]
 
         assert len(patients) == 1
-        patient = patients[0].dict() if hasattr(patients[0], 'dict') else patients[0].model_dump()
+        patient = patients[0].dict() if hasattr(patients[0], "dict") else patients[0].model_dump()
 
         # Exact identifier
         assert "identifier" in patient
         assert len(patient["identifier"]) >= 1
-        mrn = next((i for i in patient["identifier"]
-                   if i.get("system") == "urn:oid:2.16.840.1.113883.19.5.99999.2"), None)
+        mrn = next(
+            (
+                i
+                for i in patient["identifier"]
+                if i.get("system") == "urn:oid:2.16.840.1.113883.19.5.99999.2"
+            ),
+            None,
+        )
         assert mrn is not None
         assert mrn["value"] == "444222222"
 
@@ -84,6 +96,7 @@ class TestLabReferenceRangesE2E:
 
         # Exact birthDate
         from datetime import date
+
         assert patient["birthDate"] == date(1975, 5, 1) or patient["birthDate"] == "1975-05-01"
 
         # Exact address
@@ -107,15 +120,18 @@ class TestLabReferenceRangesE2E:
 
     def test_practitioner_exact_values(self, lab_reference_ranges_bundle):
         """Validate Practitioner (lab technologist) with exact values."""
-        practitioners = [e.resource for e in lab_reference_ranges_bundle.entry
-                        if e.resource.get_resource_type() == "Practitioner"]
+        practitioners = [
+            e.resource
+            for e in lab_reference_ranges_bundle.entry
+            if e.resource.get_resource_type() == "Practitioner"
+        ]
 
         assert len(practitioners) >= 1
 
         # Find the lab technologist (author)
         lab_tech = None
         for prac in practitioners:
-            p = prac.dict() if hasattr(prac, 'dict') else prac.model_dump()
+            p = prac.dict() if hasattr(prac, "dict") else prac.model_dump()
             if "identifier" in p:
                 for ident in p["identifier"]:
                     if ident.get("value") == "333444444":
@@ -127,8 +143,14 @@ class TestLabReferenceRangesE2E:
         assert lab_tech is not None, "Must have lab technologist practitioner"
 
         # Exact identifier
-        npi = next((i for i in lab_tech["identifier"]
-                   if i.get("system") == "http://hl7.org/fhir/sid/us-npi"), None)
+        npi = next(
+            (
+                i
+                for i in lab_tech["identifier"]
+                if i.get("system") == "http://hl7.org/fhir/sid/us-npi"
+            ),
+            None,
+        )
         assert npi is not None
         assert npi["value"] == "333444444"
 
@@ -143,23 +165,32 @@ class TestLabReferenceRangesE2E:
         if "qualification" in lab_tech and lab_tech["qualification"]:
             qual = lab_tech["qualification"][0]
             assert "code" in qual
-            nucc_code = next((c for c in qual["code"]["coding"]
-                            if c.get("system") == "http://nucc.org/provider-taxonomy"), None)
+            nucc_code = next(
+                (
+                    c
+                    for c in qual["code"]["coding"]
+                    if c.get("system") == "http://nucc.org/provider-taxonomy"
+                ),
+                None,
+            )
             assert nucc_code is not None
             assert nucc_code["code"] == "246Q00000X"
             assert "Pathology" in nucc_code["display"]
 
     def test_organization_exact_values(self, lab_reference_ranges_bundle):
         """Validate Organization (custodian) with exact values."""
-        orgs = [e.resource for e in lab_reference_ranges_bundle.entry
-               if e.resource.get_resource_type() == "Organization"]
+        orgs = [
+            e.resource
+            for e in lab_reference_ranges_bundle.entry
+            if e.resource.get_resource_type() == "Organization"
+        ]
 
         assert len(orgs) >= 1
 
         # Find Community Health and Hospitals
         custodian_org = None
         for org in orgs:
-            o = org.dict() if hasattr(org, 'dict') else org.model_dump()
+            o = org.dict() if hasattr(org, "dict") else org.model_dump()
             if o.get("name") == "Community Health and Hospitals":
                 custodian_org = o
                 break
@@ -171,14 +202,12 @@ class TestLabReferenceRangesE2E:
 
         # Exact identifier (NPI)
         assert "identifier" in custodian_org
-        npi = next((i for i in custodian_org["identifier"]
-                   if i.get("value") == "99999999"), None)
+        npi = next((i for i in custodian_org["identifier"] if i.get("value") == "99999999"), None)
         assert npi is not None
 
         # Exact telecom
         assert "telecom" in custodian_org
-        phone = next((t for t in custodian_org["telecom"]
-                     if t.get("system") == "phone"), None)
+        phone = next((t for t in custodian_org["telecom"] if t.get("system") == "phone"), None)
         assert phone is not None
         assert phone["value"] == "+1(555)555-1002"
         assert phone["use"] == "work"
@@ -194,11 +223,14 @@ class TestLabReferenceRangesE2E:
 
     def test_diagnostic_report_exact_values(self, lab_reference_ranges_bundle):
         """Validate DiagnosticReport (lab organizer) with exact values."""
-        reports = [e.resource for e in lab_reference_ranges_bundle.entry
-                  if e.resource.get_resource_type() == "DiagnosticReport"]
+        reports = [
+            e.resource
+            for e in lab_reference_ranges_bundle.entry
+            if e.resource.get_resource_type() == "DiagnosticReport"
+        ]
 
         assert len(reports) >= 1
-        report = reports[0].dict() if hasattr(reports[0], 'dict') else reports[0].model_dump()
+        report = reports[0].dict() if hasattr(reports[0], "dict") else reports[0].model_dump()
 
         # Exact status
         assert report["status"] == "final"
@@ -212,8 +244,9 @@ class TestLabReferenceRangesE2E:
 
         # Exact code - Nuclear Ab panel LOINC 5048-4
         assert "code" in report
-        loinc_code = next((c for c in report["code"]["coding"]
-                          if c.get("system") == "http://loinc.org"), None)
+        loinc_code = next(
+            (c for c in report["code"]["coding"] if c.get("system") == "http://loinc.org"), None
+        )
         assert loinc_code is not None
         assert loinc_code["code"] == "5048-4"
         assert "Nuclear Ab" in loinc_code["display"]
@@ -239,15 +272,18 @@ class TestLabReferenceRangesE2E:
 
         This is the CRITICAL test - validates the previously untested referenceRange.text field.
         """
-        observations = [e.resource for e in lab_reference_ranges_bundle.entry
-                       if e.resource.get_resource_type() == "Observation"]
+        observations = [
+            e.resource
+            for e in lab_reference_ranges_bundle.entry
+            if e.resource.get_resource_type() == "Observation"
+        ]
 
         assert len(observations) >= 1
 
         # Find the Nuclear Ab observation (LOINC 5048-4)
         nuclear_ab_obs = None
         for obs in observations:
-            o = obs.dict() if hasattr(obs, 'dict') else obs.model_dump()
+            o = obs.dict() if hasattr(obs, "dict") else obs.model_dump()
             if "code" in o and "coding" in o["code"]:
                 for coding in o["code"]["coding"]:
                     if coding.get("code") == "5048-4":
@@ -263,15 +299,22 @@ class TestLabReferenceRangesE2E:
 
         # Exact category - laboratory
         assert "category" in nuclear_ab_obs
-        lab_cat = next((c for c in nuclear_ab_obs["category"]
-                       if any(coding.get("code") == "laboratory"
-                             for coding in c.get("coding", []))), None)
+        lab_cat = next(
+            (
+                c
+                for c in nuclear_ab_obs["category"]
+                if any(coding.get("code") == "laboratory" for coding in c.get("coding", []))
+            ),
+            None,
+        )
         assert lab_cat is not None
 
         # Exact code - LOINC 5048-4
         assert "code" in nuclear_ab_obs
-        loinc = next((c for c in nuclear_ab_obs["code"]["coding"]
-                     if c.get("system") == "http://loinc.org"), None)
+        loinc = next(
+            (c for c in nuclear_ab_obs["code"]["coding"] if c.get("system") == "http://loinc.org"),
+            None,
+        )
         assert loinc is not None
         assert loinc["code"] == "5048-4"
         assert "Nuclear Ab" in loinc["display"]
@@ -299,7 +342,10 @@ class TestLabReferenceRangesE2E:
         interp_coding = nuclear_ab_obs["interpretation"][0]["coding"][0]
         assert interp_coding["code"] == "A"
         assert interp_coding["display"] == "Abnormal"
-        assert interp_coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+        assert (
+            interp_coding["system"]
+            == "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+        )
 
         # *** CRITICAL: Exact referenceRange with TEXT - This is the key test! ***
         assert "referenceRange" in nuclear_ab_obs, "MUST have referenceRange"
@@ -307,23 +353,25 @@ class TestLabReferenceRangesE2E:
         # Per C-CDA on FHIR IG: Only reference ranges with interpretationCode="N" are converted
         # This document has 3 ranges in C-CDA: 1 Normal (N), 2 Abnormal (A)
         # Result: Only the Normal range should be converted
-        assert len(nuclear_ab_obs["referenceRange"]) == 1, \
+        assert len(nuclear_ab_obs["referenceRange"]) == 1, (
             "Must have exactly 1 reference range (only Normal interpretationCode filtered per spec)"
+        )
 
         ref_ranges = nuclear_ab_obs["referenceRange"]
 
         # Reference Range: Negative, less than 1:80 (Normal - interpretationCode="N")
         neg_range = ref_ranges[0]
         assert "text" in neg_range, "CRITICAL: referenceRange.text must be present"
-        assert neg_range["text"] == "Negative, less than 1:80", \
+        assert neg_range["text"] == "Negative, less than 1:80", (
             "referenceRange.text must match C-CDA observationRange/text"
+        )
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("✅ SUCCESS: Observation.referenceRange.text is correctly implemented!")
-        print("="*70)
+        print("=" * 70)
         print(f"Validated referenceRange with text: '{neg_range['text']}'")
         print("Note: Only Normal ranges (interpretationCode='N') converted per C-CDA on FHIR IG")
-        print("="*70)
+        print("=" * 70)
 
         # Exact performer (lab technologist)
         if "performer" in nuclear_ab_obs:
@@ -333,19 +381,27 @@ class TestLabReferenceRangesE2E:
 
     def test_composition_exact_values(self, lab_reference_ranges_bundle):
         """Validate Composition (document metadata) with exact values."""
-        compositions = [e.resource for e in lab_reference_ranges_bundle.entry
-                       if e.resource.get_resource_type() == "Composition"]
+        compositions = [
+            e.resource
+            for e in lab_reference_ranges_bundle.entry
+            if e.resource.get_resource_type() == "Composition"
+        ]
 
         assert len(compositions) == 1
-        comp = compositions[0].dict() if hasattr(compositions[0], 'dict') else compositions[0].model_dump()
+        comp = (
+            compositions[0].dict()
+            if hasattr(compositions[0], "dict")
+            else compositions[0].model_dump()
+        )
 
         # Exact status
         assert comp["status"] == "final"
 
         # Exact type - LOINC 34133-9
         assert "type" in comp
-        loinc = next((c for c in comp["type"]["coding"]
-                     if c.get("system") == "http://loinc.org"), None)
+        loinc = next(
+            (c for c in comp["type"]["coding"] if c.get("system") == "http://loinc.org"), None
+        )
         assert loinc is not None
         assert loinc["code"] == "34133-9"
         assert "Summarization of Episode Note" in loinc["display"]
@@ -384,9 +440,14 @@ class TestLabReferenceRangesE2E:
         # Has sections with Results
         assert "section" in comp
         assert len(comp["section"]) >= 1
-        results_section = next((s for s in comp["section"]
-                               if any(c.get("code") == "30954-2"
-                                     for c in s.get("code", {}).get("coding", []))), None)
+        results_section = next(
+            (
+                s
+                for s in comp["section"]
+                if any(c.get("code") == "30954-2" for c in s.get("code", {}).get("coding", []))
+            ),
+            None,
+        )
         assert results_section is not None
         assert results_section["title"] == "RESULTS"
 
@@ -396,8 +457,8 @@ class TestLabReferenceRangesE2E:
         resource_map = {}
         for entry in lab_reference_ranges_bundle.entry:
             resource = entry.resource
-            rtype = resource.get_resource_type()
-            r = resource.dict() if hasattr(resource, 'dict') else resource.model_dump()
+            resource.get_resource_type()
+            r = resource.dict() if hasattr(resource, "dict") else resource.model_dump()
             if "id" in r:
                 resource_map[f"urn:uuid:{r['id']}"] = resource
 
@@ -406,7 +467,7 @@ class TestLabReferenceRangesE2E:
 
         for entry in lab_reference_ranges_bundle.entry:
             resource = entry.resource
-            r = resource.dict() if hasattr(resource, 'dict') else resource.model_dump()
+            r = resource.dict() if hasattr(resource, "dict") else resource.model_dump()
 
             # Collect all reference fields
             if "subject" in r and "reference" in r["subject"]:
@@ -438,11 +499,16 @@ class TestLabReferenceRangesE2E:
         # Validate each resource can be serialized
         for entry in lab_reference_ranges_bundle.entry:
             resource = entry.resource
-            resource_dict = resource.dict() if hasattr(resource, 'dict') else resource.model_dump()
+            resource_dict = resource.dict() if hasattr(resource, "dict") else resource.model_dump()
             assert "resourceType" in resource_dict
             # Allow common FHIR resource types
             valid_types = [
-                "Patient", "Practitioner", "Organization", "Observation",
-                "DiagnosticReport", "Composition", "DocumentReference"
+                "Patient",
+                "Practitioner",
+                "Organization",
+                "Observation",
+                "DiagnosticReport",
+                "Composition",
+                "DocumentReference",
             ]
             assert resource_dict["resourceType"] in valid_types

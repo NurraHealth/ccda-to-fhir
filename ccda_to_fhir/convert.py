@@ -33,7 +33,6 @@ from fhir.resources.R4B.servicerequest import ServiceRequest
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
 
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument, RelatedEntity
-from ccda_to_fhir.utils import fhir_date_to_instant
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II, ON
 from ccda_to_fhir.ccda.models.organizer import Organizer
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
@@ -52,6 +51,7 @@ from ccda_to_fhir.types import (
     ValidationStats,
     format_human_name_display,
 )
+from ccda_to_fhir.utils import fhir_date_to_instant
 from ccda_to_fhir.validation import FHIRValidator
 
 from .converters.allergy_intolerance import convert_allergy_concern_act
@@ -139,7 +139,7 @@ def convert_careteam_organizer(
     organizer: Organizer,
     code_system_mapper: CodeSystemMapper | None = None,
     metadata_callback: Callable[..., None] | None = None,
-    section: Section | None = None,
+    section: Section | None = None,  # noqa: ARG001
     reference_registry: ReferenceRegistry | None = None,
 ) -> list[FHIRResourceDict]:
     """Convert a Care Team Organizer to FHIR CareTeam and related resources.
@@ -280,9 +280,7 @@ class DocumentConverter:
         # Author metadata storage for Provenance generation
         self._author_metadata: dict[str, list[AuthorInfo]] = {}
         self.author_extractor = AuthorExtractor()
-        self.provenance_converter = ProvenanceConverter(
-            code_system_mapper=self.code_system_mapper
-        )
+        self.provenance_converter = ProvenanceConverter(code_system_mapper=self.code_system_mapper)
 
         # Track seen observation IDs to detect invalid C-CDA with duplicate IDs
         self._seen_observation_ids: set[tuple[str, str | None]] = set()
@@ -295,12 +293,11 @@ class DocumentConverter:
         # Informant metadata storage for RelatedPerson/Practitioner generation
         self._informant_metadata: dict[str, list] = {}
         from .converters.informant_extractor import InformantExtractor
+
         self.informant_extractor = InformantExtractor()
 
         # Initialize individual resource converters
-        self.patient_converter = PatientConverter(
-            code_system_mapper=self.code_system_mapper
-        )
+        self.patient_converter = PatientConverter(code_system_mapper=self.code_system_mapper)
         self.observation_converter = ObservationConverter(
             code_system_mapper=self.code_system_mapper,
             reference_registry=self.reference_registry,
@@ -335,13 +332,10 @@ class DocumentConverter:
         self.practitioner_role_converter = PractitionerRoleConverter(
             code_system_mapper=self.code_system_mapper
         )
-        self.device_converter = DeviceConverter(
-            code_system_mapper=self.code_system_mapper
-        )
+        self.device_converter = DeviceConverter(code_system_mapper=self.code_system_mapper)
         self.organization_converter = OrganizationConverter(
             code_system_mapper=self.code_system_mapper
         )
-
 
     def _create_bundle_identifier(self, doc_id: II) -> JSONObject:
         """Create Bundle identifier from ClinicalDocument ID.
@@ -396,13 +390,14 @@ class DocumentConverter:
             # Extract timezone
             tz_start = -1
             for i, char in enumerate(ccda_datetime):
-                if char in ('+', '-') and i > 8:
+                if char in ("+", "-") and i > 8:
                     tz_start = i
                     break
 
             # instant type REQUIRES timezone - return None if missing
             if tz_start <= 0:
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.info(
                     f"Bundle.timestamp omitted: C-CDA effectiveTime '{ccda_datetime}' lacks timezone. "
@@ -448,6 +443,7 @@ class DocumentConverter:
 
         except (ValueError, IndexError):
             from ccda_to_fhir.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.warning(f"Failed to convert C-CDA datetime to FHIR instant: {ccda_datetime}")
             return None
@@ -472,9 +468,7 @@ class DocumentConverter:
         # Get the corresponding FHIR resource class
         resource_class = RESOURCE_TYPE_MAPPING.get(resource_type)
         if not resource_class:
-            logger.debug(
-                f"No validation mapping for {resource_type}, skipping validation"
-            )
+            logger.debug(f"No validation mapping for {resource_type}, skipping validation")
             return True
 
         # Validate the resource
@@ -506,6 +500,7 @@ class DocumentConverter:
 
         # Reset ID cache for this document to ensure consistency within document
         from ccda_to_fhir.id_generator import reset_id_cache
+
         reset_id_cache()
 
         # Initialize conversion metadata
@@ -551,11 +546,15 @@ class DocumentConverter:
                         if self.reference_registry.patient_display is None:
                             names = patient.get("name")
                             if names and isinstance(names, list) and isinstance(names[0], dict):
-                                self.reference_registry.patient_display = format_human_name_display(names[0])  # type: ignore[arg-type]
+                                self.reference_registry.patient_display = format_human_name_display(
+                                    names[0]
+                                )  # type: ignore[arg-type]
 
                         # Convert providerOrganization to Organization resource
-                        if (record_target.patient_role and
-                            record_target.patient_role.provider_organization):
+                        if (
+                            record_target.patient_role
+                            and record_target.patient_role.provider_organization
+                        ):
                             try:
                                 provider_org = record_target.patient_role.provider_organization
                                 organization = self.organization_converter.convert(provider_org)
@@ -563,7 +562,11 @@ class DocumentConverter:
                                 # Validate and add Organization to bundle (check for duplicates)
                                 org_id = organization.get("id")
                                 if self._validate_resource(organization):
-                                    if isinstance(org_id, str) and not self.reference_registry.has_resource("Organization", org_id):
+                                    if isinstance(
+                                        org_id, str
+                                    ) and not self.reference_registry.has_resource(
+                                        "Organization", org_id
+                                    ):
                                         resources.append(organization)
                                         self.reference_registry.register_resource(organization)
 
@@ -584,32 +587,32 @@ class DocumentConverter:
                                 else:
                                     logger.warning(
                                         "Provider organization resource failed validation, skipping",
-                                        resource_id=organization.get("id")
+                                        resource_id=organization.get("id"),
                                     )
                             except Exception as e:
                                 logger.warning(
                                     f"Error converting provider organization: {e}",
                                     exc_info=True,
-                                    extra={"error_type": type(e).__name__}
+                                    extra={"error_type": type(e).__name__},
                                 )
                     else:
                         logger.warning(
                             "Patient resource failed validation, skipping",
-                            resource_id=patient.get("id")
+                            resource_id=patient.get("id"),
                         )
                 except CCDAConversionError as e:
                     # Expected conversion errors - log and continue
                     logger.error(
                         f"Error converting patient: {e}",
                         exc_info=True,
-                        extra={"error_type": type(e).__name__}
+                        extra={"error_type": type(e).__name__},
                     )
                 except (AttributeError, KeyError, TypeError) as e:
                     # Unexpected structural errors - log with warning
                     logger.warning(
                         f"Unexpected error in patient conversion - possible C-CDA structure issue: {e}",
                         exc_info=True,
-                        extra={"error_type": type(e).__name__}
+                        extra={"error_type": type(e).__name__},
                     )
 
         # Convert Practitioners and Organizations (from document-level authors)
@@ -622,6 +625,7 @@ class DocumentConverter:
         # Process document-level informants
         if ccda_doc.informant:
             from .converters.informant_extractor import InformantInfo
+
             for informant in ccda_doc.informant:
                 informant_info = InformantInfo(informant, context="document")
                 # Store in a temporary list to process later with _generate_informant_resources
@@ -632,12 +636,16 @@ class DocumentConverter:
                             informant_info.informant.assigned_entity
                         )
                         # Check if practitioner already exists (deduplication)
-                        pract_id = practitioner.get('id')
-                        if isinstance(pract_id, str) and not self.reference_registry.has_resource("Practitioner", pract_id):
+                        pract_id = practitioner.get("id")
+                        if isinstance(pract_id, str) and not self.reference_registry.has_resource(
+                            "Practitioner", pract_id
+                        ):
                             resources.append(practitioner)
                             self.reference_registry.register_resource(practitioner)
                     except Exception as e:
-                        logger.error(f"Error converting document informant practitioner: {e}", exc_info=True)
+                        logger.error(
+                            f"Error converting document informant practitioner: {e}", exc_info=True
+                        )
 
                 elif informant_info.is_related_person and informant_info.informant.related_entity:
                     try:
@@ -647,7 +655,10 @@ class DocumentConverter:
                         resources.append(related_person)
                         self.reference_registry.register_resource(related_person)
                     except Exception as e:
-                        logger.error(f"Error converting document informant related person: {e}", exc_info=True)
+                        logger.error(
+                            f"Error converting document informant related person: {e}",
+                            exc_info=True,
+                        )
 
         # Convert Practitioner from legalAuthenticator
         if ccda_doc.legal_authenticator and ccda_doc.legal_authenticator.assigned_entity:
@@ -656,16 +667,19 @@ class DocumentConverter:
                     ccda_doc.legal_authenticator.assigned_entity
                 )
                 practitioner_id = practitioner.get("id")
-                if self._validate_resource(practitioner):
+                if (
+                    self._validate_resource(practitioner)
+                    and isinstance(practitioner_id, str)
+                    and not self.reference_registry.has_resource("Practitioner", practitioner_id)
+                ):
                     # Check for duplicates before adding
-                    if isinstance(practitioner_id, str) and not self.reference_registry.has_resource("Practitioner", practitioner_id):
-                        resources.append(practitioner)
-                        self.reference_registry.register_resource(practitioner)
+                    resources.append(practitioner)
+                    self.reference_registry.register_resource(practitioner)
             except Exception as e:
                 logger.warning(
                     f"Error converting legal authenticator practitioner: {e}",
                     exc_info=True,
-                    extra={"error_type": type(e).__name__}
+                    extra={"error_type": type(e).__name__},
                 )
 
         # Convert Practitioner from dataEnterer
@@ -675,16 +689,19 @@ class DocumentConverter:
                     ccda_doc.data_enterer.assigned_entity
                 )
                 practitioner_id = practitioner.get("id")
-                if self._validate_resource(practitioner):
+                if (
+                    self._validate_resource(practitioner)
+                    and isinstance(practitioner_id, str)
+                    and not self.reference_registry.has_resource("Practitioner", practitioner_id)
+                ):
                     # Check for duplicates before adding
-                    if isinstance(practitioner_id, str) and not self.reference_registry.has_resource("Practitioner", practitioner_id):
-                        resources.append(practitioner)
-                        self.reference_registry.register_resource(practitioner)
+                    resources.append(practitioner)
+                    self.reference_registry.register_resource(practitioner)
             except Exception as e:
                 logger.warning(
                     f"Error converting data enterer practitioner: {e}",
                     exc_info=True,
-                    extra={"error_type": type(e).__name__}
+                    extra={"error_type": type(e).__name__},
                 )
 
         # Convert custodian organization if present
@@ -693,7 +710,9 @@ class DocumentConverter:
             if custodian_org:
                 org_id = custodian_org.get("id")
                 # Check for duplicates before adding
-                if isinstance(org_id, str) and not self.reference_registry.has_resource("Organization", org_id):
+                if isinstance(org_id, str) and not self.reference_registry.has_resource(
+                    "Organization", org_id
+                ):
                     resources.append(custodian_org)
                     self.reference_registry.register_resource(custodian_org)
 
@@ -710,15 +729,20 @@ class DocumentConverter:
                                     performer.assigned_entity
                                 )
                                 # Check if practitioner already exists (deduplication)
-                                practitioner_id = practitioner.get('id')
-                                if isinstance(practitioner_id, str) and not self.reference_registry.has_resource("Practitioner", practitioner_id):
-                                    if self._validate_resource(practitioner):
-                                        resources.append(practitioner)
-                                        self.reference_registry.register_resource(practitioner)
+                                practitioner_id = practitioner.get("id")
+                                if (
+                                    isinstance(practitioner_id, str)
+                                    and not self.reference_registry.has_resource(
+                                        "Practitioner", practitioner_id
+                                    )
+                                    and self._validate_resource(practitioner)
+                                ):
+                                    resources.append(practitioner)
+                                    self.reference_registry.register_resource(practitioner)
                             except Exception as e:
                                 logger.error(
                                     f"Error converting documentationOf performer practitioner: {e}",
-                                    exc_info=True
+                                    exc_info=True,
                                 )
 
         # Convert section-based resources and build section→resource mapping
@@ -748,7 +772,9 @@ class DocumentConverter:
                 section_resource_map[TemplateIds.MEDICATIONS_SECTION] = medications
 
             # Immunizations (from Immunizations sections)
-            immunizations = self._extract_immunizations(ccda_doc.component.structured_body, metadata)
+            immunizations = self._extract_immunizations(
+                ccda_doc.component.structured_body, metadata
+            )
             resources.extend(immunizations)
             for immunization in immunizations:
                 self.reference_registry.register_resource(immunization)
@@ -790,7 +816,9 @@ class DocumentConverter:
             # Care Teams (from Care Teams section)
             # Note: _extract_careteams returns CareTeam resources plus related
             # Practitioner, PractitionerRole, and Organization resources
-            careteam_resources = self._extract_careteams(ccda_doc.component.structured_body, metadata)
+            careteam_resources = self._extract_careteams(
+                ccda_doc.component.structured_body, metadata
+            )
             resources.extend(careteam_resources)
 
             # Register all resources and collect just CareTeams for section map
@@ -848,10 +876,10 @@ class DocumentConverter:
             if header_encounter:
                 # Collect participant and location resources created during header encounter conversion
                 # Add them to the main resources list, NOT to encounters list
-                if hasattr(self, '_temp_header_practitioners'):
+                if hasattr(self, "_temp_header_practitioners"):
                     resources.extend(self._temp_header_practitioners)
                     self._temp_header_practitioners = []  # Clear for next conversion
-                if hasattr(self, '_temp_header_locations'):
+                if hasattr(self, "_temp_header_locations"):
                     resources.extend(self._temp_header_locations)
                     self._temp_header_locations = []  # Clear for next conversion
 
@@ -873,11 +901,17 @@ class DocumentConverter:
                 # Only add header encounter if it's not a duplicate
                 if not duplicate_found:
                     encounters.append(header_encounter)
-                    logger.debug(f"Added header encounter {header_id} to bundle (no body duplicate)")
+                    logger.debug(
+                        f"Added header encounter {header_id} to bundle (no body duplicate)"
+                    )
 
                     # Store author metadata for header encounter
                     # Header encounters use document-level authors from the encompassingEncounter
-                    if isinstance(header_id, str) and ccda_doc.component_of and ccda_doc.component_of.encompassing_encounter:
+                    if (
+                        isinstance(header_id, str)
+                        and ccda_doc.component_of
+                        and ccda_doc.component_of.encompassing_encounter
+                    ):
                         self._store_author_metadata(
                             resource_type="Encounter",
                             resource_id=header_id,
@@ -956,7 +990,9 @@ class DocumentConverter:
                 self.reference_registry.register_resource(doc_ref)
 
             # Coverage (from Payers sections)
-            coverage_resources = self._extract_coverages(ccda_doc.component.structured_body, metadata)
+            coverage_resources = self._extract_coverages(
+                ccda_doc.component.structured_body, metadata
+            )
             # Separate Coverage from related Organization resources
             coverages = []
             for resource in coverage_resources:
@@ -972,7 +1008,9 @@ class DocumentConverter:
 
         # Generate Provenance resources and create missing author resources
         # (after all clinical resources, before Composition)
-        provenances, devices, practitioners, organizations = self._generate_provenance_resources(resources)
+        provenances, devices, practitioners, organizations = self._generate_provenance_resources(
+            resources
+        )
 
         # Add entry-level author resources first (Device, Practitioner, Organization)
         resources.extend(devices)
@@ -1002,7 +1040,7 @@ class DocumentConverter:
             else:
                 logger.warning(
                     "Medication resource failed validation, skipping",
-                    resource_id=medication.get("id")
+                    resource_id=medication.get("id"),
                 )
 
         # Add MedicationDispense resources (extracted from medication activities)
@@ -1015,7 +1053,7 @@ class DocumentConverter:
             else:
                 logger.warning(
                     "MedicationDispense resource failed validation, skipping",
-                    resource_id=dispense.get("id")
+                    resource_id=dispense.get("id"),
                 )
 
         # Generate Practitioner and RelatedPerson resources from informants
@@ -1039,7 +1077,9 @@ class DocumentConverter:
         )
         try:
             # Track resources before composition creation
-            resources_before = set((r["resourceType"], r["id"]) for r in resources if "resourceType" in r and "id" in r)
+            resources_before = {
+                (r["resourceType"], r["id"]) for r in resources if "resourceType" in r and "id" in r
+            }
 
             composition = composition_converter.convert(ccda_doc)
 
@@ -1047,10 +1087,14 @@ class DocumentConverter:
             all_registered = self.reference_registry.get_all_resources()
             for resource in all_registered:
                 resource_key = (resource.get("resourceType"), resource.get("id"))
-                if resource_key[0] and resource_key[1] and resource_key not in resources_before:
+                if (
+                    resource_key[0]
+                    and resource_key[1]
+                    and resource_key not in resources_before
                     # New resource registered during composition creation
-                    if resource not in resources:
-                        resources.append(resource)
+                    and resource not in resources
+                ):
+                    resources.append(resource)
 
             # Validate Composition
             if self._validate_resource(composition):
@@ -1061,13 +1105,15 @@ class DocumentConverter:
             else:
                 logger.error(
                     "Composition failed validation - cannot create valid document bundle",
-                    resource_id=composition.get("id")
+                    resource_id=composition.get("id"),
                 )
         except Exception:
             logger.error("Error converting composition", exc_info=True)
             # If Composition fails, we can't create a valid document bundle
             # Fall back to collection bundle type
-            logger.warning("Creating collection bundle instead of document bundle (Composition failed)")
+            logger.warning(
+                "Creating collection bundle instead of document bundle (Composition failed)"
+            )
 
         # Create CarePlan resource if this is a Care Plan Document
         if self._is_care_plan_document(ccda_doc):
@@ -1137,8 +1183,7 @@ class DocumentConverter:
                     self.reference_registry.register_resource(careplan)
                 else:
                     logger.warning(
-                        "CarePlan failed validation, skipping",
-                        resource_id=careplan.get("id")
+                        "CarePlan failed validation, skipping", resource_id=careplan.get("id")
                     )
             except Exception as e:
                 logger.error(f"Error converting care plan: {e}", exc_info=True)
@@ -1167,7 +1212,7 @@ class DocumentConverter:
                 "resource": resource,
             }
             if resource.get("resourceType") and resource.get("id"):
-                resource_type = resource["resourceType"]
+                resource["resourceType"]
                 resource_id = resource["id"]
                 entry["fullUrl"] = f"urn:uuid:{resource_id}"
             bundle["entry"].append(entry)
@@ -1181,7 +1226,9 @@ class DocumentConverter:
                 passed=stats.passed,
                 failed=stats.failed,
                 warnings=stats.warnings,
-                pass_rate=f"{(stats.passed / stats.validated * 100):.1f}%" if stats.validated > 0 else "N/A"
+                pass_rate=f"{(stats.passed / stats.validated * 100):.1f}%"
+                if stats.validated > 0
+                else "N/A",
             )
 
         return {
@@ -1201,11 +1248,7 @@ class DocumentConverter:
         if not doc.template_id:
             return False
 
-        return any(
-            t.root == TemplateIds.CARE_PLAN_DOCUMENT
-            for t in doc.template_id
-            if t.root
-        )
+        return any(t.root == TemplateIds.CARE_PLAN_DOCUMENT for t in doc.template_id if t.root)
 
     def _extract_conditions(
         self,
@@ -1217,7 +1260,9 @@ class DocumentConverter:
         for act, section, section_code in iter_matching_acts(
             structured_body, TemplateIds.PROBLEM_CONCERN_ACT
         ):
-            with converting(metadata, TemplateIds.PROBLEM_CONCERN_ACT, act.id, "problem concern act"):
+            with converting(
+                metadata, TemplateIds.PROBLEM_CONCERN_ACT, act.id, "problem concern act"
+            ):
                 result = convert_problem_concern_act(
                     act,
                     section_code=section_code,
@@ -1240,7 +1285,9 @@ class DocumentConverter:
         for act, section, _section_code in iter_matching_acts(
             structured_body, TemplateIds.ALLERGY_CONCERN_ACT
         ):
-            with converting(metadata, TemplateIds.ALLERGY_CONCERN_ACT, act.id, "allergy concern act"):
+            with converting(
+                metadata, TemplateIds.ALLERGY_CONCERN_ACT, act.id, "allergy concern act"
+            ):
                 result = convert_allergy_concern_act(
                     act,
                     code_system_mapper=self.code_system_mapper,
@@ -1262,7 +1309,9 @@ class DocumentConverter:
         for sa, section, _section_code in iter_matching_substance_administrations(
             structured_body, TemplateIds.MEDICATION_ACTIVITY
         ):
-            with converting(metadata, TemplateIds.MEDICATION_ACTIVITY, sa.id, "medication activity"):
+            with converting(
+                metadata, TemplateIds.MEDICATION_ACTIVITY, sa.id, "medication activity"
+            ):
                 result = convert_medication(
                     sa,
                     code_system_mapper=self.code_system_mapper,
@@ -1284,7 +1333,9 @@ class DocumentConverter:
         for sa, section, _section_code in iter_matching_substance_administrations(
             structured_body, TemplateIds.IMMUNIZATION_ACTIVITY
         ):
-            with converting(metadata, TemplateIds.IMMUNIZATION_ACTIVITY, sa.id, "immunization activity"):
+            with converting(
+                metadata, TemplateIds.IMMUNIZATION_ACTIVITY, sa.id, "immunization activity"
+            ):
                 result = convert_immunization_activity(
                     sa,
                     code_system_mapper=self.code_system_mapper,
@@ -1321,7 +1372,9 @@ class DocumentConverter:
         for org, section, _section_code in iter_matching_organizers(
             structured_body, TemplateIds.CARE_TEAM_ORGANIZER
         ):
-            with converting(metadata, TemplateIds.CARE_TEAM_ORGANIZER, org.id, "care team organizer"):
+            with converting(
+                metadata, TemplateIds.CARE_TEAM_ORGANIZER, org.id, "care team organizer"
+            ):
                 result = convert_careteam_organizer(
                     org,
                     code_system_mapper=self.code_system_mapper,
@@ -1360,7 +1413,9 @@ class DocumentConverter:
         for organizer, section, _section_code in iter_matching_organizers(
             structured_body, TemplateIds.VITAL_SIGNS_ORGANIZER
         ):
-            with converting(metadata, TemplateIds.VITAL_SIGNS_ORGANIZER, organizer.id, "vital signs organizer"):
+            with converting(
+                metadata, TemplateIds.VITAL_SIGNS_ORGANIZER, organizer.id, "vital signs organizer"
+            ):
                 panel, individuals = self.observation_converter.convert_vital_signs_organizer(
                     organizer, section=section
                 )
@@ -1438,7 +1493,9 @@ class DocumentConverter:
         for organizer, section, _section_code in iter_matching_organizers(
             structured_body, TemplateIds.RESULT_ORGANIZER
         ):
-            with converting(metadata, TemplateIds.RESULT_ORGANIZER, organizer.id, "result organizer"):
+            with converting(
+                metadata, TemplateIds.RESULT_ORGANIZER, organizer.id, "result organizer"
+            ):
                 report, observations = self.diagnostic_report_converter.convert(
                     organizer, section=section
                 )
@@ -1546,10 +1603,12 @@ class DocumentConverter:
                         ):
                             # Gender Identity Extension
                             if obs.value:
-                                gender_identity_codeable = self.observation_converter.create_codeable_concept(
-                                    code=getattr(obs.value, "code", None),
-                                    code_system=getattr(obs.value, "code_system", None),
-                                    display_name=getattr(obs.value, "display_name", None),
+                                gender_identity_codeable = (
+                                    self.observation_converter.create_codeable_concept(
+                                        code=getattr(obs.value, "code", None),
+                                        code_system=getattr(obs.value, "code_system", None),
+                                        display_name=getattr(obs.value, "display_name", None),
+                                    )
                                 )
                                 if gender_identity_codeable:
                                     gender_identity_ext = {
@@ -1582,7 +1641,7 @@ class DocumentConverter:
                             if obs.value:
                                 spcu_ext = {
                                     "url": FHIRSystems.PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE,
-                                    "extension": []
+                                    "extension": [],
                                 }
 
                                 # value sub-extension (required)
@@ -1592,15 +1651,19 @@ class DocumentConverter:
                                     display_name=getattr(obs.value, "display_name", None),
                                 )
                                 if value_concept:
-                                    spcu_ext["extension"].append({
-                                        "url": "value",
-                                        "valueCodeableConcept": value_concept.to_dict()
-                                    })
+                                    spcu_ext["extension"].append(
+                                        {
+                                            "url": "value",
+                                            "valueCodeableConcept": value_concept.to_dict(),
+                                        }
+                                    )
 
                                 # period sub-extension (optional)
                                 # C-CDA effectiveTime is a snapshot, map to period.start
                                 if obs.effective_time:
-                                    effective_time = self.observation_converter._extract_effective_time(obs)
+                                    effective_time = (
+                                        self.observation_converter._extract_effective_time(obs)
+                                    )
                                     if effective_time:
                                         # If it's a dict (period), use the start; otherwise use the datetime directly
                                         if isinstance(effective_time, dict):
@@ -1609,12 +1672,12 @@ class DocumentConverter:
                                             start_date = effective_time
 
                                         if start_date:
-                                            spcu_ext["extension"].append({
-                                                "url": "period",
-                                                "valuePeriod": {
-                                                    "start": start_date
+                                            spcu_ext["extension"].append(
+                                                {
+                                                    "url": "period",
+                                                    "valuePeriod": {"start": start_date},
                                                 }
-                                            })
+                                            )
 
                                 # comment sub-extension (optional)
                                 # Extract from text/reference to narrative
@@ -1623,9 +1686,16 @@ class DocumentConverter:
 
                                     # Try to resolve reference first
                                     if obs.text.reference:
-                                        ref_value = getattr(obs.text.reference, 'value', None) or obs.text.reference
+                                        ref_value = (
+                                            getattr(obs.text.reference, "value", None)
+                                            or obs.text.reference
+                                        )
 
-                                        if ref_value and isinstance(ref_value, str) and ref_value.startswith('#'):
+                                        if (
+                                            ref_value
+                                            and isinstance(ref_value, str)
+                                            and ref_value.startswith("#")
+                                        ):
                                             content_id = ref_value[1:]
                                             if section and section.text:
                                                 comment_text = self.observation_converter._resolve_narrative_reference(
@@ -1637,10 +1707,9 @@ class DocumentConverter:
                                         comment_text = obs.text.value
 
                                     if comment_text:
-                                        spcu_ext["extension"].append({
-                                            "url": "comment",
-                                            "valueString": comment_text
-                                        })
+                                        spcu_ext["extension"].append(
+                                            {"url": "comment", "valueString": comment_text}
+                                        )
 
                                 # supportingInfo sub-extension (optional)
                                 # Extract from entryRelationship with typeCode="SPRT"
@@ -1657,18 +1726,22 @@ class DocumentConverter:
                                             # Extract ID for reference
                                             if supporting_entry and supporting_entry.id:
                                                 # Use first ID
-                                                supporting_id = supporting_entry.id[0] if isinstance(
-                                                    supporting_entry.id, list
-                                                ) else supporting_entry.id
+                                                supporting_id = (
+                                                    supporting_entry.id[0]
+                                                    if isinstance(supporting_entry.id, list)
+                                                    else supporting_entry.id
+                                                )
 
                                                 if supporting_id.extension:
                                                     ref_id = supporting_id.extension
-                                                    spcu_ext["extension"].append({
-                                                        "url": "supportingInfo",
-                                                        "valueReference": {
-                                                            "reference": f"urn:uuid:{ref_id}"
+                                                    spcu_ext["extension"].append(
+                                                        {
+                                                            "url": "supportingInfo",
+                                                            "valueReference": {
+                                                                "reference": f"urn:uuid:{ref_id}"
+                                                            },
                                                         }
-                                                    })
+                                                    )
 
                                 extensions.append(spcu_ext)
                             processed = True
@@ -1683,10 +1756,12 @@ class DocumentConverter:
                             # - tribalAffiliation (1..1, CodeableConcept, Must-Support)
                             # - isEnrolled (0..1, boolean, optional - not available in C-CDA)
                             if obs.value:
-                                tribal_affiliation_codeable = self.observation_converter.create_codeable_concept(
-                                    code=getattr(obs.value, "code", None),
-                                    code_system=getattr(obs.value, "code_system", None),
-                                    display_name=getattr(obs.value, "display_name", None),
+                                tribal_affiliation_codeable = (
+                                    self.observation_converter.create_codeable_concept(
+                                        code=getattr(obs.value, "code", None),
+                                        code_system=getattr(obs.value, "code_system", None),
+                                        display_name=getattr(obs.value, "display_name", None),
+                                    )
                                 )
                                 if tribal_affiliation_codeable:
                                     tribal_affiliation_ext = {
@@ -1696,7 +1771,7 @@ class DocumentConverter:
                                                 "url": "tribalAffiliation",
                                                 "valueCodeableConcept": tribal_affiliation_codeable.to_dict(),
                                             }
-                                        ]
+                                        ],
                                     }
                                     extensions.append(tribal_affiliation_ext)
                             processed = True
@@ -1708,10 +1783,12 @@ class DocumentConverter:
                             if template.root == TemplateIds.TRIBAL_AFFILIATION_OBSERVATION:
                                 # Tribal Affiliation Extension (US Core)
                                 if obs.value:
-                                    tribal_affiliation_codeable = self.observation_converter.create_codeable_concept(
-                                        code=getattr(obs.value, "code", None),
-                                        code_system=getattr(obs.value, "code_system", None),
-                                        display_name=getattr(obs.value, "display_name", None),
+                                    tribal_affiliation_codeable = (
+                                        self.observation_converter.create_codeable_concept(
+                                            code=getattr(obs.value, "code", None),
+                                            code_system=getattr(obs.value, "code_system", None),
+                                            display_name=getattr(obs.value, "display_name", None),
+                                        )
                                     )
                                     if tribal_affiliation_codeable:
                                         tribal_affiliation_ext = {
@@ -1721,36 +1798,48 @@ class DocumentConverter:
                                                     "url": "tribalAffiliation",
                                                     "valueCodeableConcept": tribal_affiliation_codeable.to_dict(),
                                                 }
-                                            ]
+                                            ],
                                         }
                                         extensions.append(tribal_affiliation_ext)
                                 processed = True
                                 break
 
                             # Sex Parameter for Clinical Use observation
-                            if template.root == TemplateIds.SEX_PARAMETER_FOR_CLINICAL_USE_OBSERVATION:
+                            if (
+                                template.root
+                                == TemplateIds.SEX_PARAMETER_FOR_CLINICAL_USE_OBSERVATION
+                            ):
                                 # Sex Parameter for Clinical Use Extension (FHIR Core)
                                 if obs.value:
                                     spcu_ext = {
                                         "url": FHIRSystems.PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE,
-                                        "extension": []
+                                        "extension": [],
                                     }
 
                                     # value sub-extension (required)
-                                    value_concept = self.observation_converter.create_codeable_concept(
-                                        code=getattr(obs.value, "code", None),
-                                        code_system=getattr(obs.value, "code_system", None),
-                                        display_name=getattr(obs.value, "display_name", None),
+                                    value_concept = (
+                                        self.observation_converter.create_codeable_concept(
+                                            code=getattr(obs.value, "code", None),
+                                            code_system=getattr(obs.value, "code_system", None),
+                                            display_name=getattr(obs.value, "display_name", None),
+                                        )
+                                    )
+                                    spcu_ext["extension"].append(
+                                        {"url": "value", "valueCodeableConcept": value_concept}
                                     )
                                     if value_concept:
-                                        spcu_ext["extension"].append({
-                                            "url": "value",
-                                            "valueCodeableConcept": value_concept.to_dict()
-                                        })
+                                        spcu_ext["extension"].append(
+                                            {
+                                                "url": "value",
+                                                "valueCodeableConcept": value_concept.to_dict(),
+                                            }
+                                        )
 
                                     # period sub-extension (optional)
                                     if obs.effective_time:
-                                        effective_time = self.observation_converter._extract_effective_time(obs)
+                                        effective_time = (
+                                            self.observation_converter._extract_effective_time(obs)
+                                        )
                                         if effective_time:
                                             # If it's a dict (period), use the start; otherwise use the datetime directly
                                             if isinstance(effective_time, dict):
@@ -1759,12 +1848,12 @@ class DocumentConverter:
                                                 start_date = effective_time
 
                                             if start_date:
-                                                spcu_ext["extension"].append({
-                                                    "url": "period",
-                                                    "valuePeriod": {
-                                                        "start": start_date
+                                                spcu_ext["extension"].append(
+                                                    {
+                                                        "url": "period",
+                                                        "valuePeriod": {"start": start_date},
                                                     }
-                                                })
+                                                )
 
                                     # comment sub-extension (optional)
                                     if obs.text:
@@ -1772,9 +1861,16 @@ class DocumentConverter:
 
                                         # Try to resolve reference first
                                         if obs.text.reference:
-                                            ref_value = getattr(obs.text.reference, 'value', None) or obs.text.reference
+                                            ref_value = (
+                                                getattr(obs.text.reference, "value", None)
+                                                or obs.text.reference
+                                            )
 
-                                            if ref_value and isinstance(ref_value, str) and ref_value.startswith('#'):
+                                            if (
+                                                ref_value
+                                                and isinstance(ref_value, str)
+                                                and ref_value.startswith("#")
+                                            ):
                                                 content_id = ref_value[1:]
                                                 if section and section.text:
                                                     comment_text = self.observation_converter._resolve_narrative_reference(
@@ -1786,10 +1882,9 @@ class DocumentConverter:
                                             comment_text = obs.text.value
 
                                         if comment_text:
-                                            spcu_ext["extension"].append({
-                                                "url": "comment",
-                                                "valueString": comment_text
-                                            })
+                                            spcu_ext["extension"].append(
+                                                {"url": "comment", "valueString": comment_text}
+                                            )
 
                                     # supportingInfo sub-extension (optional)
                                     if obs.entry_relationship:
@@ -1802,18 +1897,22 @@ class DocumentConverter:
                                                     supporting_entry = entry_rel.act
 
                                                 if supporting_entry and supporting_entry.id:
-                                                    supporting_id = supporting_entry.id[0] if isinstance(
-                                                        supporting_entry.id, list
-                                                    ) else supporting_entry.id
+                                                    supporting_id = (
+                                                        supporting_entry.id[0]
+                                                        if isinstance(supporting_entry.id, list)
+                                                        else supporting_entry.id
+                                                    )
 
                                                     if supporting_id.extension:
                                                         ref_id = supporting_id.extension
-                                                        spcu_ext["extension"].append({
-                                                            "url": "supportingInfo",
-                                                            "valueReference": {
-                                                                "reference": f"urn:uuid:{ref_id}"
+                                                        spcu_ext["extension"].append(
+                                                            {
+                                                                "url": "supportingInfo",
+                                                                "valueReference": {
+                                                                    "reference": f"urn:uuid:{ref_id}"
+                                                                },
                                                             }
-                                                        })
+                                                        )
 
                                     extensions.append(spcu_ext)
                                 processed = True
@@ -1872,6 +1971,7 @@ class DocumentConverter:
                         # Skip gender identity observations - they map to Patient.extension
                         # Import CCDACodes here (outside conditional) for use in subsequent checks
                         from ccda_to_fhir.constants import CCDACodes
+
                         if obs.code:
                             is_gender_identity = (
                                 obs.code.code == CCDACodes.GENDER_IDENTITY
@@ -1918,7 +2018,9 @@ class DocumentConverter:
                                 ):
                                     # This is a Social History Observation
                                     try:
-                                        observation = self.observation_converter.convert(obs, section=section)
+                                        observation = self.observation_converter.convert(
+                                            obs, section=section
+                                        )
                                         observations.append(observation)
 
                                         # Store author metadata
@@ -1930,7 +2032,10 @@ class DocumentConverter:
                                                 concern_act=None,
                                             )
                                     except Exception:
-                                        logger.error("Error converting social history observation", exc_info=True)
+                                        logger.error(
+                                            "Error converting social history observation",
+                                            exc_info=True,
+                                        )
                                     break
 
             # Process nested sections recursively
@@ -1957,7 +2062,9 @@ class DocumentConverter:
         for proc, section, _section_code in iter_matching_procedures(
             structured_body, TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE
         ):
-            with converting(metadata, TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE, proc.id, "procedure"):
+            with converting(
+                metadata, TemplateIds.PROCEDURE_ACTIVITY_PROCEDURE, proc.id, "procedure"
+            ):
                 result = self.procedure_converter.convert(proc, section=section)
                 collect_results(procedures, result)
                 performer_resources.extend(self.procedure_converter.get_pending_resources())
@@ -1966,7 +2073,12 @@ class DocumentConverter:
         for obs, section, _section_code in iter_matching_observations(
             structured_body, TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION
         ):
-            with converting(metadata, TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION, obs.id, "procedure observation"):
+            with converting(
+                metadata,
+                TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION,
+                obs.id,
+                "procedure observation",
+            ):
                 result = self.procedure_converter.convert(obs, section=section)
                 collect_results(procedures, result)
                 performer_resources.extend(self.procedure_converter.get_pending_resources())
@@ -2078,30 +2190,38 @@ class DocumentConverter:
                                 if intervention_act.entry_relationship:
                                     for rel in intervention_act.entry_relationship:
                                         # Look for COMP (component) relationships
-                                        if rel.type_code == 'COMP':
+                                        if rel.type_code == "COMP":
                                             # Convert nested procedure
                                             if rel.procedure:
                                                 try:
-                                                    procedure = self.procedure_converter.convert(rel.procedure)
+                                                    procedure = self.procedure_converter.convert(
+                                                        rel.procedure
+                                                    )
                                                     if procedure:
                                                         resources.append(procedure)
                                                     # Collect performer resources created during conversion
                                                     performer_resources = self.procedure_converter.get_pending_resources()
                                                     resources.extend(performer_resources)
                                                 except Exception as e:
-                                                    logger.warning(f"Failed to convert intervention procedure: {e}")
+                                                    logger.warning(
+                                                        f"Failed to convert intervention procedure: {e}"
+                                                    )
 
                                             # Convert nested act to procedure
                                             elif rel.act:
                                                 try:
-                                                    procedure = self.procedure_converter.convert(rel.act)
+                                                    procedure = self.procedure_converter.convert(
+                                                        rel.act
+                                                    )
                                                     if procedure:
                                                         resources.append(procedure)
                                                     # Collect performer resources created during conversion
                                                     performer_resources = self.procedure_converter.get_pending_resources()
                                                     resources.extend(performer_resources)
                                                 except Exception as e:
-                                                    logger.warning(f"Failed to convert intervention act: {e}")
+                                                    logger.warning(
+                                                        f"Failed to convert intervention act: {e}"
+                                                    )
 
                                             # Convert nested substance administration
                                             elif rel.substance_administration:
@@ -2111,9 +2231,7 @@ class DocumentConverter:
 
         return resources
 
-    def _process_outcomes_section(
-        self, structured_body: StructuredBody
-    ) -> list[FHIRResourceDict]:
+    def _process_outcomes_section(self, structured_body: StructuredBody) -> list[FHIRResourceDict]:
         """Process outcome observations from Outcomes Section.
 
         Outcome observations (template 2.16.840.1.113883.10.20.22.4.144) represent
@@ -2162,7 +2280,9 @@ class DocumentConverter:
 
                                 # Convert to FHIR Observation
                                 try:
-                                    observation = self.observation_converter.convert(outcome_obs, section=section)
+                                    observation = self.observation_converter.convert(
+                                        outcome_obs, section=section
+                                    )
                                     if observation:
                                         resources.append(observation)
                                 except Exception as e:
@@ -2271,8 +2391,8 @@ class DocumentConverter:
                 for entry in section.entry:
                     if entry.encounter:
                         # Extract diagnosis observations from this encounter
-                        diagnosis_observations = self.encounter_converter.extract_diagnosis_observations(
-                            entry.encounter
+                        diagnosis_observations = (
+                            self.encounter_converter.extract_diagnosis_observations(entry.encounter)
                         )
 
                         # Convert each observation to a Condition with category="encounter-diagnosis"
@@ -2291,13 +2411,15 @@ class DocumentConverter:
                                 condition = condition_converter.convert(obs)
                                 # Check for duplicates before adding (same observation might be in Problem section)
                                 condition_id = condition.get("id")
-                                if condition_id and not self.reference_registry.has_resource("Condition", condition_id):
+                                if condition_id and not self.reference_registry.has_resource(
+                                    "Condition", condition_id
+                                ):
                                     conditions.append(condition)
                                     self.reference_registry.register_resource(condition)
                             except Exception as e:
                                 logger.error(
                                     f"Error converting encounter diagnosis observation: {e}",
-                                    exc_info=True
+                                    exc_info=True,
                                 )
 
             # Process nested sections
@@ -2345,58 +2467,68 @@ class DocumentConverter:
             if section.entry:
                 for entry in section.entry:
                     # Extract from encounters
-                    if entry.encounter:
+                    if entry.encounter and entry.encounter.participant:
                         # Extract location participants from encounter
-                        if entry.encounter.participant:
-                            for participant in entry.encounter.participant:
-                                # Look for location participants (typeCode="LOC")
-                                if participant.type_code == "LOC":
-                                    if participant.participant_role:
-                                        # Only convert if classCode is SDLOC (Service Delivery Location)
-                                        # Skip other classCodes like MANU (Manufactured Product)
-                                        if participant.participant_role.class_code == "SDLOC":
-                                            # Convert to Location resource
-                                            location = location_converter.convert(participant.participant_role)
+                        for participant in entry.encounter.participant:
+                            # Look for location participants (typeCode="LOC")
+                            # Only convert if classCode is SDLOC (Service Delivery Location)
+                            # Skip other classCodes like MANU (Manufactured Product)
+                            if (
+                                participant.type_code == "LOC"
+                                and participant.participant_role
+                                and participant.participant_role.class_code == "SDLOC"
+                            ):
+                                # Convert to Location resource
+                                location = location_converter.convert(participant.participant_role)
 
-                                            # Deduplicate by checking both local registry and reference registry
-                                            dedup_key = self._get_location_dedup_key(location)
-                                            location_id = location.get("id")
+                                # Deduplicate by checking both local registry and reference registry
+                                dedup_key = self._get_location_dedup_key(location)
+                                location_id = location.get("id")
 
-                                            # Skip if already in reference registry (e.g., from header encounter)
-                                            if location_id and self.reference_registry.has_resource("Location", location_id):
-                                                logger.debug(f"Location {location_id} already exists in reference registry, skipping")
-                                            elif dedup_key not in location_registry:
-                                                location_registry[dedup_key] = location
-                                                logger.debug(
-                                                    f"Created Location resource: {location.get('name')} (ID: {location.get('id')})"
-                                                )
+                                # Skip if already in reference registry (e.g., from header encounter)
+                                if location_id and self.reference_registry.has_resource(
+                                    "Location", location_id
+                                ):
+                                    logger.debug(
+                                        f"Location {location_id} already exists in reference registry, skipping"
+                                    )
+                                elif dedup_key not in location_registry:
+                                    location_registry[dedup_key] = location
+                                    logger.debug(
+                                        f"Created Location resource: {location.get('name')} (ID: {location.get('id')})"
+                                    )
 
                     # Extract from procedures
-                    elif entry.procedure:
+                    elif entry.procedure and entry.procedure.participant:
                         # Extract location participants from procedure
-                        if entry.procedure.participant:
-                            for participant in entry.procedure.participant:
-                                # Look for location participants (typeCode="LOC")
-                                if participant.type_code == "LOC":
-                                    if participant.participant_role:
-                                        # Only convert if classCode is SDLOC (Service Delivery Location)
-                                        # Skip other classCodes like MANU (Manufactured Product)
-                                        if participant.participant_role.class_code == "SDLOC":
-                                            # Convert to Location resource
-                                            location = location_converter.convert(participant.participant_role)
+                        for participant in entry.procedure.participant:
+                            # Look for location participants (typeCode="LOC")
+                            # Only convert if classCode is SDLOC (Service Delivery Location)
+                            # Skip other classCodes like MANU (Manufactured Product)
+                            if (
+                                participant.type_code == "LOC"
+                                and participant.participant_role
+                                and participant.participant_role.class_code == "SDLOC"
+                            ):
+                                # Convert to Location resource
+                                location = location_converter.convert(participant.participant_role)
 
-                                            # Deduplicate by checking both local registry and reference registry
-                                            dedup_key = self._get_location_dedup_key(location)
-                                            location_id = location.get("id")
+                                # Deduplicate by checking both local registry and reference registry
+                                dedup_key = self._get_location_dedup_key(location)
+                                location_id = location.get("id")
 
-                                            # Skip if already in reference registry (e.g., from header encounter)
-                                            if location_id and self.reference_registry.has_resource("Location", location_id):
-                                                logger.debug(f"Location {location_id} already exists in reference registry, skipping")
-                                            elif dedup_key not in location_registry:
-                                                location_registry[dedup_key] = location
-                                                logger.debug(
-                                                    f"Created Location resource from Procedure: {location.get('name')} (ID: {location.get('id')})"
-                                                )
+                                # Skip if already in reference registry (e.g., from header encounter)
+                                if location_id and self.reference_registry.has_resource(
+                                    "Location", location_id
+                                ):
+                                    logger.debug(
+                                        f"Location {location_id} already exists in reference registry, skipping"
+                                    )
+                                elif dedup_key not in location_registry:
+                                    location_registry[dedup_key] = location
+                                    logger.debug(
+                                        f"Created Location resource from Procedure: {location.get('name')} (ID: {location.get('id')})"
+                                    )
 
             # Process nested sections
             if section.component:
@@ -2492,15 +2624,11 @@ class DocumentConverter:
             return True
 
         # Criterion 3: Identifier match
-        header_identifiers = {
-            id.get("value") for id in header_encounter.get("identifier", [])
-        }
+        header_identifiers = {id.get("value") for id in header_encounter.get("identifier", [])}
         body_identifiers = {id.get("value") for id in body_encounter.get("identifier", [])}
 
         if header_identifiers & body_identifiers:  # Set intersection
-            logger.debug(
-                f"Encounters match by identifier: {header_identifiers & body_identifiers}"
-            )
+            logger.debug(f"Encounters match by identifier: {header_identifiers & body_identifiers}")
             return True
 
         return False
@@ -2522,17 +2650,17 @@ class DocumentConverter:
         """
         # Preserve most complete period (prefer range over single date)
         # Header sometimes has fuller date range than body
-        header_period = header_encounter.get('period', {})
-        body_period = body_encounter.get('period', {})
+        header_period = header_encounter.get("period", {})
+        body_period = body_encounter.get("period", {})
 
         # If header has end date but body doesn't, use header's complete period
-        if header_period.get('end') and not body_period.get('end'):
-            body_encounter['period'] = header_period
+        if header_period.get("end") and not body_period.get("end"):
+            body_encounter["period"] = header_period
             logger.debug(f"Using header period (has end date): {header_period}")
         # If header has full range but body only has partial, prefer header
-        elif header_period.get('start') and header_period.get('end'):
-            if not (body_period.get('start') and body_period.get('end')):
-                body_encounter['period'] = header_period
+        elif header_period.get("start") and header_period.get("end"):
+            if not (body_period.get("start") and body_period.get("end")):
+                body_encounter["period"] = header_period
                 logger.debug(f"Using header period (full range): {header_period}")
 
         # Merge identifiers - include both header and body identifiers
@@ -2577,13 +2705,9 @@ class DocumentConverter:
             body_encounter["participant"] = body_participants
 
         # Log the merge
-        logger.info(
-            f"Merged header encounter data into body encounter {body_encounter.get('id')}"
-        )
+        logger.info(f"Merged header encounter data into body encounter {body_encounter.get('id')}")
 
-    def _get_encompassing_encounter_context(
-        self, ccda_doc: ClinicalDocument
-    ) -> EncounterContext:
+    def _get_encompassing_encounter_context(self, ccda_doc: ClinicalDocument) -> EncounterContext:
         """Extract encounter context from encompassingEncounter.
 
         Builds an ``EncounterContext`` with reference, date, and display for use
@@ -2623,9 +2747,7 @@ class DocumentConverter:
                 if low_value:
                     raw_date = str(low_value)
             if raw_date:
-                enc_date = fhir_date_to_instant(
-                    self.encounter_converter.convert_date(raw_date)
-                )
+                enc_date = fhir_date_to_instant(self.encounter_converter.convert_date(raw_date))
 
         # Extract display from code.displayName, falling back to participant
         # specialty when the encounter has no code element (e.g. Athena CCDs).
@@ -2646,9 +2768,7 @@ class DocumentConverter:
             display=enc_display,
         )
 
-    def _build_document_author_references(
-        self, ccda_doc: ClinicalDocument
-    ) -> list[FHIRReference]:
+    def _build_document_author_references(self, ccda_doc: ClinicalDocument) -> list[FHIRReference]:
         """Build author references from document-level authors.
 
         Delegates to the shared ``build_author_references`` helper.
@@ -2723,6 +2843,7 @@ class DocumentConverter:
             # Per C-CDA on FHIR IG, explicit V3 ActCode translations should be preferred
             if encompassing_encounter.code.translation:
                 from ccda_to_fhir.constants import V3_ACTCODE_DISPLAY_NAMES
+
                 for trans in encompassing_encounter.code.translation:
                     if trans.code_system == "2.16.840.1.113883.5.4":  # V3 ActCode
                         class_code = trans.code
@@ -2734,8 +2855,12 @@ class DocumentConverter:
             # SECOND: If no V3 ActCode translation, check if main code is CPT and map it
             # Only applies if no V3 ActCode translation was found above
             # Reference: docs/mapping/08-encounter.md lines 77-86
-            if not class_code and encompassing_encounter.code.code_system == "2.16.840.1.113883.6.12":  # CPT
+            if (
+                not class_code
+                and encompassing_encounter.code.code_system == "2.16.840.1.113883.6.12"
+            ):  # CPT
                 from ccda_to_fhir.constants import V3_ACTCODE_DISPLAY_NAMES, map_cpt_to_actcode
+
                 mapped_actcode = map_cpt_to_actcode(encompassing_encounter.code.code)
                 if mapped_actcode:
                     class_code = mapped_actcode
@@ -2764,9 +2889,11 @@ class DocumentConverter:
                 if encompassing_encounter.code.display_name:
                     type_coding["display"] = encompassing_encounter.code.display_name
 
-                fhir_encounter["type"] = [{
-                    "coding": [type_coding],
-                }]
+                fhir_encounter["type"] = [
+                    {
+                        "coding": [type_coding],
+                    }
+                ]
                 if encompassing_encounter.code.display_name:
                     fhir_encounter["type"][0]["text"] = encompassing_encounter.code.display_name
 
@@ -2776,22 +2903,31 @@ class DocumentConverter:
 
             # Handle single value (not a range)
             if encompassing_encounter.effective_time.value:
-                converted = self.encounter_converter.convert_date(str(encompassing_encounter.effective_time.value))
+                converted = self.encounter_converter.convert_date(
+                    str(encompassing_encounter.effective_time.value)
+                )
                 if converted:
                     period["start"] = converted
                     # For single-value timestamps, use same value for both start and end
                     period["end"] = converted
             # Handle range with low/high
-            elif encompassing_encounter.effective_time.low or encompassing_encounter.effective_time.high:
+            elif (
+                encompassing_encounter.effective_time.low
+                or encompassing_encounter.effective_time.high
+            ):
                 if encompassing_encounter.effective_time.low:
-                    low_value = getattr(encompassing_encounter.effective_time.low, 'value', None) or str(encompassing_encounter.effective_time.low)
+                    low_value = getattr(
+                        encompassing_encounter.effective_time.low, "value", None
+                    ) or str(encompassing_encounter.effective_time.low)
                     if low_value:
                         converted = self.encounter_converter.convert_date(str(low_value))
                         if converted:
                             period["start"] = converted
 
                 if encompassing_encounter.effective_time.high:
-                    high_value = getattr(encompassing_encounter.effective_time.high, 'value', None) or str(encompassing_encounter.effective_time.high)
+                    high_value = getattr(
+                        encompassing_encounter.effective_time.high, "value", None
+                    ) or str(encompassing_encounter.effective_time.high)
                     if high_value:
                         converted = self.encounter_converter.convert_date(str(high_value))
                         if converted:
@@ -2801,32 +2937,34 @@ class DocumentConverter:
                 fhir_encounter["period"] = period
 
         # Discharge disposition
-        if encompassing_encounter.discharge_disposition_code:
-            if encompassing_encounter.discharge_disposition_code.code:
+        if (
+            encompassing_encounter.discharge_disposition_code
+            and encompassing_encounter.discharge_disposition_code.code
+        ):
+            discharge_coding = {
+                "code": encompassing_encounter.discharge_disposition_code.code,
+            }
+            if encompassing_encounter.discharge_disposition_code.code_system:
+                discharge_coding["system"] = self.code_system_mapper.oid_to_uri(
+                    encompassing_encounter.discharge_disposition_code.code_system
+                )
+            if encompassing_encounter.discharge_disposition_code.display_name:
+                discharge_coding["display"] = (
+                    encompassing_encounter.discharge_disposition_code.display_name
+                )
+
+            # Map discharge code to FHIR standard if possible
+            # Code "01" = home
+            if encompassing_encounter.discharge_disposition_code.code == "01":
                 discharge_coding = {
-                    "code": encompassing_encounter.discharge_disposition_code.code,
+                    "system": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
+                    "code": "home",
+                    "display": "Home",
                 }
-                if encompassing_encounter.discharge_disposition_code.code_system:
-                    discharge_coding["system"] = self.code_system_mapper.oid_to_uri(
-                        encompassing_encounter.discharge_disposition_code.code_system
-                    )
-                if encompassing_encounter.discharge_disposition_code.display_name:
-                    discharge_coding["display"] = encompassing_encounter.discharge_disposition_code.display_name
 
-                # Map discharge code to FHIR standard if possible
-                # Code "01" = home
-                if encompassing_encounter.discharge_disposition_code.code == "01":
-                    discharge_coding = {
-                        "system": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
-                        "code": "home",
-                        "display": "Home",
-                    }
-
-                fhir_encounter["hospitalization"] = {
-                    "dischargeDisposition": {
-                        "coding": [discharge_coding]
-                    }
-                }
+            fhir_encounter["hospitalization"] = {
+                "dischargeDisposition": {"coding": [discharge_coding]}
+            }
 
         # Participants: responsibleParty and encounterParticipant
         participants = []
@@ -2834,9 +2972,11 @@ class DocumentConverter:
         # Responsible party -> participant with type PPRF (primary performer)
         # Only process if the responsible party represents a person (has assigned_person)
         # Per C-CDA: assignedEntity can be just an organization without a person
-        if (encompassing_encounter.responsible_party and
-            encompassing_encounter.responsible_party.assigned_entity and
-            encompassing_encounter.responsible_party.assigned_entity.assigned_person):
+        if (
+            encompassing_encounter.responsible_party
+            and encompassing_encounter.responsible_party.assigned_entity
+            and encompassing_encounter.responsible_party.assigned_entity.assigned_person
+        ):
             from ccda_to_fhir.converters.practitioner import PractitionerConverter
             from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 
@@ -2866,9 +3006,7 @@ class DocumentConverter:
             if selected_id:
                 # Generate practitioner ID using cached UUID v4 from identifier
                 practitioner_id = generate_id_from_identifiers(
-                    "Practitioner",
-                    selected_id.root,
-                    selected_id.extension
+                    "Practitioner", selected_id.root, selected_id.extension
                 )
             else:
                 # Fallback: Generate ID from person's name if no valid ID
@@ -2888,9 +3026,7 @@ class DocumentConverter:
                 if name_parts:
                     name_key = "-".join(name_parts).lower().replace(" ", "-")
                     practitioner_id = generate_id_from_identifiers(
-                        "Practitioner",
-                        f"name-{name_key}",
-                        None
+                        "Practitioner", f"name-{name_key}", None
                     )
                 else:
                     # Last resort: generate random UUID
@@ -2910,23 +3046,27 @@ class DocumentConverter:
                     self.reference_registry.register_resource(practitioner)
 
                     # Store temporarily to add to bundle later
-                    if not hasattr(self, '_temp_header_practitioners'):
+                    if not hasattr(self, "_temp_header_practitioners"):
                         self._temp_header_practitioners = []
                     self._temp_header_practitioners.append(practitioner)
 
                 # Add participant reference
-                participants.append({
-                    "type": [{
-                        "coding": [{
-                            "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                            "code": "PPRF",
-                            "display": "primary performer",
-                        }]
-                    }],
-                    "individual": {
-                        "reference": f"urn:uuid:{practitioner_id}"
+                participants.append(
+                    {
+                        "type": [
+                            {
+                                "coding": [
+                                    {
+                                        "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                                        "code": "PPRF",
+                                        "display": "primary performer",
+                                    }
+                                ]
+                            }
+                        ],
+                        "individual": {"reference": f"urn:uuid:{practitioner_id}"},
                     }
-                })
+                )
 
         # Encounter participants
         # Create Practitioner resources for participants that don't already exist
@@ -2937,9 +3077,11 @@ class DocumentConverter:
             for participant in encompassing_encounter.encounter_participant:
                 # Only create Practitioner if the participant represents a person (has assigned_person)
                 # Per C-CDA: assignedEntity can be just an organization without a person
-                if (participant.assigned_entity and
-                    participant.assigned_entity.assigned_person and
-                    participant.assigned_entity.id):
+                if (
+                    participant.assigned_entity
+                    and participant.assigned_entity.assigned_person
+                    and participant.assigned_entity.id
+                ):
                     # Prefer NPI for ID generation
                     npi_id = None
                     first_id = None
@@ -2958,13 +3100,13 @@ class DocumentConverter:
                     if selected_id:
                         # Generate practitioner ID using cached UUID v4
                         practitioner_id = generate_id_from_identifiers(
-                            "Practitioner",
-                            selected_id.root,
-                            selected_id.extension
+                            "Practitioner", selected_id.root, selected_id.extension
                         )
 
                         # Create Practitioner resource if it doesn't already exist
-                        if not self.reference_registry.has_resource("Practitioner", practitioner_id):
+                        if not self.reference_registry.has_resource(
+                            "Practitioner", practitioner_id
+                        ):
                             pract_converter = PractitionerConverter(
                                 code_system_mapper=self.code_system_mapper
                             )
@@ -2975,16 +3117,12 @@ class DocumentConverter:
                             self.reference_registry.register_resource(practitioner)
 
                             # Store temporarily to add to bundle later
-                            if not hasattr(self, '_temp_header_practitioners'):
+                            if not hasattr(self, "_temp_header_practitioners"):
                                 self._temp_header_practitioners = []
                             self._temp_header_practitioners.append(practitioner)
 
                         # Only add participant reference if we have a person (practitioner)
-                        part_dict = {
-                            "individual": {
-                                "reference": f"urn:uuid:{practitioner_id}"
-                            }
-                        }
+                        part_dict = {"individual": {"reference": f"urn:uuid:{practitioner_id}"}}
                         # Add type code - map C-CDA ParticipationFunction codes to FHIR ParticipationType codes
                         # Reference: docs/mapping/08-encounter.md lines 217-223
                         # Reference: docs/mapping/09-participations.md lines 217-232
@@ -2992,23 +3130,31 @@ class DocumentConverter:
                             # Map known function codes (PCP→PPRF, ATTPHYS→ATND, ANEST→SPRF, etc.)
                             mapped_code = PARTICIPATION_FUNCTION_CODE_MAP.get(
                                 participant.type_code,
-                                participant.type_code  # Pass through if not in map
+                                participant.type_code,  # Pass through if not in map
                             )
-                            part_dict["type"] = [{
-                                "coding": [{
-                                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                                    "code": mapped_code,
-                                }]
-                            }]
+                            part_dict["type"] = [
+                                {
+                                    "coding": [
+                                        {
+                                            "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                                            "code": mapped_code,
+                                        }
+                                    ]
+                                }
+                            ]
                         else:
                             # Default to PART (participant) if no type code specified
-                            part_dict["type"] = [{
-                                "coding": [{
-                                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                                    "code": "PART",
-                                    "display": "participant",
-                                }]
-                            }]
+                            part_dict["type"] = [
+                                {
+                                    "coding": [
+                                        {
+                                            "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                                            "code": "PART",
+                                            "display": "participant",
+                                        }
+                                    ]
+                                }
+                            ]
                         participants.append(part_dict)
 
         if participants:
@@ -3041,7 +3187,10 @@ class DocumentConverter:
                 )
 
                 for record_target in ccda_doc.record_target:
-                    if record_target.patient_role and record_target.patient_role.provider_organization:
+                    if (
+                        record_target.patient_role
+                        and record_target.patient_role.provider_organization
+                    ):
                         provider_org = record_target.patient_role.provider_organization
                         if provider_org.name:
                             # Extract organization name
@@ -3066,13 +3215,13 @@ class DocumentConverter:
                     first_loc_id = facility.id[0]
                     # Generate location ID using cached UUID v4
                     location_id = generate_id_from_identifiers(
-                        "Location",
-                        first_loc_id.root,
-                        first_loc_id.extension
+                        "Location", first_loc_id.root, first_loc_id.extension
                     )
 
                     # Create Location resource if it doesn't already exist
-                    if location_id and not self.reference_registry.has_resource("Location", location_id):
+                    if location_id and not self.reference_registry.has_resource(
+                        "Location", location_id
+                    ):
                         # Create a minimal Location resource
                         location_resource = {
                             "resourceType": "Location",
@@ -3096,12 +3245,13 @@ class DocumentConverter:
                                 location_resource["identifier"] = identifiers
 
                         # Add managing organization if available
-                        if facility.service_provider_organization and facility.service_provider_organization.id:
+                        if (
+                            facility.service_provider_organization
+                            and facility.service_provider_organization.id
+                        ):
                             org_id_elem = facility.service_provider_organization.id[0]
                             org_id = generate_id_from_identifiers(
-                                "Organization",
-                                org_id_elem.root,
-                                org_id_elem.extension
+                                "Organization", org_id_elem.root, org_id_elem.extension
                             )
                             location_resource["managingOrganization"] = {
                                 "reference": f"urn:uuid:{org_id}"
@@ -3111,18 +3261,22 @@ class DocumentConverter:
                         self.reference_registry.register_resource(location_resource)
 
                         # Store temporarily to add to bundle later
-                        if not hasattr(self, '_temp_header_locations'):
+                        if not hasattr(self, "_temp_header_locations"):
                             self._temp_header_locations = []
                         self._temp_header_locations.append(location_resource)
 
                 if location_id:
-                    location_ref = FHIRReference(reference=f"urn:uuid:{location_id}", display=location_display)
+                    location_ref = FHIRReference(
+                        reference=f"urn:uuid:{location_id}", display=location_display
+                    )
                     location_dict = location_ref.to_dict()
 
-                    fhir_encounter["location"] = [{
-                        "location": location_dict,
-                        "status": "completed"  # Header encounters are completed
-                    }]
+                    fhir_encounter["location"] = [
+                        {
+                            "location": location_dict,
+                            "status": "completed",  # Header encounters are completed
+                        }
+                    ]
 
         # Patient reference (from recordTarget in document header)
         if not self.reference_registry:
@@ -3134,15 +3288,11 @@ class DocumentConverter:
 
         return fhir_encounter
 
-    def _store_note_metadata(
-        self, structured_body: StructuredBody, notes: list[FHIRResourceDict]
-    ):
+    def _store_note_metadata(self, structured_body: StructuredBody, notes: list[FHIRResourceDict]):
         """Store author metadata for note (DocumentReference) resources."""
         note_ids_needing_metadata = {n.get("id") for n in notes if n.get("id")}
 
-        for act, _section, _code in iter_matching_acts(
-            structured_body, TemplateIds.NOTE_ACTIVITY
-        ):
+        for act, _section, _code in iter_matching_acts(structured_body, TemplateIds.NOTE_ACTIVITY):
             if act.id and len(act.id) > 0:
                 first_id = act.id[0]
                 note_id = self._generate_note_id_from_identifier(first_id)
@@ -3170,8 +3320,8 @@ class DocumentConverter:
         if not identifier:
             return generate_id()
 
-        root = getattr(identifier, 'root', None) or None
-        extension = getattr(identifier, 'extension', None) or None
+        root = getattr(identifier, "root", None) or None
+        extension = getattr(identifier, "extension", None) or None
 
         return generate_id_from_identifiers("DocumentReference", root, extension)
 
@@ -3199,9 +3349,7 @@ class DocumentConverter:
         self._store_note_metadata(structured_body, notes)
         return notes
 
-    def _extract_practitioners_and_organizations(
-        self, authors: list
-    ) -> list[FHIRResourceDict]:
+    def _extract_practitioners_and_organizations(self, authors: list) -> list[FHIRResourceDict]:
         """Extract and convert Practitioners, Devices, Organizations, and PractitionerRoles from authors.
 
         Creates four types of resources:
@@ -3263,7 +3411,10 @@ class DocumentConverter:
                             self.reference_registry.register_resource(practitioner)
                             seen_practitioners.add(practitioner_id)
                     else:
-                        logger.warning("Practitioner failed validation, skipping", practitioner_id=practitioner_id)
+                        logger.warning(
+                            "Practitioner failed validation, skipping",
+                            practitioner_id=practitioner_id,
+                        )
                         practitioner_id = None  # Don't use for PractitionerRole
                 except Exception:
                     logger.error("Error converting practitioner", exc_info=True)
@@ -3279,7 +3430,9 @@ class DocumentConverter:
                     org_id = organization.get("id")
                     if self._validate_resource(organization):
                         # Check global registry to avoid duplicates across different extraction paths
-                        if org_id and not self.reference_registry.has_resource("Organization", org_id):
+                        if org_id and not self.reference_registry.has_resource(
+                            "Organization", org_id
+                        ):
                             resources.append(organization)
                             self.reference_registry.register_resource(organization)
                             seen_organizations.add(org_id)
@@ -3307,7 +3460,9 @@ class DocumentConverter:
                             self.reference_registry.register_resource(practitioner_role)
                             seen_roles.add(role_id)
                     else:
-                        logger.warning("PractitionerRole failed validation, skipping", role_id=role_id)
+                        logger.warning(
+                            "PractitionerRole failed validation, skipping", role_id=role_id
+                        )
                 except Exception:
                     logger.error("Error converting practitioner role", exc_info=True)
 
@@ -3334,11 +3489,12 @@ class DocumentConverter:
             organization = self.organization_converter.convert(custodian_org)
 
             # Validate organization
-            if self._validate_resource(organization):                return organization
+            if self._validate_resource(organization):
+                return organization
             else:
                 logger.warning(
                     "Custodian organization failed validation, skipping",
-                    org_id=organization.get("id")
+                    org_id=organization.get("id"),
                 )
                 return None
         except Exception:
@@ -3367,37 +3523,52 @@ class DocumentConverter:
         Returns:
             Tuple of (devices, practitioners, organizations) lists
         """
-        logger.info(f"_create_resources_from_author_info called with {len(author_info_list)} authors")
-        logger.info(f"Already seen: {len(seen_practitioners)} practitioners, {len(seen_organizations)} organizations")
+        logger.info(
+            f"_create_resources_from_author_info called with {len(author_info_list)} authors"
+        )
+        logger.info(
+            f"Already seen: {len(seen_practitioners)} practitioners, {len(seen_organizations)} organizations"
+        )
 
         devices = []
         practitioners = []
         organizations = []
 
         for author_info in author_info_list:
-            logger.debug(f"Processing author: pract_id={author_info.practitioner_id}, org_id={author_info.organization_id}, device_id={author_info.device_id}")
+            logger.debug(
+                f"Processing author: pract_id={author_info.practitioner_id}, org_id={author_info.organization_id}, device_id={author_info.device_id}"
+            )
 
             # Create Device resource if needed
-            if author_info.device_id and author_info.device_id not in seen_devices:
+            if (
+                author_info.device_id
+                and author_info.device_id not in seen_devices
                 # Reconstruct AssignedAuthor from the original Author
-                if author_info.author and author_info.author.assigned_author:
-                    assigned = author_info.author.assigned_author
-                    if assigned.assigned_authoring_device:
-                        try:
-                            device = self.device_converter.convert(assigned)
-                            device_id = device.get("id")
+                and author_info.author
+                and author_info.author.assigned_author
+            ):
+                assigned = author_info.author.assigned_author
+                if assigned.assigned_authoring_device:
+                    try:
+                        device = self.device_converter.convert(assigned)
+                        device_id = device.get("id")
 
-                            if self._validate_resource(device):
-                                if device_id and device_id not in seen_devices:
-                                    devices.append(device)
-                                    seen_devices.add(device_id)
-                            else:
-                                logger.warning("Device failed validation, skipping", device_id=device_id)
-                        except Exception:
-                            logger.error("Error converting device from entry author", exc_info=True)
+                        if self._validate_resource(device):
+                            if device_id and device_id not in seen_devices:
+                                devices.append(device)
+                                seen_devices.add(device_id)
+                        else:
+                            logger.warning(
+                                "Device failed validation, skipping", device_id=device_id
+                            )
+                    except Exception:
+                        logger.error("Error converting device from entry author", exc_info=True)
 
             # Create Practitioner resource if needed
-            if author_info.practitioner_id and author_info.practitioner_id not in seen_practitioners:
+            if (
+                author_info.practitioner_id
+                and author_info.practitioner_id not in seen_practitioners
+            ):
                 # Reconstruct AssignedAuthor from the original Author
                 if author_info.author and author_info.author.assigned_author:
                     assigned = author_info.author.assigned_author
@@ -3413,16 +3584,28 @@ class DocumentConverter:
                                     practitioners.append(practitioner)
                                     seen_practitioners.add(author_info.practitioner_id)
                             else:
-                                logger.warning("Practitioner failed validation, skipping", practitioner_id=author_info.practitioner_id)
+                                logger.warning(
+                                    "Practitioner failed validation, skipping",
+                                    practitioner_id=author_info.practitioner_id,
+                                )
                         except Exception:
-                            logger.error("Error converting practitioner from entry author", exc_info=True)
+                            logger.error(
+                                "Error converting practitioner from entry author", exc_info=True
+                            )
                     else:
-                        logger.debug(f"Skipping practitioner {author_info.practitioner_id} - no assigned_person in C-CDA")
+                        logger.debug(
+                            f"Skipping practitioner {author_info.practitioner_id} - no assigned_person in C-CDA"
+                        )
                 else:
-                    logger.debug(f"Skipping practitioner {author_info.practitioner_id} - no author.assigned_author in metadata")
+                    logger.debug(
+                        f"Skipping practitioner {author_info.practitioner_id} - no author.assigned_author in metadata"
+                    )
 
             # Create Organization resource if needed
-            if author_info.organization_id and author_info.organization_id not in seen_organizations:
+            if (
+                author_info.organization_id
+                and author_info.organization_id not in seen_organizations
+            ):
                 # Reconstruct from the original Author
                 if author_info.author and author_info.author.assigned_author:
                     assigned = author_info.author.assigned_author
@@ -3438,19 +3621,32 @@ class DocumentConverter:
                                     organizations.append(organization)
                                     seen_organizations.add(org_id)
                             else:
-                                logger.warning("Organization failed validation, skipping", org_id=org_id)
+                                logger.warning(
+                                    "Organization failed validation, skipping", org_id=org_id
+                                )
                         except Exception:
-                            logger.error("Error converting organization from entry author", exc_info=True)
+                            logger.error(
+                                "Error converting organization from entry author", exc_info=True
+                            )
                     else:
-                        logger.debug(f"Skipping organization {author_info.organization_id} - no represented_organization in C-CDA")
+                        logger.debug(
+                            f"Skipping organization {author_info.organization_id} - no represented_organization in C-CDA"
+                        )
                 else:
-                    logger.debug(f"Skipping organization {author_info.organization_id} - no author.assigned_author in metadata")
+                    logger.debug(
+                        f"Skipping organization {author_info.organization_id} - no author.assigned_author in metadata"
+                    )
 
         return (devices, practitioners, organizations)
 
     def _generate_provenance_resources(
         self, resources: list[FHIRResourceDict]
-    ) -> tuple[list[FHIRResourceDict], list[FHIRResourceDict], list[FHIRResourceDict], list[FHIRResourceDict]]:
+    ) -> tuple[
+        list[FHIRResourceDict],
+        list[FHIRResourceDict],
+        list[FHIRResourceDict],
+        list[FHIRResourceDict],
+    ]:
         """Generate Provenance resources and create missing author resources.
 
         This method generates Provenance resources for all resources with stored author
@@ -3500,8 +3696,10 @@ class DocumentConverter:
                 continue
 
             # Create missing Device/Practitioner/Organization resources from entry-level authors
-            entry_devices, entry_practitioners, entry_orgs = self._create_resources_from_author_info(
-                author_info, seen_devices, seen_practitioners, seen_organizations
+            entry_devices, entry_practitioners, entry_orgs = (
+                self._create_resources_from_author_info(
+                    author_info, seen_devices, seen_practitioners, seen_organizations
+                )
             )
             devices.extend(entry_devices)
             practitioners.extend(entry_practitioners)
@@ -3509,9 +3707,7 @@ class DocumentConverter:
 
             # Create Provenance only if there are valid agents
             # (authors with practitioner/device IDs)
-            has_valid_agents = any(
-                a.practitioner_id or a.device_id for a in author_info
-            )
+            has_valid_agents = any(a.practitioner_id or a.device_id for a in author_info)
             if not has_valid_agents:
                 continue
 
@@ -3572,9 +3768,7 @@ class DocumentConverter:
             if isinstance(ccda_element, Observation):
                 authors = self.author_extractor.extract_from_observation(ccda_element)
             elif isinstance(ccda_element, SubstanceAdministration):
-                authors = self.author_extractor.extract_from_substance_administration(
-                    ccda_element
-                )
+                authors = self.author_extractor.extract_from_substance_administration(ccda_element)
             elif isinstance(ccda_element, Procedure):
                 authors = self.author_extractor.extract_from_procedure(ccda_element)
             elif isinstance(ccda_element, CCDAEncounter):
@@ -3606,6 +3800,7 @@ class DocumentConverter:
                 "Patient must be processed before informants."
             )
         from .converters.related_person import RelatedPersonConverter
+
         converter = RelatedPersonConverter(
             patient_id=self._patient_id,
             patient_display=self.reference_registry.patient_display,
@@ -3613,7 +3808,7 @@ class DocumentConverter:
         return converter.convert(related_entity)
 
     def _generate_informant_resources(
-        self
+        self,
     ) -> tuple[list[FHIRResourceDict], list[FHIRResourceDict]]:
         """Generate Practitioner and RelatedPerson resources from informant metadata.
 
@@ -3625,7 +3820,7 @@ class DocumentConverter:
         seen_practitioners: set[str] = set()
         seen_related_persons: set[str] = set()
 
-        for key, informant_list in self._informant_metadata.items():
+        for _key, informant_list in self._informant_metadata.items():
             for informant_info in informant_list:
                 try:
                     # Create Practitioner for assignedEntity informants
@@ -3639,7 +3834,9 @@ class DocumentConverter:
                             seen_practitioners.add(practitioner_id)
 
                     # Create RelatedPerson for relatedEntity informants
-                    elif informant_info.is_related_person and informant_info.informant.related_entity:
+                    elif (
+                        informant_info.is_related_person and informant_info.informant.related_entity
+                    ):
                         related_person_id = informant_info.related_person_id
                         if related_person_id and related_person_id not in seen_related_persons:
                             related_person = self._convert_related_person(
@@ -3673,10 +3870,7 @@ def convert_document(ccda_input: str | ClinicalDocument) -> ConversionResult:
         Exception: If parsing or conversion fails
     """
     # Parse if needed
-    if isinstance(ccda_input, str):
-        ccda_doc = parse_ccda(ccda_input)
-    else:
-        ccda_doc = ccda_input
+    ccda_doc = parse_ccda(ccda_input) if isinstance(ccda_input, str) else ccda_input
 
     # Convert using DocumentConverter
     converter = DocumentConverter()

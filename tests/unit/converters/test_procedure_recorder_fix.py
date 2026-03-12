@@ -20,9 +20,7 @@ class TestProcedureRecorderFix:
         """Helper to create procedure with given authors."""
         proc = CCDAProcedure()
         proc.code = CE(
-            code="80146002",
-            code_system="2.16.840.1.113883.6.96",
-            display_name="Appendectomy"
+            code="80146002", code_system="2.16.840.1.113883.6.96", display_name="Appendectomy"
         )
         proc.id = [II(root="1.2.3.4", extension="proc-1")]
         proc.status_code = CS(code="completed")
@@ -34,18 +32,21 @@ class TestProcedureRecorderFix:
         time: str | None,
         practitioner_ext: str | None = None,
         has_person: bool = True,
-        has_device: bool = False
+        has_device: bool = False,
     ) -> Author:
         """Helper to create author with specified time and identifiers."""
         assigned_author = AssignedAuthor()
-        assigned_author.id = [II(root="2.16.840.1.113883.4.6", extension=practitioner_ext)] if practitioner_ext else []
+        assigned_author.id = (
+            [II(root="2.16.840.1.113883.4.6", extension=practitioner_ext)]
+            if practitioner_ext
+            else []
+        )
 
         if has_person and not has_device:
             assigned_author.assigned_person = AssignedPerson(name=[])
         elif has_device:
             assigned_author.assigned_authoring_device = AssignedAuthoringDevice(
-                manufacturer_model_name="Test Device",
-                software_name="Test Software"
+                manufacturer_model_name="Test Device", software_name="Test Software"
             )
 
         author = Author()
@@ -60,7 +61,9 @@ class TestProcedureRecorderFix:
         author = self.create_author(time="20240115090000", practitioner_ext="DOC-001")
         proc = self.create_procedure_with_authors([author])
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -83,7 +86,9 @@ class TestProcedureRecorderFix:
         ]
         proc = self.create_procedure_with_authors(authors)
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -106,7 +111,9 @@ class TestProcedureRecorderFix:
         ]
         proc = self.create_procedure_with_authors(authors)
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -128,7 +135,9 @@ class TestProcedureRecorderFix:
         ]
         proc = self.create_procedure_with_authors(authors)
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -148,7 +157,9 @@ class TestProcedureRecorderFix:
         ]
         proc = self.create_procedure_with_authors(authors)
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert "recorder" not in procedure
@@ -158,14 +169,13 @@ class TestProcedureRecorderFix:
         import uuid as uuid_module
 
         author = self.create_author(
-            time="20240115",
-            practitioner_ext="DEVICE-001",
-            has_person=False,
-            has_device=True
+            time="20240115", practitioner_ext="DEVICE-001", has_person=False, has_device=True
         )
         proc = self.create_procedure_with_authors([author])
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -182,12 +192,18 @@ class TestProcedureRecorderFix:
         import uuid as uuid_module
 
         authors = [
-            self.create_author(time="20240101", practitioner_ext="EARLY-DOC", has_person=True, has_device=False),
-            self.create_author(time="20240201", practitioner_ext="LATEST-DEVICE", has_person=False, has_device=True),
+            self.create_author(
+                time="20240101", practitioner_ext="EARLY-DOC", has_person=True, has_device=False
+            ),
+            self.create_author(
+                time="20240201", practitioner_ext="LATEST-DEVICE", has_person=False, has_device=True
+            ),
         ]
         proc = self.create_procedure_with_authors(authors)
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert "recorder" in procedure
@@ -208,14 +224,14 @@ class TestProcedureMoodCodeStatusMapping:
         proc = CCDAProcedure()
         proc.mood_code = "INT"  # Intent/planned procedure
         proc.code = CE(
-            code="80146002",
-            code_system="2.16.840.1.113883.6.96",
-            display_name="Appendectomy"
+            code="80146002", code_system="2.16.840.1.113883.6.96", display_name="Appendectomy"
         )
         proc.id = [II(root="1.2.3.4", extension="proc-1")]
         proc.status_code = CS(code="active")
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert procedure["status"] == "preparation"  # Not "in-progress"
@@ -225,14 +241,14 @@ class TestProcedureMoodCodeStatusMapping:
         proc = CCDAProcedure()
         proc.mood_code = "INT"
         proc.code = CE(
-            code="80146002",
-            code_system="2.16.840.1.113883.6.96",
-            display_name="Appendectomy"
+            code="80146002", code_system="2.16.840.1.113883.6.96", display_name="Appendectomy"
         )
         proc.id = [II(root="1.2.3.4", extension="proc-1")]
         proc.status_code = CS(code="new")
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert procedure["status"] == "preparation"
@@ -242,14 +258,14 @@ class TestProcedureMoodCodeStatusMapping:
         proc = CCDAProcedure()
         proc.mood_code = "EVN"  # Event/actual procedure
         proc.code = CE(
-            code="80146002",
-            code_system="2.16.840.1.113883.6.96",
-            display_name="Appendectomy"
+            code="80146002", code_system="2.16.840.1.113883.6.96", display_name="Appendectomy"
         )
         proc.id = [II(root="1.2.3.4", extension="proc-1")]
         proc.status_code = CS(code="active")
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert procedure["status"] == "in-progress"  # Not "preparation"
@@ -259,14 +275,14 @@ class TestProcedureMoodCodeStatusMapping:
         proc = CCDAProcedure()
         proc.mood_code = "EVN"
         proc.code = CE(
-            code="80146002",
-            code_system="2.16.840.1.113883.6.96",
-            display_name="Appendectomy"
+            code="80146002", code_system="2.16.840.1.113883.6.96", display_name="Appendectomy"
         )
         proc.id = [II(root="1.2.3.4", extension="proc-1")]
         proc.status_code = CS(code="completed")
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         assert procedure["status"] == "completed"
@@ -276,14 +292,14 @@ class TestProcedureMoodCodeStatusMapping:
         proc = CCDAProcedure()
         proc.mood_code = "INT"
         proc.code = CE(
-            code="80146002",
-            code_system="2.16.840.1.113883.6.96",
-            display_name="Appendectomy"
+            code="80146002", code_system="2.16.840.1.113883.6.96", display_name="Appendectomy"
         )
         proc.id = [II(root="1.2.3.4", extension="proc-1")]
         proc.status_code = CS(code="completed")
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         # Completed orders map to completed, not preparation
@@ -294,14 +310,14 @@ class TestProcedureMoodCodeStatusMapping:
         proc = CCDAProcedure()
         # mood_code will default to "EVN" per Pydantic model
         proc.code = CE(
-            code="80146002",
-            code_system="2.16.840.1.113883.6.96",
-            display_name="Appendectomy"
+            code="80146002", code_system="2.16.840.1.113883.6.96", display_name="Appendectomy"
         )
         proc.id = [II(root="1.2.3.4", extension="proc-1")]
         proc.status_code = CS(code="active")
 
-        converter = ProcedureConverter(code_system_mapper=None, reference_registry=mock_reference_registry)
+        converter = ProcedureConverter(
+            code_system_mapper=None, reference_registry=mock_reference_registry
+        )
         procedure = converter.convert(proc)
 
         # Should behave like EVN (event), not INT (intent)

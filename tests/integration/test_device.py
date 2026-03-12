@@ -25,9 +25,7 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
     return None
 
 
-def _find_all_resources_in_bundle(
-    bundle: JSONObject, resource_type: str
-) -> list[JSONObject]:
+def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> list[JSONObject]:
     """Find all resources of the given type in a FHIR Bundle."""
     if "entry" not in bundle:
         return []
@@ -286,17 +284,13 @@ class TestDeviceConversion:
 
         # Check manufacturer name
         manufacturer_names = [
-            dn for dn in device["deviceName"]
-            if dn.get("type") == "manufacturer-name"
+            dn for dn in device["deviceName"] if dn.get("type") == "manufacturer-name"
         ]
         assert len(manufacturer_names) == 1
         assert manufacturer_names[0]["name"] == "Epic EHR"
 
         # Check software/model name
-        model_names = [
-            dn for dn in device["deviceName"]
-            if dn.get("type") == "model-name"
-        ]
+        model_names = [dn for dn in device["deviceName"] if dn.get("type") == "model-name"]
         assert len(model_names) == 1
         assert model_names[0]["name"] == "Epic 2020"
 
@@ -371,11 +365,12 @@ class TestDeviceConversion:
 
         # Validate device ID is UUID v4
         import uuid as uuid_module
+
         device_id = devices[0]["id"]
         try:
             uuid_module.UUID(device_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Device ID {device_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(f"Device ID {device_id} is not a valid UUID v4") from err
 
         # Verify device has correct identifier
         assert "identifier" in devices[0]
@@ -710,7 +705,10 @@ class TestDeviceConversion:
         assert "type" in device["version"][0]
         assert "coding" in device["version"][0]["type"]
         assert len(device["version"][0]["type"]["coding"]) == 1
-        assert device["version"][0]["type"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/device-version-type"
+        assert (
+            device["version"][0]["type"]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/device-version-type"
+        )
         assert device["version"][0]["type"]["coding"][0]["code"] == "software"
         assert device["version"][0]["type"]["coding"][0]["display"] == "Software Version"
         assert device["version"][0]["type"]["text"] == "software"

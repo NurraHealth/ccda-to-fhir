@@ -71,9 +71,7 @@ class GoalConverter(BaseConverter[Observation]):
 
         # Add US Core Goal profile
         fhir_goal["meta"] = {
-            "profile": [
-                "http://hl7.org/fhir/us/core/StructureDefinition/us-core-goal"
-            ]
+            "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-goal"]
         }
 
         # 1. Generate ID from observation identifier
@@ -91,10 +89,12 @@ class GoalConverter(BaseConverter[Observation]):
                     f"Generating unique ID to avoid duplicate Goal resources."
                 )
                 from ccda_to_fhir.id_generator import generate_id
+
                 fhir_goal["id"] = generate_id()
             else:
                 # First time seeing this goal ID - use it
                 from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
                 fhir_goal["id"] = generate_id_from_identifiers(
                     "Goal", first_id.root, first_id.extension
                 )
@@ -132,9 +132,7 @@ class GoalConverter(BaseConverter[Observation]):
         if not description or not description.get("coding"):
             narrative_text = self.extract_original_text(observation.text, section)
             if narrative_text:
-                description = {
-                    "text": narrative_text
-                }
+                description = {"text": narrative_text}
 
         # Set description (required field) - fail if unavailable
         if not description:
@@ -148,8 +146,7 @@ class GoalConverter(BaseConverter[Observation]):
         # 5. Subject (required) - reference to patient
         if not self.reference_registry:
             raise ValueError(
-                "reference_registry is required. "
-                "Cannot create Goal without patient reference."
+                "reference_registry is required. Cannot create Goal without patient reference."
             )
         fhir_goal["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
@@ -197,24 +194,28 @@ class GoalConverter(BaseConverter[Observation]):
         # 9. Priority from Priority Preference entry relationship
         if observation.entry_relationship:
             for entry_rel in observation.entry_relationship:
-                if entry_rel.type_code == "REFR" and entry_rel.observation:
-                    if self._is_priority_preference(entry_rel.observation):
-                        priority = self._extract_priority(entry_rel.observation)
-                        if priority:
-                            fhir_goal["priority"] = priority
-                            break
+                if (
+                    entry_rel.type_code == "REFR"
+                    and entry_rel.observation
+                    and self._is_priority_preference(entry_rel.observation)
+                ):
+                    priority = self._extract_priority(entry_rel.observation)
+                    if priority:
+                        fhir_goal["priority"] = priority
+                        break
 
         # 10. Achievement status from Progress Toward Goal entry relationship
         if observation.entry_relationship:
             for entry_rel in observation.entry_relationship:
-                if entry_rel.type_code == "REFR" and entry_rel.observation:
-                    if self._is_progress_toward_goal(entry_rel.observation):
-                        achievement_status = self._extract_achievement_status(
-                            entry_rel.observation
-                        )
-                        if achievement_status:
-                            fhir_goal["achievementStatus"] = achievement_status
-                            break
+                if (
+                    entry_rel.type_code == "REFR"
+                    and entry_rel.observation
+                    and self._is_progress_toward_goal(entry_rel.observation)
+                ):
+                    achievement_status = self._extract_achievement_status(entry_rel.observation)
+                    if achievement_status:
+                        fhir_goal["achievementStatus"] = achievement_status
+                        break
 
         # 11. Addresses (health concerns) from Entry Reference entry relationship
         if observation.entry_relationship:
@@ -222,9 +223,7 @@ class GoalConverter(BaseConverter[Observation]):
             for entry_rel in observation.entry_relationship:
                 if entry_rel.type_code == "RSON" and entry_rel.observation:
                     if self._is_entry_reference(entry_rel.observation):
-                        address_ref = self._extract_health_concern_reference(
-                            entry_rel.observation
-                        )
+                        address_ref = self._extract_health_concern_reference(entry_rel.observation)
                         if address_ref:
                             addresses.append(address_ref.to_dict())
             if addresses:
@@ -237,9 +236,7 @@ class GoalConverter(BaseConverter[Observation]):
 
         return fhir_goal
 
-    def _convert_code_to_codeable_concept(
-        self, code_element: CD | CE | None
-    ) -> JSONObject | None:
+    def _convert_code_to_codeable_concept(self, code_element: CD | CE | None) -> JSONObject | None:
         """Convert C-CDA code element to FHIR CodeableConcept.
 
         Args:
@@ -261,11 +258,13 @@ class GoalConverter(BaseConverter[Observation]):
         if code_element.translation:
             for trans in code_element.translation:
                 if trans.code and trans.code_system:
-                    translations.append({
-                        "code": trans.code,
-                        "code_system": trans.code_system,
-                        "display_name": trans.display_name,
-                    })
+                    translations.append(
+                        {
+                            "code": trans.code,
+                            "code_system": trans.code_system,
+                            "display_name": trans.display_name,
+                        }
+                    )
 
         result = self.create_codeable_concept(
             code=code_element.code,
@@ -301,7 +300,9 @@ class GoalConverter(BaseConverter[Observation]):
             # Handle PQ (Physical Quantity) → detailQuantity
             if isinstance(component_obs.value, PQ):
                 if component_obs.value.value is not None:
-                    detail_quantity = self.create_quantity(component_obs.value.value, component_obs.value.unit)
+                    detail_quantity = self.create_quantity(
+                        component_obs.value.value, component_obs.value.unit
+                    )
                     if detail_quantity:
                         target["detailQuantity"] = detail_quantity
 
@@ -309,11 +310,15 @@ class GoalConverter(BaseConverter[Observation]):
             elif isinstance(component_obs.value, IVL_PQ):
                 detail_range: JSONObject = {}
                 if component_obs.value.low and component_obs.value.low.value is not None:
-                    low_quantity = self.create_quantity(component_obs.value.low.value, component_obs.value.low.unit)
+                    low_quantity = self.create_quantity(
+                        component_obs.value.low.value, component_obs.value.low.unit
+                    )
                     if low_quantity:
                         detail_range["low"] = low_quantity
                 if component_obs.value.high and component_obs.value.high.value is not None:
-                    high_quantity = self.create_quantity(component_obs.value.high.value, component_obs.value.high.unit)
+                    high_quantity = self.create_quantity(
+                        component_obs.value.high.value, component_obs.value.high.unit
+                    )
                     if high_quantity:
                         detail_range["high"] = high_quantity
                 if detail_range:
@@ -330,7 +335,9 @@ class GoalConverter(BaseConverter[Observation]):
 
         # US Core gol-1 constraint: If target.detail is populated, target.measure is required
         # Validate defensive coding to prevent constraint violation
-        has_detail = any(k in target for k in ["detailQuantity", "detailRange", "detailCodeableConcept"])
+        has_detail = any(
+            k in target for k in ["detailQuantity", "detailRange", "detailCodeableConcept"]
+        )
         if has_detail and "measure" not in target:
             logger.warning(
                 "Skipping target with detail but no measure (violates US Core gol-1 constraint). "
@@ -365,6 +372,7 @@ class GoalConverter(BaseConverter[Observation]):
             if assigned_author.assigned_person:
                 # Create Practitioner reference
                 from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner", first_id.root, first_id.extension
                 )
@@ -387,9 +395,7 @@ class GoalConverter(BaseConverter[Observation]):
         """
         if not obs.template_id:
             return False
-        return any(
-            t.root == TemplateIds.PRIORITY_PREFERENCE for t in obs.template_id if t.root
-        )
+        return any(t.root == TemplateIds.PRIORITY_PREFERENCE for t in obs.template_id if t.root)
 
     def _is_progress_toward_goal(self, obs: Observation) -> bool:
         """Check if observation is a Progress Toward Goal template.
@@ -398,9 +404,7 @@ class GoalConverter(BaseConverter[Observation]):
         """
         if not obs.template_id:
             return False
-        return any(
-            t.root == TemplateIds.PROGRESS_TOWARD_GOAL for t in obs.template_id if t.root
-        )
+        return any(t.root == TemplateIds.PROGRESS_TOWARD_GOAL for t in obs.template_id if t.root)
 
     def _is_entry_reference(self, obs: Observation) -> bool:
         """Check if observation is an Entry Reference template.
@@ -409,9 +413,7 @@ class GoalConverter(BaseConverter[Observation]):
         """
         if not obs.template_id:
             return False
-        return any(
-            t.root == TemplateIds.ENTRY_REFERENCE for t in obs.template_id if t.root
-        )
+        return any(t.root == TemplateIds.ENTRY_REFERENCE for t in obs.template_id if t.root)
 
     def _extract_priority(self, priority_obs: Observation) -> JSONObject | None:
         """Extract priority from Priority Preference observation.
@@ -459,6 +461,7 @@ class GoalConverter(BaseConverter[Observation]):
         # Look for the referenced observation's ID
         if entry_ref_obs.id and len(entry_ref_obs.id) > 0:
             from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
             first_id = entry_ref_obs.id[0]
             # Create a reference to a Condition resource
             condition_id = generate_id_from_identifiers(

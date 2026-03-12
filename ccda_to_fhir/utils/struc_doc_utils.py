@@ -132,9 +132,7 @@ def _search_table_for_id(table: Table, target_id: str) -> str | None:
     return None
 
 
-def _search_table_section_for_id(
-    rows: list[TableRow] | None, target_id: str
-) -> str | None:
+def _search_table_section_for_id(rows: list[TableRow] | None, target_id: str) -> str | None:
     """Search table rows for ID.
 
     Args:
@@ -747,7 +745,7 @@ def _footnote_to_html(footnote) -> str:
     id_attr = f' id="{_escape_html(footnote.id_attr)}"' if footnote.id_attr else ""
 
     # Render as small text in brackets
-    return f'<small{id_attr}>[{content_html}]</small>'
+    return f"<small{id_attr}>[{content_html}]</small>"
 
 
 def _render_multimedia_to_html(rmm) -> str:
@@ -763,7 +761,7 @@ def _render_multimedia_to_html(rmm) -> str:
         HTML string
     """
     ref_obj = rmm.referenced_object or "unknown"
-    return f'<em>[Media: {_escape_html(ref_obj)}]</em>'
+    return f"<em>[Media: {_escape_html(ref_obj)}]</em>"
 
 
 def _table_to_html(table) -> str:
@@ -1020,7 +1018,7 @@ def find_element_by_id(narrative: StrucDocText, element_id: str):
     return None
 
 
-def _find_in_inline_elements(para: "Paragraph", element_id: str):
+def _find_in_inline_elements(para: Paragraph, element_id: str):
     """Search for ID in inline elements of a paragraph."""
     if para.content:
         for content in para.content:

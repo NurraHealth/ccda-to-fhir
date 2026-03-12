@@ -3,9 +3,9 @@
 from pathlib import Path
 
 import pytest
+from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
-from fhir.resources.bundle import Bundle
 
 NIST_AMBULATORY = Path(__file__).parent / "fixtures" / "documents" / "nist_ambulatory.xml"
 
@@ -20,8 +20,7 @@ def nist_bundle():
 
 def test_custodian_has_display_and_reference(nist_bundle):
     composition = next(
-        e.resource for e in nist_bundle.entry
-        if e.resource.get_resource_type() == "Composition"
+        e.resource for e in nist_bundle.entry if e.resource.get_resource_type() == "Composition"
     )
     custodian = composition.custodian
     assert custodian.display == "Community Health and Hospitals"

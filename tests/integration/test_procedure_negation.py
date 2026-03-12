@@ -15,10 +15,9 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
             return resource
     return None
 
+
 class TestProcedureNegation:
-    def test_converts_negated_procedure(
-        self, ccda_procedure_negated: str
-    ) -> None:
+    def test_converts_negated_procedure(self, ccda_procedure_negated: str) -> None:
         """Test that negationInd=true is converted to status=not-done."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_negated, TemplateIds.PROCEDURES_SECTION)
         bundle = convert_document(ccda_doc)["bundle"]

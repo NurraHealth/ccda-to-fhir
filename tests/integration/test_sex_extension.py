@@ -34,7 +34,7 @@ class TestSexExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -44,9 +44,12 @@ class TestSexExtension:
         # Should have us-core-sex extension
         assert "extension" in patient
         sex_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
+            ),
+            None,
         )
         assert sex_ext is not None
         assert sex_ext["valueCode"] == "M"
@@ -65,7 +68,7 @@ class TestSexExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -73,9 +76,12 @@ class TestSexExtension:
         assert patient is not None
 
         sex_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
+            ),
+            None,
         )
         assert sex_ext is not None
         assert sex_ext["valueCode"] == "F"
@@ -94,7 +100,7 @@ class TestSexExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -102,9 +108,12 @@ class TestSexExtension:
         assert patient is not None
 
         sex_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
+            ),
+            None,
         )
         assert sex_ext is not None
         assert sex_ext["valueCode"] == "UNK"
@@ -123,7 +132,7 @@ class TestSexExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -132,9 +141,12 @@ class TestSexExtension:
 
         # Verify extension URL is exactly correct
         sex_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
+            ),
+            None,
         )
         assert sex_ext is not None
         assert sex_ext["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
@@ -153,17 +165,19 @@ class TestSexExtension:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
         # Should NOT create a separate Observation resource for sex
         observations = [
-            entry["resource"] for entry in bundle.get("entry", [])
+            entry["resource"]
+            for entry in bundle.get("entry", [])
             if entry.get("resource", {}).get("resourceType") == "Observation"
         ]
         sex_observations = [
-            obs for obs in observations
+            obs
+            for obs in observations
             if obs.get("code", {}).get("coding", [{}])[0].get("code") == "46098-0"
         ]
         assert len(sex_observations) == 0, "Sex should NOT create an Observation resource"
@@ -253,18 +267,25 @@ class TestSexExtension:
 
         # Check birth sex extension
         birthsex_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
+            ),
+            None,
         )
         assert birthsex_ext is not None
         assert birthsex_ext["valueCode"] == "F"
 
         # Check gender identity extension
         gender_id_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"]
+                == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+            ),
+            None,
         )
         assert gender_id_ext is not None
         coding = gender_id_ext["valueCodeableConcept"]["coding"][0]
@@ -272,16 +293,20 @@ class TestSexExtension:
 
         # Check sex extension
         sex_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
+            ),
+            None,
         )
         assert sex_ext is not None
         assert sex_ext["valueCode"] == "M"
 
         # Verify NO Observation resources created for any of these
         observations = [
-            entry["resource"] for entry in bundle.get("entry", [])
+            entry["resource"]
+            for entry in bundle.get("entry", [])
             if entry.get("resource", {}).get("resourceType") == "Observation"
         ]
         social_history_obs_codes = set()
@@ -305,8 +330,11 @@ class TestSexExtension:
         # Check that sex extension is not present
         if "extension" in patient:
             sex_ext = next(
-                (e for e in patient["extension"]
-                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"),
-                None
+                (
+                    e
+                    for e in patient["extension"]
+                    if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
+                ),
+                None,
             )
             assert sex_ext is None

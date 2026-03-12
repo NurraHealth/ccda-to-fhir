@@ -110,4 +110,3 @@ class PractitionerConverter(BaseConverter["AssignedAuthor | AssignedEntity"]):
         extension = identifiers[0].extension if identifiers and identifiers[0].extension else None
 
         return generate_id_from_identifiers("Practitioner", root, extension)
-

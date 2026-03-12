@@ -3,8 +3,9 @@
 This test verifies basic CarePlan resource creation from a Care Plan Document.
 """
 
-from ccda_to_fhir.convert import convert_document
 from fhir.resources.bundle import Bundle
+
+from ccda_to_fhir.convert import convert_document
 
 
 def test_care_plan_document_creates_careplan():
@@ -117,7 +118,15 @@ def test_care_plan_document_creates_careplan():
     careplan = careplan_entries[0].resource
 
     # Verify required fields per US Core CarePlan profile
-    assert careplan.status in ["draft", "active", "on-hold", "revoked", "completed", "entered-in-error", "unknown"]
+    assert careplan.status in [
+        "draft",
+        "active",
+        "on-hold",
+        "revoked",
+        "completed",
+        "entered-in-error",
+        "unknown",
+    ]
     assert careplan.intent == "plan"
     assert careplan.category is not None and len(careplan.category) > 0
     assert careplan.subject is not None

@@ -33,9 +33,12 @@ class TestGoalConversion:
 
         # Check for SNOMED code
         snomed = next(
-            (c for c in goal["description"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (
+                c
+                for c in goal["description"]["coding"]
+                if c.get("system") == "http://snomed.info/sct"
+            ),
+            None,
         )
         assert snomed is not None
         assert snomed["code"] == "289169006"
@@ -76,9 +79,7 @@ class TestGoalConversion:
         # Check measure code
         assert "measure" in target
         loinc = next(
-            (c for c in target["measure"]["coding"]
-             if c.get("system") == "http://loinc.org"),
-            None
+            (c for c in target["measure"]["coding"] if c.get("system") == "http://loinc.org"), None
         )
         assert loinc is not None
         assert loinc["code"] == "29463-7"
@@ -115,7 +116,10 @@ class TestGoalConversion:
         assert goal is not None
         assert "priority" in goal
         # Per FHIR R4B: CodeSystem canonical URI, not OID format
-        assert goal["priority"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/goal-priority"
+        assert (
+            goal["priority"]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/goal-priority"
+        )
         assert goal["priority"]["coding"][0]["code"] == "high-priority"
 
     def test_converts_achievement_status(self, ccda_goal_with_progress: str) -> None:
@@ -127,7 +131,10 @@ class TestGoalConversion:
         assert goal is not None
         assert "achievementStatus" in goal
         # Per FHIR R4B: CodeSystem canonical URI, not OID format
-        assert goal["achievementStatus"]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/goal-achievement"
+        assert (
+            goal["achievementStatus"]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/goal-achievement"
+        )
         assert goal["achievementStatus"]["coding"][0]["code"] == "in-progress"
 
     def test_converts_addresses_health_concern(self, ccda_goal_with_health_concern: str) -> None:
@@ -154,9 +161,12 @@ class TestGoalConversion:
 
         # Find systolic BP target
         systolic_target = next(
-            (t for t in goal["target"]
-             if any(c.get("code") == "8480-6" for c in t.get("measure", {}).get("coding", []))),
-            None
+            (
+                t
+                for t in goal["target"]
+                if any(c.get("code") == "8480-6" for c in t.get("measure", {}).get("coding", []))
+            ),
+            None,
         )
         assert systolic_target is not None
         assert "detailRange" in systolic_target
@@ -185,7 +195,10 @@ class TestGoalConversion:
         assert goal is not None
         assert "meta" in goal
         assert "profile" in goal["meta"]
-        assert "http://hl7.org/fhir/us/core/StructureDefinition/us-core-goal" in goal["meta"]["profile"]
+        assert (
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-goal"
+            in goal["meta"]["profile"]
+        )
 
     def test_has_subject_reference(self, ccda_goal_weight_loss: str) -> None:
         """Test that subject reference to patient is correctly set."""

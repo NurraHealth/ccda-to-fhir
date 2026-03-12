@@ -30,48 +30,48 @@ class TestInvalidTimezoneHandling:
         result = converter.convert_date("20150722230000-5000")
 
         # Should reduce to date-only, not return datetime without timezone
-        assert result == "2015-07-22", \
+        assert result == "2015-07-22", (
             f"Expected date-only format for invalid timezone, got: {result}"
+        )
 
         # Should not have time component
-        assert 'T' not in result, \
-            "Result should not have time component when timezone is invalid"
+        assert "T" not in result, "Result should not have time component when timezone is invalid"
 
     def test_invalid_timezone_extremely_out_of_range(self, converter):
         """Test that extremely invalid timezone (9999 hours) reduces to date."""
         result = converter.convert_date("20150722230000-9999")
 
         assert result == "2015-07-22"
-        assert 'T' not in result
+        assert "T" not in result
 
     def test_invalid_timezone_minutes_out_of_range(self, converter):
         """Test that timezone with invalid minutes (99) reduces to date."""
         result = converter.convert_date("20150722230000-0599")
 
         assert result == "2015-07-22"
-        assert 'T' not in result
+        assert "T" not in result
 
     def test_valid_timezone_preserved(self, converter):
         """Test that valid timezone is preserved correctly."""
         result = converter.convert_date("20150722230000-0500")
 
         assert result == "2015-07-22T23:00:00-05:00"
-        assert 'T' in result
-        assert '-05:00' in result
+        assert "T" in result
+        assert "-05:00" in result
 
     def test_edge_case_timezone_max_valid(self, converter):
         """Test maximum valid timezone offset (+14:00)."""
         result = converter.convert_date("20150722230000+1400")
 
         assert result == "2015-07-22T23:00:00+14:00"
-        assert '+14:00' in result
+        assert "+14:00" in result
 
     def test_edge_case_timezone_just_over_max(self, converter):
         """Test timezone just over maximum (15 hours) reduces to date."""
         result = converter.convert_date("20150722230000+1500")
 
         assert result == "2015-07-22"
-        assert 'T' not in result
+        assert "T" not in result
 
     def test_edge_case_timezone_hour_14_with_nonzero_minutes(self, converter):
         """Test hour 14 with non-zero minutes is invalid (only +14:00 allowed).
@@ -82,17 +82,17 @@ class TestInvalidTimezoneHandling:
         # +14:01 is invalid (only +14:00 allowed)
         result = converter.convert_date("20150722230000+1401")
         assert result == "2015-07-22"
-        assert 'T' not in result
+        assert "T" not in result
 
         # +14:30 is invalid
         result = converter.convert_date("20150722230000+1430")
         assert result == "2015-07-22"
-        assert 'T' not in result
+        assert "T" not in result
 
         # +14:59 is invalid
         result = converter.convert_date("20150722230000+1459")
         assert result == "2015-07-22"
-        assert 'T' not in result
+        assert "T" not in result
 
 
 class TestFractionalSecondsHandling:
@@ -117,12 +117,13 @@ class TestFractionalSecondsHandling:
         """
         result = converter.convert_date("20170821112858.251-0500")
 
-        assert result == "2017-08-21T11:28:58.251-05:00", \
+        assert result == "2017-08-21T11:28:58.251-05:00", (
             f"Expected fractional seconds preserved with timezone, got: {result}"
+        )
 
         # Should have fractional seconds and timezone
-        assert '.251' in result
-        assert '-05:00' in result
+        assert ".251" in result
+        assert "-05:00" in result
 
     def test_fractional_seconds_without_timezone_reduces_to_date(self, converter):
         """Test that fractional seconds without timezone reduces to date-only.
@@ -132,11 +133,12 @@ class TestFractionalSecondsHandling:
         """
         result = converter.convert_date("20170821112858.251")
 
-        assert result == "2017-08-21", \
+        assert result == "2017-08-21", (
             f"Expected reduced to date-only (no timezone available), got: {result}"
+        )
 
         # Should not have time component (no timezone available)
-        assert 'T' not in result
+        assert "T" not in result
 
     def test_fractional_seconds_multiple_digits(self, converter):
         """Test fractional seconds with various precision levels.
@@ -146,17 +148,17 @@ class TestFractionalSecondsHandling:
         # 1 digit fractional
         result = converter.convert_date("20170821112858.2-0500")
         assert result == "2017-08-21T11:28:58.2-05:00"
-        assert '.2' in result
+        assert ".2" in result
 
         # 3 digits fractional (milliseconds)
         result = converter.convert_date("20170821112858.999-0500")
         assert result == "2017-08-21T11:28:58.999-05:00"
-        assert '.999' in result
+        assert ".999" in result
 
         # 6 digits fractional (microseconds)
         result = converter.convert_date("20170821112858.123456-0500")
         assert result == "2017-08-21T11:28:58.123456-05:00"
-        assert '.123456' in result
+        assert ".123456" in result
 
     def test_fractional_seconds_with_invalid_timezone(self, converter):
         """Test fractional seconds combined with invalid timezone.
@@ -166,7 +168,7 @@ class TestFractionalSecondsHandling:
         result = converter.convert_date("20170821112858.251-9999")
 
         assert result == "2017-08-21"
-        assert 'T' not in result
+        assert "T" not in result
 
 
 class TestCombinedScenarios:
@@ -182,29 +184,29 @@ class TestCombinedScenarios:
         result = converter.convert_date("20150722230000")
 
         assert result == "2015-07-22"
-        assert 'T' not in result
+        assert "T" not in result
 
     def test_date_only_unchanged(self, converter):
         """Test that date-only timestamps remain unchanged."""
         result = converter.convert_date("20150722")
 
         assert result == "2015-07-22"
-        assert 'T' not in result
+        assert "T" not in result
 
     def test_year_month_only_unchanged(self, converter):
         """Test that year-month only timestamps work correctly."""
         result = converter.convert_date("201507")
 
         assert result == "2015-07"
-        assert 'T' not in result
+        assert "T" not in result
 
     def test_full_valid_timestamp_with_timezone(self, converter):
         """Test complete valid timestamp with timezone works end-to-end."""
         result = converter.convert_date("20240115093045-0500")
 
         assert result == "2024-01-15T09:30:45-05:00"
-        assert 'T' in result
-        assert '-05:00' in result
+        assert "T" in result
+        assert "-05:00" in result
 
 
 class TestRealWorldExamples:
@@ -226,8 +228,7 @@ class TestRealWorldExamples:
 
         # Should now reduce to date-only instead of returning time without timezone
         assert result == "2015-07-22"
-        assert 'T' not in result, \
-            "Should not have time component when timezone is invalid"
+        assert "T" not in result, "Should not have time component when timezone is invalid"
 
     def test_atg_timestamp_with_fractional_seconds(self, converter):
         """Test timestamp pattern from ATG files with fractional seconds.
@@ -242,4 +243,4 @@ class TestRealWorldExamples:
         # Should now work correctly with fractional seconds preserved
         assert result is not None, "Should not return None for fractional seconds"
         assert result == "2017-08-21T11:28:58.251-05:00"
-        assert '.251' in result
+        assert ".251" in result

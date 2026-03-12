@@ -78,7 +78,9 @@ class TestDiagnosticReportResultDisplay:
                     assert len(result_ref["display"]) > 0
 
         if reports:
-            assert has_result_display, "Expected at least one DiagnosticReport result with display text"
+            assert has_result_display, (
+                "Expected at least one DiagnosticReport result with display text"
+            )
 
     def test_athena_diagnostic_report_result_has_display(self) -> None:
         xml = (DOCUMENTS_DIR / "athena_ccd.xml").read_text()
@@ -95,7 +97,9 @@ class TestDiagnosticReportResultDisplay:
                     assert len(result_ref["display"]) > 0
 
         if reports:
-            assert has_result_display, "Expected at least one DiagnosticReport result with display text"
+            assert has_result_display, (
+                "Expected at least one DiagnosticReport result with display text"
+            )
 
 
 class TestMedicationReferenceDisplay:
@@ -117,11 +121,11 @@ class TestMedicationReferenceDisplay:
 
         if med_requests:
             # Only assert if there are medication requests with medicationReference
-            med_refs_exist = any(
-                "medicationReference" in req for req in med_requests
-            )
+            med_refs_exist = any("medicationReference" in req for req in med_requests)
             if med_refs_exist:
-                assert has_med_display, "Expected at least one medicationReference with display text"
+                assert has_med_display, (
+                    "Expected at least one medicationReference with display text"
+                )
 
 
 class TestReasonReferenceDisplay:
@@ -323,6 +327,8 @@ class TestCarePlanOutcomeDisplay:
             for outcome_ref in activity.get("outcomeReference", []):
                 if "display" in outcome_ref:
                     has_outcome_display = True
-                    assert outcome_ref["display"] == "Blood pressure panel with all children optional"
+                    assert (
+                        outcome_ref["display"] == "Blood pressure panel with all children optional"
+                    )
 
         assert has_outcome_display, "Expected outcomeReference with display text"

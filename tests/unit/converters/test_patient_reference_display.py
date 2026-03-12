@@ -15,7 +15,10 @@ class TestFormatHumanNameDisplay:
         assert format_human_name_display({"family": "Smith", "given": ["John"]}) == "John Smith"
 
     def test_multiple_given_names(self):
-        assert format_human_name_display({"family": "Newman", "given": ["Alice", "Marie"]}) == "Alice Marie Newman"
+        assert (
+            format_human_name_display({"family": "Newman", "given": ["Alice", "Marie"]})
+            == "Alice Marie Newman"
+        )
 
     def test_prefix_given_family_suffix(self):
         name = {"prefix": ["Dr."], "given": ["Robert"], "family": "Jones", "suffix": ["III"]}
@@ -36,14 +39,20 @@ class TestFormatHumanNameDisplay:
         assert format_human_name_display(name) == "Dr. John H. Smith III"
 
     def test_falls_back_to_parts_when_text_empty(self):
-        assert format_human_name_display({"text": "  ", "family": "Doe", "given": ["Jane"]}) == "Jane Doe"
+        assert (
+            format_human_name_display({"text": "  ", "family": "Doe", "given": ["Jane"]})
+            == "Jane Doe"
+        )
 
 
 class TestGetPatientReferenceDisplay:
     """Test that get_patient_reference() includes display."""
 
     def _register_patient(
-        self, registry: ReferenceRegistry, patient_id: str, display: str | None = None,
+        self,
+        registry: ReferenceRegistry,
+        patient_id: str,
+        display: str | None = None,
     ) -> None:
         """Register a patient and optionally set the display."""
         registry.register_resource({"resourceType": "Patient", "id": patient_id})
