@@ -6,7 +6,7 @@ from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, PQ
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -151,7 +151,7 @@ class GoalConverter(BaseConverter[Observation]):
                 "reference_registry is required. "
                 "Cannot create Goal without patient reference."
             )
-        fhir_goal["subject"] = self.reference_registry.get_patient_reference()
+        fhir_goal["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 6. Start date and target due date from effectiveTime
         target_due_date = None  # Initialize outside if block to avoid UnboundLocalError
@@ -192,7 +192,7 @@ class GoalConverter(BaseConverter[Observation]):
             first_author = observation.author[0]
             expressed_by_ref = self._convert_author_to_reference(first_author)
             if expressed_by_ref:
-                fhir_goal["expressedBy"] = expressed_by_ref
+                fhir_goal["expressedBy"] = expressed_by_ref.to_dict()
 
         # 9. Priority from Priority Preference entry relationship
         if observation.entry_relationship:
@@ -226,7 +226,7 @@ class GoalConverter(BaseConverter[Observation]):
                             entry_rel.observation
                         )
                         if address_ref:
-                            addresses.append(address_ref)
+                            addresses.append(address_ref.to_dict())
             if addresses:
                 fhir_goal["addresses"] = addresses
 
@@ -239,14 +239,14 @@ class GoalConverter(BaseConverter[Observation]):
 
     def _convert_code_to_codeable_concept(
         self, code_element: CD | CE | None
-    ) -> JSONObject:
+    ) -> JSONObject | None:
         """Convert C-CDA code element to FHIR CodeableConcept.
 
         Args:
             code_element: C-CDA CD or CE element
 
         Returns:
-            FHIR CodeableConcept
+            FHIR CodeableConcept dict or None
         """
         if not code_element:
             return {}
@@ -267,13 +267,14 @@ class GoalConverter(BaseConverter[Observation]):
                         "display_name": trans.display_name,
                     })
 
-        return self.create_codeable_concept(
+        result = self.create_codeable_concept(
             code=code_element.code,
             code_system=code_element.code_system,
             display_name=code_element.display_name,
             original_text=original_text,
             translations=translations,
         )
+        return result.to_dict() if result else None
 
     def _convert_component_goal_to_target(self, component_obs: Observation) -> JSONObject | None:
         """Convert a component Goal Observation to a FHIR target.
@@ -339,14 +340,14 @@ class GoalConverter(BaseConverter[Observation]):
 
         return target if target else None
 
-    def _convert_author_to_reference(self, author) -> JSONObject | None:
-        """Convert C-CDA author to FHIR Reference.
+    def _convert_author_to_reference(self, author) -> FHIRReference | None:
+        """Convert C-CDA author to FHIRReference.
 
         Args:
             author: C-CDA Author element
 
         Returns:
-            FHIR Reference object or None
+            FHIRReference or None
         """
         if not author or not author.assigned_author:
             return None
@@ -367,7 +368,7 @@ class GoalConverter(BaseConverter[Observation]):
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner", first_id.root, first_id.extension
                 )
-                return {"reference": f"urn:uuid:{practitioner_id}"}
+                return FHIRReference(reference=f"urn:uuid:{practitioner_id}")
             else:
                 # Assume it's the patient
                 if not self.reference_registry:
@@ -446,14 +447,14 @@ class GoalConverter(BaseConverter[Observation]):
 
         return None
 
-    def _extract_health_concern_reference(self, entry_ref_obs: Observation) -> JSONObject | None:
+    def _extract_health_concern_reference(self, entry_ref_obs: Observation) -> FHIRReference | None:
         """Extract health concern reference from Entry Reference observation.
 
         Args:
             entry_ref_obs: Entry Reference observation
 
         Returns:
-            FHIR Reference object or None
+            FHIRReference or None
         """
         # Look for the referenced observation's ID
         if entry_ref_obs.id and len(entry_ref_obs.id) > 0:
@@ -464,13 +465,11 @@ class GoalConverter(BaseConverter[Observation]):
                 "Condition", first_id.root, first_id.extension
             )
 
-            reference: JSONObject = {"reference": f"urn:uuid:{condition_id}"}
-
-            # Add display if we have the value
+            display: str | None = None
             if entry_ref_obs.value:
                 if isinstance(entry_ref_obs.value, (CD, CE)) and entry_ref_obs.value.display_name:
-                    reference["display"] = entry_ref_obs.value.display_name
+                    display = entry_ref_obs.value.display_name
 
-            return reference
+            return FHIRReference(reference=f"urn:uuid:{condition_id}", display=display)
 
         return None

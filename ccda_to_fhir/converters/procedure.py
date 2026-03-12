@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
 from ccda_to_fhir.ccda.models.observation import Observation as CCDAObservation
@@ -16,9 +18,12 @@ from ccda_to_fhir.converters.author_references import (
     format_person_display,
     make_ref,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRCodeableConcept, FHIRReference, FHIRResourceDict, JSONObject, ReasonResult
 
 from .base import BaseConverter
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
 
 
 class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct]):
@@ -134,7 +139,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if has_valid_code:
             converted_code = self._convert_code(procedure.code)
             if converted_code is not None:
-                fhir_procedure["code"] = converted_code
+                fhir_procedure["code"] = converted_code.to_dict()
             else:
                 # _convert_code returned None (e.g., code exists but code_system is missing)
                 # Fall through to the nullFlavor handling below
@@ -168,7 +173,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 "reference_registry is required. "
                 "Cannot create Procedure without patient reference."
             )
-        fhir_procedure["subject"] = self.reference_registry.get_patient_reference()
+        fhir_procedure["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Performed date/time
         performed = None
@@ -227,15 +232,15 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if procedure.author:
             recorder = self._extract_recorder(procedure.author)
             if recorder:
-                fhir_procedure["recorder"] = recorder
+                fhir_procedure["recorder"] = recorder.to_dict()
 
         # Reason codes and references
         if procedure.entry_relationship:
             reasons = self._extract_reasons(procedure.entry_relationship)
-            if reasons.get("codes"):
-                fhir_procedure["reasonCode"] = reasons["codes"]
-            if reasons.get("references"):
-                fhir_procedure["reasonReference"] = reasons["references"]
+            if reasons.codes:
+                fhir_procedure["reasonCode"] = [c.to_dict() for c in reasons.codes]
+            if reasons.references:
+                fhir_procedure["reasonReference"] = [r.to_dict() for r in reasons.references]
 
             # Outcomes
             outcomes = self._extract_outcomes(procedure.entry_relationship)
@@ -319,14 +324,14 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             FHIRCodes.ProcedureStatus.UNKNOWN,
         )
 
-    def _convert_code(self, code: CD) -> JSONObject:
-        """Convert C-CDA procedure code to FHIR CodeableConcept.
+    def _convert_code(self, code: CD) -> FHIRCodeableConcept | None:
+        """Convert C-CDA procedure code to FHIR CodeableConcept model.
 
         Args:
             code: The C-CDA procedure code
 
         Returns:
-            FHIR CodeableConcept
+            FHIRCodeableConcept or None
         """
         return self.convert_code_to_codeable_concept(code)
 
@@ -411,7 +416,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 pending_resources=self._pending_practitioners,
             )
             if pract_ref:
-                performer_obj["actor"] = pract_ref
+                performer_obj["actor"] = pract_ref.to_dict()
 
             # Extract organization reference (with resource creation)
             org = getattr(assigned_entity, "represented_organization", None)
@@ -424,10 +429,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             if org_ref:
                 if pract_ref:
                     # Both practitioner and organization - use onBehalfOf
-                    performer_obj["onBehalfOf"] = org_ref
+                    performer_obj["onBehalfOf"] = org_ref.to_dict()
                 else:
                     # No practitioner - organization is the actor
-                    performer_obj["actor"] = org_ref
+                    performer_obj["actor"] = org_ref.to_dict()
 
             if performer_obj:
                 fhir_performers.append(performer_obj)
@@ -535,7 +540,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                         # Get patient reference from registry
                         patient_ref = None
                         if self.reference_registry:
-                            patient_ref = self.reference_registry.get_patient_reference()
+                            patient_ref = self.reference_registry.get_patient_reference().to_dict()
 
                         # Convert Product Instance to Device
                         device = device_converter.convert_product_instance(
@@ -581,7 +586,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             "focal_devices": focal_devices
         }
 
-    def _extract_recorder(self, authors: list) -> JSONObject | None:
+    def _extract_recorder(self, authors: list) -> FHIRReference | None:
         """Extract FHIR recorder from C-CDA authors.
 
         Uses the latest author by timestamp as the recorder.
@@ -590,7 +595,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             authors: List of C-CDA author elements
 
         Returns:
-            FHIR recorder reference or None
+            FHIRReference or None
         """
         if not authors or len(authors) == 0:
             return None
@@ -630,7 +635,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
 
         return None
 
-    def _extract_reasons(self, entry_relationships: list) -> dict[str, list]:
+    def _extract_reasons(self, entry_relationships: list[EntryRelationship]) -> ReasonResult:
         """Extract FHIR reason codes and references from C-CDA entry relationships.
 
         Delegates to base class method for consistent handling across converters.
@@ -639,7 +644,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             entry_relationships: List of C-CDA entry relationship elements
 
         Returns:
-            Dict with "codes" and "references" lists
+            ReasonResult with codes and references lists
         """
         return self.extract_reasons_from_entry_relationships(
             entry_relationships,
@@ -666,11 +671,12 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     if obs.value:
                         value = obs.value
                         if value.code:
-                            return self.create_codeable_concept(
+                            result = self.create_codeable_concept(
                                 code=value.code,
                                 code_system=value.code_system,
                                 display_name=value.display_name,
                             )
+                            return result.to_dict() if result else None
 
         return None
 
@@ -699,7 +705,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                                 display_name=value.display_name,
                             )
                             if complication:
-                                complications.append(complication)
+                                complications.append(complication.to_dict())
 
         return complications
 
@@ -726,7 +732,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                             display_name=act.code.display_name,
                         )
                         if followup:
-                            followups.append(followup)
+                            followups.append(followup.to_dict())
 
         return followups
 
@@ -803,7 +809,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if not original_text and code.display_name:
             original_text = code.display_name
 
-        codeable_concept = self.create_codeable_concept(
+        codeable_concept_model = self.create_codeable_concept(
             code=code.code,
             code_system=code.code_system,
             display_name=code.display_name,
@@ -811,8 +817,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             translations=translations,
         )
 
-        if not codeable_concept:
+        if not codeable_concept_model:
             return None
+
+        codeable_concept = codeable_concept_model.to_dict()
 
         # Check for laterality qualifiers
         # Per C-CDA: laterality is specified using qualifier with name code 272741003 or 78615007

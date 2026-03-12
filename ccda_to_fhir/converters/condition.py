@@ -29,7 +29,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.terminology import (
     get_display_for_code,
     get_display_for_condition_clinical_status,
@@ -205,11 +205,13 @@ class ConditionConverter(BaseConverter[Observation]):
             ):
                 # Use negated concept code for generic problems
                 uses_negated_concept_code = True
-                condition["code"] = self.create_codeable_concept(
+                negated_concept = self.create_codeable_concept(
                     code=SnomedCodes.NO_CURRENT_PROBLEMS,
                     code_system="2.16.840.1.113883.6.96",  # SNOMED CT
                     display_name="No current problems or disability",
                 )
+                if negated_concept:
+                    condition["code"] = negated_concept.to_dict()
             else:
                 # For specific conditions, set verification status to refuted
                 # ENHANCEMENT: Include display text from terminology map
@@ -270,7 +272,7 @@ class ConditionConverter(BaseConverter[Observation]):
                         display_name=site_code.display_name,
                     )
                     if body_site:
-                        body_sites.append(body_site)
+                        body_sites.append(body_site.to_dict())
             if body_sites:
                 condition["bodySite"] = body_sites
 
@@ -280,7 +282,7 @@ class ConditionConverter(BaseConverter[Observation]):
                 "reference_registry is required. "
                 "Cannot create Condition without patient reference."
             )
-        condition["subject"] = self.reference_registry.get_patient_reference()
+        condition["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Onset and abatement
         onset, abatement = self._convert_effective_time(observation)
@@ -319,16 +321,17 @@ class ConditionConverter(BaseConverter[Observation]):
         authors_with_time = [a for a in all_authors_info if a.time]
         if authors_with_time:
             latest_author = max(authors_with_time, key=lambda a: a.time)
-            from ccda_to_fhir.converters.author_references import make_ref
 
             if latest_author.practitioner_id:
-                condition["recorder"] = make_ref(
-                    f"urn:uuid:{latest_author.practitioner_id}", latest_author.display
+                recorder_ref = FHIRReference(
+                    reference=f"urn:uuid:{latest_author.practitioner_id}", display=latest_author.display
                 )
+                condition["recorder"] = recorder_ref.to_dict()
             elif latest_author.device_id:
-                condition["recorder"] = make_ref(
-                    f"urn:uuid:{latest_author.device_id}", latest_author.display
+                recorder_ref = FHIRReference(
+                    reference=f"urn:uuid:{latest_author.device_id}", display=latest_author.display
                 )
+                condition["recorder"] = recorder_ref.to_dict()
 
         # Evidence (from related observations)
         if observation.entry_relationship:
@@ -601,7 +604,7 @@ class ConditionConverter(BaseConverter[Observation]):
             )
             # REQUIRED field - use fallback if None
             if diagnosis_code:
-                return diagnosis_code
+                return diagnosis_code.to_dict()
 
         # Fallback for unexpected types or when create_codeable_concept returns None
         return {"text": str(value) if value else "Unknown condition"}
@@ -737,11 +740,14 @@ class ConditionConverter(BaseConverter[Observation]):
                         severity_code = rel.observation.value.code
                         # Check if this is a valid SNOMED severity code
                         if severity_code in SNOMED_SEVERITY_TO_FHIR:
-                            return self.create_codeable_concept(
+                            severity = self.create_codeable_concept(
                                 code=severity_code,
                                 code_system=rel.observation.value.code_system,
                                 display_name=rel.observation.value.display_name,
                             )
+                            if severity:
+                                return severity.to_dict()
+                            return None
         return None
 
     def _extract_notes(self, observation: Observation) -> list[JSONObject]:

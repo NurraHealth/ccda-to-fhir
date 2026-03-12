@@ -16,7 +16,7 @@ import base64
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import EncounterContext, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import EncounterContext, FHIRReference, FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.struc_doc_utils import narrative_to_html, narrative_to_plain_text
 
 from .references import ReferenceRegistry
@@ -58,7 +58,7 @@ def extract_narrative_sections(
     structured_body: StructuredBody,
     reference_registry: ReferenceRegistry,
     encounter_context: EncounterContext | None = None,
-    author_references: list[JSONObject] | None = None,
+    author_references: list[FHIRReference] | None = None,
 ) -> list[FHIRResourceDict]:
     """Walk sections and create DocumentReferences for narrative-only clinical sections.
 
@@ -125,7 +125,7 @@ def _build_document_reference(
     plain_text: str,
     reference_registry: ReferenceRegistry,
     encounter_context: EncounterContext,
-    author_references: list[JSONObject] | None = None,
+    author_references: list[FHIRReference] | None = None,
 ) -> FHIRResourceDict:
     """Build a FHIR DocumentReference for a narrative section."""
     doc_ref: FHIRResourceDict = {
@@ -153,7 +153,7 @@ def _build_document_reference(
                 ]
             }
         ],
-        "subject": reference_registry.get_patient_reference(),
+        "subject": reference_registry.get_patient_reference().to_dict(),
         "content": [],
     }
 
@@ -162,10 +162,10 @@ def _build_document_reference(
 
     enc_fhir_ref = encounter_context.to_fhir_reference()
     if enc_fhir_ref:
-        doc_ref["context"] = {"encounter": [enc_fhir_ref]}
+        doc_ref["context"] = {"encounter": [enc_fhir_ref.to_dict()]}
 
     if author_references:
-        doc_ref["author"] = author_references
+        doc_ref["author"] = [a.to_dict() for a in author_references]
 
     # Plain text attachment
     plain_b64 = base64.b64encode(plain_text.encode("utf-8")).decode("ascii")
