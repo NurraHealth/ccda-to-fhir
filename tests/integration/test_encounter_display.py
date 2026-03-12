@@ -63,7 +63,7 @@ class TestEncounterDisplayFallback:
                 continue
             for enc_ref in dr["context"]["encounter"]:
                 if "display" in enc_ref:
-                    assert enc_ref["display"] == "Family Medicine visit", (
+                    assert enc_ref["display"] == "Family Medicine", (
                         f"Expected participant specialty fallback, got: {enc_ref}"
                     )
                     refs_with_display += 1
