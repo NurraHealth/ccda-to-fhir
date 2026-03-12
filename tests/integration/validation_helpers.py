@@ -27,13 +27,10 @@ def assert_no_placeholder_references(bundle: dict) -> None:
         refs = _extract_all_references(resource)
         for field_path, ref in refs:
             if "placeholder" in ref.lower():
-                placeholders.append(
-                    f"{resource_type}/{resource_id} -> {field_path}: {ref}"
-                )
+                placeholders.append(f"{resource_type}/{resource_id} -> {field_path}: {ref}")
 
-    assert not placeholders, (
-        f"Found {len(placeholders)} placeholder reference(s):\n" +
-        "\n".join(f"  - {p}" for p in placeholders)
+    assert not placeholders, f"Found {len(placeholders)} placeholder reference(s):\n" + "\n".join(
+        f"  - {p}" for p in placeholders
     )
 
 
@@ -69,13 +66,10 @@ def assert_all_references_resolve(bundle: dict) -> None:
                 continue
 
             if ref not in resource_ids:
-                broken_refs.append(
-                    f"{resource_type}/{resource_id} -> {field_path}: {ref}"
-                )
+                broken_refs.append(f"{resource_type}/{resource_id} -> {field_path}: {ref}")
 
-    assert not broken_refs, (
-        f"Found {len(broken_refs)} broken reference(s):\n" +
-        "\n".join(f"  - {r}" for r in broken_refs)
+    assert not broken_refs, f"Found {len(broken_refs)} broken reference(s):\n" + "\n".join(
+        f"  - {r}" for r in broken_refs
     )
 
 
@@ -114,13 +108,11 @@ def assert_all_required_fields_present(bundle: dict) -> None:
         if resource_type in required_fields:
             for field in required_fields[resource_type]:
                 if field not in resource:
-                    missing_fields.append(
-                        f"{resource_type}/{resource_id} missing '{field}'"
-                    )
+                    missing_fields.append(f"{resource_type}/{resource_id} missing '{field}'")
 
     assert not missing_fields, (
-        f"Found {len(missing_fields)} missing required field(s):\n" +
-        "\n".join(f"  - {m}" for m in missing_fields)
+        f"Found {len(missing_fields)} missing required field(s):\n"
+        + "\n".join(f"  - {m}" for m in missing_fields)
     )
 
 
@@ -152,23 +144,16 @@ def assert_no_empty_codes(bundle: dict) -> None:
                 empty_codes.append(f"{resource_type}/{resource_id} has no code")
             elif code == {}:
                 empty_codes.append(f"{resource_type}/{resource_id} has empty code {{}}")
-            elif isinstance(code, dict):
-                # Check that code has at least 'coding' or 'text'
-                if not code.get("coding") and not code.get("text"):
-                    empty_codes.append(
-                        f"{resource_type}/{resource_id} code has no coding or text"
-                    )
+            elif isinstance(code, dict) and not code.get("coding") and not code.get("text"):
+                empty_codes.append(f"{resource_type}/{resource_id} code has no coding or text")
 
         # MedicationStatement needs medication* (CodeableConcept OR Reference)
         elif resource_type == "MedicationStatement":
-            has_medication = (
-                resource.get("medicationCodeableConcept") or
-                resource.get("medicationReference")
+            has_medication = resource.get("medicationCodeableConcept") or resource.get(
+                "medicationReference"
             )
             if not has_medication:
-                empty_codes.append(
-                    f"{resource_type}/{resource_id} has no medication* field"
-                )
+                empty_codes.append(f"{resource_type}/{resource_id} has no medication* field")
 
         # Observations: skip organizer observations (hasMember present)
         # Only validate leaf observations
@@ -180,15 +165,11 @@ def assert_no_empty_codes(bundle: dict) -> None:
             code = resource.get("code")
             if not code or code == {}:
                 empty_codes.append(f"{resource_type}/{resource_id} has no/empty code")
-            elif isinstance(code, dict):
-                if not code.get("coding") and not code.get("text"):
-                    empty_codes.append(
-                        f"{resource_type}/{resource_id} code has no coding or text"
-                    )
+            elif isinstance(code, dict) and not code.get("coding") and not code.get("text"):
+                empty_codes.append(f"{resource_type}/{resource_id} code has no coding or text")
 
-    assert not empty_codes, (
-        f"Found {len(empty_codes)} empty code(s):\n" +
-        "\n".join(f"  - {c}" for c in empty_codes)
+    assert not empty_codes, f"Found {len(empty_codes)} empty code(s):\n" + "\n".join(
+        f"  - {c}" for c in empty_codes
     )
 
 
@@ -302,8 +283,8 @@ def assert_no_duplicate_section_references(bundle: dict) -> None:
             )
 
     assert not duplicate_sections, (
-        f"Found {len(duplicate_sections)} section(s) with duplicate references:\n" +
-        "\n".join(f"  - {s}" for s in duplicate_sections)
+        f"Found {len(duplicate_sections)} section(s) with duplicate references:\n"
+        + "\n".join(f"  - {s}" for s in duplicate_sections)
     )
 
 
@@ -328,7 +309,7 @@ def assert_valid_fhir_ids(bundle: dict) -> None:
     import re
 
     invalid_ids = []
-    fhir_id_pattern = re.compile(r'^[A-Za-z0-9\-\.]+$')
+    fhir_id_pattern = re.compile(r"^[A-Za-z0-9\-\.]+$")
 
     for entry in bundle.get("entry", []):
         resource = entry.get("resource", {})
@@ -353,9 +334,8 @@ def assert_valid_fhir_ids(bundle: dict) -> None:
                 f"Contains invalid characters (must match [A-Za-z0-9\\-\\.])"
             )
 
-    assert not invalid_ids, (
-        f"Found {len(invalid_ids)} FHIR ID violation(s):\n" +
-        "\n".join(f"  - {i}" for i in invalid_ids)
+    assert not invalid_ids, f"Found {len(invalid_ids)} FHIR ID violation(s):\n" + "\n".join(
+        f"  - {i}" for i in invalid_ids
     )
 
 
@@ -386,24 +366,68 @@ def assert_references_point_to_correct_types(bundle: dict) -> None:
         "Condition.asserter": ["Practitioner", "PractitionerRole", "Patient", "RelatedPerson"],
         "AllergyIntolerance.patient": ["Patient"],
         "AllergyIntolerance.encounter": ["Encounter"],
-        "AllergyIntolerance.recorder": ["Practitioner", "PractitionerRole", "Patient", "RelatedPerson"],
+        "AllergyIntolerance.recorder": [
+            "Practitioner",
+            "PractitionerRole",
+            "Patient",
+            "RelatedPerson",
+        ],
         "MedicationStatement.subject": ["Patient", "Group"],
-        "MedicationStatement.informationSource": ["Practitioner", "PractitionerRole", "Patient", "RelatedPerson", "Organization"],
+        "MedicationStatement.informationSource": [
+            "Practitioner",
+            "PractitionerRole",
+            "Patient",
+            "RelatedPerson",
+            "Organization",
+        ],
         "MedicationRequest.subject": ["Patient", "Group"],
-        "MedicationRequest.requester": ["Practitioner", "PractitionerRole", "Organization", "Patient", "RelatedPerson", "Device"],
+        "MedicationRequest.requester": [
+            "Practitioner",
+            "PractitionerRole",
+            "Organization",
+            "Patient",
+            "RelatedPerson",
+            "Device",
+        ],
         "MedicationRequest.encounter": ["Encounter"],
         "MedicationDispense.subject": ["Patient", "Group"],
-        "MedicationDispense.performer.actor": ["Practitioner", "PractitionerRole", "Organization", "Patient", "Device", "RelatedPerson"],
+        "MedicationDispense.performer.actor": [
+            "Practitioner",
+            "PractitionerRole",
+            "Organization",
+            "Patient",
+            "Device",
+            "RelatedPerson",
+        ],
         "MedicationDispense.location": ["Location"],
         "Observation.subject": ["Patient", "Group", "Device", "Location"],
         "Observation.encounter": ["Encounter"],
-        "Observation.performer": ["Practitioner", "PractitionerRole", "Organization", "Patient", "RelatedPerson", "CareTeam"],
+        "Observation.performer": [
+            "Practitioner",
+            "PractitionerRole",
+            "Organization",
+            "Patient",
+            "RelatedPerson",
+            "CareTeam",
+        ],
         "DiagnosticReport.subject": ["Patient", "Group", "Device", "Location"],
         "DiagnosticReport.encounter": ["Encounter"],
-        "DiagnosticReport.performer": ["Practitioner", "PractitionerRole", "Organization", "CareTeam"],
+        "DiagnosticReport.performer": [
+            "Practitioner",
+            "PractitionerRole",
+            "Organization",
+            "CareTeam",
+        ],
         "Procedure.subject": ["Patient", "Group"],
         "Procedure.encounter": ["Encounter"],
-        "Procedure.performer.actor": ["Practitioner", "PractitionerRole", "Organization", "Patient", "RelatedPerson", "Device"],
+        "Procedure.performer.actor": [
+            "Practitioner",
+            "PractitionerRole",
+            "Organization",
+            "Patient",
+            "RelatedPerson",
+            "Device",
+        ],
         "Procedure.location": ["Location"],
         "Immunization.patient": ["Patient"],
         "Immunization.encounter": ["Encounter"],
@@ -413,11 +437,25 @@ def assert_references_point_to_correct_types(bundle: dict) -> None:
         "Encounter.location.location": ["Location"],
         "DocumentReference.subject": ["Patient", "Practitioner", "Group", "Device"],
         "Composition.subject": ["Patient", "Practitioner", "Group", "Device"],
-        "Composition.author": ["Practitioner", "PractitionerRole", "Device", "Patient", "RelatedPerson", "Organization"],
+        "Composition.author": [
+            "Practitioner",
+            "PractitionerRole",
+            "Device",
+            "Patient",
+            "RelatedPerson",
+            "Organization",
+        ],
         "Composition.encounter": ["Encounter"],
         "CareTeam.subject": ["Patient", "Group"],
         "CareTeam.encounter": ["Encounter"],
-        "CareTeam.participant.member": ["Practitioner", "PractitionerRole", "RelatedPerson", "Patient", "Organization", "CareTeam"],
+        "CareTeam.participant.member": [
+            "Practitioner",
+            "PractitionerRole",
+            "RelatedPerson",
+            "Patient",
+            "Organization",
+            "CareTeam",
+        ],
         "Location.managingOrganization": ["Organization"],
     }
 
@@ -430,7 +468,9 @@ def assert_references_point_to_correct_types(bundle: dict) -> None:
 
         # Check specific reference fields based on rules
         for rule_path, allowed_types in reference_rules.items():
-            rule_type, rule_field = rule_path.split(".", 1) if "." in rule_path else (rule_path, None)
+            rule_type, rule_field = (
+                rule_path.split(".", 1) if "." in rule_path else (rule_path, None)
+            )
 
             if resource_type != rule_type:
                 continue
@@ -467,8 +507,8 @@ def assert_references_point_to_correct_types(bundle: dict) -> None:
                         )
 
     assert not type_mismatches, (
-        f"Found {len(type_mismatches)} reference type mismatch(es):\n" +
-        "\n".join(f"  - {m}" for m in type_mismatches)
+        f"Found {len(type_mismatches)} reference type mismatch(es):\n"
+        + "\n".join(f"  - {m}" for m in type_mismatches)
     )
 
 
@@ -517,7 +557,7 @@ def assert_valid_code_systems(bundle: dict) -> None:
     # - urn:oid:... (for unmapped OIDs per C-CDA on FHIR IG)
     # - urn:uuid:... (for temporary/local systems)
     # - urn:ietf:... (for IETF standards like BCP 47 language codes)
-    valid_uri_pattern = re.compile(r'^(https?://|urn:(oid|uuid|ietf):)')
+    valid_uri_pattern = re.compile(r"^(https?://|urn:(oid|uuid|ietf):)")
     invalid_systems = []
 
     for entry in bundle.get("entry", []):
@@ -543,8 +583,8 @@ def assert_valid_code_systems(bundle: dict) -> None:
                     )
 
     assert not invalid_systems, (
-        f"Found {len(invalid_systems)} invalid code system URI(s):\n" +
-        "\n".join(f"  - {s}" for s in invalid_systems)
+        f"Found {len(invalid_systems)} invalid code system URI(s):\n"
+        + "\n".join(f"  - {s}" for s in invalid_systems)
     )
 
 
@@ -562,10 +602,8 @@ def _extract_all_codes(obj: dict | list, path: str = "") -> list[tuple[str, dict
 
     if isinstance(obj, dict):
         # Check if this dict is a CodeableConcept (has 'coding' or 'text')
-        if "coding" in obj or ("text" in obj and "reference" not in obj):
-            # Likely a CodeableConcept
-            if "coding" in obj:
-                codes.append((path, obj))
+        if ("coding" in obj or ("text" in obj and "reference" not in obj)) and "coding" in obj:
+            codes.append((path, obj))
 
         # Recurse into all values
         for key, value in obj.items():
@@ -612,24 +650,22 @@ def assert_chronological_dates(bundle: dict) -> None:
             onset = resource.get("onsetDateTime")
             abatement = resource.get("abatementDateTime")
 
-            if onset and abatement:
-                if onset > abatement:
-                    violations.append(
-                        f"{resource_type}/{resource_id}: "
-                        f"onsetDateTime ({onset}) after abatementDateTime ({abatement})"
-                    )
+            if onset and abatement and onset > abatement:
+                violations.append(
+                    f"{resource_type}/{resource_id}: "
+                    f"onsetDateTime ({onset}) after abatementDateTime ({abatement})"
+                )
 
         # MedicationDispense: whenPrepared vs whenHandedOver
         elif resource_type == "MedicationDispense":
             prepared = resource.get("whenPrepared")
             handed_over = resource.get("whenHandedOver")
 
-            if prepared and handed_over:
-                if prepared > handed_over:
-                    violations.append(
-                        f"{resource_type}/{resource_id}: "
-                        f"whenPrepared ({prepared}) after whenHandedOver ({handed_over})"
-                    )
+            if prepared and handed_over and prepared > handed_over:
+                violations.append(
+                    f"{resource_type}/{resource_id}: "
+                    f"whenPrepared ({prepared}) after whenHandedOver ({handed_over})"
+                )
 
         # Check for future dates in completed/past status
         if resource_type in ["Condition", "Procedure", "Observation", "Immunization"]:
@@ -663,8 +699,8 @@ def assert_chronological_dates(bundle: dict) -> None:
                             pass
 
     assert not violations, (
-        f"Found {len(violations)} chronological date violation(s):\n" +
-        "\n".join(f"  - {v}" for v in violations)
+        f"Found {len(violations)} chronological date violation(s):\n"
+        + "\n".join(f"  - {v}" for v in violations)
     )
 
 
@@ -721,9 +757,8 @@ def assert_us_core_must_support(bundle: dict) -> None:
             if not resource.get("intent"):
                 missing_elements.append(f"MedicationRequest/{resource_id}: missing intent")
             # medication[x] is required
-            has_medication = (
-                resource.get("medicationCodeableConcept") or
-                resource.get("medicationReference")
+            has_medication = resource.get("medicationCodeableConcept") or resource.get(
+                "medicationReference"
             )
             if not has_medication:
                 missing_elements.append(f"MedicationRequest/{resource_id}: missing medication[x]")
@@ -741,7 +776,7 @@ def assert_us_core_must_support(bundle: dict) -> None:
                 missing_elements.append(f"Observation/{resource_id}: missing category")
             # US Core STU6.1 constraint us-core-2:
             # value[x] OR dataAbsentReason OR component OR hasMember required
-            has_value = any(k.startswith("value") for k in resource.keys())
+            has_value = any(k.startswith("value") for k in resource)
             has_data_absent = "dataAbsentReason" in resource
             has_component = resource.get("component")
             has_has_member = resource.get("hasMember")
@@ -757,13 +792,15 @@ def assert_us_core_must_support(bundle: dict) -> None:
                 missing_elements.append(f"Procedure/{resource_id}: missing status")
             # performed[x] is Must Support
             # Accept either performedDateTime/performedPeriod OR _performedDateTime extension
-            has_performed = any(k.startswith("performed") for k in resource.keys()) or "_performedDateTime" in resource
+            has_performed = (
+                any(k.startswith("performed") for k in resource) or "_performedDateTime" in resource
+            )
             if not has_performed:
                 missing_elements.append(f"Procedure/{resource_id}: missing performed[x]")
 
     assert not missing_elements, (
-        f"Found {len(missing_elements)} missing US Core Must Support element(s):\n" +
-        "\n".join(f"  - {e}" for e in missing_elements)
+        f"Found {len(missing_elements)} missing US Core Must Support element(s):\n"
+        + "\n".join(f"  - {e}" for e in missing_elements)
     )
 
 
@@ -790,7 +827,7 @@ def assert_fhir_invariants(bundle: dict) -> None:
         # obs-6: Observation value[x] OR dataAbsentReason OR component OR hasMember
         # Extended by US Core STU6.1 constraint us-core-2 to include hasMember
         if resource_type == "Observation":
-            has_value = any(k.startswith("value") for k in resource.keys())
+            has_value = any(k.startswith("value") for k in resource)
             has_data_absent = "dataAbsentReason" in resource
             has_component = resource.get("component")
             has_has_member = resource.get("hasMember")
@@ -804,7 +841,7 @@ def assert_fhir_invariants(bundle: dict) -> None:
             # Check components also satisfy this rule
             if has_component:
                 for i, comp in enumerate(resource.get("component", [])):
-                    comp_has_value = any(k.startswith("value") for k in comp.keys())
+                    comp_has_value = any(k.startswith("value") for k in comp)
                     comp_has_absent = "dataAbsentReason" in comp
 
                     if not (comp_has_value or comp_has_absent):
@@ -823,17 +860,14 @@ def assert_fhir_invariants(bundle: dict) -> None:
                     status_code = "entered-in-error"
                     break
 
-            if status_code == "entered-in-error":
-                # Should not have clinicalStatus
-                if resource.get("clinicalStatus"):
-                    violations.append(
-                        f"Condition/{resource_id}: con-3 invariant violation - "
-                        "entered-in-error should not have clinicalStatus"
-                    )
+            if status_code == "entered-in-error" and resource.get("clinicalStatus"):
+                violations.append(
+                    f"Condition/{resource_id}: con-3 invariant violation - "
+                    "entered-in-error should not have clinicalStatus"
+                )
 
-    assert not violations, (
-        f"Found {len(violations)} FHIR invariant violation(s):\n" +
-        "\n".join(f"  - {v}" for v in violations)
+    assert not violations, f"Found {len(violations)} FHIR invariant violation(s):\n" + "\n".join(
+        f"  - {v}" for v in violations
     )
 
 
@@ -864,7 +898,12 @@ def assert_composition_sections_valid(bundle: dict) -> None:
     section_rules = {
         "11450-4": ["Condition"],  # Problems
         "48765-2": ["AllergyIntolerance"],  # Allergies
-        "10160-0": ["MedicationStatement", "MedicationRequest", "MedicationDispense", "Medication"],  # Medications
+        "10160-0": [
+            "MedicationStatement",
+            "MedicationRequest",
+            "MedicationDispense",
+            "Medication",
+        ],  # Medications
         "47519-4": ["Procedure"],  # Procedures
         "11369-6": ["Immunization"],  # Immunizations
         "8716-3": ["Observation"],  # Vital Signs
@@ -920,8 +959,8 @@ def assert_composition_sections_valid(bundle: dict) -> None:
                     )
 
     assert not section_violations, (
-        f"Found {len(section_violations)} composition section violation(s):\n" +
-        "\n".join(f"  - {v}" for v in section_violations)
+        f"Found {len(section_violations)} composition section violation(s):\n"
+        + "\n".join(f"  - {v}" for v in section_violations)
     )
 
 

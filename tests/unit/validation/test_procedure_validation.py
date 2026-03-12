@@ -59,7 +59,9 @@ class TestProcedureActivityProcedureValidation:
             <effectiveTime value="20150301"/>
         </procedure>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"
+        ):
             parse_ccda_fragment(xml, Procedure)
 
     def test_procedure_activity_missing_status_code(self) -> None:
@@ -74,7 +76,9 @@ class TestProcedureActivityProcedureValidation:
             <effectiveTime value="20150301"/>
         </procedure>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"
+        ):
             parse_ccda_fragment(xml, Procedure)
 
     def test_non_procedure_activity_skips_validation(self) -> None:

@@ -111,9 +111,7 @@ class BaseParticipantExtractor(ABC, Generic[InfoType]):
         """
         return self._extract_from_element(observation, "observation")
 
-    def extract_from_substance_administration(
-        self, sa: SubstanceAdministration
-    ) -> list[InfoType]:
+    def extract_from_substance_administration(self, sa: SubstanceAdministration) -> list[InfoType]:
         """Extract from SubstanceAdministration (Medication, Immunization).
 
         Args:

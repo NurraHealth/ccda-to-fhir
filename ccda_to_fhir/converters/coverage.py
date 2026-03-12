@@ -288,9 +288,7 @@ class CoverageConverter(BaseConverter["Act"]):
                     org["id"] = generate_id()
                 related.append(org)
                 display = format_organization_display(assigned.represented_organization)
-                coverage["payor"] = [
-                    make_ref(f"urn:uuid:{org['id']}", display)
-                ]
+                coverage["payor"] = [make_ref(f"urn:uuid:{org['id']}", display)]
         elif assigned.id:
             # Create minimal Organization from assignedEntity
             org_id = generate_id_from_identifiers(
@@ -308,16 +306,15 @@ class CoverageConverter(BaseConverter["Act"]):
                 minimal_org["identifier"] = identifiers
             related.append(minimal_org)
             # Minimal org built from identifiers only — no name available for display
-            coverage["payor"] = [
-                {"reference": f"urn:uuid:{org_id}"}
-            ]
+            coverage["payor"] = [{"reference": f"urn:uuid:{org_id}"}]
 
     @staticmethod
     def _is_payor_performer(performer: Performer) -> bool:
         """Check if a performer is a PAYOR by templateId (.87) or code."""
-        if performer.template_id:
-            if any(t.root == TemplateIds.PAYER_PERFORMER for t in performer.template_id):
-                return True
+        if performer.template_id and any(
+            t.root == TemplateIds.PAYER_PERFORMER for t in performer.template_id
+        ):
+            return True
         if performer.assigned_entity and performer.assigned_entity.code:
             code = performer.assigned_entity.code.code
             return code.upper() == "PAYOR" if code else False
@@ -326,9 +323,10 @@ class CoverageConverter(BaseConverter["Act"]):
     @staticmethod
     def _is_guarantor_performer(performer: Performer) -> bool:
         """Check if a performer is a GUARANTOR by templateId (.88) or code."""
-        if performer.template_id:
-            if any(t.root == TemplateIds.GUARANTOR_PERFORMER for t in performer.template_id):
-                return True
+        if performer.template_id and any(
+            t.root == TemplateIds.GUARANTOR_PERFORMER for t in performer.template_id
+        ):
+            return True
         if performer.assigned_entity and performer.assigned_entity.code:
             code = performer.assigned_entity.code.code
             return code.upper() == "GUAR" if code else False
@@ -403,10 +401,12 @@ class CoverageConverter(BaseConverter["Act"]):
             )
             rel = _RELATIONSHIP_MAP["OTHER"]
         coverage["relationship"] = {
-            "coding": [{
-                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
-                **rel,
-            }],
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                    **rel,
+                }
+            ],
         }
         return relationship_code
 

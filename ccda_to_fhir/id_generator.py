@@ -8,12 +8,11 @@ always generate the same UUID to ensure references resolve correctly.
 """
 
 import uuid
-from typing import Optional
 
 # Cache for ID generation within a document conversion
 # Key: (resource_type, root, extension) tuple
 # Value: generated UUID
-_id_cache: dict[tuple[str, Optional[str], Optional[str]], str] = {}
+_id_cache: dict[tuple[str, str | None, str | None], str] = {}
 
 
 def reset_id_cache() -> None:
@@ -27,9 +26,7 @@ def reset_id_cache() -> None:
 
 
 def generate_id_from_identifiers(
-    resource_type: str,
-    root: Optional[str] = None,
-    extension: Optional[str] = None
+    resource_type: str, root: str | None = None, extension: str | None = None
 ) -> str:
     """Generate a consistent UUID v4 for a resource based on C-CDA identifiers.
 

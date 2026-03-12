@@ -62,9 +62,7 @@ class ProvenanceConverter(BaseConverter[None]):
         resource_id = target_resource["id"]
         # Use target resource type and ID as cache key for consistency
         provenance["id"] = generate_id_from_identifiers(
-            "Provenance",
-            f"target-{resource_type}",
-            resource_id
+            "Provenance", f"target-{resource_type}", resource_id
         )
 
         # Target - reference to the resource(s) this Provenance is about
@@ -138,13 +136,9 @@ class ProvenanceConverter(BaseConverter[None]):
 
         # Who - reference to Practitioner or Device
         if author_info.practitioner_id:
-            agent["who"] = make_ref(
-                f"urn:uuid:{author_info.practitioner_id}", author_info.display
-            )
+            agent["who"] = make_ref(f"urn:uuid:{author_info.practitioner_id}", author_info.display)
         elif author_info.device_id:
-            agent["who"] = make_ref(
-                f"urn:uuid:{author_info.device_id}", author_info.display
-            )
+            agent["who"] = make_ref(f"urn:uuid:{author_info.device_id}", author_info.display)
 
         # OnBehalfOf - reference to Organization (optional)
         if author_info.organization_id:

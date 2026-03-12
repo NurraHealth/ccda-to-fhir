@@ -46,9 +46,13 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         """
         super().__init__(*args, **kwargs)
         # Track seen immunization IDs to detect invalid C-CDA documents that reuse IDs
-        self.seen_immunization_ids = seen_immunization_ids if seen_immunization_ids is not None else set()
+        self.seen_immunization_ids = (
+            seen_immunization_ids if seen_immunization_ids is not None else set()
+        )
 
-    def convert(self, ccda_model: SubstanceAdministration, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
+    def convert(
+        self, ccda_model: SubstanceAdministration, section=None
+    ) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
         """Convert a C-CDA Immunization Activity to FHIR resources.
 
         Args:
@@ -84,18 +88,18 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             if imm_id_key in self.seen_immunization_ids:
                 # ID reuse detected - fall back to generating a unique ID
                 from ccda_to_fhir.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.warning(
                     f"Immunization ID {first_id.root} (extension={first_id.extension}) is reused in C-CDA document. "
                     f"Generating unique ID to avoid duplicate Immunization resources."
                 )
                 from ccda_to_fhir.id_generator import generate_id
+
                 immunization_id = generate_id()
             else:
                 # First time seeing this immunization ID - use it
-                immunization_id = self._generate_immunization_id(
-                    first_id.root, first_id.extension
-                )
+                immunization_id = self._generate_immunization_id(first_id.root, first_id.extension)
                 self.seen_immunization_ids.add(imm_id_key)
 
             immunization["id"] = immunization_id
@@ -103,6 +107,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Default ID if not available
         if not immunization_id:
             from ccda_to_fhir.id_generator import generate_id
+
             immunization_id = generate_id()
             immunization["id"] = immunization_id
 
@@ -193,11 +198,15 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         # 15. Supporting observations - from SPRT entryRelationship
         # Returns Observation resources for evidence/supporting observations
-        supporting_observations = self._extract_supporting_observations(substance_admin, immunization_id)
+        supporting_observations = self._extract_supporting_observations(
+            substance_admin, immunization_id
+        )
 
         # 16. Component observations - from COMP entryRelationship
         # Returns Observation resources for complications/adverse events
-        component_observations = self._extract_component_observations(substance_admin, immunization_id)
+        component_observations = self._extract_component_observations(
+            substance_admin, immunization_id
+        )
 
         # 17. Performer - from performer
         performers = self._extract_performers(substance_admin)
@@ -448,7 +457,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Use the first approach site
         return self._convert_code_to_codeable_concept(substance_admin.approach_site_code[0])
 
-    def _extract_reason_codes(self, substance_admin: SubstanceAdministration) -> tuple[list[JSONObject], list[JSONObject]]:
+    def _extract_reason_codes(
+        self, substance_admin: SubstanceAdministration
+    ) -> tuple[list[JSONObject], list[JSONObject]]:
         """Extract reason codes from RSON (reason) entry relationships.
 
         Implements complex not-given reason mapping per C-CDA on FHIR IG:
@@ -467,7 +478,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             - reason_codes: List of clinical indication CodeableConcepts for reasonCode
         """
         status_reasons = []  # NoImmunizationReason codes (refusal reasons)
-        reason_codes = []    # Clinical indications
+        reason_codes = []  # Clinical indications
 
         if not substance_admin.entry_relationship:
             return status_reasons, reason_codes
@@ -488,17 +499,24 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 # Try to extract a refusal reason from observation.code first
                 # This is the primary location per C-CDA IG for Immunization Refusal Reason template
                 refusal_found = False
-                if observation.code and observation.code.code:
+                if (
+                    observation.code
+                    and observation.code.code
                     # Check if this code is from the NoImmunizationReason ValueSet
-                    if self._is_no_immunization_reason_code(observation.code.code):
-                        reason_code = self._convert_code_to_codeable_concept(observation.code)
-                        if reason_code:
-                            status_reasons.append(reason_code)
-                            refusal_found = True
+                    and self._is_no_immunization_reason_code(observation.code.code)
+                ):
+                    reason_code = self._convert_code_to_codeable_concept(observation.code)
+                    if reason_code:
+                        status_reasons.append(reason_code)
+                        refusal_found = True
 
                 # If no refusal reason found in observation.code, check observation.value
                 # Some C-CDA documents may place the refusal reason in value instead
-                if not refusal_found and observation.value and isinstance(observation.value, (CD, CE)):
+                if (
+                    not refusal_found
+                    and observation.value
+                    and isinstance(observation.value, (CD, CE))
+                ):
                     value_cd = observation.value
                     if value_cd.code and self._is_no_immunization_reason_code(value_cd.code):
                         reason_code = self._convert_code_to_codeable_concept(value_cd)
@@ -509,12 +527,16 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 # If this is not a refusal reason, treat as clinical indication
                 # Clinical indications use Indication template (2.16.840.1.113883.10.20.22.4.19)
                 # and have the indication in observation.value
-                if not refusal_found and not has_refusal_template:
-                    if observation.value and isinstance(observation.value, (CD, CE)):
-                        # This is likely a clinical indication (e.g., Asthma as reason for flu vaccine)
-                        reason_code = self._convert_code_to_codeable_concept(observation.value)
-                        if reason_code:
-                            reason_codes.append(reason_code)
+                if (
+                    not refusal_found
+                    and not has_refusal_template
+                    and observation.value
+                    and isinstance(observation.value, (CD, CE))
+                ):
+                    # This is likely a clinical indication (e.g., Asthma as reason for flu vaccine)
+                    reason_code = self._convert_code_to_codeable_concept(observation.value)
+                    if reason_code:
+                        reason_codes.append(reason_code)
 
         return status_reasons, reason_codes
 
@@ -529,7 +551,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         """
         return code in NO_IMMUNIZATION_REASON_CODES
 
-    def _extract_protocol_applied(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
+    def _extract_protocol_applied(
+        self, substance_admin: SubstanceAdministration
+    ) -> list[JSONObject]:
         """Extract protocol applied from repeatNumber.
 
         Args:
@@ -552,14 +576,14 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             dose_number = int(repeat_number.low.value)
 
         if dose_number is not None:
-            protocol: JSONObject = {
-                "doseNumberPositiveInt": dose_number
-            }
+            protocol: JSONObject = {"doseNumberPositiveInt": dose_number}
             return [protocol]
 
         return []
 
-    def _extract_reactions(self, substance_admin: SubstanceAdministration, immunization_id: str) -> tuple[list[JSONObject], list[JSONObject]]:
+    def _extract_reactions(
+        self, substance_admin: SubstanceAdministration, immunization_id: str
+    ) -> tuple[list[JSONObject], list[JSONObject]]:
         """Extract reaction observations from entry relationships.
 
         Creates separate Observation resources for reactions and references them
@@ -595,9 +619,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
                     # Create reaction object with reference to the Observation
                     reaction: JSONObject = {
-                        "detail": {
-                            "reference": f"urn:uuid:{observation_resource['id']}"
-                        }
+                        "detail": {"reference": f"urn:uuid:{observation_resource['id']}"}
                     }
 
                     # Extract date from observation.effectiveTime
@@ -633,7 +655,10 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         # Generate unique UUID v4 for the reaction observation
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
-        observation_id = generate_id_from_identifiers("Observation", f"imm-reaction-{immunization_id}-{idx}", None)
+
+        observation_id = generate_id_from_identifiers(
+            "Observation", f"imm-reaction-{immunization_id}-{idx}", None
+        )
 
         observation_resource: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
@@ -738,7 +763,10 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         # Generate unique UUID v4 for the supporting observation
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
-        observation_id = generate_id_from_identifiers("Observation", f"imm-supporting-{immunization_id}-{idx}", None)
+
+        observation_id = generate_id_from_identifiers(
+            "Observation", f"imm-supporting-{immunization_id}-{idx}", None
+        )
 
         observation_resource: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
@@ -777,7 +805,11 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 if observation.value.value is not None:
                     # Ensure value is a number (float or int)
                     try:
-                        value = float(observation.value.value) if isinstance(observation.value.value, str) else observation.value.value
+                        value = (
+                            float(observation.value.value)
+                            if isinstance(observation.value.value, str)
+                            else observation.value.value
+                        )
                         # Convert to int if it's a whole number
                         if value == int(value):
                             quantity["value"] = int(value)
@@ -877,7 +909,10 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         # Generate unique UUID v4 for the complication observation
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
-        observation_id = generate_id_from_identifiers("Observation", f"imm-complication-{immunization_id}-{idx}", None)
+
+        observation_id = generate_id_from_identifiers(
+            "Observation", f"imm-complication-{immunization_id}-{idx}", None
+        )
 
         observation_resource: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.OBSERVATION,
@@ -944,11 +979,13 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
             # Set function (who administered the vaccine) - fixed for immunizations
             performer_obj["function"] = {
-                "coding": [{
-                    "system": FHIRSystems.V2_PARTICIPATION_FUNCTION,
-                    "code": V2ParticipationFunctionCodes.ADMINISTERING_PROVIDER,
-                    "display": "Administering Provider"
-                }]
+                "coding": [
+                    {
+                        "system": FHIRSystems.V2_PARTICIPATION_FUNCTION,
+                        "code": V2ParticipationFunctionCodes.ADMINISTERING_PROVIDER,
+                        "display": "Administering Provider",
+                    }
+                ]
             }
 
             # Only add performer if we successfully created an actor reference
@@ -1006,7 +1043,6 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         return None
 
-
     def _extract_notes(self, substance_admin: SubstanceAdministration) -> list[JSONObject]:
         """Extract FHIR notes from C-CDA substance administration.
 
@@ -1044,11 +1080,13 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             translations = []
             for trans in code_elem.translation:
                 if trans.code and trans.code_system:
-                    translations.append({
-                        "code": trans.code,
-                        "code_system": trans.code_system,
-                        "display_name": trans.display_name,
-                    })
+                    translations.append(
+                        {
+                            "code": trans.code,
+                            "code_system": trans.code_system,
+                            "display_name": trans.display_name,
+                        }
+                    )
 
         # If primary code is missing (nullFlavor), promote first translation to primary
         if (not primary_code or code_elem.null_flavor) and translations:

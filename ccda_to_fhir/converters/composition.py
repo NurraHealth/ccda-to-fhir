@@ -215,6 +215,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         if not date:
             import datetime
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(
                 "effectiveTime missing or invalid - using current UTC time as fallback for Composition.date"
@@ -496,7 +497,11 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if assigned.id:
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
-                    from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                    from ccda_to_fhir.converters.author_references import (
+                        format_person_display,
+                        make_ref,
+                    )
+
                     display = format_person_display(assigned.assigned_person)
                     party_ref = make_ref(f"urn:uuid:{practitioner_id}", display)
 
@@ -506,7 +511,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         attester: JSONObject = {
             "mode": "legal",  # Legal attestation
-            "party": party_ref  # Required per US Realm Header Profile
+            "party": party_ref,  # Required per US Realm Header Profile
         }
 
         # Extract time (optional)
@@ -554,7 +559,11 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if assigned.id:
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
-                    from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                    from ccda_to_fhir.converters.author_references import (
+                        format_person_display,
+                        make_ref,
+                    )
+
                     display = format_person_display(assigned.assigned_person)
                     party_ref = make_ref(f"urn:uuid:{practitioner_id}", display)
 
@@ -564,7 +573,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         attester: JSONObject = {
             "mode": "professional",  # Professional attestation
-            "party": party_ref  # Required per US Realm Header Profile
+            "party": party_ref,  # Required per US Realm Header Profile
         }
 
         # Extract time (optional)
@@ -599,9 +608,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 # Simple extension with valueReference (per official C-CDA on FHIR IG)
                 extension: JSONObject = {
                     "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension",
-                    "valueReference": {
-                        "reference": f"urn:uuid:{practitioner_id}"
-                    }
+                    "valueReference": {"reference": f"urn:uuid:{practitioner_id}"},
                 }
                 return extension
 
@@ -633,9 +640,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         if informant.assigned_entity and informant.assigned_entity.id:
             practitioner_id = self._generate_practitioner_id(informant.assigned_entity.id)
             if practitioner_id:
-                extension["valueReference"] = {
-                    "reference": f"urn:uuid:{practitioner_id}"
-                }
+                extension["valueReference"] = {"reference": f"urn:uuid:{practitioner_id}"}
                 return extension
 
         # Check for relatedEntity (family member, caregiver, etc.)
@@ -643,9 +648,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             # For now, create a display-only reference since we don't convert RelatedPerson resources yet
             display = self._format_related_entity_display(informant.related_entity)
             if display:
-                extension["valueReference"] = {
-                    "display": display
-                }
+                extension["valueReference"] = {"display": display}
                 return extension
 
         return None
@@ -671,23 +674,23 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         intended = recipient.intended_recipient
 
         # Check for information recipient person
-        if intended.information_recipient and intended.information_recipient.name and len(intended.information_recipient.name) > 0:
+        if (
+            intended.information_recipient
+            and intended.information_recipient.name
+            and len(intended.information_recipient.name) > 0
+        ):
             # Create display-only reference
             name = intended.information_recipient.name[0]
             display = self._format_name_for_display(name)
             if display:
-                extension["valueReference"] = {
-                    "display": display
-                }
+                extension["valueReference"] = {"display": display}
                 return extension
 
         # Fallback to ID-based reference if available
         if intended.id:
             practitioner_id = self._generate_practitioner_id(intended.id)
             if practitioner_id:
-                extension["valueReference"] = {
-                    "reference": f"urn:uuid:{practitioner_id}"
-                }
+                extension["valueReference"] = {"reference": f"urn:uuid:{practitioner_id}"}
                 return extension
 
         return None
@@ -715,23 +718,23 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         associated = participant.associated_entity
 
         # Check for associated person
-        if associated.associated_person and associated.associated_person.name and len(associated.associated_person.name) > 0:
+        if (
+            associated.associated_person
+            and associated.associated_person.name
+            and len(associated.associated_person.name) > 0
+        ):
             # Create display-only reference for now
             name = associated.associated_person.name[0]
             display = self._format_name_for_display(name)
             if display:
-                extension["valueReference"] = {
-                    "display": display
-                }
+                extension["valueReference"] = {"display": display}
                 return extension
 
         # Fallback to ID-based reference if available
         if associated.id:
             practitioner_id = self._generate_practitioner_id(associated.id)
             if practitioner_id:
-                extension["valueReference"] = {
-                    "reference": f"urn:uuid:{practitioner_id}"
-                }
+                extension["valueReference"] = {"reference": f"urn:uuid:{practitioner_id}"}
                 return extension
 
         return None
@@ -759,9 +762,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         if practitioner_id:
             extension: JSONObject = {
                 "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/PerformerExtension",
-                "valueReference": {
-                    "reference": f"urn:uuid:{practitioner_id}"
-                }
+                "valueReference": {"reference": f"urn:uuid:{practitioner_id}"},
             }
             return extension
 
@@ -795,9 +796,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
             extension: JSONObject = {
                 "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/AuthorizationExtension",
-                "valueReference": {
-                    "reference": f"urn:uuid:{consent_id}"
-                }
+                "valueReference": {"reference": f"urn:uuid:{consent_id}"},
             }
             return extension
 
@@ -831,9 +830,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
             extension: JSONObject = {
                 "url": "http://hl7.org/fhir/us/ccda/StructureDefinition/OrderExtension",
-                "valueReference": {
-                    "reference": f"urn:uuid:{service_request_id}"
-                }
+                "valueReference": {"reference": f"urn:uuid:{service_request_id}"},
             }
             return extension
 
@@ -852,7 +849,11 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             return None
 
         # Try to get name from related person
-        if related_entity.related_person and related_entity.related_person.name and len(related_entity.related_person.name) > 0:
+        if (
+            related_entity.related_person
+            and related_entity.related_person.name
+            and len(related_entity.related_person.name) > 0
+        ):
             name = related_entity.related_person.name[0]
             display = self._format_name_for_display(name)
             if display:
@@ -929,9 +930,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         ref: JSONObject = {}
         if custodian_org.id and len(custodian_org.id) > 0 and self.reference_registry:
             first_id = custodian_org.id[0]
-            org_id = generate_id_from_identifiers(
-                "Organization", first_id.root, first_id.extension
-            )
+            org_id = generate_id_from_identifiers("Organization", first_id.root, first_id.extension)
             if self.reference_registry.has_resource("Organization", org_id):
                 ref["reference"] = f"urn:uuid:{org_id}"
 
@@ -1002,6 +1001,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if isinstance(section.text, StrucDocText):
                 # StrucDocText: convert structured narrative to HTML
                 from ccda_to_fhir.utils.struc_doc_utils import narrative_to_html
+
                 html_content = narrative_to_html(section.text)
                 if html_content:
                     # Wrap in XHTML div with namespace
@@ -1078,15 +1078,13 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             return None
 
         # If content doesn't start with a tag, wrap it in a div
-        if not content.startswith("<"):
-            content = f"<div>{content}</div>"
-        # If it's a table or list without a wrapper, wrap it
-        elif content.startswith(("<table", "<list", "<paragraph")):
+        if not content.startswith("<") or content.startswith(("<table", "<list", "<paragraph")):
             content = f"<div>{content}</div>"
         # If it starts with <text>, extract the inner content
         elif content.startswith("<text"):
             # Strip the <text> wrapper
             import re
+
             match = re.search(r"<text[^>]*>(.*)</text>", content, re.DOTALL)
             if match:
                 inner = match.group(1).strip()
@@ -1119,7 +1117,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 resources = self.section_resource_map[template_id]
                 for resource in resources:
                     if resource.get("resourceType") and resource.get("id"):
-                        resource_type = resource["resourceType"]
+                        resource["resourceType"]
                         resource_id = resource["id"]
                         reference = f"urn:uuid:{resource_id}"
 

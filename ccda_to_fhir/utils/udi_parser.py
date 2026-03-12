@@ -139,10 +139,7 @@ def _convert_gs1_date(date_str: str) -> str:
 
     # Convert 2-digit year to 4-digit year
     # Assume 00-49 = 2000-2049, 50-99 = 1950-1999
-    if yy >= 50:
-        yyyy = f"19{yy}"
-    else:
-        yyyy = f"20{yy:02d}"
+    yyyy = f"19{yy}" if yy >= 50 else f"20{yy:02d}"
 
     return f"{yyyy}-{mm}-{dd}"
 

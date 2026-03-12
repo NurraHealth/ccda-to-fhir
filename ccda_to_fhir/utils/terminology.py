@@ -7,8 +7,6 @@ Standard Reference: https://hl7.org/fhir/R4/datatypes.html#CodeableConcept
 "display is a label for the code for use when displaying code-concept to a user"
 """
 
-from typing import Optional
-
 from ccda_to_fhir.constants import FHIRSystems
 
 # AllergyIntolerance Clinical Status
@@ -266,7 +264,7 @@ DISPLAY_MAPS: dict[str, dict[str, str]] = {
 }
 
 
-def get_display_for_code(system: str, code: str) -> Optional[str]:
+def get_display_for_code(system: str, code: str) -> str | None:
     """Get display text for a code in a given system.
 
     Args:
@@ -285,7 +283,7 @@ def get_display_for_code(system: str, code: str) -> Optional[str]:
     return None
 
 
-def get_display_for_allergy_clinical_status(code: str) -> Optional[str]:
+def get_display_for_allergy_clinical_status(code: str) -> str | None:
     """Get display for AllergyIntolerance.clinicalStatus code.
 
     Args:
@@ -297,7 +295,7 @@ def get_display_for_allergy_clinical_status(code: str) -> Optional[str]:
     return ALLERGY_CLINICAL_STATUS.get(code)
 
 
-def get_display_for_condition_clinical_status(code: str) -> Optional[str]:
+def get_display_for_condition_clinical_status(code: str) -> str | None:
     """Get display for Condition.clinicalStatus code.
 
     Args:
@@ -309,7 +307,7 @@ def get_display_for_condition_clinical_status(code: str) -> Optional[str]:
     return CONDITION_CLINICAL_STATUS.get(code)
 
 
-def get_display_for_observation_interpretation(code: str) -> Optional[str]:
+def get_display_for_observation_interpretation(code: str) -> str | None:
     """Get display for Observation.interpretation code.
 
     Args:

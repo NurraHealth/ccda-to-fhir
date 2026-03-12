@@ -44,7 +44,14 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
     Reference: http://build.fhir.org/ig/HL7/ccda-on-fhir/CF-allergies.html
     """
 
-    def __init__(self, *args, concern_act: Act | None = None, section=None, seen_allergy_ids: set | None = None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        concern_act: Act | None = None,
+        section=None,
+        seen_allergy_ids: set | None = None,
+        **kwargs,
+    ):
         """Initialize the allergy intolerance converter.
 
         Args:
@@ -79,13 +86,15 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             raise MissingRequiredFieldError(
                 field_name="participant",
                 resource_type="Allergy Observation (AllergyIntolerance)",
-                details="Allergen (participant) is required for Allergy Observation"
+                details="Allergen (participant) is required for Allergy Observation",
             )
 
         allergy: JSONObject = {
             "resourceType": "AllergyIntolerance",
             "meta": {
-                "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-allergyintolerance"]
+                "profile": [
+                    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-allergyintolerance"
+                ]
             },
         }
 
@@ -104,6 +113,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     f"Generating unique ID to avoid duplicate AllergyIntolerance resources."
                 )
                 from ccda_to_fhir.id_generator import generate_id
+
                 allergy["id"] = generate_id()
             else:
                 # First time seeing this allergy ID - use it
@@ -129,9 +139,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             }
             if display:
                 coding["display"] = display
-            allergy["clinicalStatus"] = {
-                "coding": [coding]
-            }
+            allergy["clinicalStatus"] = {"coding": [coding]}
 
         # Verification status
         # For no known allergies, use "confirmed" (they are confirmed absences)
@@ -185,25 +193,29 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             # Use substanceExposureRisk extension for specific substance
             # Per FHIR constraint: code SHALL be omitted when using this extension
             substance_code = self._extract_allergen_code(observation)
-            allergy.setdefault("extension", []).append({
-                "url": "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk",
-                "extension": [
-                    {
-                        "url": "substance",
-                        "valueCodeableConcept": substance_code,
-                    },
-                    {
-                        "url": "exposureRisk",
-                        "valueCodeableConcept": {
-                            "coding": [{
-                                "system": "http://terminology.hl7.org/CodeSystem/allerg-intol-substance-exp-risk",
-                                "code": "no-known-reaction-risk",
-                                "display": "No Known Reaction Risk",
-                            }]
+            allergy.setdefault("extension", []).append(
+                {
+                    "url": "http://hl7.org/fhir/StructureDefinition/allergyintolerance-substanceExposureRisk",
+                    "extension": [
+                        {
+                            "url": "substance",
+                            "valueCodeableConcept": substance_code,
                         },
-                    },
-                ]
-            })
+                        {
+                            "url": "exposureRisk",
+                            "valueCodeableConcept": {
+                                "coding": [
+                                    {
+                                        "system": "http://terminology.hl7.org/CodeSystem/allerg-intol-substance-exp-risk",
+                                        "code": "no-known-reaction-risk",
+                                        "display": "No Known Reaction Risk",
+                                    }
+                                ]
+                            },
+                        },
+                    ],
+                }
+            )
         elif is_no_known_allergy:
             # Use negated concept code based on allergy type
             allergy["code"] = self._get_no_known_allergy_code(observation)
@@ -220,29 +232,40 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         allergy["patient"] = self.reference_registry.get_patient_reference()
 
         # Onset date
-        if observation.effective_time and observation.effective_time.low:
-            if observation.effective_time.low.value:
-                onset_date = self.convert_date(observation.effective_time.low.value)
-                if onset_date:
-                    allergy["onsetDateTime"] = onset_date
+        if (
+            observation.effective_time
+            and observation.effective_time.low
+            and observation.effective_time.low.value
+        ):
+            onset_date = self.convert_date(observation.effective_time.low.value)
+            if onset_date:
+                allergy["onsetDateTime"] = onset_date
 
         # Abatement (as extension if high value exists)
-        if observation.effective_time and observation.effective_time.high:
-            if observation.effective_time.high.value:
-                abatement_date = self.convert_date(observation.effective_time.high.value)
-                if abatement_date:
-                    allergy.setdefault("extension", []).append({
+        if (
+            observation.effective_time
+            and observation.effective_time.high
+            and observation.effective_time.high.value
+        ):
+            abatement_date = self.convert_date(observation.effective_time.high.value)
+            if abatement_date:
+                allergy.setdefault("extension", []).append(
+                    {
                         "url": FHIRSystems.ALLERGY_ABATEMENT_EXTENSION,
                         "valueDateTime": abatement_date,
-                    })
+                    }
+                )
 
         # Recorded date (from earliest author time)
         if self.concern_act and self.concern_act.author:
             earliest_time = None
             for author in self.concern_act.author:
-                if author.time and author.time.value:
-                    if earliest_time is None or author.time.value < earliest_time:
-                        earliest_time = author.time.value
+                if (
+                    author.time
+                    and author.time.value
+                    and (earliest_time is None or author.time.value < earliest_time)
+                ):
+                    earliest_time = author.time.value
             if earliest_time:
                 recorded_date = self.convert_date(earliest_time)
                 if recorded_date:
@@ -250,9 +273,12 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         elif observation.author:
             earliest_time = None
             for author in observation.author:
-                if author.time and author.time.value:
-                    if earliest_time is None or author.time.value < earliest_time:
-                        earliest_time = author.time.value
+                if (
+                    author.time
+                    and author.time.value
+                    and (earliest_time is None or author.time.value < earliest_time)
+                ):
+                    earliest_time = author.time.value
             if earliest_time:
                 recorded_date = self.convert_date(earliest_time)
                 if recorded_date:
@@ -310,9 +336,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             A resource ID string
         """
         return self.generate_resource_id(
-            root=root,
-            extension=extension,
-            resource_type="allergyintolerance"
+            root=root, extension=extension, resource_type="allergyintolerance"
         )
 
     def _is_no_known_allergy(self, observation: Observation) -> bool:
@@ -419,13 +443,18 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         # First, check for Allergy Status Observation in entry relationships
         if observation.entry_relationship:
             for rel in observation.entry_relationship:
-                if rel.observation and rel.type_code == TypeCodes.REFERENCE:
+                if (
+                    rel.observation
+                    and rel.type_code == TypeCodes.REFERENCE
                     # Check if it's an Allergy Status Observation
-                    if rel.observation.code and rel.observation.code.code == CCDACodes.STATUS:
-                        # This is an Allergy Status Observation
-                        if rel.observation.value and isinstance(rel.observation.value, (CD, CE)):
-                            status_code = rel.observation.value.code
-                            return self._map_allergy_status_to_clinical_status(status_code)
+                    and rel.observation.code
+                    and rel.observation.code.code == CCDACodes.STATUS
+                    # This is an Allergy Status Observation
+                    and rel.observation.value
+                    and isinstance(rel.observation.value, (CD, CE))
+                ):
+                    status_code = rel.observation.value.code
+                    return self._map_allergy_status_to_clinical_status(status_code)
 
         # Fallback to concern act status if available
         if self.concern_act and self.concern_act.status_code:
@@ -450,9 +479,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         Returns:
             FHIR clinical status code
         """
-        return SNOMED_ALLERGY_STATUS_TO_FHIR.get(
-            snomed_code, FHIRCodes.AllergyClinical.ACTIVE
-        )
+        return SNOMED_ALLERGY_STATUS_TO_FHIR.get(snomed_code, FHIRCodes.AllergyClinical.ACTIVE)
 
     def _map_concern_status_to_clinical_status(
         self, concern_status: str | None, has_abatement: bool = False
@@ -479,9 +506,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         else:
             return FHIRCodes.AllergyClinical.ACTIVE
 
-    def _determine_type_and_category(
-        self, value_code: str | None
-    ) -> tuple[str | None, str | None]:
+    def _determine_type_and_category(self, value_code: str | None) -> tuple[str | None, str | None]:
         """Determine FHIR type and category from C-CDA observation value code.
 
         Args:
@@ -490,9 +515,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         Returns:
             Tuple of (type, category)
         """
-        return ALLERGY_TYPE_CATEGORY_MAP.get(
-            value_code, (FHIRCodes.AllergyType.ALLERGY, None)
-        )
+        return ALLERGY_TYPE_CATEGORY_MAP.get(value_code, (FHIRCodes.AllergyType.ALLERGY, None))
 
     def _extract_criticality(self, observation: Observation) -> str | None:
         """Extract criticality from Criticality Observation.
@@ -507,12 +530,17 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             return None
 
         for rel in observation.entry_relationship:
-            if rel.observation and rel.type_code == TypeCodes.SUBJECT:
+            if (
+                rel.observation
+                and rel.type_code == TypeCodes.SUBJECT
                 # Check if it's a Criticality Observation
-                if rel.observation.code and rel.observation.code.code == CCDACodes.CRITICALITY:
-                    if rel.observation.value and isinstance(rel.observation.value, (CD, CE)):
-                        criticality_code = rel.observation.value.code
-                        return CRITICALITY_CODE_TO_FHIR.get(criticality_code)
+                and rel.observation.code
+                and rel.observation.code.code == CCDACodes.CRITICALITY
+                and rel.observation.value
+                and isinstance(rel.observation.value, (CD, CE))
+            ):
+                criticality_code = rel.observation.value.code
+                return CRITICALITY_CODE_TO_FHIR.get(criticality_code)
         return None
 
     def _extract_allergen_code(self, observation: Observation) -> FHIRResourceDict:
@@ -548,7 +576,11 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     original_text = None
                     if playing_entity.name:
                         # Extract string value from name (can be list[ON | str] or single ON | str)
-                        names = playing_entity.name if isinstance(playing_entity.name, list) else [playing_entity.name]
+                        names = (
+                            playing_entity.name
+                            if isinstance(playing_entity.name, list)
+                            else [playing_entity.name]
+                        )
                         for name in names:
                             if isinstance(name, str):
                                 original_text = name
@@ -590,12 +622,17 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             return None
 
         for rel in observation.entry_relationship:
-            if rel.observation and rel.type_code == TypeCodes.SUBJECT:
+            if (
+                rel.observation
+                and rel.type_code == TypeCodes.SUBJECT
                 # Check if it's a Severity Observation (not nested in a reaction)
-                if rel.observation.code and rel.observation.code.code == CCDACodes.SEVERITY:
-                    if rel.observation.value and isinstance(rel.observation.value, (CD, CE)):
-                        severity_code = rel.observation.value.code
-                        return SNOMED_SEVERITY_TO_FHIR.get(severity_code)
+                and rel.observation.code
+                and rel.observation.code.code == CCDACodes.SEVERITY
+                and rel.observation.value
+                and isinstance(rel.observation.value, (CD, CE))
+            ):
+                severity_code = rel.observation.value.code
+                return SNOMED_SEVERITY_TO_FHIR.get(severity_code)
         return None
 
     def _extract_reactions(
@@ -638,7 +675,9 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     # Get original text if available (with reference resolution)
                     original_text = None
                     if value.original_text:
-                        original_text = self.extract_original_text(value.original_text, section=None)
+                        original_text = self.extract_original_text(
+                            value.original_text, section=None
+                        )
 
                     manifestation = self.create_codeable_concept(
                         code=value.code,
@@ -676,7 +715,10 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
 
                 # Onset date
                 if rel.observation.effective_time:
-                    if rel.observation.effective_time.low and rel.observation.effective_time.low.value:
+                    if (
+                        rel.observation.effective_time.low
+                        and rel.observation.effective_time.low.value
+                    ):
                         onset_date = self.convert_date(rel.observation.effective_time.low.value)
                         if onset_date:
                             reaction["onset"] = onset_date
@@ -725,12 +767,17 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             return None
 
         for rel in reaction_observation.entry_relationship:
-            if rel.observation and rel.type_code == TypeCodes.SUBJECT:
+            if (
+                rel.observation
+                and rel.type_code == TypeCodes.SUBJECT
                 # Check if it's a Severity Observation
-                if rel.observation.code and rel.observation.code.code == CCDACodes.SEVERITY:
-                    if rel.observation.value and isinstance(rel.observation.value, (CD, CE)):
-                        severity_code = rel.observation.value.code
-                        return SNOMED_SEVERITY_TO_FHIR.get(severity_code)
+                and rel.observation.code
+                and rel.observation.code.code == CCDACodes.SEVERITY
+                and rel.observation.value
+                and isinstance(rel.observation.value, (CD, CE))
+            ):
+                severity_code = rel.observation.value.code
+                return SNOMED_SEVERITY_TO_FHIR.get(severity_code)
         return None
 
     def _extract_reaction_notes(self, reaction_observation: Observation) -> list[JSONObject]:

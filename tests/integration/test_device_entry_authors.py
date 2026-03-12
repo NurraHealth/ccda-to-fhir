@@ -12,16 +12,19 @@ from ccda_to_fhir.convert import convert_document
 from ccda_to_fhir.types import JSONObject
 
 
-def _find_resource_in_bundle(bundle: JSONObject, resource_type: str, resource_id: str | None = None) -> JSONObject | None:
+def _find_resource_in_bundle(
+    bundle: JSONObject, resource_type: str, resource_id: str | None = None
+) -> JSONObject | None:
     """Find a resource of the given type in a FHIR Bundle."""
     if "entry" not in bundle:
         return None
 
     for entry in bundle["entry"]:
         resource = entry.get("resource", {})
-        if resource.get("resourceType") == resource_type:
-            if resource_id is None or resource.get("id") == resource_id:
-                return resource
+        if resource.get("resourceType") == resource_type and (
+            resource_id is None or resource.get("id") == resource_id
+        ):
+            return resource
 
     return None
 
@@ -42,9 +45,7 @@ def _find_provenance_by_target(bundle: JSONObject, target_reference: str) -> JSO
     return None
 
 
-def _find_all_resources_in_bundle(
-    bundle: JSONObject, resource_type: str
-) -> list[JSONObject]:
+def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> list[JSONObject]:
     """Find all resources of the given type in a FHIR Bundle."""
     if "entry" not in bundle:
         return []
@@ -150,10 +151,11 @@ class TestDeviceEntryAuthors:
 
         # Validate ID is UUID v4
         import uuid as uuid_module
+
         try:
             uuid_module.UUID(device["id"], version=4)
-        except ValueError:
-            raise AssertionError(f"Device ID {device['id']} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(f"Device ID {device['id']} is not a valid UUID v4") from err
 
     def test_device_from_entry_has_correct_fields(self) -> None:
         """Test that Device resource from entry-level author has correct fields."""
@@ -232,10 +234,11 @@ class TestDeviceEntryAuthors:
 
         # Validate ID is UUID v4
         import uuid as uuid_module
+
         try:
             uuid_module.UUID(device["id"], version=4)
-        except ValueError:
-            raise AssertionError(f"Device ID {device['id']} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(f"Device ID {device['id']} is not a valid UUID v4") from err
 
         # Check identifier
         assert "identifier" in device
@@ -338,17 +341,22 @@ class TestDeviceEntryAuthors:
 
         # Validate device ID is UUID v4
         import uuid as uuid_module
+
         try:
             uuid_module.UUID(device["id"], version=4)
-        except ValueError:
-            raise AssertionError(f"Device ID {device['id']} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(f"Device ID {device['id']} is not a valid UUID v4") from err
 
         # Check that Provenance correctly references the Device
         assert "agent" in provenance
         assert len(provenance["agent"]) > 0
 
         expected_reference = f"urn:uuid:{device['id']}"
-        device_agent = [a for a in provenance["agent"] if a.get("who", {}).get("reference") == expected_reference][0]
+        device_agent = [
+            a
+            for a in provenance["agent"]
+            if a.get("who", {}).get("reference") == expected_reference
+        ][0]
         assert device_agent["who"]["reference"] == expected_reference
 
     def test_multiple_entry_device_authors_deduplicated(self) -> None:
@@ -448,10 +456,11 @@ class TestDeviceEntryAuthors:
 
         # Validate ID is UUID v4
         import uuid as uuid_module
+
         try:
             uuid_module.UUID(devices[0]["id"], version=4)
-        except ValueError:
-            raise AssertionError(f"Device ID {devices[0]['id']} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(f"Device ID {devices[0]['id']} is not a valid UUID v4") from err
 
         # Verify it has the correct identifier
         assert "identifier" in devices[0]

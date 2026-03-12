@@ -15,12 +15,13 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
             return resource
     return None
 
+
 class TestImmunizationNegation:
-    def test_converts_negated_immunization_reason(
-        self, ccda_immunization_negated: str
-    ) -> None:
+    def test_converts_negated_immunization_reason(self, ccda_immunization_negated: str) -> None:
         """Test that negated immunization converts refusal reason to statusReason."""
-        ccda_doc = wrap_in_ccda_document(ccda_immunization_negated, TemplateIds.IMMUNIZATIONS_SECTION)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_immunization_negated, TemplateIds.IMMUNIZATIONS_SECTION
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         immunization = _find_resource_in_bundle(bundle, "Immunization")

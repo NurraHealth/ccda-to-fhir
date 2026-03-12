@@ -111,7 +111,9 @@ class TestUSRealmHeaderValidation:
             </custodian>
         </ClinicalDocument>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*realmCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*realmCode"
+        ):
             parse_ccda_fragment(xml, ClinicalDocument)
 
     def test_us_realm_header_wrong_realm_code(self) -> None:
@@ -178,7 +180,9 @@ class TestUSRealmHeaderValidation:
             </custodian>
         </ClinicalDocument>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*typeId"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*typeId"
+        ):
             parse_ccda_fragment(xml, ClinicalDocument)
 
     def test_us_realm_header_wrong_type_id_root(self) -> None:
@@ -212,7 +216,9 @@ class TestUSRealmHeaderValidation:
             </custodian>
         </ClinicalDocument>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="typeId root SHALL be '2.16.840.1.113883.1.3'"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="typeId root SHALL be '2.16.840.1.113883.1.3'"
+        ):
             parse_ccda_fragment(xml, ClinicalDocument)
 
     def test_us_realm_header_wrong_type_id_extension(self) -> None:
@@ -246,7 +252,9 @@ class TestUSRealmHeaderValidation:
             </custodian>
         </ClinicalDocument>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="typeId extension SHALL be 'POCD_HD000040'"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="typeId extension SHALL be 'POCD_HD000040'"
+        ):
             parse_ccda_fragment(xml, ClinicalDocument)
 
     def test_us_realm_header_missing_id(self) -> None:
@@ -312,7 +320,9 @@ class TestUSRealmHeaderValidation:
             </custodian>
         </ClinicalDocument>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"
+        ):
             parse_ccda_fragment(xml, ClinicalDocument)
 
     def test_us_realm_header_missing_effective_time(self) -> None:
@@ -345,7 +355,9 @@ class TestUSRealmHeaderValidation:
             </custodian>
         </ClinicalDocument>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"
+        ):
             parse_ccda_fragment(xml, ClinicalDocument)
 
     def test_us_realm_header_missing_confidentiality_code(self) -> None:
@@ -378,7 +390,9 @@ class TestUSRealmHeaderValidation:
             </custodian>
         </ClinicalDocument>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*confidentialityCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*confidentialityCode"
+        ):
             parse_ccda_fragment(xml, ClinicalDocument)
 
     def test_us_realm_header_missing_record_target(self) -> None:
@@ -407,7 +421,9 @@ class TestUSRealmHeaderValidation:
             </custodian>
         </ClinicalDocument>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*recordTarget"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain at least one.*recordTarget"
+        ):
             parse_ccda_fragment(xml, ClinicalDocument)
 
     def test_us_realm_header_missing_author(self) -> None:
@@ -435,7 +451,9 @@ class TestUSRealmHeaderValidation:
             </custodian>
         </ClinicalDocument>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*author"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain at least one.*author"
+        ):
             parse_ccda_fragment(xml, ClinicalDocument)
 
     def test_us_realm_header_missing_custodian(self) -> None:
@@ -462,5 +480,7 @@ class TestUSRealmHeaderValidation:
             </author>
         </ClinicalDocument>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*custodian"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*custodian"
+        ):
             parse_ccda_fragment(xml, ClinicalDocument)

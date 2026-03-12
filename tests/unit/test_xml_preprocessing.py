@@ -114,7 +114,7 @@ class TestIdempotence:
         # Should be unchanged
         assert result == xml
         # Count occurrences - should be exactly 1
-        assert result.count('xmlns:xsi=') == 1
+        assert result.count("xmlns:xsi=") == 1
 
     def test_does_not_add_sdtc_when_already_declared(self):
         """Do not add xmlns:sdtc if already present."""
@@ -127,7 +127,7 @@ class TestIdempotence:
         # Should be unchanged
         assert result == xml
         # Count occurrences - should be exactly 1
-        assert result.count('xmlns:sdtc=') == 1
+        assert result.count("xmlns:sdtc=") == 1
 
     def test_idempotent_double_preprocessing(self):
         """Running preprocessing twice produces same result as once."""
@@ -231,7 +231,7 @@ class TestEdgeCases:
         result = preprocess_ccda_namespaces(xml)
 
         # Should add namespace to fragments too (for test fixtures)
-        assert 'xmlns:xsi=' in result
+        assert "xmlns:xsi=" in result
         assert '<section xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' in result
 
     def test_handles_self_closing_clinical_document(self):
@@ -258,7 +258,7 @@ class TestEdgeCases:
         result = preprocess_ccda_namespaces(xml)
 
         # Should have exactly one xmlns:xsi declaration
-        assert result.count('xmlns:xsi=') == 1
+        assert result.count("xmlns:xsi=") == 1
 
 
 class TestStandardsCompliance:
@@ -309,16 +309,13 @@ class TestStandardsCompliance:
         root = etree.fromstring(result.encode("utf-8"))
 
         # Find the value element and check xsi:type is accessible
-        namespaces = {
-            'hl7': 'urn:hl7-org:v3',
-            'xsi': 'http://www.w3.org/2001/XMLSchema-instance'
-        }
-        value_elem = root.find('.//hl7:value', namespaces)
+        namespaces = {"hl7": "urn:hl7-org:v3", "xsi": "http://www.w3.org/2001/XMLSchema-instance"}
+        value_elem = root.find(".//hl7:value", namespaces)
         assert value_elem is not None
 
         # xsi:type should be accessible as attribute
-        xsi_type = value_elem.get('{http://www.w3.org/2001/XMLSchema-instance}type')
-        assert xsi_type == 'CD'
+        xsi_type = value_elem.get("{http://www.w3.org/2001/XMLSchema-instance}type")
+        assert xsi_type == "CD"
 
 
 class TestRealWorldScenarios:
@@ -432,7 +429,7 @@ class TestBeforeAfterParsing:
 
         # Step 1: Verify XML fails to parse without preprocessing
         with pytest.raises(etree.XMLSyntaxError) as exc_info:
-            etree.fromstring(xml.encode('utf-8'))
+            etree.fromstring(xml.encode("utf-8"))
 
         # Verify it's the expected namespace error
         assert "Namespace prefix xsi" in str(exc_info.value)
@@ -442,7 +439,7 @@ class TestBeforeAfterParsing:
         preprocessed = preprocess_ccda_namespaces(xml)
 
         # Step 3: Verify preprocessed XML parses successfully
-        root = etree.fromstring(preprocessed.encode('utf-8'))
+        root = etree.fromstring(preprocessed.encode("utf-8"))
         assert root is not None
         assert root.tag == "{urn:hl7-org:v3}ClinicalDocument"
 
@@ -456,13 +453,13 @@ class TestBeforeAfterParsing:
 
         # Should fail without preprocessing
         with pytest.raises(etree.XMLSyntaxError) as exc_info:
-            etree.fromstring(xml.encode('utf-8'))
+            etree.fromstring(xml.encode("utf-8"))
 
         assert "Namespace prefix sdtc" in str(exc_info.value)
 
         # Should succeed after preprocessing
         preprocessed = preprocess_ccda_namespaces(xml)
-        root = etree.fromstring(preprocessed.encode('utf-8'))
+        root = etree.fromstring(preprocessed.encode("utf-8"))
         assert root is not None
 
     def test_multiple_xsi_attributes_in_same_document(self):
@@ -479,15 +476,15 @@ class TestBeforeAfterParsing:
 
         # Should fail without preprocessing
         with pytest.raises(etree.XMLSyntaxError):
-            etree.fromstring(xml.encode('utf-8'))
+            etree.fromstring(xml.encode("utf-8"))
 
         # Should succeed after preprocessing with single namespace declaration
         preprocessed = preprocess_ccda_namespaces(xml)
-        root = etree.fromstring(preprocessed.encode('utf-8'))
+        root = etree.fromstring(preprocessed.encode("utf-8"))
         assert root is not None
 
         # Verify only one xmlns:xsi declaration was added
-        assert preprocessed.count('xmlns:xsi=') == 1
+        assert preprocessed.count("xmlns:xsi=") == 1
 
     def test_xsi_type_and_xsi_schemaLocation_together(self):
         """Test document with both xsi:type and xsi:schemaLocation."""
@@ -498,11 +495,11 @@ class TestBeforeAfterParsing:
 
         # Should fail without preprocessing
         with pytest.raises(etree.XMLSyntaxError):
-            etree.fromstring(xml.encode('utf-8'))
+            etree.fromstring(xml.encode("utf-8"))
 
         # Should succeed after preprocessing
         preprocessed = preprocess_ccda_namespaces(xml)
-        root = etree.fromstring(preprocessed.encode('utf-8'))
+        root = etree.fromstring(preprocessed.encode("utf-8"))
         assert root is not None
 
         # Should have xmlns:xsi added

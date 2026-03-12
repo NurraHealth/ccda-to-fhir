@@ -10,9 +10,7 @@ from .conftest import wrap_in_ccda_document
 RESULTS_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.3.1"
 
 
-def _find_all_resources_in_bundle(
-    bundle: JSONObject, resource_type: str
-) -> list[JSONObject]:
+def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> list[JSONObject]:
     """Find all resources of the given type in a FHIR Bundle."""
     resources = []
     for entry in bundle.get("entry", []):
@@ -101,10 +99,7 @@ class TestObservationNullFlavor:
         assert len(observations) > 0
 
         # Find the leaf observation with the glucose code
-        leaf_obs = [
-            o for o in observations
-            if not o.get("hasMember") and "code" in o
-        ]
+        leaf_obs = [o for o in observations if not o.get("hasMember") and "code" in o]
         assert len(leaf_obs) >= 1, "Should have at least one leaf observation"
 
         # Check that at least one observation has the glucose code

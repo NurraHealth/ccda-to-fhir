@@ -6,6 +6,7 @@ These tests validate end-to-end conversion from C-CDA to FHIR PractitionerRole.
 
 from __future__ import annotations
 
+import contextlib
 from textwrap import dedent
 
 from ccda_to_fhir.convert import convert_document
@@ -36,9 +37,7 @@ def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> lis
 class TestPractitionerRoleConversion:
     """E2E tests for C-CDA Author to FHIR PractitionerRole conversion."""
 
-    def test_creates_practitioner_role_in_bundle(
-        self, ccda_author: str
-    ) -> None:
+    def test_creates_practitioner_role_in_bundle(self, ccda_author: str) -> None:
         """Test that author creates a PractitionerRole resource in the bundle."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -47,9 +46,7 @@ class TestPractitionerRoleConversion:
         assert practitioner_role is not None
         assert practitioner_role["resourceType"] == "PractitionerRole"
 
-    def test_practitioner_role_links_to_practitioner(
-        self, ccda_author: str
-    ) -> None:
+    def test_practitioner_role_links_to_practitioner(self, ccda_author: str) -> None:
         """Test that PractitionerRole references the Practitioner."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -66,9 +63,7 @@ class TestPractitionerRoleConversion:
         expected_ref = f"urn:uuid:{practitioner['id']}"
         assert practitioner_role["practitioner"]["reference"] == expected_ref
 
-    def test_practitioner_role_links_to_organization(
-        self, ccda_author: str
-    ) -> None:
+    def test_practitioner_role_links_to_organization(self, ccda_author: str) -> None:
         """Test that PractitionerRole references the Organization."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -85,9 +80,7 @@ class TestPractitionerRoleConversion:
         expected_ref = f"urn:uuid:{organization['id']}"
         assert practitioner_role["organization"]["reference"] == expected_ref
 
-    def test_specialty_in_practitioner_role_not_practitioner(
-        self, ccda_author: str
-    ) -> None:
+    def test_specialty_in_practitioner_role_not_practitioner(self, ccda_author: str) -> None:
         """Test that specialty is in PractitionerRole, NOT Practitioner.qualification.
 
         This is the key fix: assignedAuthor/code should map to PractitionerRole.specialty,
@@ -103,16 +96,14 @@ class TestPractitionerRoleConversion:
         assert practitioner_role is not None
 
         # ❌ Practitioner should NOT have qualification field
-        assert "qualification" not in practitioner, \
+        assert "qualification" not in practitioner, (
             "Specialty should NOT be in Practitioner.qualification"
+        )
 
         # ✅ PractitionerRole SHOULD have specialty field
-        assert "specialty" in practitioner_role, \
-            "Specialty SHOULD be in PractitionerRole.specialty"
+        assert "specialty" in practitioner_role, "Specialty SHOULD be in PractitionerRole.specialty"
 
-    def test_specialty_code_and_display(
-        self, ccda_author: str
-    ) -> None:
+    def test_specialty_code_and_display(self, ccda_author: str) -> None:
         """Test that specialty code and display are correctly converted."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -132,9 +123,7 @@ class TestPractitionerRoleConversion:
         assert coding["code"] == "207Q00000X"
         assert coding["display"] == "Family Medicine"
 
-    def test_nucc_taxonomy_system(
-        self, ccda_author: str
-    ) -> None:
+    def test_nucc_taxonomy_system(self, ccda_author: str) -> None:
         """Test that NUCC taxonomy code system is correctly mapped."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -146,9 +135,7 @@ class TestPractitionerRoleConversion:
         # NUCC Taxonomy OID (2.16.840.1.113883.6.101) should map to FHIR URI
         assert coding["system"] == "http://nucc.org/provider-taxonomy"
 
-    def test_generated_id_is_stable(
-        self, ccda_author: str
-    ) -> None:
+    def test_generated_id_is_stable(self, ccda_author: str) -> None:
         """Test that generated ID uses UUID v4 and references are consistent within conversion."""
         import uuid as uuid_module
 
@@ -161,7 +148,9 @@ class TestPractitionerRoleConversion:
 
         # ID should be composite format: role-{practitioner_uuid}-{organization_uuid}
         role_id = role["id"]
-        assert role_id.startswith("role-"), f"PractitionerRole ID should start with 'role-': {role_id}"
+        assert role_id.startswith("role-"), (
+            f"PractitionerRole ID should start with 'role-': {role_id}"
+        )
 
         # Verify practitioner reference uses consistent ID
         assert "practitioner" in role
@@ -169,24 +158,26 @@ class TestPractitionerRoleConversion:
 
         # Extract practitioner UUID from composite role ID and verify it matches
         # Format: role-{practitioner_uuid}-{organization_uuid}
-        id_parts = role_id.split("-", 1)  # Split into ['role', '{practitioner_uuid}-{organization_uuid}']
+        id_parts = role_id.split(
+            "-", 1
+        )  # Split into ['role', '{practitioner_uuid}-{organization_uuid}']
         if len(id_parts) == 2:
             # Validate the practitioner UUID in the composite ID
-            uuid_part = id_parts[1].split("-", 8)[0:8]  # Get first 8 parts (5 UUID segments with 3 extra hyphens from 2nd UUID)
+            uuid_part = id_parts[1].split("-", 8)[
+                0:8
+            ]  # Get first 8 parts (5 UUID segments with 3 extra hyphens from 2nd UUID)
             practitioner_uuid_str = "-".join(uuid_part[:5])  # First UUID
-            try:
+            with contextlib.suppress(ValueError, IndexError):
                 uuid_module.UUID(practitioner_uuid_str, version=4)
-            except (ValueError, IndexError):
-                pass  # Composite ID format may vary, continue with reference check
 
         # Find the practitioner in the bundle
         practitioner = _find_resource_in_bundle(bundle, "Practitioner")
         assert practitioner is not None
-        assert practitioner["id"] == practitioner_id, "PractitionerRole should reference the correct Practitioner"
+        assert practitioner["id"] == practitioner_id, (
+            "PractitionerRole should reference the correct Practitioner"
+        )
 
-    def test_multiple_authors_create_multiple_roles(
-        self
-    ) -> None:
+    def test_multiple_authors_create_multiple_roles(self) -> None:
         """Test that multiple authors create multiple PractitionerRole resources."""
         # Create document with two different authors
         author1 = """
@@ -279,9 +270,7 @@ class TestPractitionerRoleConversion:
         assert "207Q00000X" in specialties  # Family Medicine
         assert "207R00000X" in specialties  # Internal Medicine
 
-    def test_same_practitioner_different_orgs(
-        self
-    ) -> None:
+    def test_same_practitioner_different_orgs(self) -> None:
         """Test that same practitioner at different organizations creates separate roles."""
         # Same practitioner (same NPI) at two different organizations
         author1 = """
@@ -374,22 +363,14 @@ class TestPractitionerRoleConversion:
         assert len(practitioner_roles) == 2
 
         # Both roles should reference the same practitioner
-        practitioner_refs = [
-            role["practitioner"]["reference"]
-            for role in practitioner_roles
-        ]
+        practitioner_refs = [role["practitioner"]["reference"] for role in practitioner_roles]
         assert practitioner_refs[0] == practitioner_refs[1]
 
         # But roles should reference different organizations
-        org_refs = [
-            role["organization"]["reference"]
-            for role in practitioner_roles
-        ]
+        org_refs = [role["organization"]["reference"] for role in practitioner_roles]
         assert org_refs[0] != org_refs[1]
 
-    def test_practitioner_role_has_id(
-        self, ccda_author: str
-    ) -> None:
+    def test_practitioner_role_has_id(self, ccda_author: str) -> None:
         """Test that PractitionerRole has a valid ID."""
         ccda_doc = wrap_in_ccda_document("", author=ccda_author)
         bundle = convert_document(ccda_doc)["bundle"]

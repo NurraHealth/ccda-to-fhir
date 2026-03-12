@@ -534,6 +534,7 @@ class TestOptionalField:
 
     def test_optional_field_returns_default_on_exception(self, converter):
         """Test that optional_field returns default when converter raises."""
+
         def bad_converter(x):
             raise ValueError("bad input")
 

@@ -4,8 +4,9 @@ Tests end-to-end conversion of observations containing CO values
 from C-CDA to FHIR.
 """
 
-from ccda_to_fhir import convert_document
 from fhir.resources.bundle import Bundle
+
+from ccda_to_fhir import convert_document
 
 
 def test_observation_with_co_value_converts_to_codeable_concept():
@@ -82,9 +83,7 @@ def test_observation_with_co_value_converts_to_codeable_concept():
 
     # Find Observation resource
     observation = next(
-        (e.resource for e in bundle.entry
-         if e.resource.get_resource_type() == "Observation"),
-        None
+        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Observation"), None
     )
 
     assert observation is not None, "Should have created Observation resource"
@@ -176,9 +175,7 @@ def test_observation_with_co_stage_classification():
 
     # Find Observation resource
     observation = next(
-        (e.resource for e in bundle.entry
-         if e.resource.get_resource_type() == "Observation"),
-        None
+        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Observation"), None
     )
 
     assert observation is not None
@@ -196,8 +193,7 @@ def test_observation_with_co_stage_classification():
     # Check for translation if present
     if len(observation.valueCodeableConcept.coding) > 1:
         translation_coding = next(
-            (c for c in observation.valueCodeableConcept.coding if c.code == "LA6754-1"),
-            None
+            (c for c in observation.valueCodeableConcept.coding if c.code == "LA6754-1"), None
         )
         if translation_coding:
             assert translation_coding.display == "Stage II"
@@ -277,9 +273,7 @@ def test_observation_with_co_severity_scale():
 
     # Find Observation resource
     observation = next(
-        (e.resource for e in bundle.entry
-         if e.resource.get_resource_type() == "Observation"),
-        None
+        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Observation"), None
     )
 
     assert observation is not None
@@ -374,8 +368,7 @@ def test_multiple_observations_with_different_co_values():
 
     # Find all Observation resources
     observations = [
-        e.resource for e in bundle.entry
-        if e.resource.get_resource_type() == "Observation"
+        e.resource for e in bundle.entry if e.resource.get_resource_type() == "Observation"
     ]
 
     assert len(observations) == 2, "Should have two Observation resources"

@@ -2,8 +2,9 @@
 
 import datetime
 
-from ccda_to_fhir.convert import convert_document
 from fhir.resources.R4B.bundle import Bundle
+
+from ccda_to_fhir.convert import convert_document
 
 
 def test_composition_date_with_valid_effective_time():
@@ -65,8 +66,7 @@ def test_composition_date_with_valid_effective_time():
 
     # Find Composition
     composition = next(
-        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Composition"),
-        None
+        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Composition"), None
     )
 
     assert composition is not None
@@ -136,8 +136,7 @@ def test_composition_date_with_missing_effective_time():
 
     # Find Composition
     composition = next(
-        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Composition"),
-        None
+        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Composition"), None
     )
 
     assert composition is not None
@@ -210,8 +209,7 @@ def test_composition_date_with_invalid_effective_time():
 
     # Find Composition
     composition = next(
-        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Composition"),
-        None
+        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Composition"), None
     )
 
     assert composition is not None
@@ -284,8 +282,7 @@ def test_composition_date_with_null_flavor_effective_time():
 
     # Find Composition
     composition = next(
-        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Composition"),
-        None
+        (e.resource for e in bundle.entry if e.resource.get_resource_type() == "Composition"), None
     )
 
     assert composition is not None

@@ -8,9 +8,9 @@ input is minimal or has missing optional data.
 from pathlib import Path
 
 import pytest
+from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir import convert_document
-from fhir.resources.bundle import Bundle
 from tests.integration.conftest import wrap_in_ccda_document
 
 
@@ -171,9 +171,7 @@ def test_diagnostic_report_has_required_fields(ccda_result):
     """
     # Wrap the result organizer fragment in a full C-CDA document
     xml = wrap_in_ccda_document(
-        ccda_result,
-        section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-        section_code="30954-2"
+        ccda_result, section_template_id="2.16.840.1.113883.10.20.22.2.3.1", section_code="30954-2"
     )
 
     bundle_dict = convert_document(xml)["bundle"]
@@ -297,9 +295,7 @@ def test_observation_has_required_fields(ccda_result):
     """
     # Wrap the result organizer fragment in a full C-CDA document
     xml = wrap_in_ccda_document(
-        ccda_result,
-        section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-        section_code="30954-2"
+        ccda_result, section_template_id="2.16.840.1.113883.10.20.22.2.3.1", section_code="30954-2"
     )
 
     bundle_dict = convert_document(xml)["bundle"]

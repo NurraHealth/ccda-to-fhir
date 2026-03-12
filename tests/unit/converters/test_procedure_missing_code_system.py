@@ -4,8 +4,6 @@ This tests the fix for the bug where a procedure with a code value but no code_s
 would result in `code: null` in the FHIR output, causing validation errors.
 """
 
-import pytest
-
 from ccda_to_fhir.ccda.models.datatypes import CE, CS, II
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.converters.procedure import ProcedureConverter
@@ -31,9 +29,7 @@ class TestProcedureMissingCodeSystem:
         proc.status_code = CS(code="completed")
         return proc
 
-    def test_code_with_missing_code_system_uses_data_absent_reason(
-        self, mock_reference_registry
-    ):
+    def test_code_with_missing_code_system_uses_data_absent_reason(self, mock_reference_registry):
         """Test that code with value but no code_system gets data-absent-reason.
 
         This is the key bug fix: previously this would result in code=null.
@@ -68,9 +64,7 @@ class TestProcedureMissingCodeSystem:
         # Should have fallback text
         assert result["code"].get("text") == "Procedure code not specified"
 
-    def test_code_with_code_system_creates_valid_codeable_concept(
-        self, mock_reference_registry
-    ):
+    def test_code_with_code_system_creates_valid_codeable_concept(self, mock_reference_registry):
         """Test that code with both value and code_system works normally."""
         proc = self.create_procedure_with_code(
             code="80146002",
@@ -92,9 +86,7 @@ class TestProcedureMissingCodeSystem:
         assert result["code"]["coding"][0]["system"] == "http://snomed.info/sct"
         assert result["code"]["coding"][0]["display"] == "Appendectomy"
 
-    def test_code_with_display_name_but_no_code_system_uses_text(
-        self, mock_reference_registry
-    ):
+    def test_code_with_display_name_but_no_code_system_uses_text(self, mock_reference_registry):
         """Test that code with display_name but no code_system uses text fallback.
 
         When we have a display_name, we should use it as the text even if

@@ -25,7 +25,6 @@ from .datatypes import (
     II,
     IVL_PQ,
     IVL_TS,
-    ObservationValueType,
     ON,
     PIVL_TS,
     PQ,
@@ -33,6 +32,7 @@ from .datatypes import (
     SXCM_TS,
     TS,
     CDAModel,
+    ObservationValueType,
 )
 from .entry_relationship import EntryRelationship
 from .participant import Participant
@@ -239,12 +239,11 @@ class SubstanceAdministration(CDAModel):
             return False
 
         for tid in self.template_id:
-            if tid.root == template_id:
-                if extension is None or tid.extension == extension:
-                    return True
+            if tid.root == template_id and (extension is None or tid.extension == extension):
+                return True
         return False
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_medication_activity(self) -> SubstanceAdministration:
         """Validate Medication Activity template (2.16.840.1.113883.10.20.22.4.16).
 
@@ -327,7 +326,7 @@ class SubstanceAdministration(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_immunization_activity(self) -> SubstanceAdministration:
         """Validate Immunization Activity template (2.16.840.1.113883.10.20.22.4.52).
 

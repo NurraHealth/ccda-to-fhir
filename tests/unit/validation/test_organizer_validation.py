@@ -83,7 +83,9 @@ class TestVitalSignsOrganizerValidation:
             </component>
         </organizer>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"
+        ):
             parse_ccda_fragment(xml, Organizer)
 
     def test_vital_signs_organizer_missing_status_code(self) -> None:
@@ -103,7 +105,9 @@ class TestVitalSignsOrganizerValidation:
             </component>
         </organizer>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"
+        ):
             parse_ccda_fragment(xml, Organizer)
 
     def test_vital_signs_organizer_wrong_status_code(self) -> None:
@@ -124,7 +128,9 @@ class TestVitalSignsOrganizerValidation:
             </component>
         </organizer>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"
+        ):
             parse_ccda_fragment(xml, Organizer)
 
     def test_vital_signs_organizer_missing_effective_time(self) -> None:
@@ -144,7 +150,9 @@ class TestVitalSignsOrganizerValidation:
             </component>
         </organizer>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"
+        ):
             parse_ccda_fragment(xml, Organizer)
 
     def test_vital_signs_organizer_missing_component(self) -> None:
@@ -160,7 +168,9 @@ class TestVitalSignsOrganizerValidation:
             <effectiveTime value="20231201120000"/>
         </organizer>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*component"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain at least one.*component"
+        ):
             parse_ccda_fragment(xml, Organizer)
 
 
@@ -230,7 +240,9 @@ class TestResultOrganizerValidation:
             </component>
         </organizer>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"
+        ):
             parse_ccda_fragment(xml, Organizer)
 
     def test_result_organizer_missing_status_code(self) -> None:
@@ -249,7 +261,9 @@ class TestResultOrganizerValidation:
             </component>
         </organizer>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"
+        ):
             parse_ccda_fragment(xml, Organizer)
 
     def test_result_organizer_missing_component(self) -> None:
@@ -264,7 +278,9 @@ class TestResultOrganizerValidation:
             <statusCode code="completed"/>
         </organizer>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*component"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain at least one.*component"
+        ):
             parse_ccda_fragment(xml, Organizer)
 
     def test_non_result_organizer_skips_validation(self) -> None:

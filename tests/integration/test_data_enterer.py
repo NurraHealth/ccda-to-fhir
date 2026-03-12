@@ -58,7 +58,7 @@ class TestDataEntererConversion:
                     </assignedPerson>
                 </assignedEntity>
             </dataEnterer>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -70,9 +70,13 @@ class TestDataEntererConversion:
 
         # Find Data Enterer extension (correct URL per official spec)
         data_enterer_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"
+            ),
+            None,
         )
         assert data_enterer_ext is not None
 
@@ -97,7 +101,7 @@ class TestDataEntererConversion:
                     </assignedPerson>
                 </assignedEntity>
             </dataEnterer>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -106,9 +110,13 @@ class TestDataEntererConversion:
 
         # Find Data Enterer extension
         data_enterer_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"
+            ),
+            None,
         )
         assert data_enterer_ext is not None
 
@@ -133,7 +141,7 @@ class TestDataEntererConversion:
                     </assignedPerson>
                 </assignedEntity>
             </dataEnterer>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -142,9 +150,13 @@ class TestDataEntererConversion:
 
         # Find Data Enterer extension
         data_enterer_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"
+            ),
+            None,
         )
         assert data_enterer_ext is not None
 
@@ -170,7 +182,7 @@ class TestDataEntererConversion:
                     </assignedPerson>
                 </assignedEntity>
             </dataEnterer>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -182,9 +194,12 @@ class TestDataEntererConversion:
 
         # Find the data enterer practitioner by NPI identifier
         data_enterer_practitioner = next(
-            (p for p in practitioners
-             if any(id.get("value") == "9876543210" for id in p.get("identifier", []))),
-            None
+            (
+                p
+                for p in practitioners
+                if any(id.get("value") == "9876543210" for id in p.get("identifier", []))
+            ),
+            None,
         )
         assert data_enterer_practitioner is not None
 
@@ -212,7 +227,7 @@ class TestDataEntererConversion:
                     </assignedPerson>
                 </assignedEntity>
             </dataEnterer>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -221,18 +236,24 @@ class TestDataEntererConversion:
 
         # Find the data enterer practitioner by NPI identifier
         data_enterer_practitioner = next(
-            (p for p in practitioners
-             if any(id.get("value") == "9876543210" for id in p.get("identifier", []))),
-            None
+            (
+                p
+                for p in practitioners
+                if any(id.get("value") == "9876543210" for id in p.get("identifier", []))
+            ),
+            None,
         )
         assert data_enterer_practitioner is not None
 
         # Verify NPI identifier
         assert "identifier" in data_enterer_practitioner
         npi_identifier = next(
-            (id for id in data_enterer_practitioner["identifier"]
-             if id.get("system") == "http://hl7.org/fhir/sid/us-npi"),
-            None
+            (
+                id
+                for id in data_enterer_practitioner["identifier"]
+                if id.get("system") == "http://hl7.org/fhir/sid/us-npi"
+            ),
+            None,
         )
         assert npi_identifier is not None
         assert npi_identifier["value"] == "9876543210"
@@ -254,7 +275,7 @@ class TestDataEntererConversion:
                     </assignedPerson>
                 </assignedEntity>
             </dataEnterer>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -263,9 +284,13 @@ class TestDataEntererConversion:
 
         # Find Data Enterer extension
         data_enterer_ext = next(
-            (ext for ext in composition["extension"]
-             if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"),
-            None
+            (
+                ext
+                for ext in composition["extension"]
+                if ext.get("url")
+                == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"
+            ),
+            None,
         )
         assert data_enterer_ext is not None
 
@@ -275,9 +300,12 @@ class TestDataEntererConversion:
         # Find data enterer practitioner
         practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
         data_enterer_practitioner = next(
-            (p for p in practitioners
-             if any(id.get("value") == "9876543210" for id in p.get("identifier", []))),
-            None
+            (
+                p
+                for p in practitioners
+                if any(id.get("value") == "9876543210" for id in p.get("identifier", []))
+            ),
+            None,
         )
         assert data_enterer_practitioner is not None
 
@@ -309,16 +337,19 @@ class TestDataEntererConversion:
                     </assignedPerson>
                 </assignedEntity>
             </dataEnterer>
-            """
+            """,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
         # Find data enterer practitioner
         practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
         data_enterer_practitioner = next(
-            (p for p in practitioners
-             if any(id.get("value") == "9876543210" for id in p.get("identifier", []))),
-            None
+            (
+                p
+                for p in practitioners
+                if any(id.get("value") == "9876543210" for id in p.get("identifier", []))
+            ),
+            None,
         )
         assert data_enterer_practitioner is not None
 
@@ -350,8 +381,12 @@ class TestDataEntererConversion:
         # Should not have Data Enterer extension
         if "extension" in composition:
             data_enterer_ext = next(
-                (ext for ext in composition["extension"]
-                 if ext.get("url") == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"),
-                None
+                (
+                    ext
+                    for ext in composition["extension"]
+                    if ext.get("url")
+                    == "http://hl7.org/fhir/us/ccda/StructureDefinition/DataEntererExtension"
+                ),
+                None,
             )
             assert data_enterer_ext is None

@@ -17,17 +17,16 @@ from ccda_to_fhir.ccda.models.struc_doc import (
     TableRow,
 )
 from ccda_to_fhir.utils.struc_doc_utils import (
-    extract_cell_text,
     _extract_row_text,
     _extract_table_text,
     _extract_tbody_text,
     _search_table_for_id,
     _search_table_section_for_id,
+    extract_cell_text,
     extract_text_by_id,
     narrative_to_html,
     narrative_to_plain_text,
 )
-
 
 # ---------------------------------------------------------------------------
 # extract_cell_text — the function that was broken by the missing import
@@ -46,16 +45,12 @@ class TestExtractCellText:
         assert extract_cell_text(cell) == "header text"
 
     def test_table_data_cell_with_content(self) -> None:
-        cell = TableDataCell(
-            content=[Content(text="first"), Content(text="second")]
-        )
+        cell = TableDataCell(content=[Content(text="first"), Content(text="second")])
         assert extract_cell_text(cell) == "first second"
 
     def test_table_data_cell_with_paragraphs(self) -> None:
         """This is the case that triggered the NameError — paragraphs only exist on TableDataCell."""
-        cell = TableDataCell(
-            paragraph=[Paragraph(text="para 1"), Paragraph(text="para 2")]
-        )
+        cell = TableDataCell(paragraph=[Paragraph(text="para 1"), Paragraph(text="para 2")])
         result = extract_cell_text(cell)
         assert "para 1" in result
         assert "para 2" in result
@@ -98,11 +93,7 @@ class TestExtractTextById:
 
     def test_finds_content_in_paragraph_by_id(self) -> None:
         narrative = StrucDocText(
-            paragraph=[
-                Paragraph(
-                    content=[Content(text="nested", id_attr="c1")]
-                )
-            ]
+            paragraph=[Paragraph(content=[Content(text="nested", id_attr="c1")])]
         )
         assert extract_text_by_id(narrative, "c1") == "nested"
 
@@ -163,9 +154,7 @@ class TestExtractTextById:
         assert "Follow-up visit." in result
 
     def test_finds_root_content_by_id(self) -> None:
-        narrative = StrucDocText(
-            content=[Content(text="root content", id_attr="rc1")]
-        )
+        narrative = StrucDocText(content=[Content(text="root content", id_attr="rc1")])
         assert extract_text_by_id(narrative, "rc1") == "root content"
 
     def test_returns_none_for_missing_id(self) -> None:
@@ -183,9 +172,7 @@ class TestExtractTextById:
 
 class TestTableTextExtraction:
     def test_extract_row_text(self) -> None:
-        row = TableRow(
-            td=[TableDataCell(text="cell1"), TableDataCell(text="cell2")]
-        )
+        row = TableRow(td=[TableDataCell(text="cell1"), TableDataCell(text="cell2")])
         assert _extract_row_text(row) == "cell1 cell2"
 
     def test_extract_row_with_headers_and_data(self) -> None:
@@ -209,13 +196,7 @@ class TestTableTextExtraction:
         assert "row2" in result
 
     def test_extract_table_text(self) -> None:
-        table = Table(
-            tbody=[
-                TableBody(
-                    tr=[TableRow(td=[TableDataCell(text="data")])]
-                )
-            ]
-        )
+        table = Table(tbody=[TableBody(tr=[TableRow(td=[TableDataCell(text="data")])])])
         assert "data" in _extract_table_text(table)
 
     def test_search_table_for_id_on_table(self) -> None:
@@ -261,24 +242,14 @@ class TestTableTextExtraction:
 
 class TestNarrativeToPlainText:
     def test_paragraphs(self) -> None:
-        narrative = StrucDocText(
-            paragraph=[Paragraph(text="Hello"), Paragraph(text="World")]
-        )
+        narrative = StrucDocText(paragraph=[Paragraph(text="Hello"), Paragraph(text="World")])
         result = narrative_to_plain_text(narrative)
         assert "Hello" in result
         assert "World" in result
 
     def test_table(self) -> None:
         narrative = StrucDocText(
-            table=[
-                Table(
-                    tbody=[
-                        TableBody(
-                            tr=[TableRow(td=[TableDataCell(text="cell")])]
-                        )
-                    ]
-                )
-            ]
+            table=[Table(tbody=[TableBody(tr=[TableRow(td=[TableDataCell(text="cell")])])])]
         )
         assert "cell" in narrative_to_plain_text(narrative)
 
@@ -290,9 +261,7 @@ class TestNarrativeToPlainText:
         assert narrative_to_plain_text(narrative) == "root"
 
     def test_content_elements(self) -> None:
-        narrative = StrucDocText(
-            content=[Content(text="inline1"), Content(text="inline2")]
-        )
+        narrative = StrucDocText(content=[Content(text="inline1"), Content(text="inline2")])
         result = narrative_to_plain_text(narrative)
         assert "inline1" in result
         assert "inline2" in result
@@ -314,15 +283,7 @@ class TestNarrativeToHtml:
         narrative = StrucDocText(
             table=[
                 Table(
-                    tbody=[
-                        TableBody(
-                            tr=[
-                                TableRow(
-                                    td=[TableDataCell(text="val", id_attr="td1")]
-                                )
-                            ]
-                        )
-                    ]
+                    tbody=[TableBody(tr=[TableRow(td=[TableDataCell(text="val", id_attr="td1")])])]
                 )
             ]
         )
@@ -343,11 +304,7 @@ class TestNarrativeToHtml:
                         TableBody(
                             tr=[
                                 TableRow(
-                                    td=[
-                                        TableDataCell(
-                                            paragraph=[Paragraph(text="note paragraph")]
-                                        )
-                                    ]
+                                    td=[TableDataCell(paragraph=[Paragraph(text="note paragraph")])]
                                 )
                             ]
                         )

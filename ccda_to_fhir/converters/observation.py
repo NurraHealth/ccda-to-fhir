@@ -58,7 +58,9 @@ class ObservationConverter(BaseConverter[Observation]):
         """
         super().__init__(*args, **kwargs)
         # Track seen observation IDs to detect invalid C-CDA documents that reuse IDs
-        self.seen_observation_ids = seen_observation_ids if seen_observation_ids is not None else set()
+        self.seen_observation_ids = (
+            seen_observation_ids if seen_observation_ids is not None else set()
+        )
 
     def convert(self, ccda_model: Observation, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Observation to a FHIR Observation.
@@ -125,6 +127,7 @@ class ObservationConverter(BaseConverter[Observation]):
                             f"Generating unique ID to avoid duplicate Observation resources."
                         )
                         from ccda_to_fhir.id_generator import generate_id
+
                         fhir_obs["id"] = generate_id()
                     else:
                         # First time seeing this observation ID - use it
@@ -257,7 +260,10 @@ class ObservationConverter(BaseConverter[Observation]):
                     obs_range = ref_range.observation_range
                     if obs_range.interpretation_code:
                         # Only include if interpretationCode is "N" (Normal)
-                        if obs_range.interpretation_code.code and obs_range.interpretation_code.code.upper() == "N":
+                        if (
+                            obs_range.interpretation_code.code
+                            and obs_range.interpretation_code.code.upper() == "N"
+                        ):
                             fhir_ref_range = self._convert_reference_range(obs_range)
                             if fhir_ref_range:
                                 ref_ranges.append(fhir_ref_range)
@@ -280,6 +286,7 @@ class ObservationConverter(BaseConverter[Observation]):
         # 14. Pregnancy observation special handling
         if observation.template_id:
             from ccda_to_fhir.constants import TemplateIds
+
             is_pregnancy = any(
                 t.root == TemplateIds.PREGNANCY_OBSERVATION
                 for t in observation.template_id
@@ -297,7 +304,7 @@ class ObservationConverter(BaseConverter[Observation]):
         # "If there is no component or hasMember element then either a value[x] or
         # a data absent reason must be present"
         # Add dataAbsentReason as final step if no value/component/hasMember
-        has_value = any(k.startswith("value") for k in fhir_obs.keys())
+        has_value = any(k.startswith("value") for k in fhir_obs)
         has_data_absent = "dataAbsentReason" in fhir_obs
         has_component = "component" in fhir_obs
         has_has_member = "hasMember" in fhir_obs
@@ -306,33 +313,38 @@ class ObservationConverter(BaseConverter[Observation]):
             # Check for nullFlavor on value element
             # Use getattr since observation.value can be various types (PQ, CD, ED, etc.)
             # and not all have null_flavor attribute
-            has_null_flavor = (
-                observation.value
-                and getattr(observation.value, 'null_flavor', None)
-            )
+            has_null_flavor = observation.value and getattr(observation.value, "null_flavor", None)
 
             if has_null_flavor:
                 # Map C-CDA nullFlavor to FHIR DataAbsentReason
                 fhir_obs["dataAbsentReason"] = {
-                    "coding": [{
-                        "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
-                        "code": self._map_null_flavor_to_data_absent_reason(observation.value.null_flavor),
-                    }]
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+                            "code": self._map_null_flavor_to_data_absent_reason(
+                                observation.value.null_flavor
+                            ),
+                        }
+                    ]
                 }
             else:
                 # No value and no nullFlavor - use generic "unknown" reason
                 fhir_obs["dataAbsentReason"] = {
-                    "coding": [{
-                        "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
-                        "code": "unknown",
-                        "display": "Unknown"
-                    }],
-                    "text": "Value not provided in source C-CDA document"
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+                            "code": "unknown",
+                            "display": "Unknown",
+                        }
+                    ],
+                    "text": "Value not provided in source C-CDA document",
                 }
 
         return fhir_obs
 
-    def convert_vital_signs_organizer(self, organizer: Organizer, section=None) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
+    def convert_vital_signs_organizer(
+        self, organizer: Organizer, section=None
+    ) -> tuple[FHIRResourceDict, list[FHIRResourceDict]]:
         """Convert a C-CDA Vital Signs Organizer to FHIR Observation resources.
 
         The vital signs organizer becomes a panel Observation with individual
@@ -366,6 +378,7 @@ class ObservationConverter(BaseConverter[Observation]):
                             f"Generating unique ID to avoid duplicate Observation panel resources."
                         )
                         from ccda_to_fhir.id_generator import generate_id
+
                         panel_id = generate_id()
                     else:
                         # First time seeing this organizer ID - use it
@@ -534,9 +547,7 @@ class ObservationConverter(BaseConverter[Observation]):
         has_member_refs = []
         for obs in all_observations:
             if "id" in obs:
-                has_member_refs.append({
-                    "reference": f"urn:uuid:{obs['id']}"
-                })
+                has_member_refs.append({"reference": f"urn:uuid:{obs['id']}"})
 
         if has_member_refs:
             panel["hasMember"] = has_member_refs
@@ -551,7 +562,7 @@ class ObservationConverter(BaseConverter[Observation]):
         # a data absent reason must be present"
         # Panel observations with hasMember don't need value or dataAbsentReason
         # This check ensures compliance for any panel that somehow lacks hasMember
-        has_value = any(k.startswith("value") for k in panel.keys())
+        has_value = any(k.startswith("value") for k in panel)
         has_data_absent = "dataAbsentReason" in panel
         has_component = "component" in panel
         has_has_member = "hasMember" in panel
@@ -559,19 +570,19 @@ class ObservationConverter(BaseConverter[Observation]):
         if not (has_value or has_data_absent or has_component or has_has_member):
             # Panel should have hasMember but doesn't - add dataAbsentReason as fallback
             panel["dataAbsentReason"] = {
-                "coding": [{
-                    "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
-                    "code": "unknown",
-                    "display": "Unknown"
-                }],
-                "text": "Value not provided in source C-CDA document"
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+                        "code": "unknown",
+                        "display": "Unknown",
+                    }
+                ],
+                "text": "Value not provided in source C-CDA document",
             }
 
         return panel, all_observations
 
-    def _generate_observation_id(
-        self, root: str | None, extension: str | None
-    ) -> str:
+    def _generate_observation_id(self, root: str | None, extension: str | None) -> str:
         """Generate a FHIR resource ID from C-CDA identifier.
 
         Uses standard ID generation with hashing for consistency across all converters.
@@ -584,9 +595,7 @@ class ObservationConverter(BaseConverter[Observation]):
             A valid FHIR ID string
         """
         return self.generate_resource_id(
-            root=root,
-            extension=extension,
-            resource_type="observation"
+            root=root, extension=extension, resource_type="observation"
         )
 
     def _determine_status(self, observation: Observation) -> str:
@@ -641,41 +650,47 @@ class ObservationConverter(BaseConverter[Observation]):
         is_social_history = False
         for template in observation.template_id:
             if template.root == TemplateIds.VITAL_SIGN_OBSERVATION:
-                categories.append({
-                    "coding": [
-                        {
-                            "system": FHIRSystems.OBSERVATION_CATEGORY,
-                            "code": FHIRCodes.ObservationCategory.VITAL_SIGNS,
-                            "display": "Vital Signs",
-                        }
-                    ]
-                })
+                categories.append(
+                    {
+                        "coding": [
+                            {
+                                "system": FHIRSystems.OBSERVATION_CATEGORY,
+                                "code": FHIRCodes.ObservationCategory.VITAL_SIGNS,
+                                "display": "Vital Signs",
+                            }
+                        ]
+                    }
+                )
                 break
             elif template.root == TemplateIds.RESULT_OBSERVATION:
-                categories.append({
-                    "coding": [
-                        {
-                            "system": FHIRSystems.OBSERVATION_CATEGORY,
-                            "code": FHIRCodes.ObservationCategory.LABORATORY,
-                            "display": "Laboratory",
-                        }
-                    ]
-                })
+                categories.append(
+                    {
+                        "coding": [
+                            {
+                                "system": FHIRSystems.OBSERVATION_CATEGORY,
+                                "code": FHIRCodes.ObservationCategory.LABORATORY,
+                                "display": "Laboratory",
+                            }
+                        ]
+                    }
+                )
                 break
             elif template.root in (
                 TemplateIds.SMOKING_STATUS_OBSERVATION,
                 TemplateIds.SOCIAL_HISTORY_OBSERVATION,
                 TemplateIds.PREGNANCY_OBSERVATION,
             ):
-                categories.append({
-                    "coding": [
-                        {
-                            "system": FHIRSystems.OBSERVATION_CATEGORY,
-                            "code": FHIRCodes.ObservationCategory.SOCIAL_HISTORY,
-                            "display": "Social History",
-                        }
-                    ]
-                })
+                categories.append(
+                    {
+                        "coding": [
+                            {
+                                "system": FHIRSystems.OBSERVATION_CATEGORY,
+                                "code": FHIRCodes.ObservationCategory.SOCIAL_HISTORY,
+                                "display": "Social History",
+                            }
+                        ]
+                    }
+                )
                 is_social_history = True
                 break
 
@@ -685,15 +700,17 @@ class ObservationConverter(BaseConverter[Observation]):
             if loinc_code and loinc_code in LOINC_TO_SDOH_CATEGORY:
                 sdoh_category_code = LOINC_TO_SDOH_CATEGORY[loinc_code]
                 sdoh_display = SDOH_CATEGORY_DISPLAY.get(sdoh_category_code, sdoh_category_code)
-                categories.append({
-                    "coding": [
-                        {
-                            "system": FHIRSystems.SDOH_CATEGORY,
-                            "code": sdoh_category_code,
-                            "display": sdoh_display,
-                        }
-                    ]
-                })
+                categories.append(
+                    {
+                        "coding": [
+                            {
+                                "system": FHIRSystems.SDOH_CATEGORY,
+                                "code": sdoh_category_code,
+                                "display": sdoh_display,
+                            }
+                        ]
+                    }
+                )
 
         return categories if categories else None
 
@@ -758,9 +775,7 @@ class ObservationConverter(BaseConverter[Observation]):
 
         return None
 
-    def _convert_code_to_codeable_concept(
-        self, code: CD | CE | CS
-    ) -> JSONObject | None:
+    def _convert_code_to_codeable_concept(self, code: CD | CE | CS) -> JSONObject | None:
         """Convert C-CDA CD/CE/CS to FHIR CodeableConcept.
 
         Args:
@@ -821,9 +836,7 @@ class ObservationConverter(BaseConverter[Observation]):
 
         return codeable_concept
 
-    def _convert_body_site_with_qualifiers(
-        self, code: CD | CE
-    ) -> JSONObject | None:
+    def _convert_body_site_with_qualifiers(self, code: CD | CE) -> JSONObject | None:
         """Convert C-CDA targetSiteCode with qualifiers to FHIR bodySite CodeableConcept.
 
         This method handles body site codes with laterality qualifiers. Per C-CDA standard,
@@ -886,7 +899,9 @@ class ObservationConverter(BaseConverter[Observation]):
             if laterality_value.display_name and code.display_name:
                 codeable_concept["text"] = f"{laterality_value.display_name} {code.display_name}"
             elif laterality_value.display_name and "text" in codeable_concept:
-                codeable_concept["text"] = f"{laterality_value.display_name} {codeable_concept['text']}"
+                codeable_concept["text"] = (
+                    f"{laterality_value.display_name} {codeable_concept['text']}"
+                )
 
         return codeable_concept
 
@@ -1021,18 +1036,16 @@ class ObservationConverter(BaseConverter[Observation]):
                 return {"valueCodeableConcept": codeable_concept}
 
         # Handle ST (String) → valueString
-        if isinstance(observation.value, ST):
-            if observation.value.value:
-                return {"valueString": observation.value.value}
+        if isinstance(observation.value, ST) and observation.value.value:
+            return {"valueString": observation.value.value}
 
         # Handle ED (Encapsulated Data) → extension with valueAttachment
         if isinstance(observation.value, ED):
             return self._convert_ed_to_value_attachment(observation.value)
 
         # Handle INT (Integer) → valueInteger
-        if isinstance(observation.value, INT):
-            if observation.value.value is not None:
-                return {"valueInteger": observation.value.value}
+        if isinstance(observation.value, INT) and observation.value.value is not None:
+            return {"valueInteger": observation.value.value}
 
         # Handle other types as needed (REAL, BL, etc.)
         # For now, return None for unsupported types
@@ -1297,15 +1310,12 @@ class ObservationConverter(BaseConverter[Observation]):
         """
         # 1. Fix code if pre-C-CDA 4.0 (ASSERTION → 82810-3)
         # Per spec: Prior to C-CDA 4.0, uses ASSERTION; version 4.0+ uses 82810-3
-        if observation.code:
-            if observation.code.code == "ASSERTION":
-                fhir_obs["code"] = {
-                    "coding": [{
-                        "system": "http://loinc.org",
-                        "code": "82810-3",
-                        "display": "Pregnancy status"
-                    }]
-                }
+        if observation.code and observation.code.code == "ASSERTION":
+            fhir_obs["code"] = {
+                "coding": [
+                    {"system": "http://loinc.org", "code": "82810-3", "display": "Pregnancy status"}
+                ]
+            }
 
         # 2. Extract pregnancy-related observations from entryRelationship
         # Maps to components following the pattern established for EDD
@@ -1318,7 +1328,7 @@ class ObservationConverter(BaseConverter[Observation]):
                     # Date-type observations
                     date_codes = {
                         "11778-8": "Delivery date Estimated",
-                        "8665-2": "Last menstrual period start date"
+                        "8665-2": "Last menstrual period start date",
                     }
 
                     # Quantity-type observations (gestational age)
@@ -1331,7 +1341,7 @@ class ObservationConverter(BaseConverter[Observation]):
                         "57714-8": "Obstetric estimation of gestational age",
                         "11887-7": "Gestational age Estimated from selected delivery date",
                         "11886-9": "Gestational age Estimated from ovulation date",
-                        "53693-8": "Gestational age Estimated from conception date"
+                        "53693-8": "Gestational age Estimated from conception date",
                     }
 
                     # Handle date-type observations (EDD, LMP)
@@ -1343,11 +1353,13 @@ class ObservationConverter(BaseConverter[Observation]):
                         # Create component
                         component: JSONObject = {
                             "code": {
-                                "coding": [{
-                                    "system": "http://loinc.org",
-                                    "code": code,
-                                    "display": date_codes[code]
-                                }]
+                                "coding": [
+                                    {
+                                        "system": "http://loinc.org",
+                                        "code": code,
+                                        "display": date_codes[code],
+                                    }
+                                ]
                             }
                         }
 
@@ -1355,7 +1367,7 @@ class ObservationConverter(BaseConverter[Observation]):
                         if rel.observation.value and rel.observation.value.value:
                             date_str = rel.observation.value.value
                             # Handle ISO format dates (YYYY-MM-DD) which may appear in C-CDA
-                            if date_str and '-' in date_str:
+                            if date_str and "-" in date_str:
                                 # Already in ISO format, use directly
                                 component["valueDateTime"] = date_str
                             else:
@@ -1375,16 +1387,21 @@ class ObservationConverter(BaseConverter[Observation]):
                         # Create component
                         component: JSONObject = {
                             "code": {
-                                "coding": [{
-                                    "system": "http://loinc.org",
-                                    "code": code,
-                                    "display": quantity_codes[code]
-                                }]
+                                "coding": [
+                                    {
+                                        "system": "http://loinc.org",
+                                        "code": code,
+                                        "display": quantity_codes[code],
+                                    }
+                                ]
                             }
                         }
 
                         # Extract value (PQ type in C-CDA)
-                        if isinstance(rel.observation.value, PQ) and rel.observation.value.value is not None:
+                        if (
+                            isinstance(rel.observation.value, PQ)
+                            and rel.observation.value.value is not None
+                        ):
                             value_quantity: JSONObject = {
                                 "value": float(rel.observation.value.value)
                             }
@@ -1410,10 +1427,7 @@ class ObservationConverter(BaseConverter[Observation]):
                         fhir_obs["component"].append(component)
 
     def _create_blood_pressure_observation(
-        self,
-        systolic_obs: JSONObject,
-        diastolic_obs: JSONObject,
-        status: str
+        self, systolic_obs: JSONObject, diastolic_obs: JSONObject, status: str
     ) -> JSONObject:
         """Create a combined blood pressure observation with components.
 
@@ -1435,6 +1449,7 @@ class ObservationConverter(BaseConverter[Observation]):
         # Generate a unique UUID v4 for the blood pressure panel observation
         # Use the systolic observation ID as part of the cache key to ensure consistency
         from ccda_to_fhir.id_generator import generate_id_from_identifiers
+
         bp_id = generate_id_from_identifiers("Observation", f"bp-panel-{systolic_obs['id']}", None)
 
         bp_obs: JSONObject = {
@@ -1483,7 +1498,9 @@ class ObservationConverter(BaseConverter[Observation]):
             )
 
         # Effective time (use from systolic or diastolic)
-        effective_time = systolic_obs.get("effectiveDateTime") or diastolic_obs.get("effectiveDateTime")
+        effective_time = systolic_obs.get("effectiveDateTime") or diastolic_obs.get(
+            "effectiveDateTime"
+        )
         if effective_time:
             bp_obs["effectiveDateTime"] = effective_time
 
@@ -1539,7 +1556,7 @@ class ObservationConverter(BaseConverter[Observation]):
                         }
                     ]
                 },
-                "valueQuantity": systolic_obs["valueQuantity"]
+                "valueQuantity": systolic_obs["valueQuantity"],
             }
             # Preserve interpretation from original observation
             if "interpretation" in systolic_obs:
@@ -1558,7 +1575,7 @@ class ObservationConverter(BaseConverter[Observation]):
                         }
                     ]
                 },
-                "valueQuantity": diastolic_obs["valueQuantity"]
+                "valueQuantity": diastolic_obs["valueQuantity"],
             }
             # Preserve interpretation from original observation
             if "interpretation" in diastolic_obs:
@@ -1574,7 +1591,7 @@ class ObservationConverter(BaseConverter[Observation]):
         self,
         pulse_ox_obs: JSONObject,
         o2_flow_obs: JSONObject | None,
-        o2_concentration_obs: JSONObject | None
+        o2_concentration_obs: JSONObject | None,
     ) -> JSONObject:
         """Add O2 flow rate and/or concentration as components to pulse oximetry observation.
 
@@ -1590,33 +1607,37 @@ class ObservationConverter(BaseConverter[Observation]):
 
         # O2 flow rate component
         if o2_flow_obs and "valueQuantity" in o2_flow_obs:
-            components.append({
-                "code": {
-                    "coding": [
-                        {
-                            "system": self.map_oid_to_uri("2.16.840.1.113883.6.1"),
-                            "code": O2_FLOW_RATE_CODE,
-                            "display": O2_FLOW_RATE_DISPLAY,
-                        }
-                    ]
-                },
-                "valueQuantity": o2_flow_obs["valueQuantity"]
-            })
+            components.append(
+                {
+                    "code": {
+                        "coding": [
+                            {
+                                "system": self.map_oid_to_uri("2.16.840.1.113883.6.1"),
+                                "code": O2_FLOW_RATE_CODE,
+                                "display": O2_FLOW_RATE_DISPLAY,
+                            }
+                        ]
+                    },
+                    "valueQuantity": o2_flow_obs["valueQuantity"],
+                }
+            )
 
         # O2 concentration component
         if o2_concentration_obs and "valueQuantity" in o2_concentration_obs:
-            components.append({
-                "code": {
-                    "coding": [
-                        {
-                            "system": self.map_oid_to_uri("2.16.840.1.113883.6.1"),
-                            "code": O2_CONCENTRATION_CODE,
-                            "display": O2_CONCENTRATION_DISPLAY,
-                        }
-                    ]
-                },
-                "valueQuantity": o2_concentration_obs["valueQuantity"]
-            })
+            components.append(
+                {
+                    "code": {
+                        "coding": [
+                            {
+                                "system": self.map_oid_to_uri("2.16.840.1.113883.6.1"),
+                                "code": O2_CONCENTRATION_CODE,
+                                "display": O2_CONCENTRATION_DISPLAY,
+                            }
+                        ]
+                    },
+                    "valueQuantity": o2_concentration_obs["valueQuantity"],
+                }
+            )
 
         if components:
             pulse_ox_obs["component"] = components
@@ -1626,4 +1647,3 @@ class ObservationConverter(BaseConverter[Observation]):
         # O2 flow and concentration reference ranges are not typically included in FHIR pulse ox panels
 
         return pulse_ox_obs
-

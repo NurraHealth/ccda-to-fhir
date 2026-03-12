@@ -32,6 +32,8 @@ dependencies = [
 dev = [
     "lxml-stubs>=0.5",
     "mypy>=1.19.0",
+    "pre-commit>=4.0",
+    "pyright>=1.1",
     "pytest>=9.0.2",
     "pytest-cov>=4.0",
     "ruff>=0.14.8",
@@ -69,7 +71,14 @@ select = [
 ]
 ignore = [
     "E501",   # line too long (handled by formatter)
+    "ARG002", # unused method args — common in overrides and polymorphic APIs
+    "SIM102", # nested ifs — often clearer than combined conditions
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ARG001", "ARG005"]
+"ccda_to_fhir/ccda/models/substance_administration.py" = ["E402"]
+"ccda_to_fhir/ccda/parser.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["ccda_to_fhir"]
@@ -104,6 +113,8 @@ exclude_lines = [
 [tool.pyright]
 pythonVersion = "3.10"
 typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
 # Strict checks we want to keep
 reportMissingImports = true
 reportMissingTypeStubs = false
@@ -117,3 +128,11 @@ reportOptionalSubscript = "warning"
 reportOptionalMemberAccess = "warning"
 reportOptionalIterable = "warning"
 reportIncompatibleMethodOverride = "warning"
+reportIndexIssue = "warning"
+reportCallIssue = "warning"
+reportArgumentType = "warning"
+reportOperatorIssue = "warning"
+reportAttributeAccessIssue = "warning"
+reportAssignmentType = "warning"
+reportUnhashable = "warning"
+reportReturnType = "warning"

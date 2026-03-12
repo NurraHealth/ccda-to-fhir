@@ -71,11 +71,13 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
                 translations = []
                 for trans in code_elem.translation:
                     if trans.code and trans.code_system:
-                        translations.append({
-                            "code": trans.code,
-                            "code_system": trans.code_system,
-                            "display_name": trans.display_name,
-                        })
+                        translations.append(
+                            {
+                                "code": trans.code,
+                                "code_system": trans.code_system,
+                                "display_name": trans.display_name,
+                            }
+                        )
 
             med_code = self.create_codeable_concept(
                 code=code_elem.code,
@@ -152,9 +154,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
         if manufactured_product.id and len(manufactured_product.id) > 0:
             first_id = manufactured_product.id[0]
             return self.generate_resource_id(
-                root=first_id.root,
-                extension=first_id.extension,
-                resource_type="medication"
+                root=first_id.root, extension=first_id.extension, resource_type="medication"
             )
 
         # Fall back to material code
@@ -165,10 +165,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
         ):
             code = manufactured_product.manufactured_material.code.code
             return self.generate_resource_id(
-                root=None,
-                extension=None,
-                resource_type="medication",
-                fallback_context=code
+                root=None, extension=None, resource_type="medication", fallback_context=code
             )
 
         raise ValueError(
@@ -194,31 +191,31 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
 
         for participant in substance_admin.participant:
             # Check for drug vehicle (CSM = consumable)
-            if participant.type_code and participant.type_code.upper() == "CSM":
-                if (
-                    participant.participant_role
-                    and participant.participant_role.playing_entity
-                ):
-                    playing_entity = participant.participant_role.playing_entity
+            if (
+                participant.type_code
+                and participant.type_code.upper() == "CSM"
+                and (participant.participant_role and participant.participant_role.playing_entity)
+            ):
+                playing_entity = participant.participant_role.playing_entity
 
-                    # Extract code from playing entity
-                    if playing_entity.code:
-                        ingredient: JSONObject = {}
+                # Extract code from playing entity
+                if playing_entity.code:
+                    ingredient: JSONObject = {}
 
-                        # Create itemCodeableConcept
-                        item_code = self.create_codeable_concept(
-                            code=playing_entity.code.code,
-                            code_system=playing_entity.code.code_system,
-                            display_name=playing_entity.code.display_name,
-                        )
-                        if item_code:
-                            ingredient["itemCodeableConcept"] = item_code
+                    # Create itemCodeableConcept
+                    item_code = self.create_codeable_concept(
+                        code=playing_entity.code.code,
+                        code_system=playing_entity.code.code_system,
+                        display_name=playing_entity.code.display_name,
+                    )
+                    if item_code:
+                        ingredient["itemCodeableConcept"] = item_code
 
-                        # Drug vehicle is inactive ingredient
-                        ingredient["isActive"] = False
+                    # Drug vehicle is inactive ingredient
+                    ingredient["isActive"] = False
 
-                        if ingredient:
-                            ingredients.append(ingredient)
+                    if ingredient:
+                        ingredients.append(ingredient)
 
         return ingredients
 

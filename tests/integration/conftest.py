@@ -15,7 +15,9 @@ from ccda_to_fhir.constants import CCDACodes, TemplateIds
 
 # Skip conversion integration tests until the new converter is implemented
 # Validation integration tests can run independently
-SKIP_REASON = "Integration tests skipped until C-CDA Pydantic -> FHIR Pydantic pipeline is implemented"
+SKIP_REASON = (
+    "Integration tests skipped until C-CDA Pydantic -> FHIR Pydantic pipeline is implemented"
+)
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -24,6 +26,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         # Only skip conversion tests, not validation tests
         if "/integration/" in str(item.fspath) and "conversion" in str(item.fspath):
             item.add_marker(pytest.mark.skip(reason=SKIP_REASON))
+
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 CCDA_FIXTURES_DIR = FIXTURES_DIR / "ccda"
@@ -109,7 +112,8 @@ def wrap_in_ccda_document(
     """
     # Strip XML declaration if present in section_content
     import re
-    section_content = re.sub(r'<\?xml[^?]*\?>\s*', '', section_content)
+
+    section_content = re.sub(r"<\?xml[^?]*\?>\s*", "", section_content)
 
     # Use defaults if not provided
     patient_xml = patient if patient is not None else DEFAULT_PATIENT
@@ -126,18 +130,18 @@ def wrap_in_ccda_document(
     in_fulfillment_of_xml = in_fulfillment_of if in_fulfillment_of is not None else ""
 
     # Strip XML declarations from all parameters
-    patient_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', patient_xml)
-    author_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', author_xml)
-    custodian_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', custodian_xml)
-    legal_auth_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', legal_auth_xml)
-    authenticator_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', authenticator_xml)
-    data_enterer_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', data_enterer_xml)
-    informant_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', informant_xml)
-    information_recipient_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', information_recipient_xml)
-    participant_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', participant_xml)
-    documentation_of_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', documentation_of_xml)
-    authorization_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', authorization_xml)
-    in_fulfillment_of_xml = re.sub(r'<\?xml[^?]*\?>\s*', '', in_fulfillment_of_xml)
+    patient_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", patient_xml)
+    author_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", author_xml)
+    custodian_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", custodian_xml)
+    legal_auth_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", legal_auth_xml)
+    authenticator_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", authenticator_xml)
+    data_enterer_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", data_enterer_xml)
+    informant_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", informant_xml)
+    information_recipient_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", information_recipient_xml)
+    participant_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", participant_xml)
+    documentation_of_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", documentation_of_xml)
+    authorization_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", authorization_xml)
+    in_fulfillment_of_xml = re.sub(r"<\?xml[^?]*\?>\s*", "", in_fulfillment_of_xml)
 
     section_template = ""
     if section_template_id:

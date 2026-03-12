@@ -73,14 +73,10 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
         }
 
         # Generate ID combining practitioner and organization for uniqueness
-        practitioner_role["id"] = self._generate_role_id(
-            practitioner_id, organization_id
-        )
+        practitioner_role["id"] = self._generate_role_id(practitioner_id, organization_id)
 
         # Create reference to Practitioner
-        practitioner_role["practitioner"] = self._create_practitioner_reference(
-            practitioner_id
-        )
+        practitioner_role["practitioner"] = self._create_practitioner_reference(practitioner_id)
 
         # Create reference to Organization (optional)
         if organization_id:
@@ -146,9 +142,7 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
         Returns:
             FHIR Reference object
         """
-        return {
-            "reference": f"urn:uuid:{practitioner_id}"
-        }
+        return {"reference": f"urn:uuid:{practitioner_id}"}
 
     def _create_organization_reference(
         self, organization_id: str, display: str | None = None

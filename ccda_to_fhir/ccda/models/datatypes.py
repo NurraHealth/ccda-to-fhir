@@ -516,9 +516,30 @@ class AssignedPerson(CDAModel):
 
 # All observation value types (union of all possible xsi:type values)
 ObservationValueType: TypeAlias = (
-    CD | CE | CS | ST | ED | BL | INT | REAL | PQ | MO
-    | IVL_PQ | IVL_INT | IVL_TS | TS | PIVL_TS | EIVL_TS
-    | RTO | II | TEL | AD | EN | PN | TN | ON
+    CD
+    | CE
+    | CS
+    | ST
+    | ED
+    | BL
+    | INT
+    | REAL
+    | PQ
+    | MO
+    | IVL_PQ
+    | IVL_INT
+    | IVL_TS
+    | TS
+    | PIVL_TS
+    | EIVL_TS
+    | RTO
+    | II
+    | TEL
+    | AD
+    | EN
+    | PN
+    | TN
+    | ON
 )
 
 CD.model_rebuild()

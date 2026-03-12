@@ -37,13 +37,15 @@ NARRATIVE_SECTIONS: dict[str, str] = {
 
 # Placeholder-like text that should be treated as empty.
 # Compared after stripping whitespace, lowercasing, and removing trailing periods.
-_EMPTY_PATTERNS = frozenset({
-    "no assessment recorded",
-    "no data recorded",
-    "no information",
-    "none",
-    "n/a",
-})
+_EMPTY_PATTERNS = frozenset(
+    {
+        "no assessment recorded",
+        "no data recorded",
+        "no information",
+        "none",
+        "n/a",
+    }
+)
 
 
 def _is_empty_narrative(plain_text: str) -> bool:

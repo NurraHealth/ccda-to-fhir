@@ -40,19 +40,13 @@ from ccda_to_fhir.converters.references import ReferenceRegistry
 @pytest.fixture
 def care_plan_template_id() -> II:
     """Care Plan Document template ID."""
-    return II(
-        root=TemplateIds.CARE_PLAN_DOCUMENT,
-        extension="2015-08-01"
-    )
+    return II(root=TemplateIds.CARE_PLAN_DOCUMENT, extension="2015-08-01")
 
 
 @pytest.fixture
 def us_realm_header_template_id() -> II:
     """US Realm Header template ID."""
-    return II(
-        root="2.16.840.1.113883.10.20.22.1.1",
-        extension="2015-08-01"
-    )
+    return II(root="2.16.840.1.113883.10.20.22.1.1", extension="2015-08-01")
 
 
 @pytest.fixture
@@ -189,8 +183,7 @@ def complete_care_plan_document(
 ) -> ClinicalDocument:
     """Create a complete Care Plan Document with all optional fields."""
     minimal_care_plan_document.set_id = II(
-        root="2.16.840.1.113883.19.5.99999.2",
-        extension="careplan-set-123"
+        root="2.16.840.1.113883.19.5.99999.2", extension="careplan-set-123"
     )
     minimal_care_plan_document.version_number = 1
     minimal_care_plan_document.documentation_of = [
@@ -332,7 +325,9 @@ class TestStatusMapping:
 
         assert careplan["status"] == "active"
 
-    def test_status_from_document_context(self, complete_care_plan_document, mock_reference_registry):
+    def test_status_from_document_context(
+        self, complete_care_plan_document, mock_reference_registry
+    ):
         """Test status determination from document context."""
         # Current implementation always returns "active"
         # This test documents current behavior
@@ -350,8 +345,14 @@ class TestStatusMapping:
         ]
 
     def test_status_completed_when_period_ended(
-        self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
-        basic_author, basic_custodian, mock_reference_registry):
+        self,
+        care_plan_template_id,
+        us_realm_header_template_id,
+        basic_record_target,
+        basic_author,
+        basic_custodian,
+        mock_reference_registry,
+    ):
         """Test status 'completed' when period.end in past."""
         from datetime import datetime, timedelta, timezone
 
@@ -391,10 +392,16 @@ class TestStatusMapping:
         assert careplan["status"] == "completed"
 
     def test_status_completed_when_all_interventions_completed(
-        self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
-        basic_author, basic_custodian, mock_reference_registry
+        self,
+        care_plan_template_id,
+        us_realm_header_template_id,
+        basic_record_target,
+        basic_author,
+        basic_custodian,
+        mock_reference_registry,
     ):
         """Test status 'completed' when all interventions completed."""
+
         # Create mock intervention entries with completed status
         class MockIntervention:
             def __init__(self, status_code_value):
@@ -425,15 +432,24 @@ class TestStatusMapping:
             custodian=basic_custodian,
         )
 
-        converter = CarePlanConverter(reference_registry=mock_reference_registry, intervention_entries=intervention_entries)
+        converter = CarePlanConverter(
+            reference_registry=mock_reference_registry, intervention_entries=intervention_entries
+        )
         careplan = converter.convert(doc)
 
         assert careplan["status"] == "completed"
 
     def test_status_revoked_when_intervention_cancelled(
-        self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
-        basic_author, basic_custodian, mock_reference_registry):
+        self,
+        care_plan_template_id,
+        us_realm_header_template_id,
+        basic_record_target,
+        basic_author,
+        basic_custodian,
+        mock_reference_registry,
+    ):
         """Test status 'revoked' when any intervention cancelled."""
+
         # Create mock intervention entries with one cancelled
         class MockIntervention:
             def __init__(self, status_code_value):
@@ -464,14 +480,22 @@ class TestStatusMapping:
             custodian=basic_custodian,
         )
 
-        converter = CarePlanConverter(reference_registry=mock_reference_registry, intervention_entries=intervention_entries)
+        converter = CarePlanConverter(
+            reference_registry=mock_reference_registry, intervention_entries=intervention_entries
+        )
         careplan = converter.convert(doc)
 
         assert careplan["status"] == "revoked"
 
     def test_status_active_when_authenticated(
-        self, care_plan_template_id, us_realm_header_template_id, basic_record_target,
-        basic_author, basic_custodian, mock_reference_registry):
+        self,
+        care_plan_template_id,
+        us_realm_header_template_id,
+        basic_record_target,
+        basic_author,
+        basic_custodian,
+        mock_reference_registry,
+    ):
         """Test status 'active' when document authenticated."""
         from ccda_to_fhir.ccda.models.clinical_document import LegalAuthenticator
 
@@ -511,9 +535,7 @@ class TestStatusMapping:
 class TestSubjectMapping:
     """Test CarePlan subject reference."""
 
-    def test_subject_from_registry(
-        self, minimal_care_plan_document, mock_reference_registry
-    ):
+    def test_subject_from_registry(self, minimal_care_plan_document, mock_reference_registry):
         """Test subject from ReferenceRegistry."""
         converter = CarePlanConverter(reference_registry=mock_reference_registry)
         careplan = converter.convert(minimal_care_plan_document)
@@ -522,7 +544,9 @@ class TestSubjectMapping:
         assert careplan["subject"]["reference"].startswith("urn:uuid:")
         mock_reference_registry.get_patient_reference.assert_called_once()
 
-    def test_subject_from_document_recordtarget(self, minimal_care_plan_document, mock_reference_registry):
+    def test_subject_from_document_recordtarget(
+        self, minimal_care_plan_document, mock_reference_registry
+    ):
         """Test subject fallback to document recordTarget."""
         converter = CarePlanConverter(reference_registry=mock_reference_registry)  # No registry
         careplan = converter.convert(minimal_care_plan_document)
@@ -547,9 +571,7 @@ class TestSubjectMapping:
             author=[
                 Author(
                     time=TS(value="20240115"),
-                    assigned_author=AssignedAuthor(
-                        id=[II(root="test", extension="auth")]
-                    ),
+                    assigned_author=AssignedAuthor(id=[II(root="test", extension="auth")]),
                 )
             ],
             custodian=Custodian(
@@ -587,7 +609,8 @@ class TestPeriodMapping:
         assert careplan["period"]["end"] == "2024-04-15"
 
     def test_period_with_only_start_date(
-        self, minimal_care_plan_document, care_plan_template_id, mock_reference_registry):
+        self, minimal_care_plan_document, care_plan_template_id, mock_reference_registry
+    ):
         """Test period with only effectiveTime.low."""
         # Add documentation_of with only low date
         minimal_care_plan_document.documentation_of = [
@@ -635,7 +658,9 @@ class TestAuthorAndContributor:
         assert "reference" in careplan["author"]
         assert careplan["author"]["reference"].startswith("urn:uuid:")
 
-    def test_contributor_from_all_authors(self, minimal_care_plan_document, mock_reference_registry):
+    def test_contributor_from_all_authors(
+        self, minimal_care_plan_document, mock_reference_registry
+    ):
         """Test contributor includes all authors."""
         # Add second author
         second_author = Author(
@@ -664,7 +689,8 @@ class TestAuthorAndContributor:
             assert "reference" in contributor
 
     def test_contributor_includes_performers(
-        self, minimal_care_plan_document, service_event_with_performer, mock_reference_registry):
+        self, minimal_care_plan_document, service_event_with_performer, mock_reference_registry
+    ):
         """Test contributor includes serviceEvent.performer."""
         minimal_care_plan_document.documentation_of = [
             DocumentationOf(service_event=service_event_with_performer)
@@ -752,30 +778,22 @@ class TestAddresses:
 class TestGoalReferences:
     """Test CarePlan.goal field."""
 
-    def test_goal_references(
-        self, minimal_care_plan_document, mock_reference_registry
-    ):
+    def test_goal_references(self, minimal_care_plan_document, mock_reference_registry):
         """Test goal field includes Goal resource references."""
         goals = [
             {"reference": "Goal/goal-1"},
             {"reference": "Goal/goal-2"},
         ]
-        converter = CarePlanConverter(
-            reference_registry=mock_reference_registry, goal_refs=goals
-        )
+        converter = CarePlanConverter(reference_registry=mock_reference_registry, goal_refs=goals)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "goal" in careplan
         assert careplan["goal"] == goals
         assert len(careplan["goal"]) == 2
 
-    def test_goal_empty_when_no_goals(
-        self, minimal_care_plan_document, mock_reference_registry
-    ):
+    def test_goal_empty_when_no_goals(self, minimal_care_plan_document, mock_reference_registry):
         """Test goal omitted when no goals."""
-        converter = CarePlanConverter(
-            reference_registry=mock_reference_registry, goal_refs=[]
-        )
+        converter = CarePlanConverter(reference_registry=mock_reference_registry, goal_refs=[])
         careplan = converter.convert(minimal_care_plan_document)
 
         # Goal should not be present when empty
@@ -794,9 +812,7 @@ class TestActivityMapping:
     These tests verify activity creation at a high level.
     """
 
-    def test_activity_from_interventions(
-        self, minimal_care_plan_document, mock_reference_registry
-    ):
+    def test_activity_from_interventions(self, minimal_care_plan_document, mock_reference_registry):
         """Test activity.reference from intervention section."""
         # Create mock intervention entry
         intervention = Mock()
@@ -905,9 +921,7 @@ class TestNarrative:
             {"reference": "Goal/goal-2"},
             {"reference": "Goal/goal-3"},
         ]
-        converter = CarePlanConverter(
-            reference_registry=mock_reference_registry, goal_refs=goals
-        )
+        converter = CarePlanConverter(reference_registry=mock_reference_registry, goal_refs=goals)
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
@@ -959,7 +973,8 @@ class TestNarrative:
         assert "Care Plan <Test>" not in div or "<h2>Care Plan" not in div
 
     def test_narrative_minimal_with_no_data(
-        self, care_plan_template_id, us_realm_header_template_id, mock_reference_registry):
+        self, care_plan_template_id, us_realm_header_template_id, mock_reference_registry
+    ):
         """Test narrative generation with minimal data."""
         # Create a bare minimum document
         doc = ClinicalDocument(
@@ -973,9 +988,7 @@ class TestNarrative:
             language_code=CS(code="en-US"),
             title=None,  # No title
             record_target=[
-                RecordTarget(
-                    patient_role=PatientRole(id=[II(root="test", extension="pat")])
-                )
+                RecordTarget(patient_role=PatientRole(id=[II(root="test", extension="pat")]))
             ],
             author=[
                 Author(
@@ -1014,7 +1027,8 @@ class TestNarrative:
         assert "<h2>Care Plan</h2>" in careplan["text"]["div"]
 
     def test_narrative_period_with_start_only(
-        self, minimal_care_plan_document, care_plan_template_id, mock_reference_registry):
+        self, minimal_care_plan_document, care_plan_template_id, mock_reference_registry
+    ):
         """Test narrative period formatting with only start date."""
         minimal_care_plan_document.documentation_of = [
             DocumentationOf(
@@ -1117,16 +1131,12 @@ class TestValidation:
             confidentiality_code=CE(code="N", code_system="2.16.840.1.113883.5.25"),
             language_code=CS(code="en-US"),
             record_target=[
-                RecordTarget(
-                    patient_role=PatientRole(id=[II(root="test", extension="pat")])
-                )
+                RecordTarget(patient_role=PatientRole(id=[II(root="test", extension="pat")]))
             ],
             author=[
                 Author(
                     time=TS(value="20240115"),
-                    assigned_author=AssignedAuthor(
-                        id=[II(root="test", extension="auth")]
-                    ),
+                    assigned_author=AssignedAuthor(id=[II(root="test", extension="auth")]),
                 )
             ],
             custodian=Custodian(
@@ -1155,16 +1165,12 @@ class TestValidation:
             confidentiality_code=CE(code="N", code_system="2.16.840.1.113883.5.25"),
             language_code=CS(code="en-US"),
             record_target=[
-                RecordTarget(
-                    patient_role=PatientRole(id=[II(root="test", extension="pat")])
-                )
+                RecordTarget(patient_role=PatientRole(id=[II(root="test", extension="pat")]))
             ],
             author=[
                 Author(
                     time=TS(value="20240115"),
-                    assigned_author=AssignedAuthor(
-                        id=[II(root="test", extension="auth")]
-                    ),
+                    assigned_author=AssignedAuthor(id=[II(root="test", extension="auth")]),
                 )
             ],
             custodian=Custodian(
@@ -1225,7 +1231,4 @@ class TestUSCoreProfile:
         # Verify assess-plan code
         coding = category["coding"][0]
         assert coding["code"] == "assess-plan"
-        assert (
-            coding["system"]
-            == "http://hl7.org/fhir/us/core/CodeSystem/careplan-category"
-        )
+        assert coding["system"] == "http://hl7.org/fhir/us/core/CodeSystem/careplan-category"

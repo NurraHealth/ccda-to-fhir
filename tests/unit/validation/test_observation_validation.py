@@ -71,7 +71,9 @@ class TestProblemObservationValidation:
             <value xsi:type="CD" code="I10" codeSystem="2.16.840.1.113883.6.90"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_problem_observation_missing_status_code(self) -> None:
@@ -87,7 +89,9 @@ class TestProblemObservationValidation:
             <value xsi:type="CD" code="I10" codeSystem="2.16.840.1.113883.6.90"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_problem_observation_invalid_status_code(self) -> None:
@@ -104,7 +108,9 @@ class TestProblemObservationValidation:
             <value xsi:type="CD" code="I10" codeSystem="2.16.840.1.113883.6.90"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_problem_observation_missing_effective_time(self) -> None:
@@ -120,7 +126,9 @@ class TestProblemObservationValidation:
             <value xsi:type="CD" code="I10" codeSystem="2.16.840.1.113883.6.90"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_problem_observation_missing_effective_time_low(self) -> None:
@@ -139,7 +147,9 @@ class TestProblemObservationValidation:
             <value xsi:type="CD" code="I10" codeSystem="2.16.840.1.113883.6.90"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="effectiveTime SHALL contain low"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="effectiveTime SHALL contain low"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_problem_observation_missing_value(self) -> None:
@@ -155,7 +165,9 @@ class TestProblemObservationValidation:
             <effectiveTime><low value="20100301"/></effectiveTime>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*value"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*value"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_problem_observation_wrong_value_type(self) -> None:
@@ -172,7 +184,9 @@ class TestProblemObservationValidation:
             <value xsi:type="PQ" value="120" unit="mmHg"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="value SHALL have xsi:type of CD or CE"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="value SHALL have xsi:type of CD or CE"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_non_problem_observation_skips_validation(self) -> None:
@@ -237,7 +251,9 @@ class TestAllergyObservationValidation:
             <value xsi:type="CD" code="419511003" codeSystem="2.16.840.1.113883.6.96"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*participant"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*participant"
+        ):
             parse_ccda_fragment(xml, Observation)
 
 
@@ -317,7 +333,9 @@ class TestResultObservationValidation:
             <value xsi:type="PQ" value="60" unit="mL/min"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"
+        ):
             parse_ccda_fragment(xml, Observation)
 
 
@@ -358,7 +376,9 @@ class TestSmokingStatusObservationValidation:
             <value xsi:type="CD" code="449868002" codeSystem="2.16.840.1.113883.6.96"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_smoking_status_observation_wrong_value_type(self) -> None:
@@ -375,7 +395,9 @@ class TestSmokingStatusObservationValidation:
             <value xsi:type="PQ" value="1" unit="1"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="value SHALL have xsi:type of CD or CE"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="value SHALL have xsi:type of CD or CE"
+        ):
             parse_ccda_fragment(xml, Observation)
 
 
@@ -414,7 +436,9 @@ class TestSocialHistoryObservationValidation:
             <effectiveTime value="20231201"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_social_history_observation_missing_status_code(self) -> None:
@@ -429,7 +453,9 @@ class TestSocialHistoryObservationValidation:
             <effectiveTime value="20231201"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_social_history_observation_wrong_status_code(self) -> None:
@@ -445,7 +471,9 @@ class TestSocialHistoryObservationValidation:
             <effectiveTime value="20231201"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_social_history_observation_missing_effective_time(self) -> None:
@@ -460,7 +488,9 @@ class TestSocialHistoryObservationValidation:
             <statusCode code="completed"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*effectiveTime"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_non_social_history_observation_skips_validation(self) -> None:
@@ -531,7 +561,9 @@ class TestFamilyHistoryObservationValidation:
             <value xsi:type="CD" code="22298006" codeSystem="2.16.840.1.113883.6.96"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*code"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_family_history_observation_missing_status_code(self) -> None:
@@ -546,7 +578,9 @@ class TestFamilyHistoryObservationValidation:
             <value xsi:type="CD" code="22298006" codeSystem="2.16.840.1.113883.6.96"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_family_history_observation_wrong_status_code(self) -> None:
@@ -562,7 +596,9 @@ class TestFamilyHistoryObservationValidation:
             <value xsi:type="CD" code="22298006" codeSystem="2.16.840.1.113883.6.96"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="statusCode SHALL be 'completed'"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_family_history_observation_missing_value(self) -> None:
@@ -577,7 +613,9 @@ class TestFamilyHistoryObservationValidation:
             <statusCode code="completed"/>
         </observation>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*value"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*value"
+        ):
             parse_ccda_fragment(xml, Observation)
 
     def test_non_family_history_observation_skips_validation(self) -> None:

@@ -5,6 +5,8 @@ references between resources in a Bundle. All tests use realistic FHIR R4B
 resource structures compliant with the standard.
 """
 
+import contextlib
+
 import pytest
 
 from ccda_to_fhir.converters.references import ReferenceRegistry
@@ -242,11 +244,13 @@ class TestReferenceResolution:
             "resourceType": "Condition",
             "id": "condition-diabetes",
             "code": {
-                "coding": [{
-                    "system": "http://snomed.info/sct",
-                    "code": "44054006",
-                    "display": "Diabetes mellitus type 2",
-                }]
+                "coding": [
+                    {
+                        "system": "http://snomed.info/sct",
+                        "code": "44054006",
+                        "display": "Diabetes mellitus type 2",
+                    }
+                ]
             },
             "subject": {"reference": "Patient/patient-newman-placeholder"},  # Placeholder
         }
@@ -272,15 +276,19 @@ class TestReferenceResolution:
         practitioner: FHIRResourceDict = {
             "resourceType": "Practitioner",
             "id": "npi-1234567890",
-            "identifier": [{
-                "system": "http://hl7.org/fhir/sid/us-npi",
-                "value": "1234567890",
-            }],
-            "name": [{
-                "family": "Johnson",
-                "given": ["Robert"],
-                "prefix": ["Dr."],
-            }],
+            "identifier": [
+                {
+                    "system": "http://hl7.org/fhir/sid/us-npi",
+                    "value": "1234567890",
+                }
+            ],
+            "name": [
+                {
+                    "family": "Johnson",
+                    "given": ["Robert"],
+                    "prefix": ["Dr."],
+                }
+            ],
         }
         registry.register_resource(practitioner)
 
@@ -401,15 +409,11 @@ class TestRegistryStatistics:
         registry = ReferenceRegistry()
 
         # Try to resolve reference to non-existent resource (raises exception)
-        try:
+        with contextlib.suppress(MissingReferenceError):
             registry.resolve_reference("Patient", "does-not-exist")
-        except MissingReferenceError:
-            pass
 
-        try:
+        with contextlib.suppress(MissingReferenceError):
             registry.resolve_reference("Practitioner", "also-missing")
-        except MissingReferenceError:
-            pass
 
         stats = registry.get_stats()
         assert stats["failed"] == 2

@@ -31,14 +31,13 @@ from ccda_to_fhir.converters.encounter_diagnosis_notes import (
 from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.id_generator import reset_id_cache
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
 
 
 @pytest.fixture(autouse=True)
-def _reset_ids():
+def _reset_ids():  # pyright: ignore[reportUnusedFunction]
     reset_id_cache()
     yield
     reset_id_cache()
@@ -62,9 +61,11 @@ def _make_data_cells(*cells_data: str | tuple[str, str | None]) -> list[TableDat
         if isinstance(cell_input, tuple):
             text_val, content_id = cell_input
             if content_id:
-                cells.append(TableDataCell.model_validate(
-                    {"_text": None, "content": [{"_text": text_val, "i_d": content_id}]}
-                ))
+                cells.append(
+                    TableDataCell.model_validate(
+                        {"_text": None, "content": [{"_text": text_val, "i_d": content_id}]}
+                    )
+                )
             else:
                 cells.append(TableDataCell.model_validate({"_text": text_val}))
         else:
@@ -344,7 +345,9 @@ class TestCreateDiagnosisNoteDocRefs:
         # Context
         context = dr["context"]
         assert context["encounter"] == [{"reference": "urn:uuid:encounter-uuid-1"}]
-        assert context["related"] == [{"reference": "urn:uuid:condition-uuid-1", "display": "Hypertension"}]
+        assert context["related"] == [
+            {"reference": "urn:uuid:condition-uuid-1", "display": "Hypertension"}
+        ]
 
         # Type and description
         assert dr["type"]["text"] == "Diagnosis Note - Hypertension"
@@ -509,9 +512,7 @@ class TestExtractEncounterDiagnosisNotesIntegration:
             }
         ]
 
-        result = extract_encounter_diagnosis_notes(
-            body, encounters, conditions, registry
-        )
+        result = extract_encounter_diagnosis_notes(body, encounters, conditions, registry)
 
         assert len(result) == 1
         dr = result[0]
@@ -525,7 +526,9 @@ class TestExtractEncounterDiagnosisNotesIntegration:
 
         # Condition link via SNOMED matching
         context = dr["context"]
-        assert context["related"] == [{"reference": "urn:uuid:cond-fhir-1", "display": "Hypertension"}]
+        assert context["related"] == [
+            {"reference": "urn:uuid:cond-fhir-1", "display": "Hypertension"}
+        ]
 
     def test_full_pipeline_with_encounter_linking(self, registry: ReferenceRegistry) -> None:
         """Test encounter linking via section entries with text references."""
@@ -572,9 +575,7 @@ class TestExtractEncounterDiagnosisNotesIntegration:
         ]
         conditions: list[dict] = []
 
-        result = extract_encounter_diagnosis_notes(
-            body, encounters, conditions, registry
-        )
+        result = extract_encounter_diagnosis_notes(body, encounters, conditions, registry)
 
         assert len(result) == 1
         dr = result[0]
@@ -592,12 +593,14 @@ class TestAuthorReferences:
     """Tests for author references on diagnosis note DocumentReferences."""
 
     def test_author_references_set_on_doc_ref(self, registry: ReferenceRegistry) -> None:
-        notes = [DiagnosisNote(
-            encounter_content_id=None,
-            diagnosis_display="Pneumonia",
-            snomed_code="233604007",
-            note_text="Improving on antibiotics.",
-        )]
+        notes = [
+            DiagnosisNote(
+                encounter_content_id=None,
+                diagnosis_display="Pneumonia",
+                snomed_code="233604007",
+                note_text="Improving on antibiotics.",
+            )
+        ]
         author_refs = [{"reference": "urn:uuid:prac-1"}]
         result = create_diagnosis_note_doc_refs(
             notes, {}, {}, registry, author_references=author_refs
@@ -606,12 +609,14 @@ class TestAuthorReferences:
         assert result[0]["author"] == [{"reference": "urn:uuid:prac-1"}]
 
     def test_multiple_authors(self, registry: ReferenceRegistry) -> None:
-        notes = [DiagnosisNote(
-            encounter_content_id=None,
-            diagnosis_display="HTN",
-            snomed_code=None,
-            note_text="Blood pressure controlled.",
-        )]
+        notes = [
+            DiagnosisNote(
+                encounter_content_id=None,
+                diagnosis_display="HTN",
+                snomed_code=None,
+                note_text="Blood pressure controlled.",
+            )
+        ]
         author_refs = [
             {"reference": "urn:uuid:prac-1"},
             {"reference": "urn:uuid:prac-2"},
@@ -622,23 +627,25 @@ class TestAuthorReferences:
         assert len(result[0]["author"]) == 2
 
     def test_no_author_references_omits_field(self, registry: ReferenceRegistry) -> None:
-        notes = [DiagnosisNote(
-            encounter_content_id=None,
-            diagnosis_display="Pneumonia",
-            snomed_code=None,
-            note_text="Improving.",
-        )]
+        notes = [
+            DiagnosisNote(
+                encounter_content_id=None,
+                diagnosis_display="Pneumonia",
+                snomed_code=None,
+                note_text="Improving.",
+            )
+        ]
         result = create_diagnosis_note_doc_refs(notes, {}, {}, registry)
         assert "author" not in result[0]
 
     def test_empty_author_references_omits_field(self, registry: ReferenceRegistry) -> None:
-        notes = [DiagnosisNote(
-            encounter_content_id=None,
-            diagnosis_display="Pneumonia",
-            snomed_code=None,
-            note_text="Improving.",
-        )]
-        result = create_diagnosis_note_doc_refs(
-            notes, {}, {}, registry, author_references=[]
-        )
+        notes = [
+            DiagnosisNote(
+                encounter_content_id=None,
+                diagnosis_display="Pneumonia",
+                snomed_code=None,
+                note_text="Improving.",
+            )
+        ]
+        result = create_diagnosis_note_doc_refs(notes, {}, {}, registry, author_references=[])
         assert "author" not in result[0]

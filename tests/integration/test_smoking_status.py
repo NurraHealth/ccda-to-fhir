@@ -57,11 +57,12 @@ class TestSmokingStatusConversion:
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
         assert observation["category"][0]["coding"][0]["code"] == "social-history"
-        assert observation["category"][0]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/observation-category"
+        assert (
+            observation["category"][0]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/observation-category"
+        )
 
-    def test_converts_code(
-        self, ccda_smoking_status: str, fhir_smoking_status: JSONObject
-    ) -> None:
+    def test_converts_code(self, ccda_smoking_status: str, fhir_smoking_status: JSONObject) -> None:
         """Test that observation code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_smoking_status, SOCIAL_HISTORY_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -70,9 +71,8 @@ class TestSmokingStatusConversion:
         assert observation is not None
         assert "code" in observation
         loinc = next(
-            (c for c in observation["code"]["coding"]
-             if c.get("system") == "http://loinc.org"),
-            None
+            (c for c in observation["code"]["coding"] if c.get("system") == "http://loinc.org"),
+            None,
         )
         assert loinc is not None
         assert loinc["code"] == "72166-2"
@@ -101,9 +101,12 @@ class TestSmokingStatusConversion:
         assert observation is not None
         assert "valueCodeableConcept" in observation
         snomed = next(
-            (c for c in observation["valueCodeableConcept"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (
+                c
+                for c in observation["valueCodeableConcept"]["coding"]
+                if c.get("system") == "http://snomed.info/sct"
+            ),
+            None,
         )
         assert snomed is not None
         assert snomed["code"] == "449868002"
@@ -121,11 +124,11 @@ class TestSmokingStatusConversion:
         assert "identifier" in observation
         assert observation["identifier"][0]["value"] == "123456789"
 
-    def test_provenance_has_recorded_date(
-        self, ccda_smoking_status_with_author: str
-    ) -> None:
+    def test_provenance_has_recorded_date(self, ccda_smoking_status_with_author: str) -> None:
         """Test that Provenance has a recorded date from author time."""
-        ccda_doc = wrap_in_ccda_document(ccda_smoking_status_with_author, SOCIAL_HISTORY_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_smoking_status_with_author, SOCIAL_HISTORY_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
@@ -150,11 +153,11 @@ class TestSmokingStatusConversion:
         # Should have a valid ISO datetime
         assert len(obs_provenance["recorded"]) > 0
 
-    def test_provenance_agent_has_correct_type(
-        self, ccda_smoking_status_with_author: str
-    ) -> None:
+    def test_provenance_agent_has_correct_type(self, ccda_smoking_status_with_author: str) -> None:
         """Test that Provenance agent has type 'author'."""
-        ccda_doc = wrap_in_ccda_document(ccda_smoking_status_with_author, SOCIAL_HISTORY_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_smoking_status_with_author, SOCIAL_HISTORY_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)
@@ -189,7 +192,9 @@ class TestSmokingStatusConversion:
         self, ccda_smoking_status_multiple_authors: str
     ) -> None:
         """Test that multiple authors create multiple Provenance agents."""
-        ccda_doc = wrap_in_ccda_document(ccda_smoking_status_multiple_authors, SOCIAL_HISTORY_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_smoking_status_multiple_authors, SOCIAL_HISTORY_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         observation = _find_smoking_status_observation(bundle)

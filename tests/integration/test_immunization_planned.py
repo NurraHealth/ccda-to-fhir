@@ -38,9 +38,7 @@ class TestPlannedImmunizationConversion:
         immunization = _find_resource_in_bundle(bundle, "Immunization")
         assert immunization is None
 
-    def test_planned_immunization_has_correct_intent(
-        self, ccda_immunization_planned: str
-    ) -> None:
+    def test_planned_immunization_has_correct_intent(self, ccda_immunization_planned: str) -> None:
         """Test that planned immunization has intent='plan'."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -50,9 +48,7 @@ class TestPlannedImmunizationConversion:
         # moodCode='INT' should map to intent='plan'
         assert medication_request["intent"] == "plan"
 
-    def test_planned_immunization_has_correct_status(
-        self, ccda_immunization_planned: str
-    ) -> None:
+    def test_planned_immunization_has_correct_status(self, ccda_immunization_planned: str) -> None:
         """Test that planned immunization status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -61,9 +57,7 @@ class TestPlannedImmunizationConversion:
         assert medication_request is not None
         assert medication_request["status"] == "active"
 
-    def test_planned_immunization_has_vaccine_code(
-        self, ccda_immunization_planned: str
-    ) -> None:
+    def test_planned_immunization_has_vaccine_code(self, ccda_immunization_planned: str) -> None:
         """Test that vaccine code is correctly converted in MedicationRequest.
 
         Note: The fixture has manufacturer organization, so it uses medicationReference.
@@ -83,9 +77,12 @@ class TestPlannedImmunizationConversion:
 
             # Check for CVX code
             cvx = next(
-                (c for c in medication["code"]["coding"]
-                 if c.get("system") == "http://hl7.org/fhir/sid/cvx"),
-                None
+                (
+                    c
+                    for c in medication["code"]["coding"]
+                    if c.get("system") == "http://hl7.org/fhir/sid/cvx"
+                ),
+                None,
             )
             assert cvx is not None
             assert cvx["code"] == "140"
@@ -94,19 +91,22 @@ class TestPlannedImmunizationConversion:
         elif "medicationCodeableConcept" in medication_request:
             # Check for CVX code
             cvx = next(
-                (c for c in medication_request["medicationCodeableConcept"]["coding"]
-                 if c.get("system") == "http://hl7.org/fhir/sid/cvx"),
-                None
+                (
+                    c
+                    for c in medication_request["medicationCodeableConcept"]["coding"]
+                    if c.get("system") == "http://hl7.org/fhir/sid/cvx"
+                ),
+                None,
             )
             assert cvx is not None
             assert cvx["code"] == "140"
             assert cvx["display"] == "Influenza, seasonal, injectable, preservative free"
         else:
-            assert False, "MedicationRequest must have either medicationReference or medicationCodeableConcept"
+            raise AssertionError(
+                "MedicationRequest must have either medicationReference or medicationCodeableConcept"
+            )
 
-    def test_planned_immunization_has_ndc_translation(
-        self, ccda_immunization_planned: str
-    ) -> None:
+    def test_planned_immunization_has_ndc_translation(self, ccda_immunization_planned: str) -> None:
         """Test that NDC translation codes are included."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -121,9 +121,12 @@ class TestPlannedImmunizationConversion:
 
             # Check for NDC code
             ndc = next(
-                (c for c in medication["code"]["coding"]
-                 if c.get("system") == "http://hl7.org/fhir/sid/ndc"),
-                None
+                (
+                    c
+                    for c in medication["code"]["coding"]
+                    if c.get("system") == "http://hl7.org/fhir/sid/ndc"
+                ),
+                None,
             )
             assert ndc is not None
             assert ndc["code"] == "49281-0400-10"
@@ -131,18 +134,21 @@ class TestPlannedImmunizationConversion:
         elif "medicationCodeableConcept" in medication_request:
             # Check for NDC code
             ndc = next(
-                (c for c in medication_request["medicationCodeableConcept"]["coding"]
-                 if c.get("system") == "http://hl7.org/fhir/sid/ndc"),
-                None
+                (
+                    c
+                    for c in medication_request["medicationCodeableConcept"]["coding"]
+                    if c.get("system") == "http://hl7.org/fhir/sid/ndc"
+                ),
+                None,
             )
             assert ndc is not None
             assert ndc["code"] == "49281-0400-10"
         else:
-            assert False, "MedicationRequest must have either medicationReference or medicationCodeableConcept"
+            raise AssertionError(
+                "MedicationRequest must have either medicationReference or medicationCodeableConcept"
+            )
 
-    def test_planned_immunization_has_authored_on(
-        self, ccda_immunization_planned: str
-    ) -> None:
+    def test_planned_immunization_has_authored_on(self, ccda_immunization_planned: str) -> None:
         """Test that authoredOn is set from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -178,9 +184,7 @@ class TestPlannedImmunizationConversion:
         assert dose_and_rate["doseQuantity"]["value"] == 0.5
         assert dose_and_rate["doseQuantity"]["unit"] == "mL"
 
-    def test_planned_immunization_has_reason_code(
-        self, ccda_immunization_planned: str
-    ) -> None:
+    def test_planned_immunization_has_reason_code(self, ccda_immunization_planned: str) -> None:
         """Test that indication is converted to reasonCode."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -191,9 +195,7 @@ class TestPlannedImmunizationConversion:
         assert len(medication_request["reasonCode"]) > 0
         assert medication_request["reasonCode"][0]["coding"][0]["code"] == "161511000"
 
-    def test_planned_immunization_has_identifier(
-        self, ccda_immunization_planned: str
-    ) -> None:
+    def test_planned_immunization_has_identifier(self, ccda_immunization_planned: str) -> None:
         """Test that identifier is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_immunization_planned, IMMUNIZATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -224,12 +226,12 @@ class TestPlannedImmunizationConversion:
         medication_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         # Note: There might be MedicationRequest from medications section, so we check
         # that it's not related to the immunization
-        if medication_request:
-            # If there is a MedicationRequest, it should not have the immunization's vaccine code
-            if "medicationCodeableConcept" in medication_request:
-                cvx_codes = [
-                    c["code"] for c in medication_request["medicationCodeableConcept"]["coding"]
-                    if c.get("system") == "http://hl7.org/fhir/sid/cvx"
-                ]
-                # The historical immunization has CVX code 88, should not appear in MedicationRequest
-                assert "88" not in cvx_codes
+        # If there is a MedicationRequest, it should not have the immunization's vaccine code
+        if medication_request and "medicationCodeableConcept" in medication_request:
+            cvx_codes = [
+                c["code"]
+                for c in medication_request["medicationCodeableConcept"]["coding"]
+                if c.get("system") == "http://hl7.org/fhir/sid/cvx"
+            ]
+            # The historical immunization has CVX code 88, should not appear in MedicationRequest
+            assert "88" not in cvx_codes

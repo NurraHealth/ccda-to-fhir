@@ -21,12 +21,13 @@ from ccda_to_fhir.ccda.models.encounter import Encounter as CDAEncounter
 from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
 from ccda_to_fhir.constants import CCDA_TYPECODE_TO_FHIR_RELATES_TO, FHIRCodes
 from ccda_to_fhir.converters.author_references import build_author_references
+from ccda_to_fhir.converters.code_systems import CodeSystemMapper
 from ccda_to_fhir.converters.note_activity import (
     NoteActivityConverter,
     _convert_relates_to,
     _convert_type,
-    _create_context,
     _create_content_list,
+    _create_context,
     _create_inline_content,
     _create_missing_content,
     _extract_author_date,
@@ -35,10 +36,8 @@ from ccda_to_fhir.converters.note_activity import (
     _make_coding,
     convert_note_activity,
 )
-from ccda_to_fhir.converters.code_systems import CodeSystemMapper
 from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.types import EncounterContext
-
 
 # ============================================================================
 # Fixtures
@@ -77,7 +76,8 @@ def _make_note_act(
         mood_code="EVN",
         template_id=[II(root="2.16.840.1.113883.10.20.22.4.202", extension="2016-11-01")],
         id=[II(root=note_id)],
-        code=code or CD(
+        code=code
+        or CD(
             code="34109-9",
             code_system="2.16.840.1.113883.6.1",
             display_name="Note",
@@ -180,11 +180,13 @@ class TestConvertType:
             code="34109-9",
             code_system="2.16.840.1.113883.6.1",
             display_name="Note",
-            translation=[CD(
-                code="34117-2",
-                code_system="2.16.840.1.113883.6.1",
-                display_name="History and physical note",
-            )],
+            translation=[
+                CD(
+                    code="34117-2",
+                    code_system="2.16.840.1.113883.6.1",
+                    display_name="History and physical note",
+                )
+            ],
         )
         result = _convert_type(code, mapper)
         assert len(result["coding"]) == 2
@@ -405,7 +407,9 @@ class TestCreateContentList:
 
 class TestCreateMissingContent:
     def test_structure(self) -> None:
-        fn = lambda nf: {"url": "http://test", "valueCode": "unknown"}
+        def fn(nf):
+            return {"url": "http://test", "valueCode": "unknown"}
+
         result = _create_missing_content(fn)
         assert len(result) == 1
         assert result[0]["attachment"]["contentType"] == "text/plain"
@@ -421,7 +425,10 @@ class TestCreateMissingContent:
         assert calls == [None]
 
     def test_extension_in_data(self) -> None:
-        ext = {"url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason", "valueCode": "unknown"}
+        ext = {
+            "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+            "valueCode": "unknown",
+        }
         result = _create_missing_content(lambda nf: ext)
         assert result[0]["attachment"]["_data"]["extension"] == [ext]
 
@@ -517,48 +524,60 @@ class TestCreateContext:
 
 class TestConvertRelatesTo:
     def test_rplc_maps_to_replaces(self) -> None:
-        refs = [Reference(
-            type_code="RPLC",
-            external_document=ExternalDocument(id=[II(root="doc-1", extension="v2")]),
-        )]
+        refs = [
+            Reference(
+                type_code="RPLC",
+                external_document=ExternalDocument(id=[II(root="doc-1", extension="v2")]),
+            )
+        ]
         result = _convert_relates_to(refs)
         assert len(result) == 1
         assert result[0]["code"] == "replaces"
 
     def test_apnd_maps_to_appends(self) -> None:
-        refs = [Reference(
-            type_code="APND",
-            external_document=ExternalDocument(id=[II(root="doc-1")]),
-        )]
+        refs = [
+            Reference(
+                type_code="APND",
+                external_document=ExternalDocument(id=[II(root="doc-1")]),
+            )
+        ]
         result = _convert_relates_to(refs)
         assert result[0]["code"] == "appends"
 
     def test_xfrm_maps_to_transforms(self) -> None:
-        refs = [Reference(
-            type_code="XFRM",
-            external_document=ExternalDocument(id=[II(root="doc-1")]),
-        )]
+        refs = [
+            Reference(
+                type_code="XFRM",
+                external_document=ExternalDocument(id=[II(root="doc-1")]),
+            )
+        ]
         result = _convert_relates_to(refs)
         assert result[0]["code"] == "transforms"
 
     def test_refr_skipped(self) -> None:
-        refs = [Reference(
-            type_code="REFR",
-            external_document=ExternalDocument(id=[II(root="doc-1")]),
-        )]
+        refs = [
+            Reference(
+                type_code="REFR",
+                external_document=ExternalDocument(id=[II(root="doc-1")]),
+            )
+        ]
         assert _convert_relates_to(refs) == []
 
     def test_unknown_type_code_skipped(self) -> None:
-        refs = [Reference(
-            type_code="BOGUS",
-            external_document=ExternalDocument(id=[II(root="doc-1")]),
-        )]
+        refs = [
+            Reference(
+                type_code="BOGUS",
+                external_document=ExternalDocument(id=[II(root="doc-1")]),
+            )
+        ]
         assert _convert_relates_to(refs) == []
 
     def test_none_type_code_skipped(self) -> None:
-        refs = [Reference(
-            external_document=ExternalDocument(id=[II(root="doc-1")]),
-        )]
+        refs = [
+            Reference(
+                external_document=ExternalDocument(id=[II(root="doc-1")]),
+            )
+        ]
         assert _convert_relates_to(refs) == []
 
     def test_no_external_document_skipped(self) -> None:
@@ -566,17 +585,21 @@ class TestConvertRelatesTo:
         assert _convert_relates_to(refs) == []
 
     def test_no_id_skipped(self) -> None:
-        refs = [Reference(
-            type_code="RPLC",
-            external_document=ExternalDocument(),
-        )]
+        refs = [
+            Reference(
+                type_code="RPLC",
+                external_document=ExternalDocument(),
+            )
+        ]
         assert _convert_relates_to(refs) == []
 
     def test_target_uses_generate_id(self) -> None:
-        refs = [Reference(
-            type_code="RPLC",
-            external_document=ExternalDocument(id=[II(root="doc-root", extension="doc-ext")]),
-        )]
+        refs = [
+            Reference(
+                type_code="RPLC",
+                external_document=ExternalDocument(id=[II(root="doc-root", extension="doc-ext")]),
+            )
+        ]
         result = _convert_relates_to(refs)
         target_ref = result[0]["target"]["reference"]
         assert target_ref.startswith("urn:uuid:")
@@ -584,10 +607,12 @@ class TestConvertRelatesTo:
         assert target_ref != "urn:uuid:doc-root"
 
     def test_deterministic_ids(self) -> None:
-        refs = [Reference(
-            type_code="RPLC",
-            external_document=ExternalDocument(id=[II(root="doc-1", extension="v1")]),
-        )]
+        refs = [
+            Reference(
+                type_code="RPLC",
+                external_document=ExternalDocument(id=[II(root="doc-1", extension="v1")]),
+            )
+        ]
         r1 = _convert_relates_to(refs)
         r2 = _convert_relates_to(refs)
         assert r1[0]["target"]["reference"] == r2[0]["target"]["reference"]
@@ -737,11 +762,13 @@ class TestDocStatus:
 
 class TestType:
     def test_primary_code_mapped(self, converter: NoteActivityConverter) -> None:
-        act = _make_note_act(code=CD(
-            code="34109-9",
-            code_system="2.16.840.1.113883.6.1",
-            display_name="Note",
-        ))
+        act = _make_note_act(
+            code=CD(
+                code="34109-9",
+                code_system="2.16.840.1.113883.6.1",
+                display_name="Note",
+            )
+        )
         result = converter.convert(act)
         doc_type = result["type"]
         coding = doc_type["coding"]
@@ -750,16 +777,20 @@ class TestType:
         assert coding[0]["display"] == "Note"
 
     def test_translation_codes_included(self, converter: NoteActivityConverter) -> None:
-        act = _make_note_act(code=CD(
-            code="34109-9",
-            code_system="2.16.840.1.113883.6.1",
-            display_name="Note",
-            translation=[CD(
-                code="34117-2",
+        act = _make_note_act(
+            code=CD(
+                code="34109-9",
                 code_system="2.16.840.1.113883.6.1",
-                display_name="History and physical note",
-            )],
-        ))
+                display_name="Note",
+                translation=[
+                    CD(
+                        code="34117-2",
+                        code_system="2.16.840.1.113883.6.1",
+                        display_name="History and physical note",
+                    )
+                ],
+            )
+        )
         result = converter.convert(act)
         codings = result["type"]["coding"]
         assert len(codings) == 2
@@ -767,11 +798,13 @@ class TestType:
         assert codings[1]["display"] == "History and physical note"
 
     def test_display_text_set(self, converter: NoteActivityConverter) -> None:
-        act = _make_note_act(code=CD(
-            code="34109-9",
-            code_system="2.16.840.1.113883.6.1",
-            display_name="Note",
-        ))
+        act = _make_note_act(
+            code=CD(
+                code="34109-9",
+                code_system="2.16.840.1.113883.6.1",
+                display_name="Note",
+            )
+        )
         result = converter.convert(act)
         assert result["type"]["text"] == "Note"
 
@@ -869,11 +902,13 @@ class TestDateAndAuthor:
 class TestContent:
     def test_base64_content_passthrough(self, converter: NoteActivityConverter) -> None:
         b64_data = base64.b64encode(b"Hello RTF").decode("ascii")
-        act = _make_note_act(text=ED(
-            media_type="text/rtf",
-            representation="B64",
-            value=b64_data,
-        ))
+        act = _make_note_act(
+            text=ED(
+                media_type="text/rtf",
+                representation="B64",
+                value=b64_data,
+            )
+        )
         result = converter.convert(act)
         content = result["content"]
         assert len(content) == 1
@@ -890,10 +925,12 @@ class TestContent:
         assert decoded == "Some clinical note text"
 
     def test_base64_whitespace_stripped(self, converter: NoteActivityConverter) -> None:
-        act = _make_note_act(text=ED(
-            representation="B64",
-            value="AAAA\n BBBB\n CCCC",
-        ))
+        act = _make_note_act(
+            text=ED(
+                representation="B64",
+                value="AAAA\n BBBB\n CCCC",
+            )
+        )
         result = converter.convert(act)
         assert result["content"][0]["attachment"]["data"] == "AAAABBBBCCCC"
 
@@ -919,11 +956,13 @@ class TestContent:
         assert result["content"][0]["attachment"]["contentType"] == "text/plain"
 
     def test_custom_media_type_preserved(self, converter: NoteActivityConverter) -> None:
-        act = _make_note_act(text=ED(
-            media_type="application/pdf",
-            representation="B64",
-            value="JVBER",
-        ))
+        act = _make_note_act(
+            text=ED(
+                media_type="application/pdf",
+                representation="B64",
+                value="JVBER",
+            )
+        )
         result = converter.convert(act)
         assert result["content"][0]["attachment"]["contentType"] == "application/pdf"
 

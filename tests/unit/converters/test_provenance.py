@@ -31,9 +31,7 @@ def sample_target_condition() -> FHIRResourceDict:
     return {
         "resourceType": "Condition",
         "id": "condition-123",
-        "code": {
-            "coding": [{"system": "http://snomed.info/sct", "code": "38341003"}]
-        },
+        "code": {"coding": [{"system": "http://snomed.info/sct", "code": "38341003"}]},
     }
 
 
@@ -68,9 +66,7 @@ def sample_device_author_info() -> AuthorInfo:
         time=TS(value="20240115143000"),
         assigned_author=AssignedAuthor(
             id=[II(root="2.16.840.1.113883.19.5", extension="DEVICE-001")],
-            assigned_authoring_device=AssignedAuthoringDevice(
-                manufacturer_model_name="Epic EHR"
-            ),
+            assigned_authoring_device=AssignedAuthoringDevice(manufacturer_model_name="Epic EHR"),
         ),
     )
     return AuthorInfo(author)

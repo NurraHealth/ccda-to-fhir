@@ -13,9 +13,9 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pytest
+from fhir.resources.bundle import Bundle
 
 from ccda_to_fhir.convert import convert_document
-from fhir.resources.bundle import Bundle
 
 from .comprehensive_validator import FieldValidator
 
@@ -38,30 +38,33 @@ class TestNISTComprehensive:
         validator = FieldValidator(nist_bundle)
         stats = validator.validate_all()
 
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"STRUCTURAL VALIDATION: {stats['fields_validated']} fields validated")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
-        if stats['errors']:
+        if stats["errors"]:
             print(f"\nERRORS ({len(stats['errors'])}):")
-            for error in stats['errors'][:20]:
+            for error in stats["errors"][:20]:
                 print(f"  - {error}")
 
         # Known issue: Some encounters may have identifiers without system
         # Filter out known acceptable errors
-        real_errors = [e for e in stats['errors']
-                      if not e.startswith('Encounter.identifier[0]: identifier must have system')]
+        real_errors = [
+            e
+            for e in stats["errors"]
+            if not e.startswith("Encounter.identifier[0]: identifier must have system")
+        ]
 
-        assert len(real_errors) == 0, \
-            f"Found {len(real_errors)} structural validation errors"
+        assert len(real_errors) == 0, f"Found {len(real_errors)} structural validation errors"
 
     def test_patient_exact_values(self, nist_bundle):
         """Validate Patient Myra Jones has EXACT values from C-CDA."""
-        patients = [e.resource for e in nist_bundle.entry
-                   if e.resource.get_resource_type() == "Patient"]
+        patients = [
+            e.resource for e in nist_bundle.entry if e.resource.get_resource_type() == "Patient"
+        ]
         assert len(patients) == 1
 
-        p = patients[0].dict() if hasattr(patients[0], 'dict') else patients[0].model_dump()
+        p = patients[0].dict() if hasattr(patients[0], "dict") else patients[0].model_dump()
 
         # Exact name
         assert len(p["name"]) == 1
@@ -96,48 +99,72 @@ class TestNISTComprehensive:
 
         # Exact race extension
         assert "extension" in p
-        race_ext = next((e for e in p["extension"]
-                        if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"), None)
+        race_ext = next(
+            (
+                e
+                for e in p["extension"]
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
+            ),
+            None,
+        )
         assert race_ext is not None
         # Race: White (2106-3)
-        race_category = next((ext for ext in race_ext["extension"]
-                             if ext["url"] == "ombCategory"), None)
+        race_category = next(
+            (ext for ext in race_ext["extension"] if ext["url"] == "ombCategory"), None
+        )
         assert race_category is not None
         assert race_category["valueCoding"]["code"] == "2106-3"
 
         # Exact ethnicity extension
-        ethnicity_ext = next((e for e in p["extension"]
-                             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"), None)
+        ethnicity_ext = next(
+            (
+                e
+                for e in p["extension"]
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
+            ),
+            None,
+        )
         assert ethnicity_ext is not None
         # Ethnicity: Not Hispanic or Latino (2186-5)
-        ethnicity_category = next((ext for ext in ethnicity_ext["extension"]
-                                  if ext["url"] == "ombCategory"), None)
+        ethnicity_category = next(
+            (ext for ext in ethnicity_ext["extension"] if ext["url"] == "ombCategory"), None
+        )
         assert ethnicity_category is not None
         assert ethnicity_category["valueCoding"]["code"] == "2186-5"
 
     def test_condition_pneumonia_exact_values(self, nist_bundle):
         """Validate Pneumonia condition (233604007) has EXACT values - Resolved."""
-        conditions = [e.resource for e in nist_bundle.entry
-                     if e.resource.get_resource_type() == "Condition"]
+        conditions = [
+            e.resource for e in nist_bundle.entry if e.resource.get_resource_type() == "Condition"
+        ]
 
         # Find Pneumonia condition by code
         pneumonia = None
         for cond in conditions:
-            c = cond.dict() if hasattr(cond, 'dict') else cond.model_dump()
-            if "code" in c and c["code"] and "coding" in c["code"]:
-                if any(coding.get("code") == "233604007" for coding in c["code"]["coding"]):
-                    # Check if resolved
-                    if "clinicalStatus" in c and c["clinicalStatus"]:
-                        if "resolved" in c["clinicalStatus"]["coding"][0]["code"]:
-                            pneumonia = c
-                            break
+            c = cond.dict() if hasattr(cond, "dict") else cond.model_dump()
+            if (
+                "code" in c
+                and c["code"]
+                and "coding" in c["code"]
+                and any(coding.get("code") == "233604007" for coding in c["code"]["coding"])
+                # Check if resolved
+                and "clinicalStatus" in c
+                and c["clinicalStatus"]
+                and "resolved" in c["clinicalStatus"]["coding"][0]["code"]
+            ):
+                pneumonia = c
+                break
 
-        assert pneumonia is not None, "Must have Pneumonia condition (233604007) with resolved status"
+        assert pneumonia is not None, (
+            "Must have Pneumonia condition (233604007) with resolved status"
+        )
 
         # Exact code
         assert len(pneumonia["code"]["coding"]) >= 1
-        snomed_coding = next((c for c in pneumonia["code"]["coding"]
-                             if c["system"] == "http://snomed.info/sct"), None)
+        snomed_coding = next(
+            (c for c in pneumonia["code"]["coding"] if c["system"] == "http://snomed.info/sct"),
+            None,
+        )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "233604007"
         assert "pneumonia" in snomed_coding["display"].lower()
@@ -147,8 +174,10 @@ class TestNISTComprehensive:
 
         # Exact clinical status - resolved
         assert pneumonia["clinicalStatus"]["coding"][0]["code"] == "resolved"
-        assert pneumonia["clinicalStatus"]["coding"][0]["system"] == \
-            "http://terminology.hl7.org/CodeSystem/condition-clinical"
+        assert (
+            pneumonia["clinicalStatus"]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/condition-clinical"
+        )
 
         # Exact category
         assert len(pneumonia["category"]) >= 1
@@ -162,22 +191,28 @@ class TestNISTComprehensive:
 
     def test_condition_asthma_exact_values(self, nist_bundle):
         """Validate Asthma condition (195967001) has EXACT values - Active."""
-        conditions = [e.resource for e in nist_bundle.entry
-                     if e.resource.get_resource_type() == "Condition"]
+        conditions = [
+            e.resource for e in nist_bundle.entry if e.resource.get_resource_type() == "Condition"
+        ]
 
         asthma = None
         for cond in conditions:
-            c = cond.dict() if hasattr(cond, 'dict') else cond.model_dump()
-            if "code" in c and c["code"] and "coding" in c["code"]:
-                if any(coding.get("code") == "195967001" for coding in c["code"]["coding"]):
-                    asthma = c
-                    break
+            c = cond.dict() if hasattr(cond, "dict") else cond.model_dump()
+            if (
+                "code" in c
+                and c["code"]
+                and "coding" in c["code"]
+                and any(coding.get("code") == "195967001" for coding in c["code"]["coding"])
+            ):
+                asthma = c
+                break
 
         assert asthma is not None, "Must have Asthma condition (195967001)"
 
         # Exact code
-        snomed_coding = next((c for c in asthma["code"]["coding"]
-                             if c["system"] == "http://snomed.info/sct"), None)
+        snomed_coding = next(
+            (c for c in asthma["code"]["coding"] if c["system"] == "http://snomed.info/sct"), None
+        )
         assert snomed_coding["code"] == "195967001"
         assert "asthma" in snomed_coding["display"].lower()
         assert "asthma" in asthma["code"]["text"].lower()
@@ -195,12 +230,15 @@ class TestNISTComprehensive:
 
     def test_allergy_penicillin_exact_values(self, nist_bundle):
         """Validate Penicillin allergy (7982) has EXACT values with Hives reaction."""
-        allergies = [e.resource for e in nist_bundle.entry
-                    if e.resource.get_resource_type() == "AllergyIntolerance"]
+        allergies = [
+            e.resource
+            for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "AllergyIntolerance"
+        ]
 
         penicillin = None
         for allergy in allergies:
-            a = allergy.dict() if hasattr(allergy, 'dict') else allergy.model_dump()
+            a = allergy.dict() if hasattr(allergy, "dict") else allergy.model_dump()
             if any(coding.get("code") == "7982" for coding in a["code"]["coding"]):
                 penicillin = a
                 break
@@ -208,8 +246,14 @@ class TestNISTComprehensive:
         assert penicillin is not None, "Must have Penicillin allergy (7982)"
 
         # Exact code
-        rxnorm_coding = next((c for c in penicillin["code"]["coding"]
-                             if c["system"] == "http://www.nlm.nih.gov/research/umls/rxnorm"), None)
+        rxnorm_coding = next(
+            (
+                c
+                for c in penicillin["code"]["coding"]
+                if c["system"] == "http://www.nlm.nih.gov/research/umls/rxnorm"
+            ),
+            None,
+        )
         assert rxnorm_coding["code"] == "7982"
         assert "penicillin" in rxnorm_coding["display"].lower()
         assert "penicillin" in penicillin["code"]["text"].lower()
@@ -225,8 +269,9 @@ class TestNISTComprehensive:
         if "clinicalStatus" in penicillin:
             # Note: NIST penicillin allergy is resolved, not active
             status_code = penicillin["clinicalStatus"]["coding"][0]["code"].lower()
-            assert status_code in ["active", "resolved"], \
+            assert status_code in ["active", "resolved"], (
                 f"Penicillin clinical status must be 'active' or 'resolved', got '{status_code}'"
+            )
 
         # Exact reaction - Hives (247472004)
         if "reaction" in penicillin and len(penicillin["reaction"]) > 0:
@@ -236,51 +281,75 @@ class TestNISTComprehensive:
             # Check for Hives code
             if "coding" in manifestation:
                 hives_code = next(
-                    (c["code"] for c in manifestation["coding"] if c["code"] == "247472004"),
-                    None
+                    (c["code"] for c in manifestation["coding"] if c["code"] == "247472004"), None
                 )
-                assert hives_code is not None, "Penicillin reaction should include Hives (247472004)"
+                assert hives_code is not None, (
+                    "Penicillin reaction should include Hives (247472004)"
+                )
             # Check text
             if "text" in manifestation:
                 assert "hives" in manifestation["text"].lower()
 
     def test_medication_albuterol_exact_values(self, nist_bundle):
         """Validate Albuterol medication (573621) has EXACT values."""
-        med_statements = [e.resource for e in nist_bundle.entry
-                         if e.resource.get_resource_type() == "MedicationStatement"]
+        med_statements = [
+            e.resource
+            for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "MedicationStatement"
+        ]
 
         # Find albuterol by checking medicationCodeableConcept or medicationReference
         albuterol = None
         for med in med_statements:
-            m = med.dict() if hasattr(med, 'dict') else med.model_dump()
+            m = med.dict() if hasattr(med, "dict") else med.model_dump()
 
             # Check medicationCodeableConcept
             if "medicationCodeableConcept" in m and m["medicationCodeableConcept"]:
-                if "text" in m["medicationCodeableConcept"]:
-                    if "albuterol" in m["medicationCodeableConcept"]["text"].lower():
-                        albuterol = m
-                        break
-                if "coding" in m["medicationCodeableConcept"]:
-                    if any(coding.get("code") == "573621" for coding in m["medicationCodeableConcept"]["coding"]):
-                        albuterol = m
-                        break
+                if (
+                    "text" in m["medicationCodeableConcept"]
+                    and "albuterol" in m["medicationCodeableConcept"]["text"].lower()
+                ):
+                    albuterol = m
+                    break
+                if "coding" in m["medicationCodeableConcept"] and any(
+                    coding.get("code") == "573621"
+                    for coding in m["medicationCodeableConcept"]["coding"]
+                ):
+                    albuterol = m
+                    break
 
             # Check medicationReference - resolve it
             if "medicationReference" in m and m["medicationReference"]:
                 med_ref = m["medicationReference"]["reference"]
                 for entry in nist_bundle.entry:
-                    if entry.resource.get_resource_type() == "Medication":
-                        if entry.resource.id in med_ref:
-                            med_resource = entry.resource.dict() if hasattr(entry.resource, 'dict') else entry.resource.model_dump()
-                            if "code" in med_resource and med_resource["code"]:
-                                if "coding" in med_resource["code"]:
-                                    if any(coding.get("code") == "573621" for coding in med_resource["code"]["coding"]):
-                                        albuterol = m
-                                        break
-                                if "text" in med_resource["code"]:
-                                    if "albuterol" in med_resource["code"]["text"].lower():
-                                        albuterol = m
-                                        break
+                    if (
+                        entry.resource.get_resource_type() == "Medication"
+                        and entry.resource.id in med_ref
+                    ):
+                        med_resource = (
+                            entry.resource.dict()
+                            if hasattr(entry.resource, "dict")
+                            else entry.resource.model_dump()
+                        )
+                        if (
+                            "code" in med_resource
+                            and med_resource["code"]
+                            and "coding" in med_resource["code"]
+                            and any(
+                                coding.get("code") == "573621"
+                                for coding in med_resource["code"]["coding"]
+                            )
+                        ):
+                            albuterol = m
+                            break
+                        if (
+                            "code" in med_resource
+                            and med_resource["code"]
+                            and "text" in med_resource["code"]
+                            and "albuterol" in med_resource["code"]["text"].lower()
+                        ):
+                            albuterol = m
+                            break
 
             if albuterol:
                 break
@@ -288,8 +357,9 @@ class TestNISTComprehensive:
         assert albuterol is not None, "Must have Albuterol medication"
 
         # Exact status
-        assert albuterol["status"] in ["completed", "active"], \
+        assert albuterol["status"] in ["completed", "active"], (
             f"Albuterol status must be 'completed' or 'active', got '{albuterol['status']}'"
+        )
 
         # Has subject reference to Patient
         assert albuterol["subject"]["reference"].startswith("urn:uuid:")
@@ -298,17 +368,27 @@ class TestNISTComprehensive:
         if "medicationReference" in albuterol:
             med_ref = albuterol["medicationReference"]["reference"]
             for entry in nist_bundle.entry:
-                if entry.resource.get_resource_type() == "Medication":
-                    if entry.resource.id in med_ref:
-                        med_resource = entry.resource.dict() if hasattr(entry.resource, 'dict') else entry.resource.model_dump()
-                        if "code" in med_resource and "coding" in med_resource["code"]:
-                            rxnorm_code = next(
-                                (c["code"] for c in med_resource["code"]["coding"]
-                                 if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm" and c["code"] == "573621"),
-                                None
-                            )
-                            if rxnorm_code:
-                                assert rxnorm_code == "573621"
+                if (
+                    entry.resource.get_resource_type() == "Medication"
+                    and entry.resource.id in med_ref
+                ):
+                    med_resource = (
+                        entry.resource.dict()
+                        if hasattr(entry.resource, "dict")
+                        else entry.resource.model_dump()
+                    )
+                    if "code" in med_resource and "coding" in med_resource["code"]:
+                        rxnorm_code = next(
+                            (
+                                c["code"]
+                                for c in med_resource["code"]["coding"]
+                                if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"
+                                and c["code"] == "573621"
+                            ),
+                            None,
+                        )
+                        if rxnorm_code:
+                            assert rxnorm_code == "573621"
 
         # Exact dosage.timing (high-priority untested field)
         assert "dosage" in albuterol
@@ -318,21 +398,31 @@ class TestNISTComprehensive:
         timing = dosage["timing"]
         assert "repeat" in timing
         # Should have repeat structure with frequency/period or boundsPeriod
-        assert "boundsPeriod" in timing["repeat"] or "frequency" in timing["repeat"] or "period" in timing["repeat"]
+        assert (
+            "boundsPeriod" in timing["repeat"]
+            or "frequency" in timing["repeat"]
+            or "period" in timing["repeat"]
+        )
 
     def test_observation_exact_values(self, nist_bundle):
         """Validate first Observation has EXACT values."""
-        observations = [e.resource for e in nist_bundle.entry
-                       if e.resource.get_resource_type() == "Observation"]
+        observations = [
+            e.resource for e in nist_bundle.entry if e.resource.get_resource_type() == "Observation"
+        ]
 
         assert len(observations) > 0, "Must have at least one Observation"
 
         # Get first observation
-        obs = observations[0].dict() if hasattr(observations[0], 'dict') else observations[0].model_dump()
+        obs = (
+            observations[0].dict()
+            if hasattr(observations[0], "dict")
+            else observations[0].model_dump()
+        )
 
         # Exact status
-        assert obs["status"] in ["final", "preliminary", "amended", "corrected"], \
+        assert obs["status"] in ["final", "preliminary", "amended", "corrected"], (
             f"Observation status must be valid, got '{obs['status']}'"
+        )
 
         # Exact code structure
         assert "code" in obs
@@ -340,8 +430,9 @@ class TestNISTComprehensive:
         assert len(obs["code"]["coding"]) >= 1
 
         # Has LOINC code
-        loinc_coding = next((c for c in obs["code"]["coding"]
-                            if c.get("system") == "http://loinc.org"), None)
+        loinc_coding = next(
+            (c for c in obs["code"]["coding"] if c.get("system") == "http://loinc.org"), None
+        )
         assert loinc_coding is not None, "Observation must have LOINC code"
         assert "code" in loinc_coding
         assert loinc_coding["code"] is not None and loinc_coding["code"] != ""
@@ -355,22 +446,24 @@ class TestNISTComprehensive:
                     for coding in cat["coding"]:
                         category_codes.append(coding.get("code"))
             # Common categories
-            assert any(code in ["laboratory", "vital-signs", "survey", "exam", "imaging"]
-                      for code in category_codes), \
-                f"Observation category should be valid, got {category_codes}"
+            assert any(
+                code in ["laboratory", "vital-signs", "survey", "exam", "imaging"]
+                for code in category_codes
+            ), f"Observation category should be valid, got {category_codes}"
 
         # Has subject reference to Patient
         assert obs["subject"]["reference"].startswith("urn:uuid:")
 
         # Has effective date/time
-        assert "effectiveDateTime" in obs or "effectivePeriod" in obs, \
+        assert "effectiveDateTime" in obs or "effectivePeriod" in obs, (
             "Observation must have effectiveDateTime or effectivePeriod"
+        )
 
         # Exact referenceRange (high-priority untested field)
         # Find an observation with referenceRange (e.g., WBC or platelets)
         obs_with_ref_range = None
         for observation in observations:
-            o = observation.dict() if hasattr(observation, 'dict') else observation.model_dump()
+            o = observation.dict() if hasattr(observation, "dict") else observation.model_dump()
             if "referenceRange" in o and o["referenceRange"]:
                 obs_with_ref_range = o
                 break
@@ -393,15 +486,23 @@ class TestNISTComprehensive:
 
     def test_immunization_exact_values(self, nist_bundle):
         """Validate first Immunization has EXACT values."""
-        immunizations = [e.resource for e in nist_bundle.entry
-                        if e.resource.get_resource_type() == "Immunization"]
+        immunizations = [
+            e.resource
+            for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Immunization"
+        ]
 
         if len(immunizations) > 0:
-            imm = immunizations[0].dict() if hasattr(immunizations[0], 'dict') else immunizations[0].model_dump()
+            imm = (
+                immunizations[0].dict()
+                if hasattr(immunizations[0], "dict")
+                else immunizations[0].model_dump()
+            )
 
             # Exact status
-            assert imm["status"] in ["completed", "entered-in-error", "not-done"], \
+            assert imm["status"] in ["completed", "entered-in-error", "not-done"], (
                 f"Immunization status must be valid, got '{imm['status']}'"
+            )
 
             # Exact vaccine code
             assert "vaccineCode" in imm
@@ -409,8 +510,14 @@ class TestNISTComprehensive:
             assert len(imm["vaccineCode"]["coding"]) >= 1
 
             # Check for CVX code (preferred) or fallback to other coding systems
-            cvx_coding = next((c for c in imm["vaccineCode"]["coding"]
-                              if c.get("system") == "http://hl7.org/fhir/sid/cvx"), None)
+            cvx_coding = next(
+                (
+                    c
+                    for c in imm["vaccineCode"]["coding"]
+                    if c.get("system") == "http://hl7.org/fhir/sid/cvx"
+                ),
+                None,
+            )
             if cvx_coding:
                 assert "code" in cvx_coding
                 assert cvx_coding["code"] is not None, "CVX code must not be None"
@@ -423,21 +530,31 @@ class TestNISTComprehensive:
             assert imm["patient"]["reference"].startswith("urn:uuid:")
 
             # Has occurrence date/time
-            assert "occurrenceDateTime" in imm or "occurrenceString" in imm, \
+            assert "occurrenceDateTime" in imm or "occurrenceString" in imm, (
                 "Immunization must have occurrence"
+            )
 
     def test_encounter_exact_values(self, nist_bundle):
         """Validate Encounter has EXACT values."""
-        encounters = [e.resource for e in nist_bundle.entry
-                     if e.resource.get_resource_type() == "Encounter"]
+        encounters = [
+            e.resource for e in nist_bundle.entry if e.resource.get_resource_type() == "Encounter"
+        ]
 
         assert len(encounters) >= 1
-        enc = encounters[0].dict() if hasattr(encounters[0], 'dict') else encounters[0].model_dump()
+        enc = encounters[0].dict() if hasattr(encounters[0], "dict") else encounters[0].model_dump()
 
         # Exact status
-        assert enc["status"] in ["planned", "arrived", "triaged", "in-progress", "onleave",
-                                 "finished", "cancelled", "entered-in-error", "unknown"], \
-            f"Encounter status must be valid, got '{enc['status']}'"
+        assert enc["status"] in [
+            "planned",
+            "arrived",
+            "triaged",
+            "in-progress",
+            "onleave",
+            "finished",
+            "cancelled",
+            "entered-in-error",
+            "unknown",
+        ], f"Encounter status must be valid, got '{enc['status']}'"
 
         # Exact class
         assert "class" in enc
@@ -446,8 +563,9 @@ class TestNISTComprehensive:
         assert enc["class"]["system"] == "http://terminology.hl7.org/CodeSystem/v3-ActCode"
 
         # Common encounter classes: AMB (ambulatory), IMP (inpatient), EMER (emergency)
-        assert enc["class"]["code"] in ["AMB", "IMP", "EMER", "HH", "VR", "FLD"], \
+        assert enc["class"]["code"] in ["AMB", "IMP", "EMER", "HH", "VR", "FLD"], (
             f"Encounter class must be valid v3 ActCode, got '{enc['class']['code']}'"
+        )
 
         # Has subject reference to Patient
         assert enc["subject"]["reference"].startswith("urn:uuid:")
@@ -456,16 +574,19 @@ class TestNISTComprehensive:
         if "period" in enc:
             assert "start" in enc["period"]
             # Period.start can be either datetime or string in FHIR
-            assert isinstance(enc["period"]["start"], (datetime, str)), \
+            assert isinstance(enc["period"]["start"], (datetime, str)), (
                 f"Encounter period.start must be datetime or string, got {type(enc['period']['start'])}"
+            )
 
         # Has display for class
         if "display" in enc["class"]:
             if enc["class"]["code"] == "IMP":
                 assert "inpatient" in enc["class"]["display"].lower()
             elif enc["class"]["code"] == "AMB":
-                assert "ambulatory" in enc["class"]["display"].lower() or \
-                       "outpatient" in enc["class"]["display"].lower()
+                assert (
+                    "ambulatory" in enc["class"]["display"].lower()
+                    or "outpatient" in enc["class"]["display"].lower()
+                )
 
         # Exact participant (high-priority untested field)
         assert "participant" in enc
@@ -489,10 +610,7 @@ class TestNISTComprehensive:
         assert len(encounter_type["coding"]) >= 1
         # Should have CPT or SNOMED CT coding
         assert any(
-            coding.get("system") in [
-                "http://www.ama-assn.org/go/cpt",
-                "http://snomed.info/sct"
-            ]
+            coding.get("system") in ["http://www.ama-assn.org/go/cpt", "http://snomed.info/sct"]
             for coding in encounter_type["coding"]
         )
 
@@ -503,8 +621,9 @@ class TestNISTComprehensive:
         assert "coding" in reason_code
         assert len(reason_code["coding"]) >= 1
         # Exact SNOMED code for Pneumonia (233604007)
-        snomed_coding = next((c for c in reason_code["coding"]
-                             if c.get("system") == "http://snomed.info/sct"), None)
+        snomed_coding = next(
+            (c for c in reason_code["coding"] if c.get("system") == "http://snomed.info/sct"), None
+        )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "233604007"
         assert snomed_coding["display"] == "Pneumonia"
@@ -512,21 +631,36 @@ class TestNISTComprehensive:
 
     def test_practitioner_exact_values(self, nist_bundle):
         """Validate Practitioner has EXACT values."""
-        practitioners = [e.resource for e in nist_bundle.entry
-                        if e.resource.get_resource_type() == "Practitioner"]
+        practitioners = [
+            e.resource
+            for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Practitioner"
+        ]
 
         if len(practitioners) >= 1:
-            prac = practitioners[0].dict() if hasattr(practitioners[0], 'dict') else practitioners[0].model_dump()
+            prac = (
+                practitioners[0].dict()
+                if hasattr(practitioners[0], "dict")
+                else practitioners[0].model_dump()
+            )
 
             # Exact name
             assert len(prac["name"]) >= 1
             name = prac["name"][0]
-            assert "family" in name or "given" in name, "Practitioner must have family or given name"
+            assert "family" in name or "given" in name, (
+                "Practitioner must have family or given name"
+            )
 
             # If has NPI identifier
             if "identifier" in prac:
-                npi_id = next((i for i in prac["identifier"]
-                              if i.get("system") == "http://hl7.org/fhir/sid/us-npi"), None)
+                npi_id = next(
+                    (
+                        i
+                        for i in prac["identifier"]
+                        if i.get("system") == "http://hl7.org/fhir/sid/us-npi"
+                    ),
+                    None,
+                )
                 if npi_id:
                     assert "value" in npi_id
                     assert npi_id["value"] is not None
@@ -534,11 +668,13 @@ class TestNISTComprehensive:
             # Check for Dr. Henry Seven with NPI 111111 specifically
             henry_seven = None
             for p in practitioners:
-                prac_dict = p.dict() if hasattr(p, 'dict') else p.model_dump()
+                prac_dict = p.dict() if hasattr(p, "dict") else p.model_dump()
                 if "identifier" in prac_dict:
                     for identifier in prac_dict["identifier"]:
-                        if (identifier.get("system") == "http://hl7.org/fhir/sid/us-npi" and
-                            identifier.get("value") == "111111"):
+                        if (
+                            identifier.get("system") == "http://hl7.org/fhir/sid/us-npi"
+                            and identifier.get("value") == "111111"
+                        ):
                             henry_seven = prac_dict
                             break
                 if henry_seven:
@@ -550,27 +686,36 @@ class TestNISTComprehensive:
                 assert name["family"] == "Seven", "Practitioner family name must be 'Seven'"
                 assert "Henry" in name["given"], "Practitioner given name must include 'Henry'"
                 if "prefix" in name:
-                    assert any("Dr" in prefix for prefix in name["prefix"]), \
+                    assert any("Dr" in prefix for prefix in name["prefix"]), (
                         "Practitioner prefix should include 'Dr'"
+                    )
 
     def test_composition_exact_values(self, nist_bundle):
         """Validate Composition has EXACT values."""
-        compositions = [e.resource for e in nist_bundle.entry
-                       if e.resource.get_resource_type() == "Composition"]
+        compositions = [
+            e.resource for e in nist_bundle.entry if e.resource.get_resource_type() == "Composition"
+        ]
 
         assert len(compositions) == 1
-        comp = compositions[0].dict() if hasattr(compositions[0], 'dict') else compositions[0].model_dump()
+        comp = (
+            compositions[0].dict()
+            if hasattr(compositions[0], "dict")
+            else compositions[0].model_dump()
+        )
 
         # Exact status
         assert comp["status"] == "final"
 
         # Exact type - Summarization of Episode Note (34133-9)
-        loinc_coding = next((c for c in comp["type"]["coding"]
-                            if c["system"] == "http://loinc.org"), None)
+        loinc_coding = next(
+            (c for c in comp["type"]["coding"] if c["system"] == "http://loinc.org"), None
+        )
         assert loinc_coding is not None
         assert loinc_coding["code"] == "34133-9"
-        assert "Summarization" in loinc_coding["display"] or \
-               "summarization" in loinc_coding.get("display", "").lower()
+        assert (
+            "Summarization" in loinc_coding["display"]
+            or "summarization" in loinc_coding.get("display", "").lower()
+        )
 
         # Exact title
         assert comp["title"] == "Community Health and Hospitals: Health Summary"
@@ -600,16 +745,18 @@ class TestNISTComprehensive:
             "10160-0",  # Medications
         }
         for section_code in expected_sections:
-            assert section_code in section_codes, \
-                f"Composition must have section {section_code}"
+            assert section_code in section_codes, f"Composition must have section {section_code}"
 
     def test_diagnostic_report_exact_values(self, nist_bundle):
         """Validate DiagnosticReport has EXACT values."""
-        reports = [e.resource for e in nist_bundle.entry
-                  if e.resource.get_resource_type() == "DiagnosticReport"]
+        reports = [
+            e.resource
+            for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "DiagnosticReport"
+        ]
 
         if len(reports) > 0:
-            report = reports[0].dict() if hasattr(reports[0], 'dict') else reports[0].model_dump()
+            report = reports[0].dict() if hasattr(reports[0], "dict") else reports[0].model_dump()
 
             # Exact identifier - US Core Must-Support field
             assert "identifier" in report
@@ -620,10 +767,18 @@ class TestNISTComprehensive:
             assert first_id["value"] is not None
 
             # Exact status
-            assert report["status"] in ["registered", "partial", "preliminary", "final",
-                                       "amended", "corrected", "appended", "cancelled",
-                                       "entered-in-error", "unknown"], \
-                f"DiagnosticReport status must be valid, got '{report['status']}'"
+            assert report["status"] in [
+                "registered",
+                "partial",
+                "preliminary",
+                "final",
+                "amended",
+                "corrected",
+                "appended",
+                "cancelled",
+                "entered-in-error",
+                "unknown",
+            ], f"DiagnosticReport status must be valid, got '{report['status']}'"
 
             # Exact code
             assert "code" in report
@@ -642,7 +797,10 @@ class TestNISTComprehensive:
                         for coding in cat["coding"]:
                             if coding.get("code") == "LAB":
                                 has_lab = True
-                                assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v2-0074"
+                                assert (
+                                    coding["system"]
+                                    == "http://terminology.hl7.org/CodeSystem/v2-0074"
+                                )
                                 break
                 # If has LAB category, validate it
                 if has_lab:
@@ -655,8 +813,11 @@ class TestNISTComprehensive:
 
     def test_organization_exact_values(self, nist_bundle):
         """Validate Organization has EXACT values (author organization)."""
-        organizations = [e.resource for e in nist_bundle.entry
-                        if e.resource.get_resource_type() == "Organization"]
+        organizations = [
+            e.resource
+            for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "Organization"
+        ]
 
         assert len(organizations) >= 1, "Must have Organization resource"
 
@@ -664,16 +825,25 @@ class TestNISTComprehensive:
         # (as opposed to providerOrganization which has identifier root="1.1.1.1.1.1.1.1.4")
         author_org = None
         for org_resource in organizations:
-            org_dict = org_resource.dict() if hasattr(org_resource, 'dict') else org_resource.model_dump()
+            org_dict = (
+                org_resource.dict() if hasattr(org_resource, "dict") else org_resource.model_dump()
+            )
             if "identifier" in org_dict:
-                npi_ident = next((i for i in org_dict["identifier"]
-                                 if i.get("system") == "http://hl7.org/fhir/sid/us-npi" and i.get("value") == "99999999"), None)
+                npi_ident = next(
+                    (
+                        i
+                        for i in org_dict["identifier"]
+                        if i.get("system") == "http://hl7.org/fhir/sid/us-npi"
+                        and i.get("value") == "99999999"
+                    ),
+                    None,
+                )
                 if npi_ident:
                     author_org = org_resource
                     break
 
         assert author_org is not None, "Must have author organization with NPI 99999999"
-        org = author_org.dict() if hasattr(author_org, 'dict') else author_org.model_dump()
+        org = author_org.dict() if hasattr(author_org, "dict") else author_org.model_dump()
 
         # Exact name
         assert org["name"] == "Community Health and Hospitals"
@@ -681,8 +851,10 @@ class TestNISTComprehensive:
         # Exact identifier - NPI
         assert "identifier" in org
         assert len(org["identifier"]) >= 1
-        npi_ident = next((i for i in org["identifier"]
-                         if i.get("system") == "http://hl7.org/fhir/sid/us-npi"), None)
+        npi_ident = next(
+            (i for i in org["identifier"] if i.get("system") == "http://hl7.org/fhir/sid/us-npi"),
+            None,
+        )
         assert npi_ident is not None
         assert npi_ident["value"] == "99999999"
 
@@ -705,12 +877,19 @@ class TestNISTComprehensive:
 
     def test_related_person_exact_values(self, nist_bundle):
         """Validate RelatedPerson has EXACT values."""
-        related_persons = [e.resource for e in nist_bundle.entry
-                          if e.resource.get_resource_type() == "RelatedPerson"]
+        related_persons = [
+            e.resource
+            for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "RelatedPerson"
+        ]
 
         assert len(related_persons) >= 1, "Must have RelatedPerson resource"
 
-        rp = related_persons[0].dict() if hasattr(related_persons[0], 'dict') else related_persons[0].model_dump()
+        rp = (
+            related_persons[0].dict()
+            if hasattr(related_persons[0], "dict")
+            else related_persons[0].model_dump()
+        )
 
         # Exact patient reference
         assert "patient" in rp
@@ -736,12 +915,19 @@ class TestNISTComprehensive:
 
     def test_service_request_exact_values(self, nist_bundle):
         """Validate ServiceRequest has EXACT values."""
-        service_requests = [e.resource for e in nist_bundle.entry
-                           if e.resource.get_resource_type() == "ServiceRequest"]
+        service_requests = [
+            e.resource
+            for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "ServiceRequest"
+        ]
 
         assert len(service_requests) >= 1, "Must have ServiceRequest resource"
 
-        sr = service_requests[0].dict() if hasattr(service_requests[0], 'dict') else service_requests[0].model_dump()
+        sr = (
+            service_requests[0].dict()
+            if hasattr(service_requests[0], "dict")
+            else service_requests[0].model_dump()
+        )
 
         # Exact status
         assert sr["status"] == "draft"
@@ -754,8 +940,9 @@ class TestNISTComprehensive:
         assert len(sr["category"]) >= 1
         cat = sr["category"][0]
         assert "coding" in cat
-        cat_coding = next((c for c in cat["coding"]
-                          if c.get("system") == "http://snomed.info/sct"), None)
+        cat_coding = next(
+            (c for c in cat["coding"] if c.get("system") == "http://snomed.info/sct"), None
+        )
         assert cat_coding is not None
         assert cat_coding["code"] == "103693007"
         assert cat_coding["display"] == "Diagnostic procedure"
@@ -763,8 +950,9 @@ class TestNISTComprehensive:
         # Exact code - Chest X-Ray (SNOMED 168731009)
         assert "code" in sr
         assert "coding" in sr["code"]
-        code_coding = next((c for c in sr["code"]["coding"]
-                           if c.get("system") == "http://snomed.info/sct"), None)
+        code_coding = next(
+            (c for c in sr["code"]["coding"] if c.get("system") == "http://snomed.info/sct"), None
+        )
         assert code_coding is not None
         assert code_coding["code"] == "168731009"
         assert code_coding["display"] == "Chest X-Ray"
@@ -777,8 +965,9 @@ class TestNISTComprehensive:
 
     def test_location_exact_values(self, nist_bundle):
         """Validate Location has EXACT values."""
-        locations = [e.resource for e in nist_bundle.entry
-                    if e.resource.get_resource_type() == "Location"]
+        locations = [
+            e.resource for e in nist_bundle.entry if e.resource.get_resource_type() == "Location"
+        ]
 
         assert len(locations) >= 1, "Must have Location resource"
 
@@ -788,7 +977,7 @@ class TestNISTComprehensive:
         # We want the one with complete details including type code.
         location = None
         for loc_res in locations:
-            loc_dict = loc_res.dict() if hasattr(loc_res, 'dict') else loc_res.model_dump()
+            loc_dict = loc_res.dict() if hasattr(loc_res, "dict") else loc_res.model_dump()
             if "type" in loc_dict and len(loc_dict["type"]) > 0:
                 location = loc_res
                 break
@@ -797,7 +986,7 @@ class TestNISTComprehensive:
         if location is None:
             location = locations[0]
 
-        loc = location.dict() if hasattr(location, 'dict') else location.model_dump()
+        loc = location.dict() if hasattr(location, "dict") else location.model_dump()
 
         # Exact status
         assert loc["status"] == "active"

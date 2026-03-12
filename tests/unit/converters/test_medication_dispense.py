@@ -19,9 +19,7 @@ def create_minimal_dispense() -> Supply:
     dispense = Supply()
     dispense.class_code = "SPLY"
     dispense.mood_code = "EVN"  # Event (dispense), not INT (order)
-    dispense.template_id = [
-        II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")
-    ]
+    dispense.template_id = [II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")]
     dispense.id = [II(root="dispense-456")]
     # Per C-CDA spec: statusCode is fixed to "completed"
     dispense.status_code = CS(code="completed")
@@ -216,9 +214,7 @@ class TestMedicationDispenseTiming:
         dispense = Supply()
         dispense.class_code = "SPLY"
         dispense.mood_code = "EVN"
-        dispense.template_id = [
-            II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")
-        ]
+        dispense.template_id = [II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
         dispense.code = CE(
@@ -311,7 +307,9 @@ class TestMedicationDispenseTiming:
         assert "whenHandedOver" in result
         assert result["whenHandedOver"] == "2020-03-01T09:00:00-05:00"
 
-    def test_when_handed_over_before_when_prepared_triggers_mdd1_violation(self, caplog, mock_reference_registry):
+    def test_when_handed_over_before_when_prepared_triggers_mdd1_violation(
+        self, caplog, mock_reference_registry
+    ):
         """Test FHIR invariant mdd-1: whenHandedOver before whenPrepared is invalid.
 
         Per FHIR invariant mdd-1: "whenHandedOver cannot be before whenPrepared"
@@ -386,9 +384,7 @@ class TestMedicationDispenseType:
         dispense = Supply()
         dispense.class_code = "SPLY"
         dispense.mood_code = "EVN"
-        dispense.template_id = [
-            II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")
-        ]
+        dispense.template_id = [II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
         dispense.code = CE(
@@ -480,9 +476,7 @@ class TestMedicationDispensePerformer:
         dispense = Supply()
         dispense.class_code = "SPLY"
         dispense.mood_code = "EVN"
-        dispense.template_id = [
-            II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")
-        ]
+        dispense.template_id = [II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
         dispense.code = CE(
@@ -530,7 +524,9 @@ class TestMedicationDispensePerformer:
         assert "actor" in result["performer"][0]
         assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
-    def test_performer_with_only_organization_creates_organization_performer(self, mock_reference_registry):
+    def test_performer_with_only_organization_creates_organization_performer(
+        self, mock_reference_registry
+    ):
         """Test performer with only representedOrganization (no assignedPerson) creates Organization reference."""
         from ccda_to_fhir.ccda.models.performer import RepresentedOrganization
         from ccda_to_fhir.converters.references import ReferenceRegistry
@@ -624,9 +620,7 @@ class TestMedicationDispensePerformer:
         dispense = create_minimal_dispense()
 
         assigned_author = AssignedAuthor()
-        assigned_author.id = [
-            II(root="2.16.840.1.113883.4.6", extension="9876543210")
-        ]
+        assigned_author.id = [II(root="2.16.840.1.113883.4.6", extension="9876543210")]
         assigned_author.assigned_person = AuthorAssignedPerson()
 
         author = Author()
@@ -641,7 +635,8 @@ class TestMedicationDispensePerformer:
         assert "performer" in result
         # Should have performer entry with packager function
         packager_performers = [
-            p for p in result["performer"]
+            p
+            for p in result["performer"]
             if "function" in p and p["function"]["coding"][0]["code"] == "packager"
         ]
         assert len(packager_performers) >= 1
@@ -655,9 +650,7 @@ class TestMedicationDispenseCategory:
         dispense = Supply()
         dispense.class_code = "SPLY"
         dispense.mood_code = "EVN"
-        dispense.template_id = [
-            II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")
-        ]
+        dispense.template_id = [II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
         dispense.code = CE(
@@ -683,7 +676,9 @@ class TestMedicationDispenseCategory:
 
         assert "category" in result
         coding = result["category"]["coding"][0]
-        assert coding["system"] == "http://terminology.hl7.org/CodeSystem/medicationdispense-category"
+        assert (
+            coding["system"] == "http://terminology.hl7.org/CodeSystem/medicationdispense-category"
+        )
         assert coding["code"] == "community"
         assert coding["display"] == "Community"
 
@@ -696,9 +691,7 @@ class TestMedicationDispenseUSCoreProfile:
         dispense = Supply()
         dispense.class_code = "SPLY"
         dispense.mood_code = "EVN"
-        dispense.template_id = [
-            II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")
-        ]
+        dispense.template_id = [II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
         dispense.code = CE(
@@ -724,7 +717,10 @@ class TestMedicationDispenseUSCoreProfile:
 
         assert "meta" in result
         assert "profile" in result["meta"]
-        assert "http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationdispense" in result["meta"]["profile"]
+        assert (
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationdispense"
+            in result["meta"]["profile"]
+        )
 
     def test_required_elements_present(self, mock_reference_registry):
         """Test all US Core required elements are present."""
@@ -912,9 +908,7 @@ class TestMedicationDispensePharmacyLocation:
         dispense = Supply()
         dispense.class_code = "SPLY"
         dispense.mood_code = "EVN"
-        dispense.template_id = [
-            II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")
-        ]
+        dispense.template_id = [II(root="2.16.840.1.113883.10.20.22.4.18", extension="2014-06-09")]
         dispense.id = [II(root="dispense-456")]
         dispense.status_code = CS(code="completed")
         dispense.code = CE(
@@ -963,12 +957,14 @@ class TestMedicationDispensePharmacyLocation:
         # representedOrganization (pharmacy)
         org = RepresentedOrganization()
         org.name = ["Community Pharmacy"]
-        org.addr = [AD(
-            street_address_line=["123 Pharmacy Lane"],
-            city="Boston",
-            state="MA",
-            postal_code="02101"
-        )]
+        org.addr = [
+            AD(
+                street_address_line=["123 Pharmacy Lane"],
+                city="Boston",
+                state="MA",
+                postal_code="02101",
+            )
+        ]
         org.telecom = [TEL(value="tel:(555)555-1000", use="WP")]
         assigned_entity.represented_organization = org
 
@@ -1066,7 +1062,9 @@ class TestMedicationDispensePharmacyLocation:
         location = registry.get_resource("Location", location_id)
 
         # Verify identifiers are populated (US Core Must Support)
-        assert "identifier" in location, "Location.identifier missing (US Core Must Support violation)"
+        assert "identifier" in location, (
+            "Location.identifier missing (US Core Must Support violation)"
+        )
         assert len(location["identifier"]) == 2
 
         # Check first identifier (NPI - OID mapped to FHIR URI)
@@ -1289,12 +1287,14 @@ class TestMedicationDispensePharmacyLocation:
         # representedOrganization with multiple address lines
         org = RepresentedOrganization()
         org.name = ["Downtown Pharmacy"]
-        org.addr = [AD(
-            street_address_line=["Suite 200", "456 Main Street"],
-            city="Springfield",
-            state="IL",
-            postal_code="62701"
-        )]
+        org.addr = [
+            AD(
+                street_address_line=["Suite 200", "456 Main Street"],
+                city="Springfield",
+                state="IL",
+                postal_code="62701",
+            )
+        ]
         assigned_entity.represented_organization = org
 
         performer = Performer()
@@ -1391,9 +1391,7 @@ class TestPerformerFunction:
 
         performer = Performer()
         performer.function_code = CE(
-            code="PCP",
-            code_system="2.16.840.1.113883.5.88",
-            display_name="Primary Care Physician"
+            code="PCP", code_system="2.16.840.1.113883.5.88", display_name="Primary Care Physician"
         )
         performer.assigned_entity = assigned_entity
         dispense.performer = [performer]
@@ -1427,7 +1425,7 @@ class TestPerformerFunction:
         performer.function_code = CE(
             code="PACKPHARM",
             code_system="2.16.840.1.113883.5.88",
-            display_name="Packaging Pharmacist"
+            display_name="Packaging Pharmacist",
         )
         performer.assigned_entity = assigned_entity
         dispense.performer = [performer]
@@ -1442,7 +1440,9 @@ class TestPerformerFunction:
         assert result["performer"][0]["function"]["coding"][0]["code"] == "packager"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Packager"
 
-    def test_performer_without_function_code_defaults_to_finalchecker(self, mock_reference_registry):
+    def test_performer_without_function_code_defaults_to_finalchecker(
+        self, mock_reference_registry
+    ):
         """Test performer without functionCode defaults to finalchecker."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1518,9 +1518,7 @@ class TestPerformerFunction:
 
         author = Author()
         author.function_code = CE(
-            code="ADMPHYS",
-            code_system="2.16.840.1.113883.5.88",
-            display_name="Admitting Physician"
+            code="ADMPHYS", code_system="2.16.840.1.113883.5.88", display_name="Admitting Physician"
         )
         author.assigned_author = assigned_author
         dispense.author = [author]
@@ -1552,9 +1550,7 @@ class TestPerformerFunction:
 
         performer = Performer()
         performer.function_code = CE(
-            code="UNKNOWN_CODE",
-            code_system="2.16.840.1.113883.5.88",
-            display_name="Unknown Role"
+            code="UNKNOWN_CODE", code_system="2.16.840.1.113883.5.88", display_name="Unknown Role"
         )
         performer.assigned_entity = assigned_entity
         dispense.performer = [performer]
@@ -1569,7 +1565,9 @@ class TestPerformerFunction:
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
 
-    def test_organization_performer_without_function_code_defaults_to_finalchecker(self, mock_reference_registry):
+    def test_organization_performer_without_function_code_defaults_to_finalchecker(
+        self, mock_reference_registry
+    ):
         """Test organization performer without functionCode defaults to finalchecker."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1612,7 +1610,9 @@ class TestPerformerFunction:
         assert "actor" in result["performer"][0]
         assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
-    def test_organization_performer_with_function_code_uses_mapped_function(self, mock_reference_registry):
+    def test_organization_performer_with_function_code_uses_mapped_function(
+        self, mock_reference_registry
+    ):
         """Test organization performer with functionCode uses mapped function."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1639,9 +1639,7 @@ class TestPerformerFunction:
 
         performer = Performer()
         performer.function_code = CE(
-            code="PHARM",
-            code_system="2.16.840.1.113883.5.88",
-            display_name="Pharmacist"
+            code="PHARM", code_system="2.16.840.1.113883.5.88", display_name="Pharmacist"
         )
         performer.assigned_entity = assigned_entity
         dispense.performer = [performer]
@@ -1717,7 +1715,9 @@ class TestLocationManagingOrganization:
         assert organization["resourceType"] == "Organization"
         assert organization["name"] == "Community Pharmacy"
 
-    def test_location_managing_organization_with_organization_performer(self, mock_reference_registry):
+    def test_location_managing_organization_with_organization_performer(
+        self, mock_reference_registry
+    ):
         """Test Location managingOrganization when performer is an Organization."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,
@@ -1770,7 +1770,9 @@ class TestLocationManagingOrganization:
         organization = registry.get_resource("Organization", managing_org_id)
         assert organization["name"] == "Pharmacy Corp"
 
-    def test_location_managing_organization_reuses_existing_organization(self, mock_reference_registry):
+    def test_location_managing_organization_reuses_existing_organization(
+        self, mock_reference_registry
+    ):
         """Test Location managingOrganization references existing Organization if already created."""
         from ccda_to_fhir.ccda.models.performer import (
             AssignedEntity,

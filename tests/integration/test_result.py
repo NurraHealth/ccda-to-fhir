@@ -32,9 +32,7 @@ def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> lis
 class TestResultConversion:
     """E2E tests for C-CDA Result Organizer to FHIR DiagnosticReport/Observation conversion."""
 
-    def test_converts_to_diagnostic_report(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_to_diagnostic_report(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that result organizer creates a DiagnosticReport."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -43,9 +41,7 @@ class TestResultConversion:
         assert report is not None
         assert report["resourceType"] == "DiagnosticReport"
 
-    def test_converts_panel_code(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_panel_code(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that organizer code is converted to DiagnosticReport.code."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -54,16 +50,12 @@ class TestResultConversion:
         assert report is not None
         assert "code" in report
         loinc = next(
-            (c for c in report["code"]["coding"]
-             if c.get("system") == "http://loinc.org"),
-            None
+            (c for c in report["code"]["coding"] if c.get("system") == "http://loinc.org"), None
         )
         assert loinc is not None
         assert loinc["code"] == "24357-6"
 
-    def test_converts_status(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_status(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -72,9 +64,7 @@ class TestResultConversion:
         assert report is not None
         assert report["status"] == "final"
 
-    def test_converts_category(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_category(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that category is set to LAB."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -82,11 +72,12 @@ class TestResultConversion:
         report = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert report is not None
         assert report["category"][0]["coding"][0]["code"] == "LAB"
-        assert report["category"][0]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/v2-0074"
+        assert (
+            report["category"][0]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/v2-0074"
+        )
 
-    def test_converts_effective_date(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_effective_date(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that effectiveTime is converted to effectiveDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -96,9 +87,7 @@ class TestResultConversion:
         assert "effectiveDateTime" in report
         assert report["effectiveDateTime"] == "2015-06-22"
 
-    def test_converts_observations(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_observations(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that component observations are converted."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -111,9 +100,7 @@ class TestResultConversion:
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         assert len(observations) >= 1
 
-    def test_converts_observation_code(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_observation_code(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that observation code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -123,9 +110,7 @@ class TestResultConversion:
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = observations[0]
         loinc = next(
-            (c for c in obs["code"]["coding"]
-             if c.get("system") == "http://loinc.org"),
-            None
+            (c for c in obs["code"]["coding"] if c.get("system") == "http://loinc.org"), None
         )
         assert loinc is not None
         assert loinc["code"] == "5811-5"
@@ -144,9 +129,7 @@ class TestResultConversion:
         assert "valueQuantity" in obs
         assert obs["valueQuantity"]["value"] == 1.015
 
-    def test_converts_reference_range(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_reference_range(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that reference range is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -160,9 +143,7 @@ class TestResultConversion:
         assert ref_range["low"]["value"] == 1.005
         assert ref_range["high"]["value"] == 1.030
 
-    def test_converts_observation_status(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_observation_status(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that observation status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -173,9 +154,7 @@ class TestResultConversion:
         obs = observations[0]
         assert obs["status"] == "final"
 
-    def test_converts_observation_category(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_observation_category(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that observation category is set to laboratory."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -186,9 +165,7 @@ class TestResultConversion:
         obs = observations[0]
         assert obs["category"][0]["coding"][0]["code"] == "laboratory"
 
-    def test_converts_identifier(
-        self, ccda_result: str, fhir_result: JSONObject
-    ) -> None:
+    def test_converts_identifier(self, ccda_result: str, fhir_result: JSONObject) -> None:
         """Test that identifier is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_result, RESULTS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]

@@ -34,9 +34,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
     Reference: docs/mapping/18-service-request.md
     """
 
-    def convert(
-        self, ccda_model: CCDAProcedure | CCDAAct, section=None
-    ) -> FHIRResourceDict:
+    def convert(self, ccda_model: CCDAProcedure | CCDAAct, section=None) -> FHIRResourceDict:
         """Convert a C-CDA Planned Procedure/Act to a FHIR ServiceRequest resource.
 
         Args:
@@ -63,9 +61,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                     "moodCode=EVN indicates completed procedure; use Procedure converter instead"
                 )
             elif mood_code == "GOL":
-                raise ValueError(
-                    "moodCode=GOL indicates goal; use Goal converter instead"
-                )
+                raise ValueError("moodCode=GOL indicates goal; use Goal converter instead")
             else:
                 raise ValueError(
                     f"Invalid moodCode '{mood_code}' for ServiceRequest; "
@@ -76,10 +72,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if not procedure.code:
             raise ValueError("Planned Procedure/Act must have a code")
 
-        has_valid_code = (
-            procedure.code.code
-            and not procedure.code.null_flavor
-        )
+        has_valid_code = procedure.code.code and not procedure.code.null_flavor
 
         if not has_valid_code:
             raise ValueError("Planned Procedure/Act code must have a valid code value")
@@ -91,9 +84,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         # Add US Core profile
         fhir_service_request["meta"] = {
-            "profile": [
-                "http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest"
-            ]
+            "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest"]
         }
 
         # Generate ID from procedure identifier
@@ -147,9 +138,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if procedure.effective_time:
             occurrence = self._convert_occurrence(procedure.effective_time)
             if occurrence:
-                if isinstance(occurrence, dict) and (
-                    "start" in occurrence or "end" in occurrence
-                ):
+                if isinstance(occurrence, dict) and ("start" in occurrence or "end" in occurrence):
                     fhir_service_request["occurrencePeriod"] = occurrence
                 else:
                     fhir_service_request["occurrenceDateTime"] = occurrence
@@ -205,9 +194,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         # Patient instruction - from entryRelationship with Instruction template
         if procedure.entry_relationship:
-            patient_instruction = self._extract_patient_instruction(
-                procedure.entry_relationship
-            )
+            patient_instruction = self._extract_patient_instruction(procedure.entry_relationship)
             if patient_instruction:
                 fhir_service_request["patientInstruction"] = patient_instruction
 
@@ -223,9 +210,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         return fhir_service_request
 
-    def _generate_service_request_id(
-        self, root: str | None, extension: str | None
-    ) -> str:
+    def _generate_service_request_id(self, root: str | None, extension: str | None) -> str:
         """Generate a FHIR ServiceRequest ID from C-CDA identifiers.
 
         Uses centralized ID generation for consistent UUID caching and handling.
@@ -275,9 +260,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         Returns:
             FHIR ServiceRequest intent code
         """
-        return SERVICE_REQUEST_MOOD_TO_INTENT.get(
-            mood_code, FHIRCodes.ServiceRequestIntent.PLAN
-        )
+        return SERVICE_REQUEST_MOOD_TO_INTENT.get(mood_code, FHIRCodes.ServiceRequestIntent.PLAN)
 
     def _map_priority(self, priority_code) -> str | None:
         """Map C-CDA priorityCode to FHIR ServiceRequest priority.
@@ -455,9 +438,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             return None
 
         # Get latest author by timestamp
-        authors_with_time = [
-            a for a in authors if a.time and a.time.value
-        ]
+        authors_with_time = [a for a in authors if a.time and a.time.value]
 
         if not authors_with_time:
             return None
@@ -479,9 +460,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if not authors or len(authors) == 0:
             return None
 
-        authors_with_time = [
-            a for a in authors if a.time and a.time.value
-        ]
+        authors_with_time = [a for a in authors if a.time and a.time.value]
 
         if not authors_with_time:
             return None
@@ -491,16 +470,17 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if latest_author.assigned_author:
             assigned_author = latest_author.assigned_author
 
-            if assigned_author.assigned_person:
-                if assigned_author.id:
-                    for id_elem in assigned_author.id:
-                        if id_elem.root:
-                            pract_id = self._generate_practitioner_id(
-                                id_elem.root, id_elem.extension
-                            )
-                            from ccda_to_fhir.converters.author_references import format_person_display, make_ref
-                            display = format_person_display(assigned_author.assigned_person)
-                            return make_ref(f"urn:uuid:{pract_id}", display)
+            if assigned_author.assigned_person and assigned_author.id:
+                for id_elem in assigned_author.id:
+                    if id_elem.root:
+                        pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                        from ccda_to_fhir.converters.author_references import (
+                            format_person_display,
+                            make_ref,
+                        )
+
+                        display = format_person_display(assigned_author.assigned_person)
+                        return make_ref(f"urn:uuid:{pract_id}", display)
 
         return None
 
@@ -549,26 +529,22 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         """
         for entry_rel in entry_relationships:
             # Look for Instruction acts with typeCode="SUBJ" and inversionInd="true"
-            if (
-                entry_rel.type_code == "SUBJ"
-                and entry_rel.inversion_ind
-            ):
-                if entry_rel.act:
-                    act = entry_rel.act
+            if (entry_rel.type_code == "SUBJ" and entry_rel.inversion_ind) and entry_rel.act:
+                act = entry_rel.act
 
-                    # Check if this is an Instruction template
-                    is_instruction = False
-                    if act.template_id:
-                        for template in act.template_id:
-                            if template.root == TemplateIds.INSTRUCTION_ACT:
-                                is_instruction = True
-                                break
+                # Check if this is an Instruction template
+                is_instruction = False
+                if act.template_id:
+                    for template in act.template_id:
+                        if template.root == TemplateIds.INSTRUCTION_ACT:
+                            is_instruction = True
+                            break
 
-                    if is_instruction and act.text:
-                        if isinstance(act.text, str):
-                            return act.text
-                        elif act.text.value:
-                            return act.text.value
+                if is_instruction and act.text:
+                    if isinstance(act.text, str):
+                        return act.text
+                    elif act.text.value:
+                        return act.text.value
 
         return None
 
@@ -583,4 +559,3 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         """
         # ServiceRequest only extracts from text, not from comment activities
         return self.extract_notes_from_element(procedure, include_comments=False)
-

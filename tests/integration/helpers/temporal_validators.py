@@ -5,7 +5,6 @@ requirements per specification.
 """
 
 import re
-from typing import Optional
 
 
 def assert_date_format(date_str: str, field_name: str = "date"):
@@ -25,8 +24,9 @@ def assert_date_format(date_str: str, field_name: str = "date"):
     # Pattern for FHIR date: YYYY, YYYY-MM, or YYYY-MM-DD
     date_pattern = r"^\d{4}(-\d{2}(-\d{2})?)?$"
 
-    assert re.match(date_pattern, date_str), \
+    assert re.match(date_pattern, date_str), (
         f"{field_name} must be valid FHIR date format (YYYY, YYYY-MM, or YYYY-MM-DD), got '{date_str}'"
+    )
 
 
 def assert_datetime_format(datetime_str: str, field_name: str = "dateTime"):
@@ -58,8 +58,9 @@ def assert_datetime_format(datetime_str: str, field_name: str = "dateTime"):
     is_date = re.match(date_pattern, datetime_str)
     is_datetime = re.match(datetime_pattern, datetime_str)
 
-    assert is_date or is_datetime, \
+    assert is_date or is_datetime, (
         f"{field_name} must be valid FHIR dateTime format, got '{datetime_str}'"
+    )
 
     # If it contains time, it MUST have timezone
     if "T" in datetime_str and not is_datetime:
@@ -89,8 +90,9 @@ def assert_instant_format(instant_str: str, field_name: str = "instant"):
     # Pattern for FHIR instant (always requires full precision + timezone)
     instant_pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?[+-]\d{2}:\d{2}$"
 
-    assert re.match(instant_pattern, instant_str), \
+    assert re.match(instant_pattern, instant_str), (
         f"{field_name} must be valid FHIR instant format (YYYY-MM-DDThh:mm:ss.sss+zz:zz), got '{instant_str}'"
+    )
 
 
 def assert_time_format(time_str: str, field_name: str = "time"):
@@ -108,8 +110,9 @@ def assert_time_format(time_str: str, field_name: str = "time"):
     # Pattern for FHIR time: hh:mm:ss
     time_pattern = r"^\d{2}:\d{2}:\d{2}(\.\d{1,3})?$"
 
-    assert re.match(time_pattern, time_str), \
+    assert re.match(time_pattern, time_str), (
         f"{field_name} must be valid FHIR time format (hh:mm:ss), got '{time_str}'"
+    )
 
 
 def assert_period_format(period, field_name: str = "Period"):
@@ -141,10 +144,10 @@ def assert_period_format(period, field_name: str = "Period"):
 
 def assert_timing_repeat_exact(
     repeat,
-    expected_frequency: Optional[int] = None,
-    expected_period: Optional[float] = None,
-    expected_period_unit: Optional[str] = None,
-    field_name: str = "Timing.repeat"
+    expected_frequency: int | None = None,
+    expected_period: float | None = None,
+    expected_period_unit: str | None = None,
+    field_name: str = "Timing.repeat",
 ):
     """Validate Timing.repeat has exact frequency/period/periodUnit.
 
@@ -162,28 +165,30 @@ def assert_timing_repeat_exact(
 
     # Frequency validation
     if expected_frequency is not None:
-        assert repeat.frequency == expected_frequency, \
+        assert repeat.frequency == expected_frequency, (
             f"{field_name}.frequency must be {expected_frequency}, got {repeat.frequency}"
-        assert isinstance(repeat.frequency, int), \
-            f"{field_name}.frequency must be integer"
+        )
+        assert isinstance(repeat.frequency, int), f"{field_name}.frequency must be integer"
 
     # Period validation
     if expected_period is not None:
-        assert repeat.period == expected_period, \
+        assert repeat.period == expected_period, (
             f"{field_name}.period must be {expected_period}, got {repeat.period}"
-        assert isinstance(repeat.period, (int, float)), \
-            f"{field_name}.period must be numeric"
+        )
+        assert isinstance(repeat.period, (int, float)), f"{field_name}.period must be numeric"
 
     # PeriodUnit validation
     if expected_period_unit is not None:
-        assert repeat.periodUnit == expected_period_unit, \
+        assert repeat.periodUnit == expected_period_unit, (
             f"{field_name}.periodUnit must be '{expected_period_unit}', got '{repeat.periodUnit}'"
+        )
 
     # Validate periodUnit is valid UCUM temporal unit
     if repeat.periodUnit:
         valid_units = ["s", "min", "h", "d", "wk", "mo", "a"]
-        assert repeat.periodUnit in valid_units, \
+        assert repeat.periodUnit in valid_units, (
             f"{field_name}.periodUnit must be valid UCUM temporal unit, got '{repeat.periodUnit}'"
+        )
 
 
 def assert_timing_event_format(timing, field_name: str = "Timing"):

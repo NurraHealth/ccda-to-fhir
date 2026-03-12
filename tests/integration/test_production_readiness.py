@@ -88,9 +88,7 @@ class TestLayer1_BasicStructure:
 
         # Composition must be first entry per FHIR document rules
         first_resource = real_bundle["entry"][0]["resource"]
-        assert (
-            first_resource["resourceType"] == "Composition"
-        ), "First entry must be Composition"
+        assert first_resource["resourceType"] == "Composition", "First entry must be Composition"
 
         # Print resource summary for visibility
         summary = get_resource_summary(real_bundle)
@@ -124,11 +122,13 @@ class TestLayer2_PydanticValidation:
             resource_id = resource.get("id", "unknown")
 
             if resource_type not in RESOURCE_TYPE_MAPPING:
-                stats["errors"].append({
-                    "type": resource_type,
-                    "id": resource_id,
-                    "error": f"Unknown resource type: {resource_type}",
-                })
+                stats["errors"].append(
+                    {
+                        "type": resource_type,
+                        "id": resource_id,
+                        "error": f"Unknown resource type: {resource_type}",
+                    }
+                )
                 stats["failed"] += 1
                 stats["total"] += 1
                 continue
@@ -137,7 +137,7 @@ class TestLayer2_PydanticValidation:
 
             try:
                 # Attempt to instantiate Pydantic model
-                validated = resource_class(**resource)
+                resource_class(**resource)
                 stats["passed"] += 1
             except Exception as e:
                 stats["failed"] += 1
@@ -146,11 +146,13 @@ class TestLayer2_PydanticValidation:
                 if len(error_msg) > 500:
                     error_msg = error_msg[:497] + "..."
 
-                stats["errors"].append({
-                    "type": resource_type,
-                    "id": resource_id,
-                    "error": error_msg,
-                })
+                stats["errors"].append(
+                    {
+                        "type": resource_type,
+                        "id": resource_id,
+                        "error": error_msg,
+                    }
+                )
 
             stats["total"] += 1
 
@@ -342,18 +344,33 @@ class TestComprehensiveReport:
 
         # Run all validation layers
         validations = [
-            ("Layer 1: No placeholder references", lambda: assert_no_placeholder_references(real_bundle)),
+            (
+                "Layer 1: No placeholder references",
+                lambda: assert_no_placeholder_references(real_bundle),
+            ),
             ("Layer 1: All references resolve", lambda: assert_all_references_resolve(real_bundle)),
             ("Layer 1: Valid FHIR IDs", lambda: assert_valid_fhir_ids(real_bundle)),
-            ("Layer 1: References point to correct types", lambda: assert_references_point_to_correct_types(real_bundle)),
+            (
+                "Layer 1: References point to correct types",
+                lambda: assert_references_point_to_correct_types(real_bundle),
+            ),
             ("Layer 2: No empty codes", lambda: assert_no_empty_codes(real_bundle)),
-            ("Layer 2: Required fields present", lambda: assert_all_required_fields_present(real_bundle)),
+            (
+                "Layer 2: Required fields present",
+                lambda: assert_all_required_fields_present(real_bundle),
+            ),
             ("Layer 2: Valid code systems", lambda: assert_valid_code_systems(real_bundle)),
             ("Layer 2: Chronological dates", lambda: assert_chronological_dates(real_bundle)),
             ("Layer 3: US Core Must Support", lambda: assert_us_core_must_support(real_bundle)),
             ("Layer 4: FHIR invariants", lambda: assert_fhir_invariants(real_bundle)),
-            ("Layer 5: No duplicate section refs", lambda: assert_no_duplicate_section_references(real_bundle)),
-            ("Layer 5: Composition sections valid", lambda: assert_composition_sections_valid(real_bundle)),
+            (
+                "Layer 5: No duplicate section refs",
+                lambda: assert_no_duplicate_section_references(real_bundle),
+            ),
+            (
+                "Layer 5: Composition sections valid",
+                lambda: assert_composition_sections_valid(real_bundle),
+            ),
         ]
 
         for check_name, check_func in validations:
@@ -379,7 +396,7 @@ class TestComprehensiveReport:
             if resource_type in RESOURCE_TYPE_MAPPING:
                 resource_class = RESOURCE_TYPE_MAPPING[resource_type]
                 try:
-                    validated = resource_class(**resource)
+                    resource_class(**resource)
                     pydantic_passed += 1
                 except Exception:
                     pydantic_errors.append(f"{resource_type}/{resource.get('id', '?')}")
@@ -389,7 +406,9 @@ class TestComprehensiveReport:
         if pydantic_total > 0:
             pydantic_rate = (pydantic_passed / pydantic_total) * 100
             if pydantic_passed == pydantic_total:
-                report["validations"]["Layer 0: Pydantic R4B validation"] = f"PASS ({pydantic_passed}/{pydantic_total})"
+                report["validations"]["Layer 0: Pydantic R4B validation"] = (
+                    f"PASS ({pydantic_passed}/{pydantic_total})"
+                )
             else:
                 report["validations"]["Layer 0: Pydantic R4B validation"] = (
                     f"FAIL ({pydantic_passed}/{pydantic_total} = {pydantic_rate:.1f}%) - "
@@ -412,7 +431,9 @@ class TestComprehensiveReport:
 
         print("\nValidation Results:")
 
-        passed_count = sum(1 for v in report["validations"].values() if v == "PASS" or v.startswith("PASS"))
+        passed_count = sum(
+            1 for v in report["validations"].values() if v == "PASS" or v.startswith("PASS")
+        )
         total_count = len(report["validations"])
 
         for check, result in sorted(report["validations"].items()):
@@ -435,8 +456,10 @@ class TestComprehensiveReport:
         print(f"{'=' * 80}\n")
 
         # All validations must pass for production readiness
-        failures = [k for k, v in report["validations"].items() if not (v == "PASS" or v.startswith("PASS"))]
+        failures = [
+            k for k, v in report["validations"].items() if not (v == "PASS" or v.startswith("PASS"))
+        ]
         assert not failures, (
-            f"Production readiness validation failures ({len(failures)}/{total_count}):\n" +
-            "\n".join(f"  - {f}: {report['validations'][f]}" for f in failures)
+            f"Production readiness validation failures ({len(failures)}/{total_count}):\n"
+            + "\n".join(f"  - {f}: {report['validations'][f]}" for f in failures)
         )

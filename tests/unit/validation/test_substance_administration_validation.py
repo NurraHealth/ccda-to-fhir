@@ -87,7 +87,9 @@ class TestMedicationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_medication_activity_missing_effective_time(self) -> None:
@@ -109,7 +111,9 @@ class TestMedicationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*effectiveTime"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain at least one.*effectiveTime"
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_medication_activity_missing_dose_quantity(self, caplog) -> None:
@@ -153,7 +157,9 @@ class TestMedicationActivityValidation:
             <doseQuantity value="1" unit="{tbl}"/>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*consumable"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*consumable"
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_medication_activity_missing_manufactured_product(self) -> None:
@@ -173,7 +179,10 @@ class TestMedicationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="consumable SHALL contain exactly one.*manufacturedProduct"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError),
+            match="consumable SHALL contain exactly one.*manufacturedProduct",
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_medication_activity_missing_manufactured_material(self) -> None:
@@ -195,7 +204,10 @@ class TestMedicationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="manufacturedProduct SHALL contain exactly one.*manufacturedMaterial"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError),
+            match="manufacturedProduct SHALL contain exactly one.*manufacturedMaterial",
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_medication_activity_missing_material_code(self) -> None:
@@ -219,7 +231,10 @@ class TestMedicationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="manufacturedMaterial SHALL contain exactly one.*code"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError),
+            match="manufacturedMaterial SHALL contain exactly one.*code",
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_non_medication_activity_skips_validation(self) -> None:

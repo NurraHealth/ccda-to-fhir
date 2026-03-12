@@ -357,7 +357,9 @@ def test_full_ccd_with_planned_procedures():
 
     # Verify ServiceRequest resources were created
     service_requests = resources_by_type.get("ServiceRequest", [])
-    assert len(service_requests) == 3, f"Expected 3 ServiceRequest resources, found {len(service_requests)}"
+    assert len(service_requests) == 3, (
+        f"Expected 3 ServiceRequest resources, found {len(service_requests)}"
+    )
 
     # Verify Composition is first
     first_resource = bundle["entry"][0]["resource"]
@@ -365,18 +367,40 @@ def test_full_ccd_with_planned_procedures():
 
     # Verify other expected resources
     assert len(resources_by_type.get("Patient", [])) >= 1, "Patient resource should exist"
-    assert len(resources_by_type.get("Practitioner", [])) >= 1, "Practitioner resources should exist"
+    assert len(resources_by_type.get("Practitioner", [])) >= 1, (
+        "Practitioner resources should exist"
+    )
     assert len(resources_by_type.get("Encounter", [])) >= 1, "Encounter resource should exist"
-    assert len(resources_by_type.get("Condition", [])) >= 2, "Condition resources should exist (2 problems)"
+    assert len(resources_by_type.get("Condition", [])) >= 2, (
+        "Condition resources should exist (2 problems)"
+    )
 
     # Verify each ServiceRequest has required fields and proper references
     for sr in service_requests:
         # Required fields
         assert "status" in sr, "ServiceRequest must have status"
-        assert sr["status"] in ["draft", "active", "on-hold", "revoked", "completed", "entered-in-error", "unknown"]
+        assert sr["status"] in [
+            "draft",
+            "active",
+            "on-hold",
+            "revoked",
+            "completed",
+            "entered-in-error",
+            "unknown",
+        ]
 
         assert "intent" in sr, "ServiceRequest must have intent"
-        assert sr["intent"] in ["proposal", "plan", "directive", "order", "original-order", "reflex-order", "filler-order", "instance-order", "option"]
+        assert sr["intent"] in [
+            "proposal",
+            "plan",
+            "directive",
+            "order",
+            "original-order",
+            "reflex-order",
+            "filler-order",
+            "instance-order",
+            "option",
+        ]
 
         assert "code" in sr, "ServiceRequest must have code"
         assert "coding" in sr["code"], "ServiceRequest code must have coding"
@@ -386,28 +410,36 @@ def test_full_ccd_with_planned_procedures():
 
         # Verify subject reference is valid (not placeholder)
         subject_ref = sr["subject"]["reference"]
-        assert "placeholder" not in subject_ref.lower(), "Subject reference should not be placeholder"
-        assert subject_ref in resources_by_id, f"Subject reference {subject_ref} should exist in bundle"
+        assert "placeholder" not in subject_ref.lower(), (
+            "Subject reference should not be placeholder"
+        )
+        assert subject_ref in resources_by_id, (
+            f"Subject reference {subject_ref} should exist in bundle"
+        )
 
         # Verify US Core profile
         assert "meta" in sr, "ServiceRequest should have meta"
         assert "profile" in sr["meta"], "ServiceRequest meta should have profile"
-        assert any("us-core" in p.lower() and "servicerequest" in p.lower() for p in sr["meta"]["profile"]), \
-            "ServiceRequest should reference US Core ServiceRequest profile"
+        assert any(
+            "us-core" in p.lower() and "servicerequest" in p.lower() for p in sr["meta"]["profile"]
+        ), "ServiceRequest should reference US Core ServiceRequest profile"
 
         # Verify category exists (must support in US Core)
         assert "category" in sr, "ServiceRequest should have category (US Core must support)"
 
         # Verify occurrence exists (must support in US Core)
-        assert "occurrenceDateTime" in sr or "occurrencePeriod" in sr, \
+        assert "occurrenceDateTime" in sr or "occurrencePeriod" in sr, (
             "ServiceRequest should have occurrence[x] (US Core must support)"
+        )
 
         # If requester exists, verify it's a valid reference (not placeholder)
         # Note: Practitioner resources for requesters/performers may not always be in the bundle
         # if they're only referenced from ServiceRequest and not from other document sections
         if "requester" in sr:
             requester_ref = sr["requester"]["reference"]
-            assert "placeholder" not in requester_ref.lower(), "Requester reference should not be placeholder"
+            assert "placeholder" not in requester_ref.lower(), (
+                "Requester reference should not be placeholder"
+            )
             # If the reference exists in bundle, that's great, but it's not always required
             # (e.g., if the Practitioner only appears as author of the planned procedure)
 
@@ -415,7 +447,9 @@ def test_full_ccd_with_planned_procedures():
         if "performer" in sr:
             for performer in sr["performer"]:
                 performer_ref = performer["reference"]
-                assert "placeholder" not in performer_ref.lower(), "Performer reference should not be placeholder"
+                assert "placeholder" not in performer_ref.lower(), (
+                    "Performer reference should not be placeholder"
+                )
 
     # Verify specific ServiceRequest details
 
@@ -486,8 +520,9 @@ def test_full_ccd_with_planned_procedures():
         if isinstance(obj, dict):
             for key, value in obj.items():
                 if key == "reference" and isinstance(value, str):
-                    assert "placeholder" not in value.lower(), \
+                    assert "placeholder" not in value.lower(), (
                         f"Found placeholder reference at {path}.{key}: {value}"
+                    )
                 else:
                     check_no_placeholders(value, f"{path}.{key}")
         elif isinstance(obj, list):

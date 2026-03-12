@@ -10,6 +10,7 @@ from __future__ import annotations
 # C-CDA Template IDs
 # =============================================================================
 
+
 class TemplateIds:
     """C-CDA Template Identifiers."""
 
@@ -127,6 +128,7 @@ class TemplateIds:
 # C-CDA OIDs
 # =============================================================================
 
+
 class CodeSystemOIDs:
     """C-CDA OID identifiers for code systems and identifiers."""
 
@@ -147,6 +149,7 @@ class CodeSystemOIDs:
 # =============================================================================
 # C-CDA Codes
 # =============================================================================
+
 
 class CCDACodes:
     """C-CDA code values."""
@@ -178,6 +181,7 @@ class CCDACodes:
 # C-CDA Type Codes
 # =============================================================================
 
+
 class TypeCodes:
     """C-CDA typeCode values for relationships."""
 
@@ -208,6 +212,7 @@ CCDA_TYPECODE_TO_FHIR_RELATES_TO: dict[str, str] = {
 # =============================================================================
 # HL7 V2 and V3 Codes
 # =============================================================================
+
 
 class V2IdentifierTypes:
     """HL7 V2 Table 0203 - Identifier Type codes."""
@@ -284,6 +289,7 @@ class V3AdministrativeGenderCodes:
 # CDC Race and Ethnicity Codes
 # =============================================================================
 
+
 class CDCRaceCodes:
     """CDC Race codes (OMB categories)."""
 
@@ -306,6 +312,7 @@ class CDCEthnicityCodes:
 # =============================================================================
 # SNOMED CT Codes
 # =============================================================================
+
 
 class SnomedCodes:
     """SNOMED CT codes for clinical concepts."""
@@ -353,6 +360,7 @@ class SnomedCodes:
 # HL7 V3 Criticality Codes
 # =============================================================================
 
+
 class CriticalityCodes:
     """HL7 V3 Criticality observation codes."""
 
@@ -364,6 +372,7 @@ class CriticalityCodes:
 # =============================================================================
 # FHIR Systems (URLs)
 # =============================================================================
+
 
 class FHIRSystems:
     """FHIR terminology system URLs."""
@@ -379,7 +388,9 @@ class FHIRSystems:
 
     # Observation
     OBSERVATION_CATEGORY = "http://terminology.hl7.org/CodeSystem/observation-category"
-    SDOH_CATEGORY = "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes"
+    SDOH_CATEGORY = (
+        "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes"
+    )
 
     # DiagnosticReport
     V2_0074 = "http://terminology.hl7.org/CodeSystem/v2-0074"  # Diagnostic service section ID
@@ -391,10 +402,14 @@ class FHIRSystems:
     V3_ROLE_CODE = "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
     V3_PARTICIPATION_TYPE = "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
     V3_LANGUAGE_ABILITY_MODE = "http://terminology.hl7.org/CodeSystem/v3-LanguageAbilityMode"
-    V3_LANGUAGE_ABILITY_PROFICIENCY = "http://terminology.hl7.org/CodeSystem/v3-LanguageAbilityProficiency"
+    V3_LANGUAGE_ABILITY_PROFICIENCY = (
+        "http://terminology.hl7.org/CodeSystem/v3-LanguageAbilityProficiency"
+    )
 
     # Sex and Gender
-    SEX_PARAMETER_FOR_CLINICAL_USE = "http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use"
+    SEX_PARAMETER_FOR_CLINICAL_USE = (
+        "http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use"
+    )
 
     # Language
     BCP_47 = "urn:ietf:bcp:47"
@@ -403,7 +418,9 @@ class FHIRSystems:
     CDC_RACE_ETHNICITY = "urn:oid:2.16.840.1.113883.6.238"
 
     # FHIR extensions
-    ALLERGY_ABATEMENT_EXTENSION = "http://hl7.org/fhir/StructureDefinition/allergyintolerance-abatement"
+    ALLERGY_ABATEMENT_EXTENSION = (
+        "http://hl7.org/fhir/StructureDefinition/allergyintolerance-abatement"
+    )
     CONDITION_ASSERTED_DATE = "http://hl7.org/fhir/StructureDefinition/condition-assertedDate"
     DATA_ABSENT_REASON = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
     PATIENT_RELIGION = "http://hl7.org/fhir/StructureDefinition/patient-religion"
@@ -415,12 +432,18 @@ class FHIRSystems:
     US_CORE_RACE = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
     US_CORE_ETHNICITY = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
     US_CORE_BIRTHSEX = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
-    US_CORE_GENDER_IDENTITY = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+    US_CORE_GENDER_IDENTITY = (
+        "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+    )
     US_CORE_SEX = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
-    US_CORE_TRIBAL_AFFILIATION = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+    US_CORE_TRIBAL_AFFILIATION = (
+        "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+    )
 
     # FHIR Core extensions
-    PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE = "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+    PATIENT_SEX_PARAMETER_FOR_CLINICAL_USE = (
+        "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse"
+    )
 
     # Units
     UCUM = "http://unitsofmeasure.org"
@@ -438,17 +461,22 @@ class FHIRSystems:
     FDA_UDI = "http://hl7.org/fhir/NamingSystem/fda-udi"  # FDA Unique Device Identification
 
     # Provider taxonomy
-    NUCC_PROVIDER_TAXONOMY = "http://nucc.org/provider-taxonomy"  # NUCC Healthcare Provider Taxonomy
+    NUCC_PROVIDER_TAXONOMY = (
+        "http://nucc.org/provider-taxonomy"  # NUCC Healthcare Provider Taxonomy
+    )
     NUCC_TAXONOMY = NUCC_PROVIDER_TAXONOMY  # Alias for convenience
 
     # Provenance
-    PROVENANCE_PARTICIPANT_TYPE = "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+    PROVENANCE_PARTICIPANT_TYPE = (
+        "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+    )
     PROVENANCE_ACTIVITY_TYPE = "http://terminology.hl7.org/CodeSystem/v3-DataOperation"
 
 
 # =============================================================================
 # FHIR Codes
 # =============================================================================
+
 
 class FHIRCodes:
     """FHIR code values."""
@@ -798,21 +826,24 @@ class FHIRCodes:
 # These should map to Immunization.statusReason when negationInd="true"
 # Reference: http://terminology.hl7.org/CodeSystem/v3-ActReason
 # This value set contains exactly the codes from the _ActNoImmunizationReason hierarchy
-NO_IMMUNIZATION_REASON_CODES = frozenset({
-    "IMMUNE",      # Immunity - patient already immune
-    "MEDPREC",     # Medical precaution - medical condition or precaution
-    "OSTOCK",      # Out of stock - vaccine not available
-    "PATOBJ",      # Patient objection - patient refused
-    "PHILISOP",    # Philosophical objection - personal beliefs
-    "RELIG",       # Religious objection - religious beliefs
-    "VACEFF",      # Vaccine efficacy concerns - doubts about effectiveness
-    "VACSAF",      # Vaccine safety concerns - safety worries
-})
+NO_IMMUNIZATION_REASON_CODES = frozenset(
+    {
+        "IMMUNE",  # Immunity - patient already immune
+        "MEDPREC",  # Medical precaution - medical condition or precaution
+        "OSTOCK",  # Out of stock - vaccine not available
+        "PATOBJ",  # Patient objection - patient refused
+        "PHILISOP",  # Philosophical objection - personal beliefs
+        "RELIG",  # Religious objection - religious beliefs
+        "VACEFF",  # Vaccine efficacy concerns - doubts about effectiveness
+        "VACSAF",  # Vaccine safety concerns - safety worries
+    }
+)
 
 
 # =============================================================================
 # Age Units
 # =============================================================================
+
 
 class AgeUnits:
     """Age unit codes for C-CDA and FHIR."""
@@ -884,12 +915,27 @@ ALLERGY_TYPE_CATEGORY_MAP = {
     SnomedCodes.ALLERGY_TO_SUBSTANCE: (FHIRCodes.AllergyType.ALLERGY, None),
     SnomedCodes.DRUG_ALLERGY: (FHIRCodes.AllergyType.ALLERGY, FHIRCodes.AllergyCategory.MEDICATION),
     SnomedCodes.FOOD_ALLERGY: (FHIRCodes.AllergyType.ALLERGY, FHIRCodes.AllergyCategory.FOOD),
-    SnomedCodes.ENVIRONMENTAL_ALLERGY: (FHIRCodes.AllergyType.ALLERGY, FHIRCodes.AllergyCategory.ENVIRONMENT),
-    SnomedCodes.PROPENSITY_TO_DRUG_REACTIONS: (FHIRCodes.AllergyType.ALLERGY, FHIRCodes.AllergyCategory.MEDICATION),
-    SnomedCodes.DRUG_INTOLERANCE: (FHIRCodes.AllergyType.INTOLERANCE, FHIRCodes.AllergyCategory.MEDICATION),
-    SnomedCodes.FOOD_INTOLERANCE: (FHIRCodes.AllergyType.INTOLERANCE, FHIRCodes.AllergyCategory.FOOD),
+    SnomedCodes.ENVIRONMENTAL_ALLERGY: (
+        FHIRCodes.AllergyType.ALLERGY,
+        FHIRCodes.AllergyCategory.ENVIRONMENT,
+    ),
+    SnomedCodes.PROPENSITY_TO_DRUG_REACTIONS: (
+        FHIRCodes.AllergyType.ALLERGY,
+        FHIRCodes.AllergyCategory.MEDICATION,
+    ),
+    SnomedCodes.DRUG_INTOLERANCE: (
+        FHIRCodes.AllergyType.INTOLERANCE,
+        FHIRCodes.AllergyCategory.MEDICATION,
+    ),
+    SnomedCodes.FOOD_INTOLERANCE: (
+        FHIRCodes.AllergyType.INTOLERANCE,
+        FHIRCodes.AllergyCategory.FOOD,
+    ),
     SnomedCodes.PROPENSITY_TO_ADVERSE_REACTIONS: (None, None),
-    SnomedCodes.PROPENSITY_TO_FOOD_REACTIONS: (FHIRCodes.AllergyType.ALLERGY, FHIRCodes.AllergyCategory.FOOD),
+    SnomedCodes.PROPENSITY_TO_FOOD_REACTIONS: (
+        FHIRCodes.AllergyType.ALLERGY,
+        FHIRCodes.AllergyCategory.FOOD,
+    ),
 }
 
 # Map section LOINC codes to FHIR Condition category
@@ -1052,22 +1098,22 @@ UCUM_TO_FHIR_UNITS_OF_TIME = {
 # Reference: http://hl7.org/fhir/valueset-event-timing.html
 EIVL_EVENT_TO_FHIR_WHEN = {
     # Meal-related
-    "AC": "AC",      # before meal (from lat. ante cibus)
-    "ACM": "ACM",    # before breakfast (from lat. ante cibus matutinus)
-    "ACD": "ACD",    # before lunch (from lat. ante cibus diurnus)
-    "ACV": "ACV",    # before dinner (from lat. ante cibus vespertinus)
-    "PC": "PC",      # after meal (from lat. post cibus)
-    "PCM": "PCM",    # after breakfast (from lat. post cibus matutinus)
-    "PCD": "PCD",    # after lunch (from lat. post cibus diurnus)
-    "PCV": "PCV",    # after dinner (from lat. post cibus vespertinus)
+    "AC": "AC",  # before meal (from lat. ante cibus)
+    "ACM": "ACM",  # before breakfast (from lat. ante cibus matutinus)
+    "ACD": "ACD",  # before lunch (from lat. ante cibus diurnus)
+    "ACV": "ACV",  # before dinner (from lat. ante cibus vespertinus)
+    "PC": "PC",  # after meal (from lat. post cibus)
+    "PCM": "PCM",  # after breakfast (from lat. post cibus matutinus)
+    "PCD": "PCD",  # after lunch (from lat. post cibus diurnus)
+    "PCV": "PCV",  # after dinner (from lat. post cibus vespertinus)
     # Sleep-related
-    "HS": "HS",      # before sleep (from lat. hora somni)
+    "HS": "HS",  # before sleep (from lat. hora somni)
     "WAKE": "WAKE",  # upon waking
     # Daily events
-    "CM": "CM",      # in the morning
-    "CD": "CD",      # in the afternoon
-    "CV": "CV",      # in the evening
-    "C": "C",        # at a meal (from lat. cum)
+    "CM": "CM",  # in the morning
+    "CD": "CD",  # in the afternoon
+    "CV": "CV",  # in the evening
+    "C": "C",  # at a meal (from lat. cum)
 }
 
 # =============================================================================
@@ -1208,20 +1254,20 @@ DISCHARGE_DISPOSITION_TO_FHIR = {
 # - For Procedure.performer.function: Limited to performer-function value set (PPRF, SPRF, ATND, etc.)
 PARTICIPATION_FUNCTION_CODE_MAP = {
     # C-CDA Code: FHIR Code - Description
-    "ADMPHYS": "ADM",       # Admitting Physician → admitter (Encounter only)
-    "ANRS": "SPRF",         # Anesthesia Nurse → secondary performer
-    "ANEST": "SPRF",        # Anesthesist → secondary performer (ANEST not in FHIR v3-ParticipationType)
-    "ATTPHYS": "ATND",      # Attending Physician → attender
-    "DISPHYS": "DIS",       # Discharging Physician → discharger (Encounter only)
-    "FASST": "SPRF",        # First Assistant Surgeon → secondary performer
-    "MDWF": "PPRF",         # Midwife → primary performer
-    "NASST": "SPRF",        # Nurse Assistant → secondary performer
-    "PCP": "PPRF",          # Primary Care Physician → primary performer
-    "PRISURG": "PPRF",      # Primary Surgeon → primary performer
-    "RNDPHYS": "ATND",      # Rounding Physician → attender
-    "SNRS": "SPRF",         # Scrub Nurse → secondary performer
-    "SASST": "SPRF",        # Second Assistant Surgeon → secondary performer
-    "TASST": "SPRF",        # Third Assistant Surgeon → secondary performer
+    "ADMPHYS": "ADM",  # Admitting Physician → admitter (Encounter only)
+    "ANRS": "SPRF",  # Anesthesia Nurse → secondary performer
+    "ANEST": "SPRF",  # Anesthesist → secondary performer (ANEST not in FHIR v3-ParticipationType)
+    "ATTPHYS": "ATND",  # Attending Physician → attender
+    "DISPHYS": "DIS",  # Discharging Physician → discharger (Encounter only)
+    "FASST": "SPRF",  # First Assistant Surgeon → secondary performer
+    "MDWF": "PPRF",  # Midwife → primary performer
+    "NASST": "SPRF",  # Nurse Assistant → secondary performer
+    "PCP": "PPRF",  # Primary Care Physician → primary performer
+    "PRISURG": "PPRF",  # Primary Surgeon → primary performer
+    "RNDPHYS": "ATND",  # Rounding Physician → attender
+    "SNRS": "SPRF",  # Scrub Nurse → secondary performer
+    "SASST": "SPRF",  # Second Assistant Surgeon → secondary performer
+    "TASST": "SPRF",  # Third Assistant Surgeon → secondary performer
 }
 
 # Backward compatibility alias for encounter-specific usage
@@ -1283,7 +1329,9 @@ DOCUMENT_REFERENCE_STATUS_TO_FHIR = {
 
 # LOINC code for Vital signs panel
 VITAL_SIGNS_PANEL_CODE = "85353-1"
-VITAL_SIGNS_PANEL_DISPLAY = "Vital signs, weight, height, head circumference, oxygen saturation and BMI panel"
+VITAL_SIGNS_PANEL_DISPLAY = (
+    "Vital signs, weight, height, head circumference, oxygen saturation and BMI panel"
+)
 
 # LOINC codes for Blood Pressure
 BP_PANEL_CODE = "85354-9"
@@ -1395,65 +1443,49 @@ LOINC_TO_SDOH_CATEGORY = {
     "88122-7": FHIRCodes.SDOHCategory.FOOD_INSECURITY,  # Worried food would run out
     "103982-5": FHIRCodes.SDOHCategory.FOOD_INSECURITY,  # Do you have food insecurity
     "99122-7": FHIRCodes.SDOHCategory.FOOD_INSECURITY,  # Food insecurity - worried food will run out
-
     # Housing Instability
     "93033-9": FHIRCodes.SDOHCategory.HOUSING_INSTABILITY,  # Worried about losing housing [PRAPARE]
     "71802-3": FHIRCodes.SDOHCategory.HOUSING_INSTABILITY,  # Housing status
     "103983-3": FHIRCodes.SDOHCategory.HOUSING_INSTABILITY,  # Do you have housing insecurity
-
     # Inadequate Housing
     "93026-3": FHIRCodes.SDOHCategory.INADEQUATE_HOUSING,  # Feel physically/emotionally safe at home
-
     # Utility Insecurity
     "96779-4": FHIRCodes.SDOHCategory.UTILITY_INSECURITY,  # Utility company threatened shut off
-
     # Employment Status
     "67875-5": FHIRCodes.SDOHCategory.EMPLOYMENT_STATUS,  # Employment status - current
     "96780-2": FHIRCodes.SDOHCategory.EMPLOYMENT_STATUS,  # Wants help finding/keeping job
     "93035-4": FHIRCodes.SDOHCategory.EMPLOYMENT_STATUS,  # Season/migrant farm work
-
     # Transportation Insecurity
     "93030-5": FHIRCodes.SDOHCategory.TRANSPORTATION_INSECURITY,  # Lack of transportation kept from appointments
-
     # Financial Insecurity
     "76513-1": FHIRCodes.SDOHCategory.FINANCIAL_INSECURITY,  # How hard to pay for basics
     "63586-2": FHIRCodes.SDOHCategory.FINANCIAL_INSECURITY,  # Total family income estimate
-
     # Incarceration Status
     "93028-9": FHIRCodes.SDOHCategory.INCARCERATION_STATUS,  # Spent >2 nights in jail/prison
-
     # Legal
     "93677-3": FHIRCodes.SDOHCategory.SDOH_CATEGORY_UNSPECIFIED,  # Need help with legal issues (no specific legal category)
-
     # Social Connection
     "93029-7": FHIRCodes.SDOHCategory.SOCIAL_CONNECTION,  # How often see/talk to people you care about
     "93159-2": FHIRCodes.SDOHCategory.SOCIAL_CONNECTION,  # Feel lonely or isolated
-
     # Stress
     "93038-8": FHIRCodes.SDOHCategory.STRESS,  # Stress level
     "44250-9": FHIRCodes.SDOHCategory.STRESS,  # Little interest or pleasure
     "44255-8": FHIRCodes.SDOHCategory.STRESS,  # Feeling down/depressed/hopeless
-
     # Educational Attainment
     "82589-3": FHIRCodes.SDOHCategory.EDUCATIONAL_ATTAINMENT,  # Highest level of education
     "96782-8": FHIRCodes.SDOHCategory.EDUCATIONAL_ATTAINMENT,  # Wants help with school/training
-
     # Material Hardship
     "93031-3": FHIRCodes.SDOHCategory.MATERIAL_HARDSHIP,  # Unable to get necessities
     "96781-0": FHIRCodes.SDOHCategory.MATERIAL_HARDSHIP,  # Able to get help with daily activities
     "69861-3": FHIRCodes.SDOHCategory.MATERIAL_HARDSHIP,  # Difficulty with daily activities (physical/mental)
     "69858-9": FHIRCodes.SDOHCategory.MATERIAL_HARDSHIP,  # Serious difficulty (physical/mental)
-
     # Language Access
     "54899-0": FHIRCodes.SDOHCategory.LANGUAGE_ACCESS,  # Preferred language
     "97027-7": FHIRCodes.SDOHCategory.LANGUAGE_ACCESS,  # Speaks language other than English at home
-
     # Health Insurance Coverage Status
     "76437-3": FHIRCodes.SDOHCategory.HEALTH_INSURANCE_COVERAGE_STATUS,  # Primary insurance
-
     # Veteran Status
     "93034-7": FHIRCodes.SDOHCategory.VETERAN_STATUS,  # Discharged from armed forces
-
     # Intimate Partner Violence
     "76501-6": FHIRCodes.SDOHCategory.INTIMATE_PARTNER_VIOLENCE,  # Afraid of partner/ex-partner
     "95618-5": FHIRCodes.SDOHCategory.INTIMATE_PARTNER_VIOLENCE,  # Physically hurt you [HITS]
@@ -1485,5 +1517,3 @@ SDOH_CATEGORY_DISPLAY = {
     FHIRCodes.SDOHCategory.LANGUAGE_ACCESS: "Language Status",
     FHIRCodes.SDOHCategory.SDOH_CATEGORY_UNSPECIFIED: "SDOH Category Unspecified",
 }
-
-

@@ -45,7 +45,9 @@ class ConversionLogger:
 
     # Any used in extra dict because logging context can contain arbitrary values
     # (strings, ints, resource IDs, etc.) for structured logging output
-    def _add_context(self, msg: str, extra: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+    def _add_context(
+        self, msg: str, extra: dict[str, Any] | None = None
+    ) -> tuple[str, dict[str, Any]]:
         """Add correlation ID and extra context to log message.
 
         Args:

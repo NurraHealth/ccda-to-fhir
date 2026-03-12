@@ -20,8 +20,7 @@ def _find_resource_in_bundle(bundle: JSONObject, resource_type: str) -> JSONObje
 class TestPatientConversion:
     """E2E tests for C-CDA recordTarget to FHIR Patient conversion."""
 
-    def test_converts_patient_name(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_converts_patient_name(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that patient name is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -34,8 +33,7 @@ class TestPatientConversion:
         assert name["family"] == "Jones"
         assert name["given"] == ["Myra"]
 
-    def test_converts_patient_gender(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_converts_patient_gender(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that administrative gender is correctly mapped."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -44,8 +42,7 @@ class TestPatientConversion:
         assert patient is not None
         assert patient["gender"] == "female"
 
-    def test_converts_birth_date(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_converts_birth_date(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that birthTime is converted to birthDate."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -54,8 +51,7 @@ class TestPatientConversion:
         assert patient is not None
         assert patient["birthDate"] == "1947-05-01"
 
-    def test_converts_address(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_converts_address(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that address is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -71,8 +67,7 @@ class TestPatientConversion:
         assert address["line"] == ["1357 Amber Drive"]
         assert address["use"] == "home"
 
-    def test_converts_telecom(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_converts_telecom(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that telecom is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -86,8 +81,7 @@ class TestPatientConversion:
         assert telecom["use"] == "mobile"
         assert "+1(565)867-5309" in telecom["value"]
 
-    def test_converts_marital_status(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_converts_marital_status(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that marital status is correctly converted."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -98,8 +92,7 @@ class TestPatientConversion:
         assert patient["maritalStatus"]["coding"][0]["code"] == "M"
         assert patient["maritalStatus"]["coding"][0]["display"] == "Married"
 
-    def test_converts_race_extension(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_converts_race_extension(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that race is converted to US Core race extension."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -108,23 +101,24 @@ class TestPatientConversion:
         assert patient is not None
         assert "extension" in patient
         race_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
+            ),
+            None,
         )
         assert race_ext is not None
 
         # Check ombCategory
-        omb_cat = next(
-            (e for e in race_ext["extension"] if e["url"] == "ombCategory"),
-            None
-        )
+        omb_cat = next((e for e in race_ext["extension"] if e["url"] == "ombCategory"), None)
         assert omb_cat is not None
         assert omb_cat["valueCoding"]["code"] == "2106-3"
         assert omb_cat["valueCoding"]["display"] == "White"
 
     def test_converts_ethnicity_extension(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+        self, ccda_patient: str, fhir_patient: JSONObject
+    ) -> None:
         """Test that ethnicity is converted to US Core ethnicity extension."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -133,23 +127,24 @@ class TestPatientConversion:
         assert patient is not None
         assert "extension" in patient
         eth_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
+            ),
+            None,
         )
         assert eth_ext is not None
 
         # Check ombCategory
-        omb_cat = next(
-            (e for e in eth_ext["extension"] if e["url"] == "ombCategory"),
-            None
-        )
+        omb_cat = next((e for e in eth_ext["extension"] if e["url"] == "ombCategory"), None)
         assert omb_cat is not None
         assert omb_cat["valueCoding"]["code"] == "2135-2"
         assert omb_cat["valueCoding"]["display"] == "Hispanic or Latino"
 
     def test_converts_guardian_to_contact(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+        self, ccda_patient: str, fhir_patient: JSONObject
+    ) -> None:
         """Test that guardian is converted to Patient.contact."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -172,7 +167,8 @@ class TestPatientConversion:
         assert "GUARD" in relationship_codes
 
     def test_converts_language_communication(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+        self, ccda_patient: str, fhir_patient: JSONObject
+    ) -> None:
         """Test that languageCommunication is converted."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -219,8 +215,7 @@ class TestPatientConversion:
         # Should have no communication entries since both lack valid language codes
         assert "communication" not in patient or len(patient.get("communication", [])) == 0
 
-    def test_converts_deceased_indicator(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_converts_deceased_indicator(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that sdtc:deceasedInd is converted to deceasedBoolean."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -326,7 +321,8 @@ class TestPatientConversion:
         assert "deceasedDateTime" not in patient
 
     def test_converts_birthplace_extension(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+        self, ccda_patient: str, fhir_patient: JSONObject
+    ) -> None:
         """Test that birthplace is converted to patient-birthPlace extension."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -335,16 +331,18 @@ class TestPatientConversion:
         assert patient is not None
         assert "extension" in patient
         bp_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-birthPlace"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-birthPlace"
+            ),
+            None,
         )
         assert bp_ext is not None
         assert bp_ext["valueAddress"]["city"] == "Beaverton"
         assert bp_ext["valueAddress"]["state"] == "OR"
 
-    def test_converts_religion_extension(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_converts_religion_extension(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that religiousAffiliationCode is converted to patient-religion extension."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -353,15 +351,17 @@ class TestPatientConversion:
         assert patient is not None
         assert "extension" in patient
         religion_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-religion"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-religion"
+            ),
+            None,
         )
         assert religion_ext is not None
         assert religion_ext["valueCodeableConcept"]["coding"][0]["code"] == "1013"
 
-    def test_converts_identifier(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_converts_identifier(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that patient ID is converted to identifier."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -372,11 +372,12 @@ class TestPatientConversion:
         assert len(patient["identifier"]) >= 1
         # The identifier should contain the root UUID
         identifier = patient["identifier"][0]
-        assert "068F3166-5721-4D69-94ED-8278FF035B8A".lower() in identifier.get("system", "").lower() or \
-               "068F3166-5721-4D69-94ED-8278FF035B8A".lower() in identifier.get("value", "").lower()
+        assert (
+            "068F3166-5721-4D69-94ED-8278FF035B8A".lower() in identifier.get("system", "").lower()
+            or "068F3166-5721-4D69-94ED-8278FF035B8A".lower() in identifier.get("value", "").lower()
+        )
 
-    def test_resource_type_is_patient(
-        self, ccda_patient: str, fhir_patient: JSONObject) -> None:
+    def test_resource_type_is_patient(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
         """Test that the resource type is Patient."""
         ccda_doc = wrap_in_ccda_document("", patient=ccda_patient)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -400,7 +401,7 @@ class TestPatientConversion:
         ccda_doc = wrap_in_ccda_document(
             birth_sex_observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -410,23 +411,30 @@ class TestPatientConversion:
         # Should have us-core-birthsex extension
         assert "extension" in patient
         birthsex_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
+            ),
+            None,
         )
         assert birthsex_ext is not None
         assert birthsex_ext["valueCode"] == "F"
 
         # Should NOT create a separate Observation resource for birth sex
         observations = [
-            entry["resource"] for entry in bundle.get("entry", [])
+            entry["resource"]
+            for entry in bundle.get("entry", [])
             if entry.get("resource", {}).get("resourceType") == "Observation"
         ]
         birth_sex_observations = [
-            obs for obs in observations
+            obs
+            for obs in observations
             if obs.get("code", {}).get("coding", [{}])[0].get("code") == "76689-9"
         ]
-        assert len(birth_sex_observations) == 0, "Birth sex should NOT create an Observation resource"
+        assert len(birth_sex_observations) == 0, (
+            "Birth sex should NOT create an Observation resource"
+        )
 
     def test_converts_birth_sex_extension_male(self) -> None:
         """Test that birth sex observation maps to Patient.extension (male)."""
@@ -443,7 +451,7 @@ class TestPatientConversion:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -451,9 +459,12 @@ class TestPatientConversion:
         assert patient is not None
 
         birthsex_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
+            ),
+            None,
         )
         assert birthsex_ext is not None
         assert birthsex_ext["valueCode"] == "M"
@@ -473,7 +484,7 @@ class TestPatientConversion:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -481,9 +492,12 @@ class TestPatientConversion:
         assert patient is not None
 
         birthsex_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
+            ),
+            None,
         )
         assert birthsex_ext is not None
         assert birthsex_ext["valueCode"] == "UNK"
@@ -503,7 +517,7 @@ class TestPatientConversion:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -513,9 +527,13 @@ class TestPatientConversion:
         # Should have us-core-genderIdentity extension
         assert "extension" in patient
         gender_id_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"]
+                == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+            ),
+            None,
         )
         assert gender_id_ext is not None
         assert "valueCodeableConcept" in gender_id_ext
@@ -526,14 +544,18 @@ class TestPatientConversion:
 
         # Should NOT create a separate Observation resource for gender identity
         observations = [
-            entry["resource"] for entry in bundle.get("entry", [])
+            entry["resource"]
+            for entry in bundle.get("entry", [])
             if entry.get("resource", {}).get("resourceType") == "Observation"
         ]
         gender_identity_observations = [
-            obs for obs in observations
+            obs
+            for obs in observations
             if obs.get("code", {}).get("coding", [{}])[0].get("code") == "76691-5"
         ]
-        assert len(gender_identity_observations) == 0, "Gender identity should NOT create an Observation resource"
+        assert len(gender_identity_observations) == 0, (
+            "Gender identity should NOT create an Observation resource"
+        )
 
     def test_converts_gender_identity_extension_female(self) -> None:
         """Test that gender identity observation maps to Patient.extension (identifies as female)."""
@@ -550,7 +572,7 @@ class TestPatientConversion:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -558,9 +580,13 @@ class TestPatientConversion:
         assert patient is not None
 
         gender_id_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"]
+                == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+            ),
+            None,
         )
         assert gender_id_ext is not None
         coding = gender_id_ext["valueCodeableConcept"]["coding"][0]
@@ -582,7 +608,7 @@ class TestPatientConversion:
         ccda_doc = wrap_in_ccda_document(
             observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -590,9 +616,13 @@ class TestPatientConversion:
         assert patient is not None
 
         gender_id_ext = next(
-            (e for e in patient.get("extension", [])
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
-            None
+            (
+                e
+                for e in patient.get("extension", [])
+                if e["url"]
+                == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+            ),
+            None,
         )
         assert gender_id_ext is not None
         coding = gender_id_ext["valueCodeableConcept"]["coding"][0]
@@ -675,18 +705,25 @@ class TestPatientConversion:
 
         # Check birth sex extension
         birthsex_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
+            ),
+            None,
         )
         assert birthsex_ext is not None
         assert birthsex_ext["valueCode"] == "F"
 
         # Check gender identity extension
         gender_id_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"]
+                == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+            ),
+            None,
         )
         assert gender_id_ext is not None
         coding = gender_id_ext["valueCodeableConcept"]["coding"][0]
@@ -694,7 +731,8 @@ class TestPatientConversion:
 
         # Verify NO Observation resources created for birth sex or gender identity
         observations = [
-            entry["resource"] for entry in bundle.get("entry", [])
+            entry["resource"]
+            for entry in bundle.get("entry", [])
             if entry.get("resource", {}).get("resourceType") == "Observation"
         ]
         social_history_obs_codes = set()
@@ -717,17 +755,25 @@ class TestPatientConversion:
         # Check that birth sex extension is not present
         if "extension" in patient:
             birthsex_ext = next(
-                (e for e in patient["extension"]
-                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
-                None
+                (
+                    e
+                    for e in patient["extension"]
+                    if e["url"]
+                    == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
+                ),
+                None,
             )
             assert birthsex_ext is None
 
             # Check that gender identity extension is not present
             gender_id_ext = next(
-                (e for e in patient["extension"]
-                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
-                None
+                (
+                    e
+                    for e in patient["extension"]
+                    if e["url"]
+                    == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+                ),
+                None,
             )
             assert gender_id_ext is None
 
@@ -760,9 +806,12 @@ class TestPatientConversion:
         assert "_birthDate" in patient
         assert "extension" in patient["_birthDate"]
         birth_time_ext = next(
-            (e for e in patient["_birthDate"]["extension"]
-             if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-birthTime"),
-            None
+            (
+                e
+                for e in patient["_birthDate"]["extension"]
+                if e["url"] == "http://hl7.org/fhir/StructureDefinition/patient-birthTime"
+            ),
+            None,
         )
         assert birth_time_ext is not None
         assert "valueDateTime" in birth_time_ext
@@ -785,7 +834,7 @@ class TestPatientConversion:
         ccda_doc = wrap_in_ccda_document(
             tribal_affiliation_observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -795,18 +844,20 @@ class TestPatientConversion:
         # Should have us-core-tribal-affiliation extension
         assert "extension" in patient
         tribal_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"]
+                == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+            ),
+            None,
         )
         assert tribal_ext is not None
         assert "extension" in tribal_ext
 
         # Check tribalAffiliation sub-extension
         tribal_affiliation_sub = next(
-            (e for e in tribal_ext["extension"]
-             if e["url"] == "tribalAffiliation"),
-            None
+            (e for e in tribal_ext["extension"] if e["url"] == "tribalAffiliation"), None
         )
         assert tribal_affiliation_sub is not None
         assert "valueCodeableConcept" in tribal_affiliation_sub
@@ -818,14 +869,18 @@ class TestPatientConversion:
 
         # Should NOT create a separate Observation resource for tribal affiliation
         observations = [
-            entry["resource"] for entry in bundle.get("entry", [])
+            entry["resource"]
+            for entry in bundle.get("entry", [])
             if entry.get("resource", {}).get("resourceType") == "Observation"
         ]
         tribal_observations = [
-            obs for obs in observations
+            obs
+            for obs in observations
             if obs.get("code", {}).get("coding", [{}])[0].get("code") == "95370-3"
         ]
-        assert len(tribal_observations) == 0, "Tribal affiliation should NOT create an Observation resource"
+        assert len(tribal_observations) == 0, (
+            "Tribal affiliation should NOT create an Observation resource"
+        )
 
     def test_converts_tribal_affiliation_extension_by_loinc(self) -> None:
         """Test that tribal affiliation observation maps to Patient.extension (LOINC code match)."""
@@ -841,7 +896,7 @@ class TestPatientConversion:
         ccda_doc = wrap_in_ccda_document(
             tribal_affiliation_observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -851,17 +906,19 @@ class TestPatientConversion:
         # Should have us-core-tribal-affiliation extension
         assert "extension" in patient
         tribal_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"]
+                == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+            ),
+            None,
         )
         assert tribal_ext is not None
 
         # Check tribalAffiliation sub-extension
         tribal_affiliation_sub = next(
-            (e for e in tribal_ext["extension"]
-             if e["url"] == "tribalAffiliation"),
-            None
+            (e for e in tribal_ext["extension"] if e["url"] == "tribalAffiliation"), None
         )
         assert tribal_affiliation_sub is not None
         coding = tribal_affiliation_sub["valueCodeableConcept"]["coding"][0]
@@ -870,16 +927,6 @@ class TestPatientConversion:
 
     def test_converts_multiple_tribal_affiliations(self) -> None:
         """Test that multiple tribal affiliation observations create multiple extensions."""
-        tribal_affiliations = """
-        <observation classCode="OBS" moodCode="EVN">
-            <templateId root="2.16.840.1.113883.10.20.22.4.506" extension="2023-05-01"/>
-            <code code="95370-3" displayName="Tribal affiliation"
-                  codeSystem="2.16.840.1.113883.6.1"/>
-            <statusCode code="completed"/>
-            <value xsi:type="CD" code="170" displayName="Navajo Nation, Arizona, New Mexico, &amp; Utah"
-                   codeSystem="2.16.840.1.113883.5.140"/>
-        </observation>
-        """
         # Create a document with two tribal affiliation entries
         ccda_doc = """<?xml version="1.0" encoding="UTF-8"?>
 <ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -958,8 +1005,10 @@ class TestPatientConversion:
         # Should have multiple us-core-tribal-affiliation extensions
         assert "extension" in patient
         tribal_exts = [
-            e for e in patient["extension"]
-            if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+            e
+            for e in patient["extension"]
+            if e["url"]
+            == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
         ]
         assert len(tribal_exts) == 2, "Should have 2 tribal affiliation extensions"
 
@@ -967,9 +1016,7 @@ class TestPatientConversion:
         tribe_codes = set()
         for tribal_ext in tribal_exts:
             tribal_affiliation_sub = next(
-                (e for e in tribal_ext["extension"]
-                 if e["url"] == "tribalAffiliation"),
-                None
+                (e for e in tribal_ext["extension"] if e["url"] == "tribalAffiliation"), None
             )
             assert tribal_affiliation_sub is not None
             coding = tribal_affiliation_sub["valueCodeableConcept"]["coding"][0]
@@ -993,16 +1040,19 @@ class TestPatientConversion:
         ccda_doc = wrap_in_ccda_document(
             tribal_affiliation_observation,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
         # Check that no Observation resource was created
         observations = [
-            entry["resource"] for entry in bundle.get("entry", [])
+            entry["resource"]
+            for entry in bundle.get("entry", [])
             if entry.get("resource", {}).get("resourceType") == "Observation"
         ]
-        assert len(observations) == 0, "Tribal affiliation should NOT create any Observation resources"
+        assert len(observations) == 0, (
+            "Tribal affiliation should NOT create any Observation resources"
+        )
 
     def test_no_tribal_affiliation_when_not_present(self) -> None:
         """Test that tribal affiliation extension is not added when observation is absent."""
@@ -1015,21 +1065,25 @@ class TestPatientConversion:
         # Check that tribal affiliation extension is not present
         if "extension" in patient:
             tribal_ext = next(
-                (e for e in patient["extension"]
-                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"),
-                None
+                (
+                    e
+                    for e in patient["extension"]
+                    if e["url"]
+                    == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+                ),
+                None,
             )
-            assert tribal_ext is None, "Tribal affiliation extension should not be present when observation is absent"
-
-
+            assert tribal_ext is None, (
+                "Tribal affiliation extension should not be present when observation is absent"
+            )
 
 
 class TestPatientExtensionCodeableConceptEdgeCases:
     """Tests for Patient extension edge cases with missing/invalid code_system.
-    
+
     These tests verify that extensions with CodeableConcept values handle
     malformed C-CDA data gracefully.
-    
+
     Key behaviors (matching AllergyIntolerance):
     1. code_system missing + displayName present → text-only CodeableConcept (valid)
     2. code_system missing + NO displayName → extension not added
@@ -1038,7 +1092,7 @@ class TestPatientExtensionCodeableConceptEdgeCases:
 
     def test_gender_identity_with_missing_code_system_creates_text_only(self) -> None:
         """Test that gender identity with missing code_system but displayName creates text-only extension.
-        
+
         This matches AllergyIntolerance behavior - valid FHIR allows text-only CodeableConcept.
         """
         gender_identity_obs = """
@@ -1053,27 +1107,31 @@ class TestPatientExtensionCodeableConceptEdgeCases:
                        displayName="Identifies as male gender"/>
             </observation>
         """
-        
+
         ccda_doc = wrap_in_ccda_document(
             gender_identity_obs,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
-        
+
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
-        
+
         # Extension SHOULD be present with text-only CodeableConcept (valid FHIR)
         assert "extension" in patient
         gender_identity_ext = next(
-            (e for e in patient["extension"]
-             if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
-            None
+            (
+                e
+                for e in patient["extension"]
+                if e["url"]
+                == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+            ),
+            None,
         )
         assert gender_identity_ext is not None
         assert "valueCodeableConcept" in gender_identity_ext
-        
+
         codeable = gender_identity_ext["valueCodeableConcept"]
         # Should have text but no coding
         assert "text" in codeable
@@ -1093,29 +1151,33 @@ class TestPatientExtensionCodeableConceptEdgeCases:
                 <value xsi:type="CD" code="446151000124109"/>
             </observation>
         """
-        
+
         ccda_doc = wrap_in_ccda_document(
             gender_identity_obs,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
-        
+
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
-        
+
         # Extension should NOT be present (no content for CodeableConcept)
         if "extension" in patient:
             gender_identity_ext = next(
-                (e for e in patient["extension"]
-                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
-                None
+                (
+                    e
+                    for e in patient["extension"]
+                    if e["url"]
+                    == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+                ),
+                None,
             )
             assert gender_identity_ext is None
 
     def test_tribal_affiliation_with_null_flavor_not_added(self) -> None:
         """Test that tribal affiliation extension is not added with nullFlavor value.
-        
+
         Per FHIR guidance on optional elements: when data is truly absent (nullFlavor),
         omit the element entirely rather than using data-absent-reason extension.
         """
@@ -1130,23 +1192,28 @@ class TestPatientExtensionCodeableConceptEdgeCases:
                 <value xsi:type="CD" nullFlavor="UNK"/>
             </observation>
         """
-        
+
         ccda_doc = wrap_in_ccda_document(
             tribal_affiliation_obs,
             section_template_id="2.16.840.1.113883.10.20.22.2.17",
-            section_code="29762-2"
+            section_code="29762-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
-        
+
         patient = _find_resource_in_bundle(bundle, "Patient")
         assert patient is not None
-        
+
         # Tribal affiliation extension should NOT be present
         if "extension" in patient:
             tribal_ext = next(
-                (e for e in patient["extension"]
-                 if e["url"] == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"),
-                None
+                (
+                    e
+                    for e in patient["extension"]
+                    if e["url"]
+                    == "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+                ),
+                None,
             )
-            assert tribal_ext is None, \
+            assert tribal_ext is None, (
                 "Tribal affiliation extension should not be added when value has nullFlavor"
+            )

@@ -9,16 +9,15 @@ The correct way to get the resource type is: resource.get_resource_type()
 
 from pathlib import Path
 
-from ccda_to_fhir import convert_document
 from fhir.resources.bundle import Bundle
+
+from ccda_to_fhir import convert_document
 
 
 def test_composition_has_get_resource_type_method():
     """Test that Composition objects have get_resource_type() method."""
     # Use existing working full C-CDA document
-    fixture_path = (
-        Path(__file__).parent / "fixtures" / "ccda" / "header_and_body_encounter.xml"
-    )
+    fixture_path = Path(__file__).parent / "fixtures" / "ccda" / "header_and_body_encounter.xml"
     with open(fixture_path) as f:
         xml = f.read()
 
@@ -32,18 +31,20 @@ def test_composition_has_get_resource_type_method():
     )
 
     assert composition_entry is not None, "Bundle should contain Composition"
-    assert hasattr(
-        composition_entry.resource, "get_resource_type"
-    ), "Resource should have get_resource_type method"
-    assert (
-        composition_entry.resource.get_resource_type() == "Composition"
-    ), "get_resource_type() should return 'Composition'"
+    assert hasattr(composition_entry.resource, "get_resource_type"), (
+        "Resource should have get_resource_type method"
+    )
+    assert composition_entry.resource.get_resource_type() == "Composition", (
+        "get_resource_type() should return 'Composition'"
+    )
 
 
 def test_all_fhir_resources_have_get_resource_type():
     """Test that all FHIR resources in bundle have get_resource_type() method."""
     # Use a fixture with multiple resource types
-    fixture_path = Path(__file__).parent / "fixtures" / "ccda" / "procedure_with_problem_reference.xml"
+    fixture_path = (
+        Path(__file__).parent / "fixtures" / "ccda" / "procedure_with_problem_reference.xml"
+    )
     with open(fixture_path) as f:
         xml = f.read()
 
@@ -56,15 +57,15 @@ def test_all_fhir_resources_have_get_resource_type():
         resource = entry.resource
 
         # Should have get_resource_type method
-        assert hasattr(
-            resource, "get_resource_type"
-        ), f"Resource {resource.__class__.__name__} should have get_resource_type method"
+        assert hasattr(resource, "get_resource_type"), (
+            f"Resource {resource.__class__.__name__} should have get_resource_type method"
+        )
 
         # Should return a string
         resource_type = resource.get_resource_type()
-        assert isinstance(
-            resource_type, str
-        ), f"get_resource_type() should return string, got {type(resource_type)}"
+        assert isinstance(resource_type, str), (
+            f"get_resource_type() should return string, got {type(resource_type)}"
+        )
 
         # Should be one of expected types
         assert resource_type in {
@@ -102,7 +103,9 @@ def test_all_fhir_resources_have_get_resource_type():
 
 def test_resource_type_matches_class_name():
     """Test that get_resource_type() matches the resource class name."""
-    fixture_path = Path(__file__).parent / "fixtures" / "ccda" / "encounter_with_problem_reference.xml"
+    fixture_path = (
+        Path(__file__).parent / "fixtures" / "ccda" / "encounter_with_problem_reference.xml"
+    )
     with open(fixture_path) as f:
         xml = f.read()
 
@@ -115,6 +118,6 @@ def test_resource_type_matches_class_name():
         class_name = resource.__class__.__name__
 
         # Resource type should match class name
-        assert (
-            resource_type == class_name
-        ), f"Resource type '{resource_type}' should match class name '{class_name}'"
+        assert resource_type == class_name, (
+            f"Resource type '{resource_type}' should match class name '{class_name}'"
+        )

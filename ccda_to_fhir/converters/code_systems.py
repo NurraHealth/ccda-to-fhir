@@ -23,11 +23,9 @@ class CodeSystemMapper:
         "2.16.840.1.113883.6.12": "http://www.ama-assn.org/go/cpt",  # CPT
         "2.16.840.1.113883.12.292": "http://hl7.org/fhir/sid/cvx",  # CVX (Vaccines)
         "2.16.840.1.113883.3.26.1.1": "http://ncimeta.nci.nih.gov",  # NCI Thesaurus
-
         # Identifiers
         "2.16.840.1.113883.4.1": "http://hl7.org/fhir/sid/us-ssn",  # US SSN
         "2.16.840.1.113883.4.6": "http://hl7.org/fhir/sid/us-npi",  # US NPI
-
         # HL7 V3 Code Systems
         "2.16.840.1.113883.5.1": "http://terminology.hl7.org/CodeSystem/v3-AdministrativeGender",
         "2.16.840.1.113883.5.2": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
@@ -42,19 +40,14 @@ class CodeSystemMapper:
         "2.16.840.1.113883.5.111": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
         "2.16.840.1.113883.5.140": "http://terminology.hl7.org/CodeSystem/v3-TribalEntityUS",  # Tribal Entity US
         "2.16.840.1.113883.5.1063": "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
-
         # CDC Race and Ethnicity
         "2.16.840.1.113883.6.238": "urn:oid:2.16.840.1.113883.6.238",  # CDC Race/Ethnicity (keep as OID)
-
         # CDC NHSN Healthcare Service Location (HSLOC)
         "2.16.840.1.113883.6.259": "https://www.cdc.gov/nhsn/cdaportal/terminology/codesystem/hsloc.html",
-
         # NUCC Provider Taxonomy
         "2.16.840.1.113883.6.101": "http://nucc.org/provider-taxonomy",
-
         # HL7 V2 Tables
         "2.16.840.1.113883.12.112": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
-
         # FHIR CodeSystems (for when C-CDA uses FHIR codes)
         # Note: Some C-CDA documents incorrectly use ValueSet OIDs as codeSystem
         # We map both the ValueSet OID and CodeSystem canonical URI for compatibility
@@ -101,7 +94,7 @@ class CodeSystemMapper:
             return ""
 
         # If already a URI (starts with http/https), return as-is
-        if oid.startswith('http://') or oid.startswith('https://'):
+        if oid.startswith("http://") or oid.startswith("https://"):
             return oid
 
         # Check for known mapping

@@ -17,15 +17,25 @@ DOCUMENTS_DIR = Path(__file__).parent / "fixtures" / "documents"
 
 # Resource types that use "subject" for the patient reference
 SUBJECT_RESOURCE_TYPES = {
-    "Condition", "Observation", "Procedure", "DiagnosticReport",
-    "MedicationRequest", "MedicationStatement", "MedicationDispense",
-    "CarePlan", "CareTeam", "Goal", "ServiceRequest", "Encounter",
+    "Condition",
+    "Observation",
+    "Procedure",
+    "DiagnosticReport",
+    "MedicationRequest",
+    "MedicationStatement",
+    "MedicationDispense",
+    "CarePlan",
+    "CareTeam",
+    "Goal",
+    "ServiceRequest",
+    "Encounter",
     "DocumentReference",
 }
 
 # Resource types that use "patient" for the patient reference
 PATIENT_RESOURCE_TYPES = {
-    "AllergyIntolerance", "Immunization",
+    "AllergyIntolerance",
+    "Immunization",
 }
 
 
@@ -63,16 +73,12 @@ def test_subject_references_have_display(fixture: str) -> None:
         rt = r["resourceType"]
         if rt in SUBJECT_RESOURCE_TYPES and "subject" in r:
             ref = r["subject"]
-            assert "display" in ref, (
-                f"{rt}/{r.get('id')}: subject reference missing display"
-            )
+            assert "display" in ref, f"{rt}/{r.get('id')}: subject reference missing display"
             assert ref["display"] == patient_display
 
         if rt in PATIENT_RESOURCE_TYPES and "patient" in r:
             ref = r["patient"]
-            assert "display" in ref, (
-                f"{rt}/{r.get('id')}: patient reference missing display"
-            )
+            assert "display" in ref, f"{rt}/{r.get('id')}: patient reference missing display"
             assert ref["display"] == patient_display
 
         if rt == "RelatedPerson" and "patient" in r:

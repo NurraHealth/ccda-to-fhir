@@ -28,9 +28,7 @@ class TestNoKnownAllergies:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(
-            allergy_xml,
-            section_template_id=ALLERGIES_TEMPLATE_ID,
-            section_code="48765-2"
+            allergy_xml, section_template_id=ALLERGIES_TEMPLATE_ID, section_code="48765-2"
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -41,9 +39,8 @@ class TestNoKnownAllergies:
         assert "code" in allergy
         assert "coding" in allergy["code"]
         snomed_coding = next(
-            (c for c in allergy["code"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in allergy["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "716186003"
@@ -55,9 +52,7 @@ class TestNoKnownAllergies:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(
-            allergy_xml,
-            section_template_id=ALLERGIES_TEMPLATE_ID,
-            section_code="48765-2"
+            allergy_xml, section_template_id=ALLERGIES_TEMPLATE_ID, section_code="48765-2"
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -68,9 +63,8 @@ class TestNoKnownAllergies:
         assert "code" in allergy
         assert "coding" in allergy["code"]
         snomed_coding = next(
-            (c for c in allergy["code"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in allergy["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "409137002"
@@ -82,9 +76,7 @@ class TestNoKnownAllergies:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(
-            allergy_xml,
-            section_template_id=ALLERGIES_TEMPLATE_ID,
-            section_code="48765-2"
+            allergy_xml, section_template_id=ALLERGIES_TEMPLATE_ID, section_code="48765-2"
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -95,9 +87,8 @@ class TestNoKnownAllergies:
         assert "code" in allergy
         assert "coding" in allergy["code"]
         snomed_coding = next(
-            (c for c in allergy["code"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in allergy["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "429625007"
@@ -109,9 +100,7 @@ class TestNoKnownAllergies:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(
-            allergy_xml,
-            section_template_id=ALLERGIES_TEMPLATE_ID,
-            section_code="48765-2"
+            allergy_xml, section_template_id=ALLERGIES_TEMPLATE_ID, section_code="48765-2"
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -122,9 +111,8 @@ class TestNoKnownAllergies:
         assert "code" in allergy
         assert "coding" in allergy["code"]
         snomed_coding = next(
-            (c for c in allergy["code"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in allergy["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "428607008"
@@ -136,9 +124,7 @@ class TestNoKnownAllergies:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(
-            allergy_xml,
-            section_template_id=ALLERGIES_TEMPLATE_ID,
-            section_code="48765-2"
+            allergy_xml, section_template_id=ALLERGIES_TEMPLATE_ID, section_code="48765-2"
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -159,9 +145,7 @@ class TestNoKnownAllergies:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(
-            allergy_xml,
-            section_template_id=ALLERGIES_TEMPLATE_ID,
-            section_code="48765-2"
+            allergy_xml, section_template_id=ALLERGIES_TEMPLATE_ID, section_code="48765-2"
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -182,9 +166,7 @@ class TestNoKnownAllergies:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(
-            allergy_xml,
-            section_template_id=ALLERGIES_TEMPLATE_ID,
-            section_code="48765-2"
+            allergy_xml, section_template_id=ALLERGIES_TEMPLATE_ID, section_code="48765-2"
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -203,9 +185,7 @@ class TestNoKnownAllergies:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(
-            allergy_xml,
-            section_template_id=ALLERGIES_TEMPLATE_ID,
-            section_code="48765-2"
+            allergy_xml, section_template_id=ALLERGIES_TEMPLATE_ID, section_code="48765-2"
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -224,9 +204,7 @@ class TestNoKnownAllergies:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(
-            allergy_xml,
-            section_template_id=ALLERGIES_TEMPLATE_ID,
-            section_code="48765-2"
+            allergy_xml, section_template_id=ALLERGIES_TEMPLATE_ID, section_code="48765-2"
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -245,9 +223,7 @@ class TestNoKnownAllergies:
             allergy_xml = f.read()
 
         ccda_doc = wrap_in_ccda_document(
-            allergy_xml,
-            section_template_id=ALLERGIES_TEMPLATE_ID,
-            section_code="48765-2"
+            allergy_xml, section_template_id=ALLERGIES_TEMPLATE_ID, section_code="48765-2"
         )
         bundle = convert_document(ccda_doc)["bundle"]
 

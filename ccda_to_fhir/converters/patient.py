@@ -100,9 +100,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
                 patient["birthDate"] = birth_date
                 # Attach birthTime extension to _birthDate element
                 if birth_time_ext:
-                    patient["_birthDate"] = {
-                        "extension": [birth_time_ext]
-                    }
+                    patient["_birthDate"] = {"extension": [birth_time_ext]}
 
         # Deceased
         deceased = self._convert_deceased(patient_data)
@@ -241,7 +239,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
             if birth_date_time:
                 birth_time_ext = {
                     "url": FHIRSystems.PATIENT_BIRTH_TIME,
-                    "valueDateTime": birth_date_time
+                    "valueDateTime": birth_date_time,
                 }
 
         return birth_date, birth_time_ext
@@ -450,18 +448,16 @@ class PatientConverter(BaseConverter[RecordTarget]):
                     level_sub_ext = {
                         "url": "level",
                         "valueCoding": {
-                            "system": self.map_oid_to_uri(
-                                comm.proficiency_level_code.code_system
-                            )
+                            "system": self.map_oid_to_uri(comm.proficiency_level_code.code_system)
                             if comm.proficiency_level_code.code_system
                             else FHIRSystems.V3_LANGUAGE_ABILITY_PROFICIENCY,
                             "code": comm.proficiency_level_code.code,
                         },
                     }
                     if comm.proficiency_level_code.display_name:
-                        level_sub_ext["valueCoding"][
-                            "display"
-                        ] = comm.proficiency_level_code.display_name
+                        level_sub_ext["valueCoding"]["display"] = (
+                            comm.proficiency_level_code.display_name
+                        )
                     proficiency_ext["extension"].append(level_sub_ext)
 
                 if proficiency_ext["extension"]:
@@ -520,13 +516,9 @@ class PatientConverter(BaseConverter[RecordTarget]):
                 text_parts.append(race_code.display_name)
 
             if race_code.code in OMB_RACE_CATEGORIES:
-                omb_categories.append(
-                    {"url": "ombCategory", "valueCoding": coding}
-                )
+                omb_categories.append({"url": "ombCategory", "valueCoding": coding})
             else:
-                detailed_categories.append(
-                    {"url": "detailed", "valueCoding": coding}
-                )
+                detailed_categories.append({"url": "detailed", "valueCoding": coding})
 
         extension["extension"].extend(omb_categories)
         extension["extension"].extend(detailed_categories)
@@ -579,13 +571,9 @@ class PatientConverter(BaseConverter[RecordTarget]):
                 text_parts.append(ethnicity_code.display_name)
 
             if ethnicity_code.code in OMB_ETHNICITY_CATEGORIES:
-                omb_categories.append(
-                    {"url": "ombCategory", "valueCoding": coding}
-                )
+                omb_categories.append({"url": "ombCategory", "valueCoding": coding})
             else:
-                detailed_categories.append(
-                    {"url": "detailed", "valueCoding": coding}
-                )
+                detailed_categories.append({"url": "detailed", "valueCoding": coding})
 
         extension["extension"].extend(omb_categories)
         extension["extension"].extend(detailed_categories)

@@ -85,7 +85,9 @@ class TestImmunizationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*statusCode"
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_immunization_activity_missing_effective_time(self) -> None:
@@ -106,7 +108,9 @@ class TestImmunizationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain at least one.*effectiveTime"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain at least one.*effectiveTime"
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_immunization_activity_missing_consumable(self) -> None:
@@ -123,7 +127,9 @@ class TestImmunizationActivityValidation:
             </effectiveTime>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="SHALL contain exactly one.*consumable"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError), match="SHALL contain exactly one.*consumable"
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_immunization_activity_missing_manufactured_product(self) -> None:
@@ -142,7 +148,10 @@ class TestImmunizationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="consumable SHALL contain exactly one.*manufacturedProduct"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError),
+            match="consumable SHALL contain exactly one.*manufacturedProduct",
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_immunization_activity_missing_manufactured_material(self) -> None:
@@ -163,7 +172,10 @@ class TestImmunizationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="manufacturedProduct SHALL contain exactly one.*manufacturedMaterial"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError),
+            match="manufacturedProduct SHALL contain exactly one.*manufacturedMaterial",
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_immunization_activity_missing_material_code(self) -> None:
@@ -186,7 +198,10 @@ class TestImmunizationActivityValidation:
             </consumable>
         </substanceAdministration>
         """
-        with pytest.raises((ValueError, MalformedXMLError), match="manufacturedMaterial SHALL contain exactly one.*code"):
+        with pytest.raises(
+            (ValueError, MalformedXMLError),
+            match="manufacturedMaterial SHALL contain exactly one.*code",
+        ):
             parse_ccda_fragment(xml, SubstanceAdministration)
 
     def test_non_immunization_activity_skips_validation(self) -> None:
@@ -228,7 +243,10 @@ class TestImmunizationActivityValidation:
         imm = parse_ccda_fragment(xml, SubstanceAdministration)
         assert imm is not None
         assert imm.consumable.manufactured_product.manufactured_material.code.code == "141"
-        assert imm.consumable.manufactured_product.manufactured_material.code.code_system == "2.16.840.1.113883.12.292"
+        assert (
+            imm.consumable.manufactured_product.manufactured_material.code.code_system
+            == "2.16.840.1.113883.12.292"
+        )
 
     def test_immunization_activity_with_negation_ind(self) -> None:
         """Immunization Activity with negationInd should be valid."""

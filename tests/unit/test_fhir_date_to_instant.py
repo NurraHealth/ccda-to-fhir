@@ -22,19 +22,10 @@ class TestFhirDateToInstant:
         assert fhir_date_to_instant("2026") == "2026-01-01T00:00:00Z"
 
     def test_datetime_with_timezone_unchanged(self) -> None:
-        assert (
-            fhir_date_to_instant("2026-01-20T09:30:00-05:00")
-            == "2026-01-20T09:30:00-05:00"
-        )
+        assert fhir_date_to_instant("2026-01-20T09:30:00-05:00") == "2026-01-20T09:30:00-05:00"
 
     def test_datetime_utc_unchanged(self) -> None:
-        assert (
-            fhir_date_to_instant("2026-01-20T00:00:00Z")
-            == "2026-01-20T00:00:00Z"
-        )
+        assert fhir_date_to_instant("2026-01-20T00:00:00Z") == "2026-01-20T00:00:00Z"
 
     def test_datetime_without_timezone_gets_utc(self) -> None:
-        assert (
-            fhir_date_to_instant("2026-01-20T09:30:00")
-            == "2026-01-20T09:30:00Z"
-        )
+        assert fhir_date_to_instant("2026-01-20T09:30:00") == "2026-01-20T09:30:00Z"

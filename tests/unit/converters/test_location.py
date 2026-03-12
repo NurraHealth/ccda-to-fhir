@@ -27,11 +27,7 @@ def sample_service_delivery_location() -> ParticipantRole:
         class_code="SDLOC",
         template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
         id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
-        code=CE(
-            code="1061-3",
-            code_system="2.16.840.1.113883.6.259",
-            display_name="Hospital"
-        ),
+        code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259", display_name="Hospital"),
         addr=[
             AD(
                 use="WP",
@@ -39,16 +35,11 @@ def sample_service_delivery_location() -> ParticipantRole:
                 city="Portland",
                 state="OR",
                 postal_code="99123",
-                country="US"
+                country="US",
             )
         ],
-        telecom=[
-            TEL(use="WP", value="tel:+1(555)555-5000")
-        ],
-        playing_entity=PlayingEntity(
-            class_code="PLC",
-            name=["Community Health and Hospitals"]
-        )
+        telecom=[TEL(use="WP", value="tel:+1(555)555-5000")],
+        playing_entity=PlayingEntity(class_code="PLC", name=["Community Health and Hospitals"]),
     )
 
 
@@ -60,9 +51,7 @@ def urgent_care_location() -> ParticipantRole:
         template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
         id=[II(root="2.16.840.1.113883.4.6", extension="1122334455")],
         code=CE(
-            code="1160-1",
-            code_system="2.16.840.1.113883.6.259",
-            display_name="Urgent Care Center"
+            code="1160-1", code_system="2.16.840.1.113883.6.259", display_name="Urgent Care Center"
         ),
         addr=[
             AD(
@@ -70,14 +59,11 @@ def urgent_care_location() -> ParticipantRole:
                 street_address_line=["123 Main Street"],
                 city="Springfield",
                 state="IL",
-                postal_code="62701"
+                postal_code="62701",
             )
         ],
         telecom=[TEL(use="WP", value="tel:+1(217)555-9999")],
-        playing_entity=PlayingEntity(
-            class_code="PLC",
-            name=["Springfield Urgent Care"]
-        )
+        playing_entity=PlayingEntity(class_code="PLC", name=["Springfield Urgent Care"]),
     )
 
 
@@ -90,24 +76,20 @@ def location_with_translations() -> ParticipantRole:
         id=[
             II(root="2.16.840.1.113883.4.6", extension="1234567890"),
             II(root="2.16.840.1.113883.4.7", extension="11D0265516"),
-            II(root="2.16.840.1.113883.6.300", extension="98765")
+            II(root="2.16.840.1.113883.6.300", extension="98765"),
         ],
         code=CE(
             code="1061-3",
             code_system="2.16.840.1.113883.6.259",
             display_name="Hospital",
             translation=[
-                CE(
-                    code="22232009",
-                    code_system="2.16.840.1.113883.6.96",
-                    display_name="Hospital"
-                ),
+                CE(code="22232009", code_system="2.16.840.1.113883.6.96", display_name="Hospital"),
                 CE(
                     code="21",
                     code_system="https://www.cms.gov/Medicare/Coding/place-of-service-codes/Place_of_Service_Code_Set",
-                    display_name="Inpatient Hospital"
-                )
-            ]
+                    display_name="Inpatient Hospital",
+                ),
+            ],
         ),
         addr=[
             AD(
@@ -115,18 +97,15 @@ def location_with_translations() -> ParticipantRole:
                 street_address_line=["1001 Village Avenue", "Building 1, South Wing"],
                 city="Portland",
                 state="OR",
-                postal_code="99123"
+                postal_code="99123",
             )
         ],
         telecom=[
             TEL(use="WP", value="tel:+1(555)555-5000"),
             TEL(use="WP", value="fax:+1(555)555-5001"),
-            TEL(use="WP", value="mailto:contact@hospital.example.org")
+            TEL(use="WP", value="mailto:contact@hospital.example.org"),
         ],
-        playing_entity=PlayingEntity(
-            class_code="PLC",
-            name=["Community Health and Hospitals"]
-        )
+        playing_entity=PlayingEntity(class_code="PLC", name=["Community Health and Hospitals"]),
     )
 
 
@@ -138,9 +117,7 @@ def patient_home_location() -> ParticipantRole:
         template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
         id=[II(root=None, extension=None, null_flavor="NA")],
         code=CE(
-            code="PTRES",
-            code_system="2.16.840.1.113883.5.111",
-            display_name="Patient's Residence"
+            code="PTRES", code_system="2.16.840.1.113883.5.111", display_name="Patient's Residence"
         ),
         addr=[
             AD(
@@ -148,13 +125,10 @@ def patient_home_location() -> ParticipantRole:
                 street_address_line=["456 Oak Street"],
                 city="Seattle",
                 state="WA",
-                postal_code="98101"
+                postal_code="98101",
             )
         ],
-        playing_entity=PlayingEntity(
-            class_code="PLC",
-            name=["Patient's Home"]
-        )
+        playing_entity=PlayingEntity(class_code="PLC", name=["Patient's Home"]),
     )
 
 
@@ -166,7 +140,9 @@ class TestLocationConverter:
     # ============================================================================
 
     def test_creates_location_resource(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that converter creates a Location resource."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -175,17 +151,24 @@ class TestLocationConverter:
         assert location["resourceType"] == FHIRCodes.ResourceTypes.LOCATION
 
     def test_includes_us_core_profile(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that US Core Location profile is included in meta."""
         location = location_converter.convert(sample_service_delivery_location)
 
         assert "meta" in location
         assert "profile" in location["meta"]
-        assert "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location" in location["meta"]["profile"]
+        assert (
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location"
+            in location["meta"]["profile"]
+        )
 
     def test_generates_id_from_npi(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that ID is generated from NPI identifier using standard generation."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -193,6 +176,7 @@ class TestLocationConverter:
         assert "id" in location
         # ID should be a valid UUID v4
         import uuid
+
         try:
             uuid.UUID(location["id"], version=4)
         except ValueError:
@@ -203,14 +187,18 @@ class TestLocationConverter:
     # ============================================================================
 
     def test_converts_npi_identifier(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that NPI identifier is converted to FHIR identifier with correct system."""
         location = location_converter.convert(sample_service_delivery_location)
 
         assert "identifier" in location
         assert len(location["identifier"]) >= 1
-        npi_identifiers = [i for i in location["identifier"] if i["system"] == "http://hl7.org/fhir/sid/us-npi"]
+        npi_identifiers = [
+            i for i in location["identifier"] if i["system"] == "http://hl7.org/fhir/sid/us-npi"
+        ]
         assert len(npi_identifiers) == 1
         assert npi_identifiers[0]["value"] == "1234567890"
 
@@ -224,22 +212,30 @@ class TestLocationConverter:
         assert len(location["identifier"]) == 3
 
         # Check NPI
-        npi_ids = [i for i in location["identifier"] if i["system"] == "http://hl7.org/fhir/sid/us-npi"]
+        npi_ids = [
+            i for i in location["identifier"] if i["system"] == "http://hl7.org/fhir/sid/us-npi"
+        ]
         assert len(npi_ids) == 1
         assert npi_ids[0]["value"] == "1234567890"
 
         # Check CLIA
-        clia_ids = [i for i in location["identifier"] if i["system"] == "urn:oid:2.16.840.1.113883.4.7"]
+        clia_ids = [
+            i for i in location["identifier"] if i["system"] == "urn:oid:2.16.840.1.113883.4.7"
+        ]
         assert len(clia_ids) == 1
         assert clia_ids[0]["value"] == "11D0265516"
 
         # Check NAIC
-        naic_ids = [i for i in location["identifier"] if i["system"] == "urn:oid:2.16.840.1.113883.6.300"]
+        naic_ids = [
+            i for i in location["identifier"] if i["system"] == "urn:oid:2.16.840.1.113883.6.300"
+        ]
         assert len(naic_ids) == 1
         assert naic_ids[0]["value"] == "98765"
 
     def test_identifier_oid_to_uri_mapping(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that OIDs are properly converted to URIs."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -272,6 +268,7 @@ class TestLocationConverter:
         assert "id" in location
         # ID should be a valid UUID v4
         import uuid
+
         try:
             uuid.UUID(location["id"], version=4)
         except ValueError:
@@ -282,7 +279,9 @@ class TestLocationConverter:
     # ============================================================================
 
     def test_converts_name(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that playingEntity/name maps to Location.name (required)."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -290,9 +289,7 @@ class TestLocationConverter:
         assert "name" in location
         assert location["name"] == "Community Health and Hospitals"
 
-    def test_name_is_always_present(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_name_is_always_present(self, location_converter: LocationConverter) -> None:
         """Test that name is always present (US Core requirement) using fallback strategies."""
         # Create location without name but with ID
         location_no_name = ParticipantRole(
@@ -300,7 +297,7 @@ class TestLocationConverter:
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(class_code="PLC")  # No name
+            playing_entity=PlayingEntity(class_code="PLC"),  # No name
         )
 
         # Should provide fallback name (from ID)
@@ -308,27 +305,20 @@ class TestLocationConverter:
         assert "name" in location
         assert location["name"] == "Location 1234567890"
 
-    def test_handles_on_object_name(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_handles_on_object_name(self, location_converter: LocationConverter) -> None:
         """Test that ON (OrganizationName) objects are properly extracted."""
         location_with_on = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(
-                class_code="PLC",
-                name=[ON(value="Test Hospital")]
-            )
+            playing_entity=PlayingEntity(class_code="PLC", name=[ON(value="Test Hospital")]),
         )
 
         location = location_converter.convert(location_with_on)
         assert location["name"] == "Test Hospital"
 
-    def test_name_fallback_to_address(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_name_fallback_to_address(self, location_converter: LocationConverter) -> None:
         """Test fallback to address when playingEntity/name is missing."""
         location_with_address = ParticipantRole(
             class_code="SDLOC",
@@ -336,13 +326,7 @@ class TestLocationConverter:
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
             playing_entity=PlayingEntity(class_code="PLC"),  # No name
-            addr=[
-                AD(
-                    street_address_line=["123 Main Street"],
-                    city="Portland",
-                    state="OR"
-                )
-            ]
+            addr=[AD(street_address_line=["123 Main Street"], city="Portland", state="OR")],
         )
 
         location = location_converter.convert(location_with_address)
@@ -359,7 +343,7 @@ class TestLocationConverter:
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
             playing_entity=PlayingEntity(class_code="PLC"),  # No name
-            addr=[AD(city="Springfield", state="IL")]
+            addr=[AD(city="Springfield", state="IL")],
         )
 
         location = location_converter.convert(location_city_only)
@@ -375,7 +359,7 @@ class TestLocationConverter:
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="FAC-9876")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(class_code="PLC")  # No name
+            playing_entity=PlayingEntity(class_code="PLC"),  # No name
             # No address
         )
 
@@ -383,16 +367,14 @@ class TestLocationConverter:
         assert "name" in location
         assert location["name"] == "Location FAC-9876"
 
-    def test_name_fallback_to_id_oid_segment(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_name_fallback_to_id_oid_segment(self, location_converter: LocationConverter) -> None:
         """Test fallback to last OID segment when extension is missing."""
         location_oid_only = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.987654")],  # No extension
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(class_code="PLC")  # No name
+            playing_entity=PlayingEntity(class_code="PLC"),  # No name
             # No address
         )
 
@@ -400,16 +382,14 @@ class TestLocationConverter:
         assert "name" in location
         assert location["name"] == "Location 987654"
 
-    def test_name_fallback_to_unknown(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_name_fallback_to_unknown(self, location_converter: LocationConverter) -> None:
         """Test final fallback to 'Unknown Location' when all else fails."""
         location_minimal = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[],  # No IDs
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(class_code="PLC")  # No name
+            playing_entity=PlayingEntity(class_code="PLC"),  # No name
             # No address
         )
 
@@ -422,7 +402,9 @@ class TestLocationConverter:
     # ============================================================================
 
     def test_converts_hsloc_type(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that HSLOC codes map to Location.type with correct system URI."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -432,7 +414,10 @@ class TestLocationConverter:
 
         # Check primary coding
         primary_coding = location["type"][0]["coding"][0]
-        assert primary_coding["system"] == "https://www.cdc.gov/nhsn/cdaportal/terminology/codesystem/hsloc.html"
+        assert (
+            primary_coding["system"]
+            == "https://www.cdc.gov/nhsn/cdaportal/terminology/codesystem/hsloc.html"
+        )
         assert primary_coding["code"] == "1061-3"
         assert primary_coding["display"] == "Hospital"
 
@@ -464,20 +449,14 @@ class TestLocationConverter:
         assert len(cms) == 1
         assert cms[0]["code"] == "21"
 
-    def test_converts_snomed_ct_type(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_converts_snomed_ct_type(self, location_converter: LocationConverter) -> None:
         """Test that SNOMED CT codes use correct system URI."""
         snomed_location = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
-            code=CE(
-                code="22232009",
-                code_system="2.16.840.1.113883.6.96",
-                display_name="Hospital"
-            ),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"])
+            code=CE(code="22232009", code_system="2.16.840.1.113883.6.96", display_name="Hospital"),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"]),
         )
 
         location = location_converter.convert(snomed_location)
@@ -493,12 +472,13 @@ class TestLocationConverter:
         location = location_converter.convert(patient_home_location)
 
         assert "type" in location
-        assert location["type"][0]["coding"][0]["system"] == "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
+        assert (
+            location["type"][0]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
+        )
         assert location["type"][0]["coding"][0]["code"] == "PTRES"
 
-    def test_type_is_optional(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_type_is_optional(self, location_converter: LocationConverter) -> None:
         """Test that type (code) is optional per FHIR R4B specification.
 
         Per FHIR R4B, Location.type has cardinality 0..* (optional).
@@ -509,7 +489,7 @@ class TestLocationConverter:
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             # Missing code
-            playing_entity=PlayingEntity(class_code="PLC", name=["Test"])
+            playing_entity=PlayingEntity(class_code="PLC", name=["Test"]),
         )
 
         # Should succeed without error
@@ -523,7 +503,9 @@ class TestLocationConverter:
     # ============================================================================
 
     def test_converts_address(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that C-CDA address maps to FHIR address."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -535,7 +517,9 @@ class TestLocationConverter:
         assert location["address"]["postalCode"] == "99123"
 
     def test_converts_address_use(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that address use codes are mapped (WP→work, HP→home)."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -554,16 +538,14 @@ class TestLocationConverter:
         assert location["address"]["line"][0] == "1001 Village Avenue"
         assert location["address"]["line"][1] == "Building 1, South Wing"
 
-    def test_address_is_optional(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_address_is_optional(self, location_converter: LocationConverter) -> None:
         """Test that address is optional but should be present when available."""
         location_no_addr = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Test"])
+            playing_entity=PlayingEntity(class_code="PLC", name=["Test"]),
         )
 
         location = location_converter.convert(location_no_addr)
@@ -575,7 +557,9 @@ class TestLocationConverter:
     # ============================================================================
 
     def test_converts_telecom(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that telecom values are converted."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -622,23 +606,23 @@ class TestLocationConverter:
         assert not phones[0]["value"].startswith("tel:")
 
     def test_converts_telecom_use(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that telecom use codes are mapped (WP→work)."""
         location = location_converter.convert(sample_service_delivery_location)
 
         assert location["telecom"][0]["use"] == "work"
 
-    def test_telecom_is_optional(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_telecom_is_optional(self, location_converter: LocationConverter) -> None:
         """Test that telecom is optional."""
         location_no_telecom = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Test"])
+            playing_entity=PlayingEntity(class_code="PLC", name=["Test"]),
         )
 
         location = location_converter.convert(location_no_telecom)
@@ -649,7 +633,9 @@ class TestLocationConverter:
     # ============================================================================
 
     def test_sets_status_to_active(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that status defaults to 'active'."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -658,7 +644,9 @@ class TestLocationConverter:
         assert location["status"] == "active"
 
     def test_sets_mode_to_instance(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that mode is 'instance' for specific locations."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -675,20 +663,14 @@ class TestLocationConverter:
         assert "mode" in location
         assert location["mode"] == "kind"
 
-    def test_mode_kind_for_ambulance(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_mode_kind_for_ambulance(self, location_converter: LocationConverter) -> None:
         """Test mode='kind' for ambulance (represents vehicle type, not specific ambulance)."""
         ambulance_location = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="9988776655")],
-            code=CE(
-                code="AMB",
-                code_system="2.16.840.1.113883.5.111",
-                display_name="Ambulance"
-            ),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Ambulance Unit 5"])
+            code=CE(code="AMB", code_system="2.16.840.1.113883.5.111", display_name="Ambulance"),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Ambulance Unit 5"]),
         )
 
         location = location_converter.convert(ambulance_location)
@@ -696,20 +678,14 @@ class TestLocationConverter:
         assert "mode" in location
         assert location["mode"] == "kind"
 
-    def test_mode_kind_for_work_site(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_mode_kind_for_work_site(self, location_converter: LocationConverter) -> None:
         """Test mode='kind' for work site (represents any workplace)."""
         work_location = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
-            code=CE(
-                code="WORK",
-                code_system="2.16.840.1.113883.5.111",
-                display_name="Work Site"
-            ),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Patient's Workplace"])
+            code=CE(code="WORK", code_system="2.16.840.1.113883.5.111", display_name="Work Site"),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Patient's Workplace"]),
         )
 
         location = location_converter.convert(work_location)
@@ -717,20 +693,14 @@ class TestLocationConverter:
         assert "mode" in location
         assert location["mode"] == "kind"
 
-    def test_mode_kind_for_school(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_mode_kind_for_school(self, location_converter: LocationConverter) -> None:
         """Test mode='kind' for school (represents any school)."""
         school_location = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
-            code=CE(
-                code="SCHOOL",
-                code_system="2.16.840.1.113883.5.111",
-                display_name="School"
-            ),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Local School"])
+            code=CE(code="SCHOOL", code_system="2.16.840.1.113883.5.111", display_name="School"),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Local School"]),
         )
 
         location = location_converter.convert(school_location)
@@ -758,9 +728,11 @@ class TestLocationConverter:
             code=CE(
                 code="1118-1",
                 code_system="2.16.840.1.113883.6.259",
-                display_name="Emergency Department"
+                display_name="Emergency Department",
             ),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Boston General Emergency Department"])
+            playing_entity=PlayingEntity(
+                class_code="PLC", name=["Boston General Emergency Department"]
+            ),
         )
 
         location = location_converter.convert(ed_location)
@@ -773,23 +745,23 @@ class TestLocationConverter:
     # ============================================================================
 
     def test_validates_service_delivery_location_template(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that Service Delivery Location template is validated."""
         # Should convert successfully with correct template ID
         location = location_converter.convert(sample_service_delivery_location)
         assert location is not None
 
-    def test_accepts_invalid_template_id(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_accepts_invalid_template_id(self, location_converter: LocationConverter) -> None:
         """Test that invalid template IDs are accepted (lenient for real-world data)."""
         location_with_invalid_template = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="9.9.9.9.9.9")],  # Non-standard template
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"])
+            playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"]),
         )
 
         # Should convert successfully despite non-standard template ID
@@ -797,16 +769,14 @@ class TestLocationConverter:
         assert location is not None
         assert location["name"] == "Test Hospital"
 
-    def test_accepts_missing_template_id(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_accepts_missing_template_id(self, location_converter: LocationConverter) -> None:
         """Test that missing template IDs are accepted (lenient for real-world data)."""
         location_without_template = ParticipantRole(
             class_code="SDLOC",
             template_id=None,  # No template ID
             id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Community Clinic"])
+            playing_entity=PlayingEntity(class_code="PLC", name=["Community Clinic"]),
         )
 
         # Should convert successfully despite missing template ID
@@ -819,22 +789,22 @@ class TestLocationConverter:
     # ============================================================================
 
     def test_validates_sdloc_class_code(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test that SDLOC classCode is validated."""
         location = location_converter.convert(sample_service_delivery_location)
         assert location is not None
 
-    def test_rejects_invalid_class_code(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_rejects_invalid_class_code(self, location_converter: LocationConverter) -> None:
         """Test that invalid classCode values are rejected."""
         invalid_location = ParticipantRole(
             class_code="INVALID",  # Should be SDLOC
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Test"])
+            playing_entity=PlayingEntity(class_code="PLC", name=["Test"]),
         )
 
         with pytest.raises(ValueError, match="classCode"):
@@ -854,7 +824,7 @@ class TestLocationConverter:
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.23")],  # Medication Info template
             id=[II(root="2.a6f9b1a0-8000-11db-96d0-00221122aabb", extension="12345")],
             code=CE(code="2823-3", code_system="2.16.840.1.113883.6.88"),
-            playing_entity=PlayingEntity(class_code="MMAT", name=["Aspirin 81mg"])
+            playing_entity=PlayingEntity(class_code="MMAT", name=["Aspirin 81mg"]),
         )
 
         with pytest.raises(ValueError, match="classCode"):
@@ -872,14 +842,16 @@ class TestLocationConverter:
 
         # Generate the organization ID using the same logic as the converter
         scoping_entity_id = II(root="2.16.840.1.113883.4.6", extension="org-123")
-        org_id = generate_id_from_identifiers("Organization", scoping_entity_id.root, scoping_entity_id.extension)
+        org_id = generate_id_from_identifiers(
+            "Organization", scoping_entity_id.root, scoping_entity_id.extension
+        )
 
         # Create a reference registry and register an organization
         registry = ReferenceRegistry()
         org_resource = {
             "resourceType": "Organization",
             "id": org_id,
-            "name": "Community Health System"
+            "name": "Community Health System",
         }
         registry.register_resource(org_resource)
 
@@ -893,10 +865,7 @@ class TestLocationConverter:
             id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
             playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"]),
-            scoping_entity=ScopingEntity(
-                class_code="ORG",
-                id=[scoping_entity_id]
-            )
+            scoping_entity=ScopingEntity(class_code="ORG", id=[scoping_entity_id]),
         )
 
         location = converter.convert(location_with_org)
@@ -925,9 +894,8 @@ class TestLocationConverter:
             code=CE(code="1061-3", code_system="2.16.840.1.113883.6.259"),
             playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"]),
             scoping_entity=ScopingEntity(
-                class_code="ORG",
-                id=[II(root="2.16.840.1.113883.4.6", extension="org-456")]
-            )
+                class_code="ORG", id=[II(root="2.16.840.1.113883.4.6", extension="org-456")]
+            ),
         )
 
         location = converter.convert(location_with_org)
@@ -936,7 +904,9 @@ class TestLocationConverter:
         assert "managingOrganization" not in location
 
     def test_managing_organization_omitted_without_scoping_entity(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test managingOrganization omitted when no scopingEntity present."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -964,8 +934,8 @@ class TestLocationConverter:
             playing_entity=PlayingEntity(class_code="PLC", name=["Test Hospital"]),
             scoping_entity=ScopingEntity(
                 class_code="ORG",
-                id=None  # No identifiers
-            )
+                id=None,  # No identifiers
+            ),
         )
 
         location = converter.convert(location_with_org)
@@ -978,7 +948,9 @@ class TestLocationConverter:
     # ============================================================================
 
     def test_physical_type_inferred_from_hsloc_hospital(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test physicalType inferred from HSLOC hospital code (→ Building)."""
         location = location_converter.convert(sample_service_delivery_location)
@@ -1004,20 +976,14 @@ class TestLocationConverter:
         assert coding["code"] == "ho"
         assert coding["display"] == "House"
 
-    def test_physical_type_ambulance(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_physical_type_ambulance(self, location_converter: LocationConverter) -> None:
         """Test ambulance maps to Vehicle physical type."""
         ambulance_location = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="9988776655")],
-            code=CE(
-                code="AMB",
-                code_system="2.16.840.1.113883.5.111",
-                display_name="Ambulance"
-            ),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Ambulance Unit 5"])
+            code=CE(code="AMB", code_system="2.16.840.1.113883.5.111", display_name="Ambulance"),
+            playing_entity=PlayingEntity(class_code="PLC", name=["Ambulance Unit 5"]),
         )
 
         location = location_converter.convert(ambulance_location)
@@ -1038,9 +1004,11 @@ class TestLocationConverter:
             code=CE(
                 code="1118-1",
                 code_system="2.16.840.1.113883.6.259",
-                display_name="Emergency Department"
+                display_name="Emergency Department",
             ),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Boston General Emergency Department"])
+            playing_entity=PlayingEntity(
+                class_code="PLC", name=["Boston General Emergency Department"]
+            ),
         )
 
         location = location_converter.convert(ed_location)
@@ -1050,20 +1018,16 @@ class TestLocationConverter:
         assert coding["code"] == "wa"
         assert coding["display"] == "Ward"
 
-    def test_physical_type_operating_room(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_physical_type_operating_room(self, location_converter: LocationConverter) -> None:
         """Test operating room maps to Room physical type."""
         or_location = ParticipantRole(
             class_code="SDLOC",
             template_id=[II(root="2.16.840.1.113883.10.20.22.4.32")],
             id=[II(root="2.16.840.1.113883.4.6", extension="1111222233")],
             code=CE(
-                code="1108-2",
-                code_system="2.16.840.1.113883.6.259",
-                display_name="Operating Room"
+                code="1108-2", code_system="2.16.840.1.113883.6.259", display_name="Operating Room"
             ),
-            playing_entity=PlayingEntity(class_code="PLC", name=["OR 3"])
+            playing_entity=PlayingEntity(class_code="PLC", name=["OR 3"]),
         )
 
         location = location_converter.convert(or_location)
@@ -1073,9 +1037,7 @@ class TestLocationConverter:
         assert coding["code"] == "ro"
         assert coding["display"] == "Room"
 
-    def test_physical_type_snomed_icu(
-        self, location_converter: LocationConverter
-    ) -> None:
+    def test_physical_type_snomed_icu(self, location_converter: LocationConverter) -> None:
         """Test SNOMED CT ICU code maps to Ward physical type."""
         icu_location = ParticipantRole(
             class_code="SDLOC",
@@ -1084,9 +1046,9 @@ class TestLocationConverter:
             code=CE(
                 code="309904001",
                 code_system="2.16.840.1.113883.6.96",
-                display_name="Intensive care unit"
+                display_name="Intensive care unit",
             ),
-            playing_entity=PlayingEntity(class_code="PLC", name=["ICU"])
+            playing_entity=PlayingEntity(class_code="PLC", name=["ICU"]),
         )
 
         location = location_converter.convert(icu_location)
@@ -1108,9 +1070,9 @@ class TestLocationConverter:
             code=CE(
                 code="99999",  # Unmapped code
                 code_system="2.16.840.1.113883.6.259",
-                display_name="Unknown Facility Type"
+                display_name="Unknown Facility Type",
             ),
-            playing_entity=PlayingEntity(class_code="PLC", name=["Unknown Facility"])
+            playing_entity=PlayingEntity(class_code="PLC", name=["Unknown Facility"]),
         )
 
         location = location_converter.convert(unmapped_location)
@@ -1119,11 +1081,15 @@ class TestLocationConverter:
         assert "physicalType" not in location
 
     def test_physical_type_uses_standard_fhir_system(
-        self, location_converter: LocationConverter, sample_service_delivery_location: ParticipantRole
+        self,
+        location_converter: LocationConverter,
+        sample_service_delivery_location: ParticipantRole,
     ) -> None:
         """Test physicalType uses official FHIR CodeSystem URI."""
         location = location_converter.convert(sample_service_delivery_location)
 
         assert "physicalType" in location
-        assert location["physicalType"]["coding"][0]["system"] == \
-               "http://terminology.hl7.org/CodeSystem/location-physical-type"
+        assert (
+            location["physicalType"]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/location-physical-type"
+        )

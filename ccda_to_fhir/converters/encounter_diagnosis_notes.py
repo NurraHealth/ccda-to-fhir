@@ -13,8 +13,6 @@ from __future__ import annotations
 
 import base64
 import logging
-
-from ccda_to_fhir.utils import fhir_date_to_instant
 from dataclasses import dataclass
 
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
@@ -27,6 +25,7 @@ from ccda_to_fhir.ccda.models.struc_doc import (
 )
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.utils import fhir_date_to_instant
 from ccda_to_fhir.utils.struc_doc_utils import extract_cell_text
 
 from .references import ReferenceRegistry
@@ -203,7 +202,11 @@ def create_diagnosis_note_doc_refs(
     doc_refs: list[FHIRResourceDict] = []
 
     for note in notes:
-        encounter_id = encounter_map.get(note.encounter_content_id or "") if note.encounter_content_id else None
+        encounter_id = (
+            encounter_map.get(note.encounter_content_id or "")
+            if note.encounter_content_id
+            else None
+        )
         encounter_date = date_map.get(encounter_id) if encounter_id else None
 
         doc_ref = _build_doc_ref(
@@ -392,9 +395,15 @@ def build_condition_snomed_map(
                 continue
             system = coding.get("system", "")
             code_val = coding.get("code", "")
-            if isinstance(code_val, str) and isinstance(system, str) and code_val and system in (
-                "http://snomed.info/sct",
-                "http://snomed.info/sct/731000124108",
+            if (
+                isinstance(code_val, str)
+                and isinstance(system, str)
+                and code_val
+                and system
+                in (
+                    "http://snomed.info/sct",
+                    "http://snomed.info/sct/731000124108",
+                )
             ):
                 snomed_map.setdefault(code_val, []).append(condition_id)
                 break

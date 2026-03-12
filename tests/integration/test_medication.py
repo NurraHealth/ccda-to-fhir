@@ -45,27 +45,33 @@ class TestMedicationConversion:
             assert medication is not None
             assert "code" in medication
             rxnorm = next(
-                (c for c in medication["code"]["coding"]
-                 if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"),
-                None
+                (
+                    c
+                    for c in medication["code"]["coding"]
+                    if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"
+                ),
+                None,
             )
             assert rxnorm is not None
             assert rxnorm["code"] == "1190220"
         # For simple medications, check medicationCodeableConcept
         elif "medicationCodeableConcept" in med_request:
             rxnorm = next(
-                (c for c in med_request["medicationCodeableConcept"]["coding"]
-                 if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"),
-                None
+                (
+                    c
+                    for c in med_request["medicationCodeableConcept"]["coding"]
+                    if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"
+                ),
+                None,
             )
             assert rxnorm is not None
             assert rxnorm["code"] == "1190220"
         else:
-            assert False, "MedicationRequest must have either medicationReference or medicationCodeableConcept"
+            raise AssertionError(
+                "MedicationRequest must have either medicationReference or medicationCodeableConcept"
+            )
 
-    def test_converts_status(
-        self, ccda_medication: str, fhir_medication: JSONObject
-    ) -> None:
+    def test_converts_status(self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -74,8 +80,7 @@ class TestMedicationConversion:
         assert med_request is not None
         assert med_request["status"] == "active"
 
-    def test_converts_intent(
-        self, ccda_medication: str, fhir_medication: JSONObject) -> None:
+    def test_converts_intent(self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that intent is correctly determined from moodCode."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -84,8 +89,7 @@ class TestMedicationConversion:
         assert med_request is not None
         assert med_request["intent"] == "plan"
 
-    def test_converts_authored_on(
-        self, ccda_medication: str, fhir_medication: JSONObject) -> None:
+    def test_converts_authored_on(self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that author time is converted to authoredOn."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -96,7 +100,8 @@ class TestMedicationConversion:
         assert "2013-09-11" in med_request["authoredOn"]
 
     def test_converts_dosage_timing(
-        self, ccda_medication: str, fhir_medication: JSONObject) -> None:
+        self, ccda_medication: str, fhir_medication: JSONObject
+    ) -> None:
         """Test that timing is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -109,8 +114,7 @@ class TestMedicationConversion:
         assert timing["periodMax"] == 6
         assert timing["periodUnit"] == "h"
 
-    def test_converts_route(
-        self, ccda_medication: str, fhir_medication: JSONObject) -> None:
+    def test_converts_route(self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that route code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -122,7 +126,8 @@ class TestMedicationConversion:
         assert route["coding"][0]["code"] == "C38288"
 
     def test_converts_dose_quantity(
-        self, ccda_medication: str, fhir_medication: JSONObject) -> None:
+        self, ccda_medication: str, fhir_medication: JSONObject
+    ) -> None:
         """Test that dose quantity is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -133,8 +138,7 @@ class TestMedicationConversion:
         dose = med_request["dosageInstruction"][0]["doseAndRate"][0]["doseQuantity"]
         assert dose["value"] == 1
 
-    def test_converts_max_dose(
-        self, ccda_medication: str, fhir_medication: JSONObject) -> None:
+    def test_converts_max_dose(self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that max dose is correctly converted to FHIR Ratio with complete Quantity structure."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -156,8 +160,7 @@ class TestMedicationConversion:
         assert max_dose["denominator"]["system"] == "http://unitsofmeasure.org"
         assert max_dose["denominator"]["code"] == "{day}"
 
-    def test_converts_as_needed(
-        self, ccda_medication: str, fhir_medication: JSONObject) -> None:
+    def test_converts_as_needed(self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that precondition with coded value is converted to asNeededCodeableConcept."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -204,8 +207,7 @@ class TestMedicationConversion:
         # Should NOT have asNeededCodeableConcept (mutually exclusive)
         assert "asNeededCodeableConcept" not in dosage
 
-    def test_converts_reason_code(
-        self, ccda_medication: str, fhir_medication: JSONObject) -> None:
+    def test_converts_reason_code(self, ccda_medication: str, fhir_medication: JSONObject) -> None:
         """Test that indication is converted to reasonCode."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -216,7 +218,8 @@ class TestMedicationConversion:
         assert med_request["reasonCode"][0]["coding"][0]["code"] == "56018004"
 
     def test_converts_patient_instructions(
-        self, ccda_medication: str, fhir_medication: JSONObject) -> None:
+        self, ccda_medication: str, fhir_medication: JSONObject
+    ) -> None:
         """Test that instructions are converted to patientInstruction."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -227,7 +230,8 @@ class TestMedicationConversion:
         assert med_request["dosageInstruction"][0]["patientInstruction"] == "Do not overtake"
 
     def test_resource_type_is_medication_request(
-        self, ccda_medication: str, fhir_medication: JSONObject) -> None:
+        self, ccda_medication: str, fhir_medication: JSONObject
+    ) -> None:
         """Test that the resource type is MedicationRequest."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -236,9 +240,7 @@ class TestMedicationConversion:
         assert med_request is not None
         assert med_request["resourceType"] == "MedicationRequest"
 
-    def test_converts_requester_from_latest_author(
-        self, ccda_medication: str
-    ) -> None:
+    def test_converts_requester_from_latest_author(self, ccda_medication: str) -> None:
         """Test that requester field is populated from latest author."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -282,15 +284,10 @@ class TestMedicationConversion:
         assert "agent" in med_provenance
         assert len(med_provenance["agent"]) > 0
         # Latest author should be in Provenance agents
-        agent_refs = [
-            agent.get("who", {}).get("reference")
-            for agent in med_provenance["agent"]
-        ]
+        agent_refs = [agent.get("who", {}).get("reference") for agent in med_provenance["agent"]]
         assert requester_ref in agent_refs
 
-    def test_provenance_has_recorded_date(
-        self, ccda_medication: str
-    ) -> None:
+    def test_provenance_has_recorded_date(self, ccda_medication: str) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -317,9 +314,7 @@ class TestMedicationConversion:
         # Should have a valid ISO datetime
         assert len(med_provenance["recorded"]) > 0
 
-    def test_provenance_agent_has_correct_type(
-        self, ccda_medication: str
-    ) -> None:
+    def test_provenance_agent_has_correct_type(self, ccda_medication: str) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -405,8 +400,10 @@ class TestMedicationConversion:
         practitioner_id = med_request["requester"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Practitioner ID {practitioner_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(
+                f"Practitioner ID {practitioner_id} is not a valid UUID v4"
+            ) from err
 
         # authoredOn should use earliest time, reduced to date-only per FHIR R4 requirement (no timezone in source)
         assert med_request["authoredOn"] == "2023-10-01"
@@ -612,7 +609,9 @@ class TestBoundsPeriodConversion:
 
     def test_converts_start_and_end_dates(self, ccda_medication_with_start_end_dates: str) -> None:
         """Test that IVL_TS with start and end dates is correctly converted to boundsPeriod."""
-        ccda_doc = wrap_in_ccda_document(ccda_medication_with_start_end_dates, MEDICATIONS_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_medication_with_start_end_dates, MEDICATIONS_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
@@ -744,9 +743,7 @@ class TestDosageInstructionText:
         assert "dosageInstruction" in med_request
         assert "text" in med_request["dosageInstruction"][0]
 
-    def test_creates_medication_resource_for_complex_medication(
-        self, ccda_medication: str
-    ) -> None:
+    def test_creates_medication_resource_for_complex_medication(self, ccda_medication: str) -> None:
         """Test that a Medication resource is created when complex medication info exists.
 
         Per C-CDA on FHIR IG: When additional medication details need to be conveyed
@@ -763,15 +760,14 @@ class TestDosageInstructionText:
 
         # Should have an ID (UUID v4)
         import uuid
+
         assert "id" in medication
         try:
             uuid.UUID(medication["id"], version=4)
         except ValueError:
             pytest.fail(f"Medication ID {medication['id']} is not a valid UUID v4")
 
-    def test_medication_request_references_medication_resource(
-        self, ccda_medication: str
-    ) -> None:
+    def test_medication_request_references_medication_resource(self, ccda_medication: str) -> None:
         """Test that MedicationRequest uses medicationReference for complex medication."""
         ccda_doc = wrap_in_ccda_document(ccda_medication, MEDICATIONS_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -806,9 +802,12 @@ class TestDosageInstructionText:
         assert "code" in medication
         assert "coding" in medication["code"]
         rxnorm = next(
-            (c for c in medication["code"]["coding"]
-             if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"),
-            None
+            (
+                c
+                for c in medication["code"]["coding"]
+                if c.get("system") == "http://www.nlm.nih.gov/research/umls/rxnorm"
+            ),
+            None,
         )
         assert rxnorm is not None
         assert rxnorm["code"] == "1190220"
@@ -859,9 +858,12 @@ class TestDosageInstructionText:
 
         # Should be sodium chloride (the drug vehicle)
         snomed_code = next(
-            (c for c in ingredient["itemCodeableConcept"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (
+                c
+                for c in ingredient["itemCodeableConcept"]["coding"]
+                if c.get("system") == "http://snomed.info/sct"
+            ),
+            None,
         )
         assert snomed_code is not None
         assert snomed_code["code"] == "387390002"

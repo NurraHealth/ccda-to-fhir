@@ -22,7 +22,6 @@ from ccda_to_fhir.converters.author_references import (
     format_person_display,
 )
 
-
 # ============================================================================
 # format_person_display
 # ============================================================================
@@ -30,9 +29,7 @@ from ccda_to_fhir.converters.author_references import (
 
 class TestFormatPersonDisplay:
     def test_given_and_family(self) -> None:
-        person = AssignedPerson(
-            name=[PN(given=[ENXP(value="Jane")], family=ENXP(value="Doe"))]
-        )
+        person = AssignedPerson(name=[PN(given=[ENXP(value="Jane")], family=ENXP(value="Doe"))])
         assert format_person_display(person) == "Jane Doe"
 
     def test_multiple_given_names(self) -> None:
@@ -42,15 +39,11 @@ class TestFormatPersonDisplay:
         assert format_person_display(person) == "Jane Marie Doe"
 
     def test_family_only(self) -> None:
-        person = AssignedPerson(
-            name=[PN(family=ENXP(value="Smith"))]
-        )
+        person = AssignedPerson(name=[PN(family=ENXP(value="Smith"))])
         assert format_person_display(person) == "Smith"
 
     def test_given_only(self) -> None:
-        person = AssignedPerson(
-            name=[PN(given=[ENXP(value="Alice")])]
-        )
+        person = AssignedPerson(name=[PN(given=[ENXP(value="Alice")])])
         assert format_person_display(person) == "Alice"
 
     def test_none_person(self) -> None:
@@ -65,26 +58,24 @@ class TestFormatPersonDisplay:
         assert format_person_display(person) is None
 
     def test_name_with_empty_values(self) -> None:
-        person = AssignedPerson(
-            name=[PN(given=[ENXP(value=None)], family=ENXP(value=None))]
-        )
+        person = AssignedPerson(name=[PN(given=[ENXP(value=None)], family=ENXP(value=None))])
         assert format_person_display(person) is None
 
     def test_prefix_and_suffix(self) -> None:
         person = AssignedPerson(
-            name=[PN(
-                prefix=[ENXP(value="Dr.")],
-                given=[ENXP(value="Jane")],
-                family=ENXP(value="Doe"),
-                suffix=[ENXP(value="MD")],
-            )]
+            name=[
+                PN(
+                    prefix=[ENXP(value="Dr.")],
+                    given=[ENXP(value="Jane")],
+                    family=ENXP(value="Doe"),
+                    suffix=[ENXP(value="MD")],
+                )
+            ]
         )
         assert format_person_display(person) == "Dr. Jane Doe MD"
 
     def test_prefix_only_with_family(self) -> None:
-        person = AssignedPerson(
-            name=[PN(prefix=[ENXP(value="Dr.")], family=ENXP(value="Smith"))]
-        )
+        person = AssignedPerson(name=[PN(prefix=[ENXP(value="Dr.")], family=ENXP(value="Smith"))])
         assert format_person_display(person) == "Dr. Smith"
 
     def test_uses_first_name_entry(self) -> None:

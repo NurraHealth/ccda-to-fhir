@@ -109,12 +109,11 @@ class Act(CDAModel):
             return False
 
         for tid in self.template_id:
-            if tid.root == template_id:
-                if extension is None or tid.extension == extension:
-                    return True
+            if tid.root == template_id and (extension is None or tid.extension == extension):
+                return True
         return False
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_problem_concern_act(self) -> Act:
         """Validate Problem Concern Act (2.16.840.1.113883.10.20.22.4.3).
 
@@ -186,7 +185,7 @@ class Act(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_procedure_activity_act(self) -> Act:
         """Validate Procedure Activity Act (2.16.840.1.113883.10.20.22.4.12).
 
@@ -234,7 +233,7 @@ class Act(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_allergy_concern_act(self) -> Act:
         """Validate Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30).
 
@@ -275,20 +274,18 @@ class Act(CDAModel):
             )
 
         # CONF:1198-7504: If statusCode='active', SHALL contain low
-        if self.status_code.code == "active":
-            if not self.effective_time.low:
-                raise ValueError(
-                    "Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30): "
-                    "effectiveTime SHALL contain low when statusCode='active' (CONF:1198-7504)"
-                )
+        if self.status_code.code == "active" and not self.effective_time.low:
+            raise ValueError(
+                "Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30): "
+                "effectiveTime SHALL contain low when statusCode='active' (CONF:1198-7504)"
+            )
 
         # CONF:1198-10085: If statusCode is completed/aborted, SHALL contain high
-        if self.status_code.code in ["completed", "aborted"]:
-            if not self.effective_time.high:
-                raise ValueError(
-                    "Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30): "
-                    "effectiveTime SHALL contain high when statusCode is 'completed' or 'aborted' (CONF:1198-10085)"
-                )
+        if self.status_code.code in ["completed", "aborted"] and not self.effective_time.high:
+            raise ValueError(
+                "Allergy Concern Act (2.16.840.1.113883.10.20.22.4.30): "
+                "effectiveTime SHALL contain high when statusCode is 'completed' or 'aborted' (CONF:1198-10085)"
+            )
 
         if not self.entry_relationship or len(self.entry_relationship) == 0:
             raise ValueError(

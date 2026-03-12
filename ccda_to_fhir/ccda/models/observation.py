@@ -14,20 +14,16 @@ from pydantic import Field, model_validator
 
 from .author import Author
 from .datatypes import (
-    AD,
-    BL,
     CD,
     CE,
     CS,
     ED,
-    EIVL_TS,
     II,
     IVL_INT,
     IVL_TS,
-    ObservationValueType,
     PQ,
-    TEL,
     CDAModel,
+    ObservationValueType,
 )
 from .entry_relationship import EntryRelationship
 from .participant import Participant
@@ -176,12 +172,11 @@ class Observation(CDAModel):
             return False
 
         for tid in self.template_id:
-            if tid.root == template_id:
-                if extension is None or tid.extension == extension:
-                    return True
+            if tid.root == template_id and (extension is None or tid.extension == extension):
+                return True
         return False
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_problem_observation(self) -> Observation:
         """Validate Problem Observation template (2.16.840.1.113883.10.20.22.4.4).
 
@@ -261,7 +256,7 @@ class Observation(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_allergy_observation(self) -> Observation:
         """Validate Allergy Intolerance Observation (2.16.840.1.113883.10.20.22.4.7).
 
@@ -329,7 +324,7 @@ class Observation(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_vital_sign_observation(self) -> Observation:
         """Validate Vital Sign Observation (2.16.840.1.113883.10.20.22.4.27).
 
@@ -392,7 +387,7 @@ class Observation(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_result_observation(self) -> Observation:
         """Validate Result Observation (2.16.840.1.113883.10.20.22.4.2).
 
@@ -443,7 +438,7 @@ class Observation(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_smoking_status_observation(self) -> Observation:
         """Validate Smoking Status Observation (2.16.840.1.113883.10.20.22.4.78).
 
@@ -505,7 +500,7 @@ class Observation(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_social_history_observation(self) -> Observation:
         """Validate Social History Observation (2.16.840.1.113883.10.20.22.4.38).
 
@@ -546,7 +541,7 @@ class Observation(CDAModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_family_history_observation(self) -> Observation:
         """Validate Family History Observation (2.16.840.1.113883.10.20.22.4.46).
 

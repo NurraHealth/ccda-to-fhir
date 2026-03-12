@@ -142,7 +142,6 @@ from .record_target import (
     Organization,
     Patient,
     PatientRole,
-    Place,
     RecordTarget,
 )
 

@@ -29,7 +29,7 @@ class FieldValidator:
             "resources_by_type": {},
             "fields_validated": 0,
             "errors": [],
-            "warnings": []
+            "warnings": [],
         }
 
         for entry in self.bundle.entry:
@@ -37,11 +37,12 @@ class FieldValidator:
             resource_type = resource.get_resource_type()
 
             stats["total_resources"] += 1
-            stats["resources_by_type"][resource_type] = \
+            stats["resources_by_type"][resource_type] = (
                 stats["resources_by_type"].get(resource_type, 0) + 1
+            )
 
             # Validate this resource
-            resource_dict = resource.dict() if hasattr(resource, 'dict') else resource.model_dump()
+            resource_dict = resource.dict() if hasattr(resource, "dict") else resource.model_dump()
             field_count = self._validate_resource(resource_type, resource_dict)
             stats["fields_validated"] += field_count
 
@@ -99,8 +100,11 @@ class FieldValidator:
         elif key == "system":
             if not value or not isinstance(value, str):
                 self.errors.append(f"{path}: system must be a non-empty string (URI)")
-            elif not (value.startswith("http://") or value.startswith("https://") or
-                      value.startswith("urn:")):
+            elif not (
+                value.startswith("http://")
+                or value.startswith("https://")
+                or value.startswith("urn:")
+            ):
                 self.warnings.append(f"{path}: system should be a URI, got '{value}'")
 
         elif key == "code":
@@ -131,18 +135,20 @@ class FieldValidator:
             if not value or not isinstance(value, str):
                 self.errors.append(f"{path}: reference must be a non-empty string")
             elif "/" not in value:
-                self.warnings.append(f"{path}: reference should be ResourceType/id format, got '{value}'")
+                self.warnings.append(
+                    f"{path}: reference should be ResourceType/id format, got '{value}'"
+                )
 
         # Meta profiles (US Core)
-        elif key == "profile":
-            if isinstance(value, list):
-                for profile in value:
-                    if not profile.startswith("http://"):
-                        self.warnings.append(f"{path}: profile should be a URL, got '{profile}'")
+        elif key == "profile" and isinstance(value, list):
+            for profile in value:
+                if not profile.startswith("http://"):
+                    self.warnings.append(f"{path}: profile should be a URL, got '{profile}'")
 
 
-def validate_resource_comprehensive(bundle: Bundle, resource_type: str,
-                                   expected_fields: set[str]) -> dict[str, Any]:
+def validate_resource_comprehensive(
+    bundle: Bundle, resource_type: str, expected_fields: set[str]
+) -> dict[str, Any]:
     """Validate that a specific resource type has all expected fields populated.
 
     Args:
@@ -153,14 +159,17 @@ def validate_resource_comprehensive(bundle: Bundle, resource_type: str,
     Returns:
         Validation results with missing/extra fields
     """
-    resources = [e.resource for e in bundle.entry
-                 if e.resource.get_resource_type() == resource_type]
+    resources = [
+        e.resource for e in bundle.entry if e.resource.get_resource_type() == resource_type
+    ]
 
     if not resources:
         return {"error": f"No {resource_type} resources found in bundle"}
 
     # Collect all populated fields from first resource
-    resource_dict = resources[0].dict() if hasattr(resources[0], 'dict') else resources[0].model_dump()
+    resource_dict = (
+        resources[0].dict() if hasattr(resources[0], "dict") else resources[0].model_dump()
+    )
 
     def collect_paths(obj, path="", depth=0, max_depth=6):
         if depth > max_depth:
@@ -190,5 +199,6 @@ def validate_resource_comprehensive(bundle: Bundle, resource_type: str,
         "missing": sorted(missing),
         "extra": sorted(extra),
         "coverage": len(populated_fields & expected_fields) / len(expected_fields) * 100
-                    if expected_fields else 100
+        if expected_fields
+        else 100,
     }

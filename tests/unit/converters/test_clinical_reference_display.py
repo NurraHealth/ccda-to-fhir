@@ -16,7 +16,6 @@ from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.constants import TemplateIds
 from ccda_to_fhir.converters.references import ReferenceRegistry
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -143,7 +142,9 @@ class TestConditionEvidenceDisplay:
         detail_ref = result[0]["detail"][0]
         assert detail_ref["display"] == "Clinical finding"
 
-    def test_evidence_detail_no_display_when_code_missing(self, registry: ReferenceRegistry) -> None:
+    def test_evidence_detail_no_display_when_code_missing(
+        self, registry: ReferenceRegistry
+    ) -> None:
         converter = self._make_converter(registry)
 
         supporting_obs = Observation()
@@ -160,7 +161,9 @@ class TestConditionEvidenceDisplay:
         detail_ref = result[0]["detail"][0]
         assert "display" not in detail_ref
 
-    def test_evidence_detail_no_display_when_display_name_none(self, registry: ReferenceRegistry) -> None:
+    def test_evidence_detail_no_display_when_display_name_none(
+        self, registry: ReferenceRegistry
+    ) -> None:
         converter = self._make_converter(registry)
 
         supporting_obs = Observation()
@@ -192,7 +195,7 @@ class TestDiagnosticReportResultDisplay:
 
     def test_result_reference_includes_display(self, registry: ReferenceRegistry) -> None:
         from ccda_to_fhir.ccda.models.datatypes import CS
-        from ccda_to_fhir.ccda.models.organizer import OrganizerComponent, Organizer
+        from ccda_to_fhir.ccda.models.organizer import Organizer, OrganizerComponent
         from ccda_to_fhir.converters.diagnostic_report import DiagnosticReportConverter
 
         obs = Observation(
@@ -224,9 +227,11 @@ class TestDiagnosticReportResultDisplay:
         assert len(result_refs) == 1
         assert result_refs[0]["display"] == "Glucose [Mass/volume] in Blood"
 
-    def test_result_reference_no_display_when_display_name_missing(self, registry: ReferenceRegistry) -> None:
+    def test_result_reference_no_display_when_display_name_missing(
+        self, registry: ReferenceRegistry
+    ) -> None:
         from ccda_to_fhir.ccda.models.datatypes import CS
-        from ccda_to_fhir.ccda.models.organizer import OrganizerComponent, Organizer
+        from ccda_to_fhir.ccda.models.organizer import Organizer, OrganizerComponent
         from ccda_to_fhir.converters.diagnostic_report import DiagnosticReportConverter
 
         obs = Observation(
@@ -283,7 +288,9 @@ class TestCarePlanOutcomeDisplay:
         assert result is not None
         assert result["display"] == "Problem"
 
-    def test_outcome_reference_no_display_when_code_missing(self, registry: ReferenceRegistry) -> None:
+    def test_outcome_reference_no_display_when_code_missing(
+        self, registry: ReferenceRegistry
+    ) -> None:
         from ccda_to_fhir.converters.careplan import CarePlanConverter
 
         converter = CarePlanConverter(reference_registry=registry)
@@ -329,9 +336,7 @@ class TestEncounterDiagnosisDisplay:
 
         diag_act = Act()
         diag_act.template_id = [II(root=TemplateIds.ENCOUNTER_DIAGNOSIS)]
-        diag_act.entry_relationship = [
-            EntryRelationship(type_code="SUBJ", observation=obs)
-        ]
+        diag_act.entry_relationship = [EntryRelationship(type_code="SUBJ", observation=obs)]
 
         entry_rel = EntryRelationship(type_code="COMP", act=diag_act)
 
@@ -340,7 +345,9 @@ class TestEncounterDiagnosisDisplay:
         condition_ref = diagnoses[0]["condition"]
         assert condition_ref["display"] == "Essential hypertension"
 
-    def test_diagnosis_condition_ref_no_display_when_value_missing(self, registry: ReferenceRegistry) -> None:
+    def test_diagnosis_condition_ref_no_display_when_value_missing(
+        self, registry: ReferenceRegistry
+    ) -> None:
         from ccda_to_fhir.ccda.models.act import Act
 
         converter = self._make_converter(registry)
@@ -350,9 +357,7 @@ class TestEncounterDiagnosisDisplay:
 
         diag_act = Act()
         diag_act.template_id = [II(root=TemplateIds.ENCOUNTER_DIAGNOSIS)]
-        diag_act.entry_relationship = [
-            EntryRelationship(type_code="SUBJ", observation=obs)
-        ]
+        diag_act.entry_relationship = [EntryRelationship(type_code="SUBJ", observation=obs)]
 
         entry_rel = EntryRelationship(type_code="COMP", act=diag_act)
 
@@ -361,7 +366,9 @@ class TestEncounterDiagnosisDisplay:
         condition_ref = diagnoses[0]["condition"]
         assert "display" not in condition_ref
 
-    def test_diagnosis_condition_ref_no_display_when_display_name_none(self, registry: ReferenceRegistry) -> None:
+    def test_diagnosis_condition_ref_no_display_when_display_name_none(
+        self, registry: ReferenceRegistry
+    ) -> None:
         from ccda_to_fhir.ccda.models.act import Act
 
         converter = self._make_converter(registry)
@@ -376,9 +383,7 @@ class TestEncounterDiagnosisDisplay:
 
         diag_act = Act()
         diag_act.template_id = [II(root=TemplateIds.ENCOUNTER_DIAGNOSIS)]
-        diag_act.entry_relationship = [
-            EntryRelationship(type_code="SUBJ", observation=obs)
-        ]
+        diag_act.entry_relationship = [EntryRelationship(type_code="SUBJ", observation=obs)]
 
         entry_rel = EntryRelationship(type_code="COMP", act=diag_act)
 
@@ -424,7 +429,9 @@ class TestEncounterDiagnosisNotesDisplay:
         assert len(related) == 1
         assert related[0]["display"] == "Type 2 Diabetes Mellitus"
 
-    def test_related_condition_no_display_when_diagnosis_display_empty(self, registry: ReferenceRegistry) -> None:
+    def test_related_condition_no_display_when_diagnosis_display_empty(
+        self, registry: ReferenceRegistry
+    ) -> None:
         from ccda_to_fhir.converters.encounter_diagnosis_notes import (
             DiagnosisNote,
             create_diagnosis_note_doc_refs,
@@ -496,7 +503,9 @@ class TestMedicationReferenceDisplay:
         med_ref = result["medicationReference"]
         assert med_ref["display"] == "Lisinopril 10 MG Oral Tablet"
 
-    def test_medication_reference_no_display_when_display_name_none(self, registry: ReferenceRegistry) -> None:
+    def test_medication_reference_no_display_when_display_name_none(
+        self, registry: ReferenceRegistry
+    ) -> None:
         from ccda_to_fhir.ccda.models.datatypes import CS
         from ccda_to_fhir.ccda.models.substance_administration import (
             Consumable,

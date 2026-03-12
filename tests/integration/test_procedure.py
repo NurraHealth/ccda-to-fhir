@@ -34,9 +34,7 @@ def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> lis
 class TestProcedureConversion:
     """E2E tests for C-CDA Procedure Activity to FHIR Procedure conversion."""
 
-    def test_converts_procedure_code(
-        self, ccda_procedure: str, fhir_procedure: JSONObject
-    ) -> None:
+    def test_converts_procedure_code(self, ccda_procedure: str, fhir_procedure: JSONObject) -> None:
         """Test that procedure code is correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -45,17 +43,14 @@ class TestProcedureConversion:
         assert procedure is not None
         assert "code" in procedure
         snomed = next(
-            (c for c in procedure["code"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in procedure["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
         )
         assert snomed is not None
         assert snomed["code"] == "80146002"
         assert snomed["display"] == "Excision of appendix"
 
-    def test_converts_status(
-        self, ccda_procedure: str, fhir_procedure: JSONObject
-    ) -> None:
+    def test_converts_status(self, ccda_procedure: str, fhir_procedure: JSONObject) -> None:
         """Test that status is correctly mapped."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -64,9 +59,7 @@ class TestProcedureConversion:
         assert procedure is not None
         assert procedure["status"] == "completed"
 
-    def test_converts_performed_date(
-        self, ccda_procedure: str, fhir_procedure: JSONObject
-    ) -> None:
+    def test_converts_performed_date(self, ccda_procedure: str, fhir_procedure: JSONObject) -> None:
         """Test that effectiveTime is converted to performedDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -76,9 +69,7 @@ class TestProcedureConversion:
         assert "performedDateTime" in procedure
         assert procedure["performedDateTime"] == "2012-08-06"
 
-    def test_converts_identifiers(
-        self, ccda_procedure: str, fhir_procedure: JSONObject
-    ) -> None:
+    def test_converts_identifiers(self, ccda_procedure: str, fhir_procedure: JSONObject) -> None:
         """Test that identifiers are correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -100,16 +91,17 @@ class TestProcedureConversion:
         assert procedure is not None
         assert "code" in procedure
         icd10 = next(
-            (c for c in procedure["code"]["coding"]
-             if c.get("system") == "http://hl7.org/fhir/sid/icd-10-cm"),
-            None
+            (
+                c
+                for c in procedure["code"]["coding"]
+                if c.get("system") == "http://hl7.org/fhir/sid/icd-10-cm"
+            ),
+            None,
         )
         assert icd10 is not None
         assert icd10["code"] == "0DBJ4ZZ"
 
-    def test_converts_code_text(
-        self, ccda_procedure: str, fhir_procedure: JSONObject
-    ) -> None:
+    def test_converts_code_text(self, ccda_procedure: str, fhir_procedure: JSONObject) -> None:
         """Test that code text is populated from displayName."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -141,15 +133,15 @@ class TestProcedureConversion:
         assert len(procedure["bodySite"]) >= 1
         body_site = procedure["bodySite"][0]
         snomed_coding = next(
-            (c for c in body_site["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in body_site["coding"] if c.get("system") == "http://snomed.info/sct"), None
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "71854001"
         assert snomed_coding["display"] == "Colon structure"
 
-    def test_converts_body_site_with_laterality_qualifier(self, ccda_procedure_with_body_site: str) -> None:
+    def test_converts_body_site_with_laterality_qualifier(
+        self, ccda_procedure_with_body_site: str
+    ) -> None:
         """Test that targetSiteCode with laterality qualifier is converted correctly.
 
         The fixture procedure_with_body_site.xml includes a laterality qualifier
@@ -166,20 +158,28 @@ class TestProcedureConversion:
 
         # Check that the body site code is present
         site_coding = next(
-            (c for c in body_site["coding"]
-             if c.get("system") == "http://snomed.info/sct" and c.get("code") == "71854001"),
-            None
+            (
+                c
+                for c in body_site["coding"]
+                if c.get("system") == "http://snomed.info/sct" and c.get("code") == "71854001"
+            ),
+            None,
         )
         assert site_coding is not None
         assert site_coding["display"] == "Colon structure"
 
         # Check that laterality qualifier is present as additional coding
         laterality_coding = next(
-            (c for c in body_site["coding"]
-             if c.get("system") == "http://snomed.info/sct" and c.get("code") == "7771000"),
-            None
+            (
+                c
+                for c in body_site["coding"]
+                if c.get("system") == "http://snomed.info/sct" and c.get("code") == "7771000"
+            ),
+            None,
         )
-        assert laterality_coding is not None, "Laterality qualifier should be added as additional coding"
+        assert laterality_coding is not None, (
+            "Laterality qualifier should be added as additional coding"
+        )
         assert laterality_coding["display"] == "Left"
 
         # Check that text field combines laterality and site
@@ -220,7 +220,7 @@ class TestProcedureConversion:
                     </assignedEntity>
                 </performer>
             </procedure>""",
-            PROCEDURES_TEMPLATE_ID
+            PROCEDURES_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -254,7 +254,7 @@ class TestProcedureConversion:
                     </assignedEntity>
                 </performer>
             </procedure>""",
-            PROCEDURES_TEMPLATE_ID
+            PROCEDURES_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -287,7 +287,7 @@ class TestProcedureConversion:
                     </assignedEntity>
                 </performer>
             </procedure>""",
-            PROCEDURES_TEMPLATE_ID
+            PROCEDURES_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -321,7 +321,7 @@ class TestProcedureConversion:
                     </assignedEntity>
                 </performer>
             </procedure>""",
-            PROCEDURES_TEMPLATE_ID
+            PROCEDURES_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -330,7 +330,9 @@ class TestProcedureConversion:
         assert "performer" in procedure
         performer = procedure["performer"][0]
         # ADM is encounter-only, so function should not be included for procedures
-        assert "function" not in performer, "Encounter-only codes like ADM should not appear in Procedure.performer.function"
+        assert "function" not in performer, (
+            "Encounter-only codes like ADM should not appear in Procedure.performer.function"
+        )
         # But actor should still be present
         assert "actor" in performer
         assert performer["actor"]["reference"].startswith("urn:uuid:")
@@ -360,16 +362,19 @@ class TestProcedureConversion:
         assert len(procedure["reasonCode"]) >= 1
         reason = procedure["reasonCode"][0]
         icd10_coding = next(
-            (c for c in reason["coding"]
-             if c.get("system") == "http://hl7.org/fhir/sid/icd-10-cm"),
-            None
+            (c for c in reason["coding"] if c.get("system") == "http://hl7.org/fhir/sid/icd-10-cm"),
+            None,
         )
         assert icd10_coding is not None
         assert icd10_coding["code"] == "K51.90"
 
-    def test_converts_inline_problem_to_reason_code(self, ccda_procedure_with_reason_reference: str) -> None:
+    def test_converts_inline_problem_to_reason_code(
+        self, ccda_procedure_with_reason_reference: str
+    ) -> None:
         """Test that inline Problem Observation (not in Problems section) creates reasonCode."""
-        ccda_doc = wrap_in_ccda_document(ccda_procedure_with_reason_reference, PROCEDURES_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_with_reason_reference, PROCEDURES_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -384,9 +389,13 @@ class TestProcedureConversion:
         assert coding["code"] == "85189001"
         assert "Acute appendicitis" in coding["display"]
 
-    def test_inline_problem_has_no_reason_reference(self, ccda_procedure_with_reason_reference: str) -> None:
+    def test_inline_problem_has_no_reason_reference(
+        self, ccda_procedure_with_reason_reference: str
+    ) -> None:
         """Test that inline Problem Observation creates reasonCode, not reasonReference."""
-        ccda_doc = wrap_in_ccda_document(ccda_procedure_with_reason_reference, PROCEDURES_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_with_reason_reference, PROCEDURES_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -396,7 +405,9 @@ class TestProcedureConversion:
         # Should NOT have reasonReference (Condition doesn't exist)
         assert "reasonReference" not in procedure
 
-    def test_converts_referenced_problem_to_reason_reference(self, ccda_procedure_with_problem_reference: str) -> None:
+    def test_converts_referenced_problem_to_reason_reference(
+        self, ccda_procedure_with_problem_reference: str
+    ) -> None:
         """Test that Problem Observation from Problems section creates reasonReference."""
         # This fixture includes both Problems section and Procedures section
         bundle = convert_document(ccda_procedure_with_problem_reference)["bundle"]
@@ -412,11 +423,12 @@ class TestProcedureConversion:
 
         # Capture the generated Condition ID and verify it's a valid UUID v4
         import uuid as uuid_module
+
         condition_id = reason_ref["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(condition_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Condition ID {condition_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(f"Condition ID {condition_id} is not a valid UUID v4") from err
 
         # Verify the Condition exists in the bundle
         condition = None
@@ -427,7 +439,9 @@ class TestProcedureConversion:
                 break
         assert condition is not None, f"Condition {condition_id} should exist in bundle"
 
-    def test_referenced_problem_has_no_reason_code(self, ccda_procedure_with_problem_reference: str) -> None:
+    def test_referenced_problem_has_no_reason_code(
+        self, ccda_procedure_with_problem_reference: str
+    ) -> None:
         """Test that referenced Problem Observation creates reasonReference, not reasonCode."""
         bundle = convert_document(ccda_procedure_with_problem_reference)["bundle"]
 
@@ -438,7 +452,9 @@ class TestProcedureConversion:
         # Should NOT have reasonCode (reference takes precedence)
         assert "reasonCode" not in procedure
 
-    def test_reason_reference_condition_id_format(self, ccda_procedure_with_problem_reference: str) -> None:
+    def test_reason_reference_condition_id_format(
+        self, ccda_procedure_with_problem_reference: str
+    ) -> None:
         """Test that reasonReference uses consistent Condition ID format."""
         bundle = convert_document(ccda_procedure_with_problem_reference)["bundle"]
 
@@ -448,11 +464,12 @@ class TestProcedureConversion:
         reason_ref = procedure["reasonReference"][0]
         # ID should be a valid UUID v4 (matches Condition generation logic)
         import uuid as uuid_module
+
         condition_id = reason_ref["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(condition_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Condition ID {condition_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(f"Condition ID {condition_id} is not a valid UUID v4") from err
 
     def test_converts_author_to_recorder(self, ccda_procedure_with_author: str) -> None:
         """Test that author is converted to recorder."""
@@ -474,9 +491,12 @@ class TestProcedureConversion:
         assert procedure is not None
         assert "outcome" in procedure
         snomed_coding = next(
-            (c for c in procedure["outcome"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (
+                c
+                for c in procedure["outcome"]["coding"]
+                if c.get("system") == "http://snomed.info/sct"
+            ),
+            None,
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "385669000"
@@ -493,9 +513,7 @@ class TestProcedureConversion:
         assert len(procedure["complication"]) >= 1
         complication = procedure["complication"][0]
         snomed_coding = next(
-            (c for c in complication["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in complication["coding"] if c.get("system") == "http://snomed.info/sct"), None
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "50417007"
@@ -511,9 +529,7 @@ class TestProcedureConversion:
         assert len(procedure["followUp"]) >= 1
         followup = procedure["followUp"][0]
         snomed_coding = next(
-            (c for c in followup["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in followup["coding"] if c.get("system") == "http://snomed.info/sct"), None
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "308273005"
@@ -529,13 +545,11 @@ class TestProcedureConversion:
         assert len(procedure["note"]) >= 1
         # Check that at least one note contains text from procedure/text
         has_text_note = any(
-            "Laparoscopic approach" in note.get("text", "")
-            for note in procedure["note"]
+            "Laparoscopic approach" in note.get("text", "") for note in procedure["note"]
         )
         # Check that at least one note contains Comment Activity text
         has_comment_note = any(
-            "Three ports used" in note.get("text", "")
-            for note in procedure["note"]
+            "Three ports used" in note.get("text", "") for note in procedure["note"]
         )
         assert has_text_note or has_comment_note
 
@@ -552,12 +566,15 @@ class TestProcedureConversion:
 
         # Recorder should reference a Practitioner with UUID v4
         import uuid as uuid_module
+
         assert procedure["recorder"]["reference"].startswith("urn:uuid:")
         practitioner_id = procedure["recorder"]["reference"].replace("urn:uuid:", "")
         try:
             uuid_module.UUID(practitioner_id, version=4)
-        except ValueError:
-            raise AssertionError(f"Practitioner ID {practitioner_id} is not a valid UUID v4")
+        except ValueError as err:
+            raise AssertionError(
+                f"Practitioner ID {practitioner_id} is not a valid UUID v4"
+            ) from err
 
     def test_recorder_and_provenance_reference_same_practitioner(
         self, ccda_procedure_with_author: str
@@ -587,20 +604,19 @@ class TestProcedureConversion:
                 procedure_provenance = prov
                 break
 
-        assert procedure_provenance is not None, "Provenance resource should be created for Procedure"
+        assert procedure_provenance is not None, (
+            "Provenance resource should be created for Procedure"
+        )
         # Verify Provenance agent references same practitioner
         assert "agent" in procedure_provenance
         assert len(procedure_provenance["agent"]) > 0
         # Latest author should be in Provenance agents
         agent_refs = [
-            agent.get("who", {}).get("reference")
-            for agent in procedure_provenance["agent"]
+            agent.get("who", {}).get("reference") for agent in procedure_provenance["agent"]
         ]
         assert recorder_ref in agent_refs
 
-    def test_provenance_has_recorded_date(
-        self, ccda_procedure_with_author: str
-    ) -> None:
+    def test_provenance_has_recorded_date(self, ccda_procedure_with_author: str) -> None:
         """Test that Provenance has a recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -627,9 +643,7 @@ class TestProcedureConversion:
         # Should have a valid ISO datetime
         assert len(procedure_provenance["recorded"]) > 0
 
-    def test_provenance_agent_has_correct_type(
-        self, ccda_procedure_with_author: str
-    ) -> None:
+    def test_provenance_agent_has_correct_type(self, ccda_procedure_with_author: str) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_with_author, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -814,8 +828,7 @@ class TestRepresentedOrganization:
 
         # Find the entry-level organization (Good Health Surgical Center)
         entry_org = next(
-            (org for org in organizations if org.get("name") == "Good Health Surgical Center"),
-            None
+            (org for org in organizations if org.get("name") == "Good Health Surgical Center"), None
         )
         assert entry_org is not None, "Entry-level organization should be created"
         assert entry_org["resourceType"] == "Organization"
@@ -831,8 +844,7 @@ class TestRepresentedOrganization:
 
         organizations = _find_all_resources_in_bundle(bundle, "Organization")
         entry_org = next(
-            (org for org in organizations if org.get("name") == "Good Health Surgical Center"),
-            None
+            (org for org in organizations if org.get("name") == "Good Health Surgical Center"), None
         )
         assert entry_org is not None
         assert "identifier" in entry_org
@@ -843,9 +855,8 @@ class TestRepresentedOrganization:
 
         # Verify the OID-based identifier exists
         oid_identifier = next(
-            (i for i in identifiers
-             if "2.16.840.1.113883.19.5.9999.1393" in i.get("system", "")),
-            None
+            (i for i in identifiers if "2.16.840.1.113883.19.5.9999.1393" in i.get("system", "")),
+            None,
         )
         assert oid_identifier is not None
 
@@ -860,8 +871,7 @@ class TestRepresentedOrganization:
 
         organizations = _find_all_resources_in_bundle(bundle, "Organization")
         entry_org = next(
-            (org for org in organizations if org.get("name") == "Good Health Surgical Center"),
-            None
+            (org for org in organizations if org.get("name") == "Good Health Surgical Center"), None
         )
         assert entry_org is not None
 
@@ -930,8 +940,7 @@ class TestRepresentedOrganization:
         # Get the entry-level Organization resource (Good Health Surgical Center)
         organizations = _find_all_resources_in_bundle(bundle, "Organization")
         entry_org = next(
-            (org for org in organizations if org.get("name") == "Good Health Surgical Center"),
-            None
+            (org for org in organizations if org.get("name") == "Good Health Surgical Center"), None
         )
         assert entry_org is not None
         org_id = entry_org["id"]
@@ -944,9 +953,12 @@ class TestRepresentedOrganization:
             if entry.get("resource", {}).get("resourceType") == "Provenance"
         ]
         procedure_provenance = next(
-            (p for p in provenances
-             if any(procedure["id"] in t.get("reference", "") for t in p.get("target", []))),
-            None
+            (
+                p
+                for p in provenances
+                if any(procedure["id"] in t.get("reference", "") for t in p.get("target", []))
+            ),
+            None,
         )
 
         assert procedure_provenance is not None
@@ -980,16 +992,14 @@ class TestRepresentedOrganization:
         # Entry-level author creates Practitioner
         practitioners = _find_all_resources_in_bundle(bundle, "Practitioner")
         entry_practitioner = next(
-            (p for p in practitioners if "Documenter" in str(p.get("name", []))),
-            None
+            (p for p in practitioners if "Documenter" in str(p.get("name", []))), None
         )
         assert entry_practitioner is not None, "Entry-level practitioner should be created"
 
         # Entry-level author creates Organization
         organizations = _find_all_resources_in_bundle(bundle, "Organization")
         entry_org = next(
-            (org for org in organizations if org.get("name") == "Good Health Surgical Center"),
-            None
+            (org for org in organizations if org.get("name") == "Good Health Surgical Center"), None
         )
         assert entry_org is not None, "Entry-level organization should be created"
 
@@ -1014,15 +1024,20 @@ class TestRepresentedOrganization:
             if entry.get("resource", {}).get("resourceType") == "Provenance"
         ]
         procedure_provenance = next(
-            (p for p in provenances
-             if any(procedure["id"] in t.get("reference", "") for t in p.get("target", []))),
-            None
+            (
+                p
+                for p in provenances
+                if any(procedure["id"] in t.get("reference", "") for t in p.get("target", []))
+            ),
+            None,
         )
 
         if procedure_provenance:
             # If provenance exists, verify agent has no onBehalfOf
             agent = procedure_provenance["agent"][0]
-            assert "onBehalfOf" not in agent, "onBehalfOf should not exist when no representedOrganization"
+            assert "onBehalfOf" not in agent, (
+                "onBehalfOf should not exist when no representedOrganization"
+            )
 
 
 class TestProcedureActivityObservation:
@@ -1044,9 +1059,7 @@ class TestProcedureActivityObservation:
         assert procedure is not None
         assert procedure["resourceType"] == "Procedure"
 
-    def test_converts_observation_code(
-        self, ccda_procedure_observation: str
-    ) -> None:
+    def test_converts_observation_code(self, ccda_procedure_observation: str) -> None:
         """Test that observation code is correctly converted to Procedure.code."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -1055,17 +1068,14 @@ class TestProcedureActivityObservation:
         assert procedure is not None
         assert "code" in procedure
         snomed = next(
-            (c for c in procedure["code"]["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in procedure["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
+            None,
         )
         assert snomed is not None
         assert snomed["code"] == "24623002"
         assert snomed["display"] == "Screening colonoscopy"
 
-    def test_converts_observation_status(
-        self, ccda_procedure_observation: str
-    ) -> None:
+    def test_converts_observation_status(self, ccda_procedure_observation: str) -> None:
         """Test that observation status is correctly mapped to Procedure.status."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -1074,9 +1084,7 @@ class TestProcedureActivityObservation:
         assert procedure is not None
         assert procedure["status"] == "completed"
 
-    def test_converts_observation_effective_time(
-        self, ccda_procedure_observation: str
-    ) -> None:
+    def test_converts_observation_effective_time(self, ccda_procedure_observation: str) -> None:
         """Test that observation effectiveTime is converted to performedDateTime."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -1086,9 +1094,7 @@ class TestProcedureActivityObservation:
         assert "performedDateTime" in procedure
         assert procedure["performedDateTime"] == "2023-03-15"
 
-    def test_converts_observation_identifier(
-        self, ccda_procedure_observation: str
-    ) -> None:
+    def test_converts_observation_identifier(self, ccda_procedure_observation: str) -> None:
         """Test that observation identifiers are correctly converted."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure_observation, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -1103,7 +1109,9 @@ class TestProcedureActivityObservation:
         self, ccda_procedure_observation_with_details: str
     ) -> None:
         """Test that observation targetSiteCode is converted to bodySite."""
-        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -1112,9 +1120,7 @@ class TestProcedureActivityObservation:
         assert len(procedure["bodySite"]) >= 1
         body_site = procedure["bodySite"][0]
         snomed_coding = next(
-            (c for c in body_site["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in body_site["coding"] if c.get("system") == "http://snomed.info/sct"), None
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "416949008"
@@ -1129,7 +1135,9 @@ class TestProcedureActivityObservation:
         When C-CDA assignedEntity has assignedPerson, actor references Practitioner.
         When C-CDA assignedEntity has only representedOrganization (no person), actor references Organization.
         """
-        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -1145,7 +1153,9 @@ class TestProcedureActivityObservation:
         self, ccda_procedure_observation_with_details: str
     ) -> None:
         """Test that observation location participant is correctly converted."""
-        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -1160,7 +1170,9 @@ class TestProcedureActivityObservation:
         self, ccda_procedure_observation_with_details: str
     ) -> None:
         """Test that observation author is converted to recorder."""
-        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -1172,7 +1184,9 @@ class TestProcedureActivityObservation:
         self, ccda_procedure_observation_with_details: str
     ) -> None:
         """Test that observation reason is correctly converted to reasonCode."""
-        ccda_doc = wrap_in_ccda_document(ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID)
+        ccda_doc = wrap_in_ccda_document(
+            ccda_procedure_observation_with_details, PROCEDURES_TEMPLATE_ID
+        )
         bundle = convert_document(ccda_doc)["bundle"]
 
         procedure = _find_resource_in_bundle(bundle, "Procedure")
@@ -1181,9 +1195,7 @@ class TestProcedureActivityObservation:
         assert len(procedure["reasonCode"]) >= 1
         reason = procedure["reasonCode"][0]
         snomed_coding = next(
-            (c for c in reason["coding"]
-             if c.get("system") == "http://snomed.info/sct"),
-            None
+            (c for c in reason["coding"] if c.get("system") == "http://snomed.info/sct"), None
         )
         assert snomed_coding is not None
         assert snomed_coding["code"] == "162004"
@@ -1207,12 +1219,14 @@ class TestProcedureActivityObservation:
                 <effectiveTime value="20230315"/>
                 <value xsi:type="CD" nullFlavor="NA"/>
             </observation>""",
-            PROCEDURES_TEMPLATE_ID
+            PROCEDURES_TEMPLATE_ID,
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
         procedures = _find_all_resources_in_bundle(bundle, "Procedure")
-        assert len(procedures) == 2, "Should convert both Procedure and Observation to Procedure resources"
+        assert len(procedures) == 2, (
+            "Should convert both Procedure and Observation to Procedure resources"
+        )
 
         # Verify both were converted
         procedure_codes = {
@@ -1250,7 +1264,9 @@ class TestProcedureMissingEffectiveTime:
         assert len(extensions) == 1
 
         data_absent_ext = extensions[0]
-        assert data_absent_ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert (
+            data_absent_ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        )
         assert data_absent_ext["valueCode"] == "unknown"
 
     def test_missing_effective_time_does_not_affect_other_fields(
@@ -1269,9 +1285,7 @@ class TestProcedureMissingEffectiveTime:
         assert "code" in procedure
         assert "identifier" in procedure
 
-    def test_procedure_with_effective_time_no_data_absent_reason(
-        self, ccda_procedure: str
-    ) -> None:
+    def test_procedure_with_effective_time_no_data_absent_reason(self, ccda_procedure: str) -> None:
         """Test that procedures WITH effectiveTime don't get data-absent-reason extension."""
         ccda_doc = wrap_in_ccda_document(ccda_procedure, PROCEDURES_TEMPLATE_ID)
         bundle = convert_document(ccda_doc)["bundle"]
@@ -1304,7 +1318,7 @@ class TestProcedureIDSanitization:
                 <statusCode code="completed"/>
                 <effectiveTime value="20230101120000"/>
             </procedure>""",
-            PROCEDURES_TEMPLATE_ID
+            PROCEDURES_TEMPLATE_ID,
         )
 
         bundle = convert_document(ccda_doc)["bundle"]
@@ -1313,6 +1327,7 @@ class TestProcedureIDSanitization:
         assert procedure is not None
         # ID should be a valid UUID v4
         import uuid
+
         assert "id" in procedure
         try:
             uuid.UUID(procedure["id"], version=4)

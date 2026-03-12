@@ -176,4 +176,3 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
             concept["text"] = code.display_name
 
         return concept
-

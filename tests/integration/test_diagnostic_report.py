@@ -70,7 +70,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -103,7 +103,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -130,7 +130,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -152,7 +152,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -179,7 +179,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -210,7 +210,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -237,7 +237,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -280,7 +280,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -325,7 +325,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -356,7 +356,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -382,7 +382,7 @@ class TestDiagnosticReportConversion:
         ccda_doc = wrap_in_ccda_document(
             result_organizer,
             section_template_id="2.16.840.1.113883.10.20.22.2.3.1",
-            section_code="30954-2"
+            section_code="30954-2",
         )
         bundle = convert_document(ccda_doc)["bundle"]
 
@@ -488,9 +488,7 @@ class TestDiagnosticReportConversion:
         assert "24323-8" in codes
         assert "58410-2" in codes
 
-    def test_provenance_created_for_report_with_author(
-        self, ccda_result_with_author: str
-    ) -> None:
+    def test_provenance_created_for_report_with_author(self, ccda_result_with_author: str) -> None:
         """Test that Provenance resource is created for DiagnosticReport with author."""
         ccda_doc = wrap_in_ccda_document(
             ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
@@ -516,16 +514,16 @@ class TestDiagnosticReportConversion:
                 report_provenance = prov
                 break
 
-        assert report_provenance is not None, "Provenance resource should be created for DiagnosticReport"
+        assert report_provenance is not None, (
+            "Provenance resource should be created for DiagnosticReport"
+        )
         # Verify Provenance has recorded date
         assert "recorded" in report_provenance
         # Verify Provenance has agents
         assert "agent" in report_provenance
         assert len(report_provenance["agent"]) > 0
 
-    def test_provenance_agent_references_practitioner(
-        self, ccda_result_with_author: str
-    ) -> None:
+    def test_provenance_agent_references_practitioner(self, ccda_result_with_author: str) -> None:
         """Test that Provenance agent references Practitioner."""
         ccda_doc = wrap_in_ccda_document(
             ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
@@ -556,9 +554,7 @@ class TestDiagnosticReportConversion:
         assert "reference" in agent["who"]
         assert agent["who"]["reference"].startswith("urn:uuid:")
 
-    def test_provenance_has_recorded_date_from_author(
-        self, ccda_result_with_author: str
-    ) -> None:
+    def test_provenance_has_recorded_date_from_author(self, ccda_result_with_author: str) -> None:
         """Test that Provenance has recorded date from author time."""
         ccda_doc = wrap_in_ccda_document(
             ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
@@ -586,9 +582,7 @@ class TestDiagnosticReportConversion:
         # Verify recorded date matches author time (20150622103000-0500)
         assert report_provenance["recorded"] == "2015-06-22T10:30:00-05:00"
 
-    def test_provenance_agent_has_author_type(
-        self, ccda_result_with_author: str
-    ) -> None:
+    def test_provenance_agent_has_author_type(self, ccda_result_with_author: str) -> None:
         """Test that Provenance agent has type 'author'."""
         ccda_doc = wrap_in_ccda_document(
             ccda_result_with_author, section_template_id="2.16.840.1.113883.10.20.22.2.3.1"
@@ -618,7 +612,10 @@ class TestDiagnosticReportConversion:
         assert "type" in agent
         type_coding = agent["type"]["coding"][0]
         assert type_coding["code"] == "author"
-        assert type_coding["system"] == "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+        assert (
+            type_coding["system"]
+            == "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+        )
 
     def test_multiple_authors_creates_multiple_provenance_agents(
         self, ccda_result_multiple_authors: str

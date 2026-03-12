@@ -8,8 +8,9 @@ Interventions Section and Outcomes Section, verifying that:
 4. CarePlan.activity references are created correctly
 """
 
-from ccda_to_fhir.convert import convert_document
 from fhir.resources.bundle import Bundle
+
+from ccda_to_fhir.convert import convert_document
 
 
 def test_careplan_with_interventions_and_outcomes_full_integration():
@@ -206,13 +207,15 @@ def test_careplan_with_interventions_and_outcomes_full_integration():
     # Verify activity has reference to Procedure
     activity = careplan.activity[0]
     assert activity.reference is not None, "Activity should have reference to intervention"
-    assert str(activity.reference.reference).startswith("urn:uuid:"), \
+    assert str(activity.reference.reference).startswith("urn:uuid:"), (
         f"Activity should reference Procedure, got: {activity.reference.reference}"
+    )
 
     # Verify the referenced Procedure exists in bundle
     procedure_ids = [f"urn:uuid:{e.resource.id}" for e in procedure_entries]
-    assert str(activity.reference.reference) in procedure_ids, \
+    assert str(activity.reference.reference) in procedure_ids, (
         f"Referenced procedure {activity.reference.reference} should exist in bundle"
+    )
 
     # Verify activity has outcomeReference
     assert activity.outcomeReference is not None, "Activity should have outcomeReference"
@@ -220,13 +223,15 @@ def test_careplan_with_interventions_and_outcomes_full_integration():
 
     # Verify outcomeReference points to Observation
     outcome_ref = str(activity.outcomeReference[0].reference)
-    assert outcome_ref.startswith("urn:uuid:"), \
+    assert outcome_ref.startswith("urn:uuid:"), (
         f"Outcome reference should point to Observation, got: {outcome_ref}"
+    )
 
     # Verify the referenced Observation exists in bundle
     observation_ids = [f"urn:uuid:{e.resource.id}" for e in observation_entries]
-    assert outcome_ref in observation_ids, \
+    assert outcome_ref in observation_ids, (
         f"Referenced observation {outcome_ref} should exist in bundle"
+    )
 
 
 def test_careplan_with_multiple_interventions_different_outcomes():
@@ -551,4 +556,6 @@ def test_careplan_intervention_without_outcome():
 
     # Verify activity has NO outcomeReference (no GEVL in intervention)
     activity = careplan.activity[0]
-    assert activity.outcomeReference is None, "Activity should NOT have outcomeReference when no GEVL relationship"
+    assert activity.outcomeReference is None, (
+        "Activity should NOT have outcomeReference when no GEVL relationship"
+    )
