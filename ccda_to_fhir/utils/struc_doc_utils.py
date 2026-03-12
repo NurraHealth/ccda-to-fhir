@@ -667,8 +667,11 @@ def _content_to_html(content) -> str:
     style_attr = _apply_style_class(content.style_code)
     id_attr = f' id="{_escape_html(content.id_attr)}"' if content.id_attr else ""
 
-    # Build the element
-    result = f"<span{id_attr}{style_attr}>{content_html}</span>"
+    # Use <div> for container content elements (those with nested <content>
+    # children) so sibling sections render as separate blocks instead of
+    # running together on a single line.
+    tag = "div" if content.content else "span"
+    result = f"<{tag}{id_attr}{style_attr}>{content_html}</{tag}>"
 
     # Append tail text if present (preserves mixed content order)
     if content.tail_text:
