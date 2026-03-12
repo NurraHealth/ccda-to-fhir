@@ -31,6 +31,14 @@ class TestFamilyInGiven:
     def test_family_in_multiple_given_parts(self) -> None:
         assert _family_in_given("Doe", ["John", "Doe"]) is True
 
+    def test_short_family_not_substring_matched(self) -> None:
+        """'An' should not match 'Diane' — word boundary prevents false positive."""
+        assert _family_in_given("An", ["Diane"]) is False
+
+    def test_family_as_word_boundary_match(self) -> None:
+        """'An' should match when it appears as a standalone word."""
+        assert _family_in_given("An", ["Li An"]) is True
+
 
 class TestFormatPersonDisplayDeduplication:
     """Tests that format_person_display deduplicates family from given."""

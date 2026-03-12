@@ -9,26 +9,7 @@ Validates the four fixes against the real athena_ccd.xml fixture:
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
-from ccda_to_fhir.convert import convert_document
-
-DOCUMENTS_DIR = Path(__file__).parent / "fixtures" / "documents"
-
-
-def _convert_athena() -> dict[str, Any]:
-    xml = (DOCUMENTS_DIR / "athena_ccd.xml").read_text()
-    result = convert_document(xml)
-    return result["bundle"]
-
-
-def _resources_by_type(bundle: dict) -> dict[str, list[dict]]:
-    by_type: dict[str, list[dict]] = {}
-    for entry in bundle["entry"]:
-        resource = entry["resource"]
-        by_type.setdefault(resource["resourceType"], []).append(resource)
-    return by_type
+from .conftest import convert_athena_bundle, resources_by_type
 
 
 class TestNameDeduplication:
@@ -41,8 +22,8 @@ class TestNameDeduplication:
         <given>John Doe, MD</given><family>Doe</family>
         Which should produce "John Doe, MD" not "John Doe, MD Doe".
         """
-        bundle = _convert_athena()
-        by_type = _resources_by_type(bundle)
+        bundle = convert_athena_bundle()
+        by_type = resources_by_type(bundle)
         practitioners = by_type.get("Practitioner", [])
         assert len(practitioners) >= 1
 
@@ -67,8 +48,8 @@ class TestNameDeduplication:
 
     def test_author_display_not_duplicated(self) -> None:
         """DocumentReference author display should not duplicate family names."""
-        bundle = _convert_athena()
-        by_type = _resources_by_type(bundle)
+        bundle = convert_athena_bundle()
+        by_type = resources_by_type(bundle)
         doc_refs = by_type.get("DocumentReference", [])
 
         for dr in doc_refs:
@@ -95,8 +76,8 @@ class TestEncounterDisplayFallback:
         The athena_ccd.xml has encompassingEncounter without code but with
         encounterParticipant having code displayName="Family Medicine".
         """
-        bundle = _convert_athena()
-        by_type = _resources_by_type(bundle)
+        bundle = convert_athena_bundle()
+        by_type = resources_by_type(bundle)
         doc_refs = by_type.get("DocumentReference", [])
 
         refs_with_display = 0
@@ -117,8 +98,8 @@ class TestRecorderAndParticipantDisplay:
 
     def test_encounter_participants_have_display(self) -> None:
         """Encounter.participant.individual should include display."""
-        bundle = _convert_athena()
-        by_type = _resources_by_type(bundle)
+        bundle = convert_athena_bundle()
+        by_type = resources_by_type(bundle)
         encounters = by_type.get("Encounter", [])
         assert len(encounters) >= 1
 
@@ -137,8 +118,8 @@ class TestRecorderAndParticipantDisplay:
 
     def test_procedure_recorder_has_display(self) -> None:
         """Procedure.recorder should include display when practitioner name available."""
-        bundle = _convert_athena()
-        by_type = _resources_by_type(bundle)
+        bundle = convert_athena_bundle()
+        by_type = resources_by_type(bundle)
         procedures = by_type.get("Procedure", [])
 
         recorders_with_display = 0
@@ -161,8 +142,8 @@ class TestDiagnosisNoteFallback:
 
     def test_all_diagnosis_notes_have_encounter(self) -> None:
         """All diagnosis notes should have encounter reference (from fallback)."""
-        bundle = _convert_athena()
-        by_type = _resources_by_type(bundle)
+        bundle = convert_athena_bundle()
+        by_type = resources_by_type(bundle)
         doc_refs = by_type.get("DocumentReference", [])
 
         diagnosis_notes = [
@@ -185,8 +166,8 @@ class TestDiagnosisNoteFallback:
 
     def test_all_diagnosis_notes_have_date(self) -> None:
         """All diagnosis notes should have date (from fallback if needed)."""
-        bundle = _convert_athena()
-        by_type = _resources_by_type(bundle)
+        bundle = convert_athena_bundle()
+        by_type = resources_by_type(bundle)
         doc_refs = by_type.get("DocumentReference", [])
 
         diagnosis_notes = [

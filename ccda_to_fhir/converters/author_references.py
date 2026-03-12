@@ -7,6 +7,7 @@ entry-level author reference builders.
 
 from __future__ import annotations
 
+import re
 from typing import NamedTuple
 
 from ccda_to_fhir.ccda.models.author import (
@@ -78,10 +79,11 @@ def _family_in_given(family: str, given_values: list[str]) -> bool:
 
     Handles Athena-style names where ``<given>`` contains the full formatted
     name including the family name (e.g. ``"John Doe, MD"`` with family ``"Doe"``).
-    Comparison is case-insensitive.
+    Uses word-boundary matching (case-insensitive) to avoid false positives
+    with short family names that are substrings of other words.
     """
-    given_text = " ".join(given_values).upper()
-    return family.upper() in given_text
+    given_text = " ".join(given_values)
+    return bool(re.search(r"\b" + re.escape(family) + r"\b", given_text, re.IGNORECASE))
 
 
 def format_device_display(device: AssignedAuthoringDevice | None) -> str | None:
