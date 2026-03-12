@@ -667,10 +667,18 @@ def _content_to_html(content) -> str:
     style_attr = _apply_style_class(content.style_code)
     id_attr = f' id="{_escape_html(content.id_attr)}"' if content.id_attr else ""
 
-    # Use <div> for container content elements (those with nested <content>
-    # children) so sibling sections render as separate blocks instead of
-    # running together on a single line.
-    tag = "div" if content.content else "span"
+    # CDA <content> is spec'd as inline, but EHRs like Athena use nested
+    # <content> elements as paragraph-level containers (e.g. exam categories).
+    # Detect and promote to block-level tags so sections don't run together.
+    if not content.content:
+        # Leaf element — true inline
+        tag = "span"
+    elif any(nested.content for nested in content.content):
+        # Structural container (children have their own children) — generic block
+        tag = "div"
+    else:
+        # Paragraph-like container (all children are leaves) — semantic block
+        tag = "p"
     result = f"<{tag}{id_attr}{style_attr}>{content_html}</{tag}>"
 
     # Append tail text if present (preserves mixed content order)
