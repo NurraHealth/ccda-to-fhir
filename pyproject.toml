@@ -72,7 +72,6 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "ARG002", # unused method args — common in overrides and polymorphic APIs
-    "SIM102", # nested ifs — often clearer than combined conditions
 ]
 
 [tool.ruff.lint.per-file-ignores]
