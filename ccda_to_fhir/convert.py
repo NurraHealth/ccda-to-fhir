@@ -953,6 +953,8 @@ class DocumentConverter:
                 all_conditions,
                 self.reference_registry,
                 author_references=doc_author_refs,
+                fallback_encounter_reference=enc_ctx.reference,
+                fallback_encounter_date=enc_ctx.date,
             )
             resources.extend(diagnosis_note_doc_refs)
             for doc_ref in diagnosis_note_doc_refs:
@@ -2747,10 +2749,18 @@ class DocumentConverter:
             if raw_date:
                 enc_date = fhir_date_to_instant(self.encounter_converter.convert_date(raw_date))
 
-        # Extract display from code.displayName
+        # Extract display from code.displayName, falling back to participant
+        # specialty when the encounter has no code element (e.g. Athena CCDs).
         enc_display: str | None = None
         if enc.code and enc.code.display_name:
             enc_display = enc.code.display_name
+        elif enc.encounter_participant:
+            for ep in enc.encounter_participant:
+                if ep.assigned_entity and ep.assigned_entity.code:
+                    ep_display = ep.assigned_entity.code.display_name
+                    if ep_display:
+                        enc_display = f"{ep_display} visit"
+                        break
 
         return EncounterContext(
             reference=enc_reference,

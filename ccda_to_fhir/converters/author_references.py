@@ -7,6 +7,10 @@ entry-level author reference builders.
 
 from __future__ import annotations
 
+import re
+from typing import NamedTuple
+
+
 from ccda_to_fhir.ccda.models.author import (
     AssignedAuthor,
     AssignedAuthoringDevice,
@@ -36,6 +40,8 @@ def format_person_display(person: AssignedPerson | None) -> str | None:
     """Format a person name for FHIR Reference.display.
 
     Extracts prefix + given + family + suffix from the first PN element.
+    Deduplicates the family name when it already appears in the given name
+    (e.g. Athena puts ``<given>John Doe, MD</given><family>Doe</family>``).
 
     Args:
         person: C-CDA AssignedPerson with name list.
@@ -50,17 +56,35 @@ def format_person_display(person: AssignedPerson | None) -> str | None:
     parts: list[str] = []
 
     parts.extend(_extract_enxp_values(name.prefix))
-    parts.extend(_extract_enxp_values(name.given))
 
+    given_values = _extract_enxp_values(name.given)
+    parts.extend(given_values)
+
+    family_value: str | None = None
     if name.family:
         if isinstance(name.family, str):
-            parts.append(name.family)
+            family_value = name.family
         elif name.family.value:
-            parts.append(name.family.value)
+            family_value = name.family.value
+
+    if family_value and not _family_in_given(family_value, given_values):
+        parts.append(family_value)
 
     parts.extend(_extract_enxp_values(name.suffix))
 
     return " ".join(parts) if parts else None
+
+
+def _family_in_given(family: str, given_values: list[str]) -> bool:
+    """Check if the family name already appears in the given name parts.
+
+    Handles Athena-style names where ``<given>`` contains the full formatted
+    name including the family name (e.g. ``"John Doe, MD"`` with family ``"Doe"``).
+    Uses word-boundary matching (case-insensitive) to avoid false positives
+    with short family names that are substrings of other words.
+    """
+    given_text = " ".join(given_values)
+    return bool(re.search(r"\b" + re.escape(family) + r"\b", given_text, re.IGNORECASE))
 
 
 def format_device_display(device: AssignedAuthoringDevice | None) -> str | None:

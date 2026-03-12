@@ -184,6 +184,8 @@ def create_diagnosis_note_doc_refs(
     reference_registry: ReferenceRegistry,
     encounter_date_map: dict[str, str] | None = None,
     author_references: list[FHIRReference] | None = None,
+    fallback_encounter_reference: str | None = None,
+    fallback_encounter_date: str | None = None,
 ) -> list[FHIRResourceDict]:
     """Create DocumentReference resources for extracted diagnosis notes.
 
@@ -194,6 +196,9 @@ def create_diagnosis_note_doc_refs(
         reference_registry: Reference registry (for patient reference)
         encounter_date_map: Maps FHIR Encounter resource ID -> date string
         author_references: Optional author references from document header
+        fallback_encounter_reference: encompassingEncounter reference (urn:uuid:...)
+            used when body encounter mapping fails
+        fallback_encounter_date: encompassingEncounter date used as fallback
 
     Returns:
         List of DocumentReference resources
@@ -209,12 +214,21 @@ def create_diagnosis_note_doc_refs(
         )
         encounter_date = date_map.get(encounter_id) if encounter_id else None
 
+        # Fall back to encompassingEncounter when body encounter mapping fails
+        effective_enc_ref: str | None = None
+        if encounter_id:
+            effective_enc_ref = f"urn:uuid:{encounter_id}"
+        elif fallback_encounter_reference:
+            effective_enc_ref = fallback_encounter_reference
+
+        effective_enc_date = encounter_date or fallback_encounter_date
+
         doc_ref = _build_doc_ref(
             note=note,
-            encounter_resource_id=encounter_id,
+            encounter_reference=effective_enc_ref,
             condition_snomed_map=condition_snomed_map,
             reference_registry=reference_registry,
-            encounter_date=encounter_date,
+            encounter_date=effective_enc_date,
             author_references=author_references,
         )
         doc_refs.append(doc_ref)
@@ -224,7 +238,7 @@ def create_diagnosis_note_doc_refs(
 
 def _build_doc_ref(
     note: DiagnosisNote,
-    encounter_resource_id: str | None,
+    encounter_reference: str | None,
     condition_snomed_map: dict[str, list[str]],
     reference_registry: ReferenceRegistry,
     encounter_date: str | None,
@@ -283,9 +297,8 @@ def _build_doc_ref(
     # Context: link to Encounter and optionally Condition(s)
     context: dict = {}
 
-    if encounter_resource_id:
-        encounter_ref = FHIRReference(reference=f"urn:uuid:{encounter_resource_id}")
-        context["encounter"] = [encounter_ref.to_dict()]
+    if encounter_reference:
+        context["encounter"] = [{"reference": encounter_reference}]
 
     if note.snomed_code and note.snomed_code in condition_snomed_map:
         condition_ids = condition_snomed_map[note.snomed_code]
@@ -417,6 +430,8 @@ def extract_encounter_diagnosis_notes(
     conditions: list[FHIRResourceDict],
     reference_registry: ReferenceRegistry,
     author_references: list[FHIRReference] | None = None,
+    fallback_encounter_reference: str | None = None,
+    fallback_encounter_date: str | None = None,
 ) -> list[FHIRResourceDict]:
     """Top-level function: extract diagnosis notes from encounter narrative tables.
 
@@ -429,6 +444,9 @@ def extract_encounter_diagnosis_notes(
         conditions: Already-converted Condition resources (for SNOMED matching)
         reference_registry: Reference registry for patient reference
         author_references: Optional author references from document header
+        fallback_encounter_reference: encompassingEncounter reference (urn:uuid:...)
+            used when body encounter mapping fails
+        fallback_encounter_date: encompassingEncounter date used as fallback
 
     Returns:
         List of DocumentReference resources for diagnosis notes
@@ -466,6 +484,8 @@ def extract_encounter_diagnosis_notes(
             reference_registry=reference_registry,
             encounter_date_map=encounter_date_map,
             author_references=author_references,
+            fallback_encounter_reference=fallback_encounter_reference,
+            fallback_encounter_date=fallback_encounter_date,
         )
         all_doc_refs.extend(doc_refs)
 

@@ -263,15 +263,16 @@ def test_athena_ccd_comprehensive() -> None:
     )
 
     # === ENCOUNTER DISPLAY VALIDATION ===
-    # Athena CCD has no code on encompassingEncounter, so encounter
-    # references should not have a display field
+    # Athena CCD has no code on encompassingEncounter, but the participant
+    # specialty ("Family Medicine") is used as a fallback display
     for dr in doc_refs:
         if "context" in dr and "encounter" in dr["context"]:
             for enc_ref in dr["context"]["encounter"]:
-                assert "display" not in enc_ref, (
-                    "Athena CCD encompassingEncounter has no code, "
-                    "so encounter references should not have display"
-                )
+                if "display" in enc_ref:
+                    assert enc_ref["display"] == "Family Medicine visit", (
+                        "Athena CCD encounter display should fall back to "
+                        f"participant specialty, got '{enc_ref['display']}'"
+                    )
 
     print("\n✓ athena_ccd comprehensive validation passed!")
     print(f"  Resources validated: {len(resources_by_id)}")

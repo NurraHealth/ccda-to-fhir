@@ -45,10 +45,11 @@ class TestEncounterDisplayFromCode:
         assert len(encounters) >= 1
 
 
-class TestEncounterDisplayAbsence:
-    """Athena CCD has encompassingEncounter without a code element."""
+class TestEncounterDisplayFallback:
+    """Athena CCD has encompassingEncounter without a code element but with
+    encounterParticipant specialty, so display falls back to that."""
 
-    def test_athena_no_display_on_encounter_refs(self) -> None:
+    def test_athena_encounter_refs_have_fallback_display(self) -> None:
         xml = (DOCUMENTS_DIR / "athena_ccd.xml").read_text()
         result = convert_document(xml)
         bundle = result["bundle"]
@@ -56,14 +57,17 @@ class TestEncounterDisplayAbsence:
         doc_refs = _get_doc_refs(bundle)
         assert len(doc_refs) >= 1
 
+        refs_with_display = 0
         for dr in doc_refs:
             if "context" not in dr or "encounter" not in dr["context"]:
                 continue
             for enc_ref in dr["context"]["encounter"]:
-                assert "display" not in enc_ref, (
-                    f"Athena CCD has no code on encompassingEncounter, "
-                    f"but encounter ref has display: {enc_ref}"
-                )
+                if "display" in enc_ref:
+                    assert enc_ref["display"] == "Family Medicine visit", (
+                        f"Expected participant specialty fallback, got: {enc_ref}"
+                    )
+                    refs_with_display += 1
+        assert refs_with_display >= 1, "Expected at least one encounter ref with fallback display"
 
 
 class TestEncounterDisplayEndToEnd:
