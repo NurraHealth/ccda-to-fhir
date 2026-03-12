@@ -21,6 +21,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.types import DiagnosisRole, FHIRCodeableConcept, FHIRResourceDict, JSONObject, ReasonResult
 
+from .author_references import format_person_display
 from .base import BaseConverter
 
 logger = logging.getLogger(__name__)
@@ -471,10 +472,16 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
                             if self.reference_registry:
                                 self.reference_registry.register_resource(practitioner)
 
-                        # Add reference to participant
-                        participant["individual"] = {
+                        # Add reference to participant with display
+                        individual_ref: JSONObject = {
                             "reference": f"urn:uuid:{practitioner_id}"
                         }
+                        display = format_person_display(
+                            assigned_entity.assigned_person
+                        )
+                        if display:
+                            individual_ref["display"] = display
+                        participant["individual"] = individual_ref
 
             if participant:
                 participants.append(participant)

@@ -28,6 +28,25 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 CCDA_FIXTURES_DIR = FIXTURES_DIR / "ccda"
 FHIR_FIXTURES_DIR = FIXTURES_DIR / "fhir"
+DOCUMENTS_DIR = FIXTURES_DIR / "documents"
+
+
+def convert_athena_bundle() -> dict[str, Any]:
+    """Convert athena_ccd.xml and return the FHIR bundle."""
+    from ccda_to_fhir.convert import convert_document
+
+    xml = (DOCUMENTS_DIR / "athena_ccd.xml").read_text()
+    result = convert_document(xml)
+    return result["bundle"]
+
+
+def resources_by_type(bundle: dict) -> dict[str, list[dict]]:
+    """Group bundle entries by resourceType."""
+    by_type: dict[str, list[dict]] = {}
+    for entry in bundle["entry"]:
+        resource = entry["resource"]
+        by_type.setdefault(resource["resourceType"], []).append(resource)
+    return by_type
 
 
 # Default minimal C-CDA components
