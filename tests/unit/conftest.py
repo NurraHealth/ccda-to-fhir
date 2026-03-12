@@ -4,6 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from ccda_to_fhir.types import FHIRReference
+
 
 @pytest.fixture
 def mock_reference_registry():
@@ -15,14 +17,14 @@ def mock_reference_registry():
     registry = MagicMock()
 
     # Default patient reference
-    registry.get_patient_reference.return_value = {
-        "reference": "urn:uuid:12345678-1234-5678-1234-567812345678"
-    }
+    registry.get_patient_reference.return_value = FHIRReference(
+        reference="urn:uuid:12345678-1234-5678-1234-567812345678"
+    )
 
     # Default encounter reference
-    registry.get_encounter_reference.return_value = {
-        "reference": "urn:uuid:87654321-4321-8765-4321-876543218765"
-    }
+    registry.get_encounter_reference.return_value = FHIRReference(
+        reference="urn:uuid:87654321-4321-8765-4321-876543218765"
+    )
 
     # Make register_resource a no-op
     registry.register_resource.return_value = None

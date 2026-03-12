@@ -186,7 +186,7 @@ class TestBuildAuthorReferencesDisplay:
         )
         refs = build_author_references([author])
         assert len(refs) == 1
-        assert refs[0]["display"] == "Sarah Connor"
+        assert refs[0].display == "Sarah Connor"
 
     def test_person_author_without_name_omits_display(self) -> None:
         author = Author(
@@ -197,7 +197,7 @@ class TestBuildAuthorReferencesDisplay:
         )
         refs = build_author_references([author])
         assert len(refs) == 1
-        assert "display" not in refs[0]
+        assert refs[0].display is None
 
     def test_device_author_includes_display(self) -> None:
         author = Author(
@@ -211,7 +211,7 @@ class TestBuildAuthorReferencesDisplay:
         )
         refs = build_author_references([author])
         assert len(refs) == 1
-        assert refs[0]["display"] == "Epic (Hyperspace)"
+        assert refs[0].display == "Epic (Hyperspace)"
 
     def test_org_author_includes_display(self) -> None:
         author = Author(
@@ -225,7 +225,7 @@ class TestBuildAuthorReferencesDisplay:
         )
         refs = build_author_references([author])
         assert len(refs) == 1
-        assert refs[0]["display"] == "Good Health Hospital"
+        assert refs[0].display == "Good Health Hospital"
 
     def test_device_and_org_both_have_display(self) -> None:
         author = Author(
@@ -242,8 +242,8 @@ class TestBuildAuthorReferencesDisplay:
         )
         refs = build_author_references([author])
         assert len(refs) == 2
-        assert refs[0]["display"] == "Test EHR"
-        assert refs[1]["display"] == "Test Org"
+        assert refs[0].display == "Test EHR"
+        assert refs[1].display == "Test Org"
 
     def test_mixed_person_and_device_all_have_display(self) -> None:
         person_author = Author(
@@ -269,9 +269,9 @@ class TestBuildAuthorReferencesDisplay:
         )
         refs = build_author_references([person_author, device_author])
         assert len(refs) == 3
-        assert refs[0]["display"] == "Dr Smith"
-        assert refs[1]["display"] == "Test EHR (Doc Engine)"
-        assert refs[2]["display"] == "Test Org"
+        assert refs[0].display == "Dr Smith"
+        assert refs[1].display == "Test EHR (Doc Engine)"
+        assert refs[2].display == "Test Org"
 
 
 # ============================================================================
@@ -289,7 +289,7 @@ class TestDeviceOrgFallbackRefsDisplay:
         )
         refs = _build_device_org_fallback_refs(assigned)
         assert len(refs) == 1
-        assert refs[0]["display"] == "EHR System"
+        assert refs[0].display == "EHR System"
 
     def test_org_ref_includes_display(self) -> None:
         assigned = AssignedAuthor(
@@ -301,7 +301,7 @@ class TestDeviceOrgFallbackRefsDisplay:
         )
         refs = _build_device_org_fallback_refs(assigned)
         assert len(refs) == 1
-        assert refs[0]["display"] == "Springfield Hospital"
+        assert refs[0].display == "Springfield Hospital"
 
     def test_device_without_name_omits_display(self) -> None:
         assigned = AssignedAuthor(
@@ -310,7 +310,7 @@ class TestDeviceOrgFallbackRefsDisplay:
         )
         refs = _build_device_org_fallback_refs(assigned)
         assert len(refs) == 1
-        assert "display" not in refs[0]
+        assert refs[0].display is None
 
     def test_org_without_name_omits_display(self) -> None:
         assigned = AssignedAuthor(
@@ -321,4 +321,4 @@ class TestDeviceOrgFallbackRefsDisplay:
         )
         refs = _build_device_org_fallback_refs(assigned)
         assert len(refs) == 1
-        assert "display" not in refs[0]
+        assert refs[0].display is None

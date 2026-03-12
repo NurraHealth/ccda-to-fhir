@@ -270,8 +270,8 @@ class TestDeviceOwnerReferenceDisplay:
         ref = converter._extract_ehr_device_owner(assigned)
 
         assert ref is not None
-        assert ref["display"] == "General Hospital"
-        assert ref["reference"] == f"urn:uuid:{org_id}"
+        assert ref.display == "General Hospital"
+        assert ref.reference == f"urn:uuid:{org_id}"
 
     def test_ehr_device_owner_no_display_when_name_missing(
         self, registry: ReferenceRegistry
@@ -294,7 +294,7 @@ class TestDeviceOwnerReferenceDisplay:
         ref = converter._extract_ehr_device_owner(assigned)
 
         assert ref is not None
-        assert "display" not in ref
+        assert ref.display is None
 
     def test_product_device_owner_includes_display(
         self, registry: ReferenceRegistry
@@ -318,7 +318,7 @@ class TestDeviceOwnerReferenceDisplay:
         ref = converter._extract_device_owner(participant_role)
 
         assert ref is not None
-        assert ref["display"] == "Medtronic Inc"
+        assert ref.display == "Medtronic Inc"
 
     def test_product_device_owner_no_display_when_desc_missing(
         self, registry: ReferenceRegistry
@@ -341,7 +341,7 @@ class TestDeviceOwnerReferenceDisplay:
         ref = converter._extract_device_owner(participant_role)
 
         assert ref is not None
-        assert "display" not in ref
+        assert ref.display is None
 
 
 # ============================================================================
@@ -372,8 +372,8 @@ class TestLocationManagingOrgDisplay:
         ref = converter._get_managing_organization_reference(participant_role)
 
         assert ref is not None
-        assert ref["display"] == "Good Health Hospital"
-        assert ref["reference"] == f"urn:uuid:{org_id}"
+        assert ref.display == "Good Health Hospital"
+        assert ref.reference == f"urn:uuid:{org_id}"
 
     def test_managing_org_no_display_when_desc_missing(
         self, registry: ReferenceRegistry
@@ -396,7 +396,7 @@ class TestLocationManagingOrgDisplay:
         ref = converter._get_managing_organization_reference(participant_role)
 
         assert ref is not None
-        assert "display" not in ref
+        assert ref.display is None
 
 
 # ============================================================================
