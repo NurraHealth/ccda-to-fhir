@@ -295,7 +295,8 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
 
             if latest_author.practitioner_id:
                 recorder_ref = FHIRReference(
-                    reference=f"urn:uuid:{latest_author.practitioner_id}", display=latest_author.display
+                    reference=f"urn:uuid:{latest_author.practitioner_id}",
+                    display=latest_author.display,
                 )
                 allergy["recorder"] = recorder_ref.to_dict()
             elif latest_author.device_id:

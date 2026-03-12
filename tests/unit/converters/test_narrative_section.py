@@ -243,9 +243,7 @@ class TestAuthorReferences:
     def test_author_references_set(self) -> None:
         body = _make_body([_make_section("10164-2", "Patient has chest pain.")])
         author_refs = [FHIRReference(reference="urn:uuid:prac-1")]
-        results = extract_narrative_sections(
-            body, _make_registry(), author_references=author_refs
-        )
+        results = extract_narrative_sections(body, _make_registry(), author_references=author_refs)
         assert len(results) == 1
         assert results[0]["author"] == [{"reference": "urn:uuid:prac-1"}]
 
@@ -269,14 +267,14 @@ class TestAuthorReferences:
         assert "author" not in results[0]
 
     def test_all_sections_share_authors(self) -> None:
-        body = _make_body([
-            _make_section("10164-2", "HPI content."),
-            _make_section("29545-1", "PE content."),
-        ])
-        author_refs = [FHIRReference(reference="urn:uuid:prac-1")]
-        results = extract_narrative_sections(
-            body, _make_registry(), author_references=author_refs
+        body = _make_body(
+            [
+                _make_section("10164-2", "HPI content."),
+                _make_section("29545-1", "PE content."),
+            ]
         )
+        author_refs = [FHIRReference(reference="urn:uuid:prac-1")]
+        results = extract_narrative_sections(body, _make_registry(), author_references=author_refs)
         author_refs = [{"reference": "urn:uuid:prac-1"}]
         results = extract_narrative_sections(body, _make_registry(), author_references=author_refs)
         assert len(results) == 2

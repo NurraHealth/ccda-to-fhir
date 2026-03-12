@@ -499,8 +499,11 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 if practitioner_id:
                     from ccda_to_fhir.converters.author_references import format_person_display
                     from ccda_to_fhir.types import FHIRReference
+
                     display = format_person_display(assigned.assigned_person)
-                    party_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
+                    party_ref = FHIRReference(
+                        reference=f"urn:uuid:{practitioner_id}", display=display
+                    )
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
         if not party_ref:
@@ -508,7 +511,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         attester: JSONObject = {
             "mode": "legal",  # Legal attestation
-            "party": party_ref.to_dict()  # Required per US Realm Header Profile
+            "party": party_ref.to_dict(),  # Required per US Realm Header Profile
         }
 
         # Extract time (optional)
@@ -558,8 +561,11 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 if practitioner_id:
                     from ccda_to_fhir.converters.author_references import format_person_display
                     from ccda_to_fhir.types import FHIRReference
+
                     display = format_person_display(assigned.assigned_person)
-                    party_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
+                    party_ref = FHIRReference(
+                        reference=f"urn:uuid:{practitioner_id}", display=display
+                    )
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
         if not party_ref:
@@ -567,7 +573,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         attester: JSONObject = {
             "mode": "professional",  # Professional attestation
-            "party": party_ref.to_dict()  # Required per US Realm Header Profile
+            "party": party_ref.to_dict(),  # Required per US Realm Header Profile
         }
 
         # Extract time (optional)

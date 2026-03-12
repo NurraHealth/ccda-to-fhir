@@ -75,10 +75,11 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         extension = None
         if substance_admin.id:
             for id_elem in substance_admin.id:
-                if not id_elem.null_flavor and (id_elem.root or id_elem.extension):
-                    root = id_elem.root
-                    extension = id_elem.extension
-                    break
+                if not id_elem.null_flavor:
+                    if id_elem.root or id_elem.extension:
+                        root = id_elem.root
+                        extension = id_elem.extension
+                        break
 
         # Generate fallback context if no valid identifiers
         fallback_context = ""
@@ -177,7 +178,10 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
 
                     # Check for practitioner
                     # Only create reference if we have an explicit ID with root
-                    from ccda_to_fhir.converters.author_references import format_device_display, format_person_display
+                    from ccda_to_fhir.converters.author_references import (
+                        format_device_display,
+                        format_person_display,
+                    )
 
                     if assigned.assigned_person:
                         if assigned.id:
@@ -187,7 +191,9 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                         id_elem.root, id_elem.extension
                                     )
                                     display = format_person_display(assigned.assigned_person)
-                                    requester_ref = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                                    requester_ref = FHIRReference(
+                                        reference=f"urn:uuid:{pract_id}", display=display
+                                    )
                                     med_request["requester"] = requester_ref.to_dict()
                                     break
                     # Check for device
@@ -195,9 +201,15 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                         if assigned.id:
                             for id_elem in assigned.id:
                                 if id_elem.root:
-                                    device_id = self._generate_device_id(id_elem.root, id_elem.extension)
-                                    display = format_device_display(assigned.assigned_authoring_device)
-                                    requester_ref = FHIRReference(reference=f"urn:uuid:{device_id}", display=display)
+                                    device_id = self._generate_device_id(
+                                        id_elem.root, id_elem.extension
+                                    )
+                                    display = format_device_display(
+                                        assigned.assigned_authoring_device
+                                    )
+                                    requester_ref = FHIRReference(
+                                        reference=f"urn:uuid:{device_id}", display=display
+                                    )
                                     med_request["requester"] = requester_ref.to_dict()
                                     break
 
@@ -420,11 +432,9 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             True if complex information exists, False otherwise
         """
         # Check for manufacturer
-        if (
-            manufactured_product.manufacturer_organization
-            and manufactured_product.manufacturer_organization.name
-        ):
-            return True
+        if manufactured_product.manufacturer_organization:
+            if manufactured_product.manufacturer_organization.name:
+                return True
 
         # Check for drug vehicle (participant with typeCode="CSM")
         if substance_admin.participant:
@@ -447,12 +457,9 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # Use earliest author time
         earliest_time = None
         for author in substance_admin.author:
-            if (
-                author.time
-                and author.time.value
-                and (earliest_time is None or author.time.value < earliest_time)
-            ):
-                earliest_time = author.time.value
+            if author.time and author.time.value:
+                if earliest_time is None or author.time.value < earliest_time:
+                    earliest_time = author.time.value
 
         if earliest_time:
             return self.convert_date(earliest_time)
@@ -469,9 +476,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             return reason_codes
 
         for rel in substance_admin.entry_relationship:
-            if (
-                rel.type_code == TypeCodes.REASON
-                and rel.observation
+            if rel.type_code == TypeCodes.REASON and rel.observation:
                 # This is an Indication observation
                 if rel.observation.value and isinstance(rel.observation.value, (CD, CE)):
                     value = rel.observation.value
@@ -557,20 +562,13 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             return None
 
         for rel in substance_admin.entry_relationship:
-            if (
-                rel.type_code == TypeCodes.SUBJECT
-                and rel.inversion_ind
-                and rel.act
+            if rel.type_code == TypeCodes.SUBJECT and rel.inversion_ind and rel.act:
                 # Check if it's an Instruction Act
-                and rel.act.template_id
-            ):
-                for template in rel.act.template_id:
-                    if (
-                        template.root == TemplateIds.INSTRUCTION_ACT
-                        and rel.act.text
-                        and rel.act.text.value
-                    ):
-                        return rel.act.text.value
+                if rel.act.template_id:
+                    for template in rel.act.template_id:
+                        if template.root == TemplateIds.INSTRUCTION_ACT:
+                            if rel.act.text and rel.act.text.value:
+                                return rel.act.text.value
 
         return None
 
@@ -584,9 +582,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             return instructions
 
         for rel in substance_admin.entry_relationship:
-            if (rel.type_code == TypeCodes.SUBJECT and
-                rel.inversion_ind and
-                rel.act):
+            if rel.type_code == TypeCodes.SUBJECT and rel.inversion_ind and rel.act:
                 if rel.act.template_id:
                     for template in rel.act.template_id:
                         if template.root == TemplateIds.INSTRUCTION_ACT:
@@ -936,13 +932,14 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                             dispense_request["validityPeriod"] = validity_period
 
                     # RepeatNumber from Supply overrides SubstanceAdministration
-                    if supply.repeat_number and supply.repeat_number.high:
-                        try:
-                            ccda_repeat = int(supply.repeat_number.high.value)
-                            fhir_repeats = max(0, ccda_repeat - 1)
-                            dispense_request["numberOfRepeatsAllowed"] = fhir_repeats
-                        except (ValueError, TypeError, AttributeError):
-                            pass
+                    if supply.repeat_number:
+                        if supply.repeat_number.high:
+                            try:
+                                ccda_repeat = int(supply.repeat_number.high.value)
+                                fhir_repeats = max(0, ccda_repeat - 1)
+                                dispense_request["numberOfRepeatsAllowed"] = fhir_repeats
+                            except (ValueError, TypeError, AttributeError):
+                                pass
 
         return dispense_request if dispense_request else None
 

@@ -264,12 +264,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 resolved_display = display_name.strip()
             else:
                 from ccda_to_fhir.utils.terminology import get_display_for_code
+
                 resolved_display = get_display_for_code(system_uri, sanitized_code)
-            codings.append(FHIRCoding(
-                system=system_uri,
-                code=sanitized_code,
-                display=resolved_display,
-            ))
+            codings.append(
+                FHIRCoding(
+                    system=system_uri,
+                    code=sanitized_code,
+                    display=resolved_display,
+                )
+            )
 
         # Translation codings
         if translations:
@@ -290,12 +293,15 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     resolved_trans_display = trans_display_raw.strip()
                 else:
                     from ccda_to_fhir.utils.terminology import get_display_for_code
+
                     resolved_trans_display = get_display_for_code(trans_system_uri, trans_code)
-                codings.append(FHIRCoding(
-                    system=trans_system_uri,
-                    code=trans_code,
-                    display=resolved_trans_display,
-                ))
+                codings.append(
+                    FHIRCoding(
+                        system=trans_system_uri,
+                        code=trans_code,
+                        display=resolved_trans_display,
+                    )
+                )
 
         # Determine text
         text: str | None = None
@@ -1832,10 +1838,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             )
             if root:
                 practitioner_id = self._generate_practitioner_id(root, extension)
-                display = format_person_display(
-                    performer.assigned_entity.assigned_person
+                display = format_person_display(performer.assigned_entity.assigned_person)
+                references.append(
+                    FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
                 )
-                references.append(FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display))
 
         return references
 

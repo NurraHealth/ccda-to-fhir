@@ -14,7 +14,13 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRCodeableConcept, FHIRReference, FHIRResourceDict, JSONObject, ReasonResult
+from ccda_to_fhir.types import (
+    FHIRCodeableConcept,
+    FHIRReference,
+    FHIRResourceDict,
+    JSONObject,
+    ReasonResult,
+)
 
 from .base import BaseConverter
 
@@ -483,7 +489,10 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                             pract_id = self._generate_practitioner_id(
                                 id_elem.root, id_elem.extension
                             )
-                            from ccda_to_fhir.converters.author_references import format_person_display
+                            from ccda_to_fhir.converters.author_references import (
+                                format_person_display,
+                            )
+
                             display = format_person_display(assigned_author.assigned_person)
                             return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
 

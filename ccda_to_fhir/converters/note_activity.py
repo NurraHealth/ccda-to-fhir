@@ -396,10 +396,12 @@ def _convert_relates_to(references: list[Reference]) -> list[JSONObject]:
             first_id.extension or None,
         )
         target_ref = FHIRReference(reference=f"urn:uuid:{doc_id}")
-        relates_to.append({
-            "code": fhir_code,
-            "target": target_ref.to_dict(),
-        })
+        relates_to.append(
+            {
+                "code": fhir_code,
+                "target": target_ref.to_dict(),
+            }
+        )
     return relates_to
 
 

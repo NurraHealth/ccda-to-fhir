@@ -25,6 +25,7 @@ from ccda_to_fhir.ccda.models.struc_doc import (
 )
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.utils import fhir_date_to_instant
 from ccda_to_fhir.utils.struc_doc_utils import extract_cell_text
 
 from .references import ReferenceRegistry
@@ -290,7 +291,9 @@ def _build_doc_ref(
         condition_ids = condition_snomed_map[note.snomed_code]
         related_refs: list[JSONObject] = []
         for cid in condition_ids:
-            condition_ref = FHIRReference(reference=f"urn:uuid:{cid}", display=note.diagnosis_display or None)
+            condition_ref = FHIRReference(
+                reference=f"urn:uuid:{cid}", display=note.diagnosis_display or None
+            )
             related_refs.append(condition_ref.to_dict())
         context["related"] = related_refs
 

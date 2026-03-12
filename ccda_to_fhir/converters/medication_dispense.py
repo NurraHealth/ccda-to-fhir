@@ -426,7 +426,9 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
                         display = format_person_display(assigned.assigned_person)
                         actor_ref = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
                         performer_obj = {
-                            "function": self._determine_performer_function(author, context="author"),
+                            "function": self._determine_performer_function(
+                                author, context="author"
+                            ),
                             "actor": actor_ref.to_dict(),
                         }
                         performers.append(performer_obj)

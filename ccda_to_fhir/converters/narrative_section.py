@@ -16,7 +16,7 @@ import base64
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import EncounterContext, FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import EncounterContext, FHIRReference, FHIRResourceDict
 from ccda_to_fhir.utils.struc_doc_utils import narrative_to_html, narrative_to_plain_text
 
 from .references import ReferenceRegistry

@@ -13,7 +13,13 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from ccda_to_fhir.types import FHIRCodeableConcept, FHIRReference, FHIRResourceDict, JSONObject, ReasonResult
+from ccda_to_fhir.types import (
+    FHIRCodeableConcept,
+    FHIRReference,
+    FHIRResourceDict,
+    JSONObject,
+    ReasonResult,
+)
 
 from .base import BaseConverter
 
@@ -528,13 +534,13 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                             is_product_instance = True
                             break
 
-                    # Only process Product Instance devices
-                    # (assignedAuthoringDevice is handled separately in author processing)
-                    if is_product_instance:
-                        # Get patient reference from registry
-                        patient_ref = None
-                        if self.reference_registry:
-                            patient_ref = self.reference_registry.get_patient_reference().to_dict()
+                # Only process Product Instance devices
+                # (assignedAuthoringDevice is handled separately in author processing)
+                if is_product_instance:
+                    # Get patient reference from registry
+                    patient_ref = None
+                    if self.reference_registry:
+                        patient_ref = self.reference_registry.get_patient_reference().to_dict()
 
                     # Convert Product Instance to Device
                     device = device_converter.convert_product_instance(
@@ -604,7 +610,9 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                 if assigned_author.id:
                     for id_elem in assigned_author.id:
                         if id_elem.root:
-                            pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                            pract_id = self._generate_practitioner_id(
+                                id_elem.root, id_elem.extension
+                            )
                             return FHIRReference(reference=f"urn:uuid:{pract_id}")
 
             # Check for device (assigned_authoring_device)

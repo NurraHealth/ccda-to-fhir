@@ -19,7 +19,13 @@ from ccda_to_fhir.constants import (
     TemplateIds,
     map_cpt_to_actcode,
 )
-from ccda_to_fhir.types import DiagnosisRole, FHIRCodeableConcept, FHIRResourceDict, JSONObject, ReasonResult
+from ccda_to_fhir.types import (
+    DiagnosisRole,
+    FHIRCodeableConcept,
+    FHIRResourceDict,
+    JSONObject,
+    ReasonResult,
+)
 
 from .base import BaseConverter
 
@@ -923,7 +929,10 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             DiagnosisRole with code and display for the diagnosis role
         """
         # Check for discharge disposition - indicates discharge diagnosis
-        if encounter.sdtc_discharge_disposition_code and encounter.sdtc_discharge_disposition_code.code:
+        if (
+            encounter.sdtc_discharge_disposition_code
+            and encounter.sdtc_discharge_disposition_code.code
+        ):
             return DiagnosisRole(code="DD", display="Discharge diagnosis")
 
         # Check encounter class for inpatient or emergency

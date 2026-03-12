@@ -194,10 +194,9 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                         if performer.assigned_entity and performer.assigned_entity.id:
                             from ccda_to_fhir.converters.author_references import (
                                 format_person_display,
-                                make_ref,
                             )
                             from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                            from ccda_to_fhir.converters.author_references import format_person_display
+
                             performer_id = performer.assigned_entity.id[0]
                             practitioner_id = generate_id_from_identifiers(
                                 "Practitioner",
@@ -207,7 +206,9 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                             ref_uri = f"urn:uuid:{practitioner_id}"
                             if ref_uri not in seen_contributor_refs:
                                 seen_contributor_refs.add(ref_uri)
-                                display = format_person_display(performer.assigned_entity.assigned_person)
+                                display = format_person_display(
+                                    performer.assigned_entity.assigned_person
+                                )
                                 contributor_ref = FHIRReference(reference=ref_uri, display=display)
                                 contributors.append(contributor_ref.to_dict())
 
@@ -416,10 +417,9 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             if assigned_author.assigned_person:
                 from ccda_to_fhir.converters.author_references import (
                     format_person_display,
-                    make_ref,
                 )
                 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-                from ccda_to_fhir.converters.author_references import format_person_display
+
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner",
                     first_id.root,
@@ -469,7 +469,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             if intervention.entry_relationship:
                 for rel in intervention.entry_relationship:
                     # typeCode='GEVL' means "evaluates" - outcome evaluates the intervention
-                    if rel.type_code == 'GEVL':
+                    if rel.type_code == "GEVL":
                         if rel.observation:
                             outcome_id = self._get_entry_id(rel.observation)
                             # Check if this outcome is in our outcomes list

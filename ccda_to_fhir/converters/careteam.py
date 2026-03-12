@@ -16,9 +16,7 @@ from typing import TYPE_CHECKING
 
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
-
-from ccda_to_fhir.types import FHIRReference
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .author_references import format_organization_display
 from .base import BaseConverter
@@ -569,13 +567,18 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     display = format_organization_display(org)
                     # Check if we already created this organization
                     if org_oid in self.organization_registry:
-                        return FHIRReference(reference=f"urn:uuid:{self.organization_registry[org_oid]}", display=display)
+                        return FHIRReference(
+                            reference=f"urn:uuid:{self.organization_registry[org_oid]}",
+                            display=display,
+                        )
                     # Try to convert it
                     try:
                         organization = self.organization_converter.convert(org)
                         organization_id = organization.get("id", f"org-{org_oid.replace('.', '-')}")
                         self.organization_registry[org_oid] = organization_id
-                        return FHIRReference(reference=f"urn:uuid:{organization_id}", display=display)
+                        return FHIRReference(
+                            reference=f"urn:uuid:{organization_id}", display=display
+                        )
                     except Exception:
                         # Organization conversion failed, continue to next member
                         continue

@@ -211,7 +211,6 @@ class ConditionConverter(BaseConverter[Observation]):
                 SnomedCodes.CONDITION,  # 64572001
             ):
                 # Use negated concept code for generic problems
-                uses_negated_concept_code = True
                 negated_concept = self.create_codeable_concept(
                     code=SnomedCodes.NO_CURRENT_PROBLEMS,
                     code_system="2.16.840.1.113883.6.96",  # SNOMED CT
@@ -295,12 +294,9 @@ class ConditionConverter(BaseConverter[Observation]):
         if observation.author:
             earliest_time = None
             for author in observation.author:
-                if (
-                    author.time
-                    and author.time.value
-                    and (earliest_time is None or author.time.value < earliest_time)
-                ):
-                    earliest_time = author.time.value
+                if author.time and author.time.value:
+                    if earliest_time is None or author.time.value < earliest_time:
+                        earliest_time = author.time.value
             if earliest_time:
                 recorded_date = self.convert_date(earliest_time)
                 if recorded_date:
@@ -326,7 +322,8 @@ class ConditionConverter(BaseConverter[Observation]):
 
             if latest_author.practitioner_id:
                 recorder_ref = FHIRReference(
-                    reference=f"urn:uuid:{latest_author.practitioner_id}", display=latest_author.display
+                    reference=f"urn:uuid:{latest_author.practitioner_id}",
+                    display=latest_author.display,
                 )
                 condition["recorder"] = recorder_ref.to_dict()
             elif latest_author.device_id:
@@ -379,17 +376,15 @@ class ConditionConverter(BaseConverter[Observation]):
             # Look for acts with Date of Diagnosis template
             if entry_rel.act and entry_rel.act.template_id:
                 for template in entry_rel.act.template_id:
-                    if (
-                        template.root == TemplateIds.DATE_OF_DIAGNOSIS_ACT
+                    if template.root == TemplateIds.DATE_OF_DIAGNOSIS_ACT:
                         # Found Date of Diagnosis Act
-                        and entry_rel.act.effective_time
-                    ):
-                        eff_time = entry_rel.act.effective_time
-                        # Handle both IVL_TS (with .low) and simple TS
-                        if eff_time.low and eff_time.low.value:
-                            return self.convert_date(eff_time.low.value)
-                        elif eff_time.value:
-                            return self.convert_date(eff_time.value)
+                        if entry_rel.act.effective_time:
+                            eff_time = entry_rel.act.effective_time
+                            # Handle both IVL_TS (with .low) and simple TS
+                            if eff_time.low and eff_time.low.value:
+                                return self.convert_date(eff_time.low.value)
+                            elif eff_time.value:
+                                return self.convert_date(eff_time.value)
 
         return None
 
@@ -432,18 +427,13 @@ class ConditionConverter(BaseConverter[Observation]):
         # First, check for Problem Status Observation in entry relationships
         if observation.entry_relationship:
             for rel in observation.entry_relationship:
-                if (
-                    rel.observation
-                    and rel.type_code == TypeCodes.REFERENCE
+                if rel.observation and rel.type_code == TypeCodes.REFERENCE:
                     # Check if it's a Problem Status Observation
-                    and rel.observation.code
-                    and rel.observation.code.code == CCDACodes.STATUS
-                    # This is a Problem Status Observation
-                    and rel.observation.value
-                    and isinstance(rel.observation.value, (CD, CE))
-                ):
-                    status_code = rel.observation.value.code
-                    return self._map_problem_status_to_clinical_status(status_code)
+                    if rel.observation.code and rel.observation.code.code == CCDACodes.STATUS:
+                        # This is a Problem Status Observation
+                        if rel.observation.value and isinstance(rel.observation.value, (CD, CE)):
+                            status_code = rel.observation.value.code
+                            return self._map_problem_status_to_clinical_status(status_code)
 
         # Fallback to concern act status if available
         if self.concern_act and self.concern_act.status_code:
@@ -737,9 +727,7 @@ class ConditionConverter(BaseConverter[Observation]):
             return None
 
         for rel in observation.entry_relationship:
-            if (
-                rel.observation
-                and rel.type_code == TypeCodes.REFERENCE
+            if rel.observation and rel.type_code == TypeCodes.REFERENCE:
                 # Check if it's a Severity Observation
                 if rel.observation.code and rel.observation.code.code == CCDACodes.SEVERITY:
                     if rel.observation.value and isinstance(rel.observation.value, (CD, CE)):
@@ -812,36 +800,36 @@ class ConditionConverter(BaseConverter[Observation]):
 
         for entry_rel in observation.entry_relationship:
             # Look for supporting observations (typeCode="SPRT") and component observations (typeCode="COMP")
-            if (
-                entry_rel.type_code in (TypeCodes.SUPPORT, TypeCodes.COMPONENT)
-                and entry_rel.observation
-            ):
-                supporting_obs = entry_rel.observation
+            if entry_rel.type_code in (TypeCodes.SUPPORT, TypeCodes.COMPONENT):
+                if entry_rel.observation:
+                    supporting_obs = entry_rel.observation
 
-                # Generate observation ID from the supporting observation's identifiers
-                obs_id = None
-                if supporting_obs.id:
-                    for id_elem in supporting_obs.id:
-                        if id_elem.root:
-                            obs_id = self._generate_observation_id(id_elem.root, id_elem.extension)
-                            break
+                    # Generate observation ID from the supporting observation's identifiers
+                    obs_id = None
+                    if supporting_obs.id:
+                        for id_elem in supporting_obs.id:
+                            if id_elem.root:
+                                obs_id = self._generate_observation_id(
+                                    id_elem.root, id_elem.extension
+                                )
+                                break
 
-                # Skip evidence entry if we cannot generate a valid ID
-                if not obs_id:
-                    logger.warning(
-                        "Skipping evidence observation without identifiers. "
-                        "C-CDA supporting observation must have id element."
-                    )
-                    continue
+                    # Skip evidence entry if we cannot generate a valid ID
+                    if not obs_id:
+                        logger.warning(
+                            "Skipping evidence observation without identifiers. "
+                            "C-CDA supporting observation must have id element."
+                        )
+                        continue
 
-                # Add evidence detail reference
-                detail_ref: JSONObject = {"reference": f"urn:uuid:{obs_id}"}
+                    # Add evidence detail reference
+                    detail_ref: JSONObject = {"reference": f"urn:uuid:{obs_id}"}
 
-                # Add display from supporting observation code
-                if supporting_obs.code and supporting_obs.code.display_name:
-                    detail_ref["display"] = supporting_obs.code.display_name
+                    # Add display from supporting observation code
+                    if supporting_obs.code and supporting_obs.code.display_name:
+                        detail_ref["display"] = supporting_obs.code.display_name
 
-                evidence_list.append({"detail": [detail_ref]})
+                    evidence_list.append({"detail": [detail_ref]})
 
         return evidence_list if evidence_list else None
 

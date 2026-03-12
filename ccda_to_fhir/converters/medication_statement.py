@@ -148,7 +148,10 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                 if latest_author.assigned_author:
                     assigned = latest_author.assigned_author
 
-                    from ccda_to_fhir.converters.author_references import format_device_display, format_person_display
+                    from ccda_to_fhir.converters.author_references import (
+                        format_device_display,
+                        format_person_display,
+                    )
 
                     # Check for practitioner
                     if assigned.assigned_person:
@@ -159,7 +162,9 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                                         id_elem.root, id_elem.extension
                                     )
                                     display = format_person_display(assigned.assigned_person)
-                                    source_ref = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                                    source_ref = FHIRReference(
+                                        reference=f"urn:uuid:{pract_id}", display=display
+                                    )
                                     med_statement["informationSource"] = source_ref.to_dict()
                                     break
                     # Check for device
@@ -167,9 +172,15 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                         if assigned.id:
                             for id_elem in assigned.id:
                                 if id_elem.root:
-                                    device_id = self._generate_device_id(id_elem.root, id_elem.extension)
-                                    display = format_device_display(assigned.assigned_authoring_device)
-                                    source_ref = FHIRReference(reference=f"urn:uuid:{device_id}", display=display)
+                                    device_id = self._generate_device_id(
+                                        id_elem.root, id_elem.extension
+                                    )
+                                    display = format_device_display(
+                                        assigned.assigned_authoring_device
+                                    )
+                                    source_ref = FHIRReference(
+                                        reference=f"urn:uuid:{device_id}", display=display
+                                    )
                                     med_statement["informationSource"] = source_ref.to_dict()
                                     break
 
@@ -298,8 +309,9 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             original_text = self.extract_original_text(med_code.original_text)
 
         # If code has nullFlavor or no original text, try to use the medication name
-        if (not med_code or not med_code.code) and not original_text and manufactured_material.name:
-            original_text = manufactured_material.name
+        if (not med_code or not med_code.code) and not original_text:
+            if manufactured_material.name:
+                original_text = manufactured_material.name
 
         # If we have neither code nor text, use fallback text to satisfy FHIR requirement
         # MedicationStatement requires medicationCodeableConcept or medicationReference
@@ -381,12 +393,9 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
         # Use earliest author time
         earliest_time = None
         for author in substance_admin.author:
-            if (
-                author.time
-                and author.time.value
-                and (earliest_time is None or author.time.value < earliest_time)
-            ):
-                earliest_time = author.time.value
+            if author.time and author.time.value:
+                if earliest_time is None or author.time.value < earliest_time:
+                    earliest_time = author.time.value
 
         if earliest_time:
             return self.convert_date(earliest_time)
@@ -403,9 +412,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             return reason_codes
 
         for rel in substance_admin.entry_relationship:
-            if (
-                rel.type_code == TypeCodes.REASON
-                and rel.observation
+            if rel.type_code == TypeCodes.REASON and rel.observation:
                 # This is an Indication observation
                 if rel.observation.value and isinstance(rel.observation.value, (CD, CE)):
                     value = rel.observation.value

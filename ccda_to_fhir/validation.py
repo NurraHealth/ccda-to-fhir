@@ -124,7 +124,7 @@ class FHIRValidator:
 
         try:
             # Validate the bundle structure
-            validated_bundle = Bundle(**bundle_dict)
+            Bundle(**bundle_dict)
             self._stats.passed += 1
 
             logger.info(

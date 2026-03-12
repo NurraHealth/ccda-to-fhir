@@ -223,9 +223,7 @@ class GoalConverter(BaseConverter[Observation]):
             for entry_rel in observation.entry_relationship:
                 if entry_rel.type_code == "RSON" and entry_rel.observation:
                     if self._is_entry_reference(entry_rel.observation):
-                        address_ref = self._extract_health_concern_reference(
-                            entry_rel.observation
-                        )
+                        address_ref = self._extract_health_concern_reference(entry_rel.observation)
                         if address_ref:
                             addresses.append(address_ref.to_dict())
             if addresses:
@@ -238,9 +236,7 @@ class GoalConverter(BaseConverter[Observation]):
 
         return fhir_goal
 
-    def _convert_code_to_codeable_concept(
-        self, code_element: CD | CE | None
-    ) -> JSONObject | None:
+    def _convert_code_to_codeable_concept(self, code_element: CD | CE | None) -> JSONObject | None:
         """Convert C-CDA code element to FHIR CodeableConcept.
 
         Args:

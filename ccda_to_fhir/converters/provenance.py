@@ -148,7 +148,8 @@ class ProvenanceConverter(BaseConverter[None]):
         # OnBehalfOf - reference to Organization (optional)
         if author_info.organization_id:
             on_behalf_of_ref = FHIRReference(
-                reference=f"urn:uuid:{author_info.organization_id}", display=author_info.organization_display
+                reference=f"urn:uuid:{author_info.organization_id}",
+                display=author_info.organization_display,
             )
             agent["onBehalfOf"] = on_behalf_of_ref.to_dict()
 

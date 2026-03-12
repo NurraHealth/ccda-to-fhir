@@ -1224,7 +1224,9 @@ class DocumentConverter:
                 passed=stats.passed,
                 failed=stats.failed,
                 warnings=stats.warnings,
-                pass_rate=f"{(stats.passed / stats.validated * 100):.1f}%" if stats.validated > 0 else "N/A"
+                pass_rate=f"{(stats.passed / stats.validated * 100):.1f}%"
+                if stats.validated > 0
+                else "N/A",
             )
 
         return {
@@ -1647,10 +1649,12 @@ class DocumentConverter:
                                     display_name=getattr(obs.value, "display_name", None),
                                 )
                                 if value_concept:
-                                    spcu_ext["extension"].append({
-                                        "url": "value",
-                                        "valueCodeableConcept": value_concept.to_dict()
-                                    })
+                                    spcu_ext["extension"].append(
+                                        {
+                                            "url": "value",
+                                            "valueCodeableConcept": value_concept.to_dict(),
+                                        }
+                                    )
 
                                 # period sub-extension (optional)
                                 # C-CDA effectiveTime is a snapshot, map to period.start
@@ -1822,10 +1826,12 @@ class DocumentConverter:
                                         {"url": "value", "valueCodeableConcept": value_concept}
                                     )
                                     if value_concept:
-                                        spcu_ext["extension"].append({
-                                            "url": "value",
-                                            "valueCodeableConcept": value_concept.to_dict()
-                                        })
+                                        spcu_ext["extension"].append(
+                                            {
+                                                "url": "value",
+                                                "valueCodeableConcept": value_concept.to_dict(),
+                                            }
+                                        )
 
                                     # period sub-extension (optional)
                                     if obs.effective_time:
@@ -2752,9 +2758,7 @@ class DocumentConverter:
             display=enc_display,
         )
 
-    def _build_document_author_references(
-        self, ccda_doc: ClinicalDocument
-    ) -> list[FHIRReference]:
+    def _build_document_author_references(self, ccda_doc: ClinicalDocument) -> list[FHIRReference]:
         """Build author references from document-level authors.
 
         Delegates to the shared ``build_author_references`` helper.
@@ -3252,7 +3256,9 @@ class DocumentConverter:
                         self._temp_header_locations.append(location_resource)
 
                 if location_id:
-                    location_ref = FHIRReference(reference=f"urn:uuid:{location_id}", display=location_display)
+                    location_ref = FHIRReference(
+                        reference=f"urn:uuid:{location_id}", display=location_display
+                    )
                     location_dict = location_ref.to_dict()
 
                     fhir_encounter["location"] = [

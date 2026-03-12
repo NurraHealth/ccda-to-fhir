@@ -191,16 +191,13 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
 
         for participant in substance_admin.participant:
             # Check for drug vehicle (CSM = consumable)
-            if (
-                participant.type_code
-                and participant.type_code.upper() == "CSM"
-                and (participant.participant_role and participant.participant_role.playing_entity)
-            ):
-                playing_entity = participant.participant_role.playing_entity
+            if participant.type_code and participant.type_code.upper() == "CSM":
+                if participant.participant_role and participant.participant_role.playing_entity:
+                    playing_entity = participant.participant_role.playing_entity
 
-                # Extract code from playing entity
-                if playing_entity.code:
-                    ingredient: JSONObject = {}
+                    # Extract code from playing entity
+                    if playing_entity.code:
+                        ingredient: JSONObject = {}
 
                         # Create itemCodeableConcept
                         item_code = self.create_codeable_concept(
@@ -211,11 +208,11 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
                         if item_code:
                             ingredient["itemCodeableConcept"] = item_code.to_dict()
 
-                    # Drug vehicle is inactive ingredient
-                    ingredient["isActive"] = False
+                        # Drug vehicle is inactive ingredient
+                        ingredient["isActive"] = False
 
-                    if ingredient:
-                        ingredients.append(ingredient)
+                        if ingredient:
+                            ingredients.append(ingredient)
 
         return ingredients
 

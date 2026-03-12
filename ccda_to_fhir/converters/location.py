@@ -579,8 +579,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         return "instance"
 
     def _get_managing_organization_reference(
-        self,
-        participant_role: ParticipantRole
+        self, participant_role: ParticipantRole
     ) -> FHIRReference | None:
         """Extract managing organization reference from location's scoping entity.
 
