@@ -13,7 +13,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -121,7 +121,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create MedicationStatement without patient reference."
             )
-        med_statement["subject"] = self.reference_registry.get_patient_reference()
+        med_statement["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 6. Effective[x] (from effectiveTime)
         effective = self._extract_effective_time(substance_admin)
@@ -148,11 +148,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                 if latest_author.assigned_author:
                     assigned = latest_author.assigned_author
 
-                    from ccda_to_fhir.converters.author_references import (
-                        format_device_display,
-                        format_person_display,
-                        make_ref,
-                    )
+                    from ccda_to_fhir.converters.author_references import format_device_display, format_person_display
 
                     # Check for practitioner
                     if assigned.assigned_person:
@@ -163,22 +159,19 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                                         id_elem.root, id_elem.extension
                                     )
                                     display = format_person_display(assigned.assigned_person)
-                                    med_statement["informationSource"] = make_ref(
-                                        f"urn:uuid:{pract_id}", display
-                                    )
+                                    source_ref = FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                                    med_statement["informationSource"] = source_ref.to_dict()
                                     break
                     # Check for device
-                    elif assigned.assigned_authoring_device and assigned.id:
-                        for id_elem in assigned.id:
-                            if id_elem.root:
-                                device_id = self._generate_device_id(
-                                    id_elem.root, id_elem.extension
-                                )
-                                display = format_device_display(assigned.assigned_authoring_device)
-                                med_statement["informationSource"] = make_ref(
-                                    f"urn:uuid:{device_id}", display
-                                )
-                                break
+                    elif assigned.assigned_authoring_device:
+                        if assigned.id:
+                            for id_elem in assigned.id:
+                                if id_elem.root:
+                                    device_id = self._generate_device_id(id_elem.root, id_elem.extension)
+                                    display = format_device_display(assigned.assigned_authoring_device)
+                                    source_ref = FHIRReference(reference=f"urn:uuid:{device_id}", display=display)
+                                    med_statement["informationSource"] = source_ref.to_dict()
+                                    break
 
         # 9. ReasonCode (from indication entry relationship)
         reason_codes = self._extract_reason_codes(substance_admin)
@@ -331,13 +324,14 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                         }
                     )
 
-        return self.create_codeable_concept(
+        concept = self.create_codeable_concept(
             code=med_code.code if med_code else None,
             code_system=med_code.code_system if med_code else None,
             display_name=med_code.display_name if med_code else None,
             original_text=original_text,
             translations=translations,
         )
+        return concept.to_dict() if concept else None
 
     def _extract_effective_time(
         self, substance_admin: SubstanceAdministration
@@ -413,17 +407,15 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                 rel.type_code == TypeCodes.REASON
                 and rel.observation
                 # This is an Indication observation
-                and rel.observation.value
-                and isinstance(rel.observation.value, (CD, CE))
-            ):
-                value = rel.observation.value
-                reason_code = self.create_codeable_concept(
-                    code=value.code,
-                    code_system=value.code_system,
-                    display_name=value.display_name,
-                )
-                if reason_code:
-                    reason_codes.append(reason_code)
+                if rel.observation.value and isinstance(rel.observation.value, (CD, CE)):
+                    value = rel.observation.value
+                    reason_code = self.create_codeable_concept(
+                        code=value.code,
+                        code_system=value.code_system,
+                        display_name=value.display_name,
+                    )
+                    if reason_code:
+                        reason_codes.append(reason_code.to_dict())
 
         return reason_codes
 
@@ -459,7 +451,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                 display_name=substance_admin.route_code.display_name,
             )
             if route:
-                dosage["route"] = route
+                dosage["route"] = route.to_dict()
 
         # 5. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)
@@ -637,11 +629,13 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             if precondition.criterion and precondition.criterion.value:
                 criterion_value = precondition.criterion.value
                 if isinstance(criterion_value, (CD, CE)):
-                    return self.create_codeable_concept(
+                    concept = self.create_codeable_concept(
                         code=criterion_value.code,
                         code_system=criterion_value.code_system,
                         display_name=criterion_value.display_name,
                     )
+                    if concept:
+                        return concept.to_dict()
 
         return None
 

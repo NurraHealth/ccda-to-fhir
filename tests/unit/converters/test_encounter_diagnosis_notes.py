@@ -29,6 +29,7 @@ from ccda_to_fhir.converters.encounter_diagnosis_notes import (
     extract_encounter_diagnosis_notes,
 )
 from ccda_to_fhir.converters.references import ReferenceRegistry
+from ccda_to_fhir.types import FHIRReference
 from ccda_to_fhir.id_generator import reset_id_cache
 
 # ============================================================================
@@ -593,15 +594,13 @@ class TestAuthorReferences:
     """Tests for author references on diagnosis note DocumentReferences."""
 
     def test_author_references_set_on_doc_ref(self, registry: ReferenceRegistry) -> None:
-        notes = [
-            DiagnosisNote(
-                encounter_content_id=None,
-                diagnosis_display="Pneumonia",
-                snomed_code="233604007",
-                note_text="Improving on antibiotics.",
-            )
-        ]
-        author_refs = [{"reference": "urn:uuid:prac-1"}]
+        notes = [DiagnosisNote(
+            encounter_content_id=None,
+            diagnosis_display="Pneumonia",
+            snomed_code="233604007",
+            note_text="Improving on antibiotics.",
+        )]
+        author_refs = [FHIRReference(reference="urn:uuid:prac-1")]
         result = create_diagnosis_note_doc_refs(
             notes, {}, {}, registry, author_references=author_refs
         )
@@ -618,8 +617,8 @@ class TestAuthorReferences:
             )
         ]
         author_refs = [
-            {"reference": "urn:uuid:prac-1"},
-            {"reference": "urn:uuid:prac-2"},
+            FHIRReference(reference="urn:uuid:prac-1"),
+            FHIRReference(reference="urn:uuid:prac-2"),
         ]
         result = create_diagnosis_note_doc_refs(
             notes, {}, {}, registry, author_references=author_refs

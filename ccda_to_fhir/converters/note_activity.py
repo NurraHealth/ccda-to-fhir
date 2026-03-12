@@ -15,7 +15,7 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
 )
 from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
-from ccda_to_fhir.types import EncounterContext, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import EncounterContext, FHIRReference, FHIRResourceDict, JSONObject
 
 from .author_references import build_author_references
 from .base import BaseConverter
@@ -105,7 +105,7 @@ class NoteActivityConverter(BaseConverter[Act]):
         ]
 
         # Subject
-        doc_ref["subject"] = self.reference_registry.get_patient_reference()
+        doc_ref["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Date and author references
         if note_act.author:
@@ -115,7 +115,7 @@ class NoteActivityConverter(BaseConverter[Act]):
 
             authors = build_author_references(note_act.author)
             if authors:
-                doc_ref["author"] = authors
+                doc_ref["author"] = [a.to_dict() for a in authors]
 
         # Content (required by US Core)
         if note_act.text:
@@ -361,7 +361,8 @@ def _create_context(
                     first_id.root or None,
                     first_id.extension or None,
                 )
-                encounter_refs.append({"reference": f"urn:uuid:{enc_id}"})
+                enc_ref = FHIRReference(reference=f"urn:uuid:{enc_id}")
+                encounter_refs.append(enc_ref.to_dict())
         if encounter_refs:
             context["encounter"] = encounter_refs
 
@@ -369,7 +370,7 @@ def _create_context(
     if "encounter" not in context:
         fallback_ref = fallback_encounter_context.to_fhir_reference()
         if fallback_ref:
-            context["encounter"] = [fallback_ref]
+            context["encounter"] = [fallback_ref.to_dict()]
 
     return context if context else None
 
@@ -394,12 +395,11 @@ def _convert_relates_to(references: list[Reference]) -> list[JSONObject]:
             first_id.root or None,
             first_id.extension or None,
         )
-        relates_to.append(
-            {
-                "code": fhir_code,
-                "target": {"reference": f"urn:uuid:{doc_id}"},
-            }
-        )
+        target_ref = FHIRReference(reference=f"urn:uuid:{doc_id}")
+        relates_to.append({
+            "code": fhir_code,
+            "target": target_ref.to_dict(),
+        })
     return relates_to
 
 

@@ -26,7 +26,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.terminology import get_display_for_allergy_clinical_status
 
 from .author_extractor import AuthorExtractor
@@ -229,7 +229,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                 "reference_registry is required. "
                 "Cannot create AllergyIntolerance without patient reference."
             )
-        allergy["patient"] = self.reference_registry.get_patient_reference()
+        allergy["patient"] = self.reference_registry.get_patient_reference().to_dict()
 
         # Onset date
         if (
@@ -292,16 +292,17 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         authors_with_time = [a for a in all_authors_info if a.time]
         if authors_with_time:
             latest_author = max(authors_with_time, key=lambda a: a.time)
-            from ccda_to_fhir.converters.author_references import make_ref
 
             if latest_author.practitioner_id:
-                allergy["recorder"] = make_ref(
-                    f"urn:uuid:{latest_author.practitioner_id}", latest_author.display
+                recorder_ref = FHIRReference(
+                    reference=f"urn:uuid:{latest_author.practitioner_id}", display=latest_author.display
                 )
+                allergy["recorder"] = recorder_ref.to_dict()
             elif latest_author.device_id:
-                allergy["recorder"] = make_ref(
-                    f"urn:uuid:{latest_author.device_id}", latest_author.display
+                recorder_ref = FHIRReference(
+                    reference=f"urn:uuid:{latest_author.device_id}", display=latest_author.display
                 )
+                allergy["recorder"] = recorder_ref.to_dict()
 
         # Extract allergy-level severity (if present)
         allergy_level_severity = self._extract_allergy_level_severity(observation)
@@ -601,7 +602,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     )
                     # REQUIRED field - use fallback if None
                     if allergen_code:
-                        return allergen_code
+                        return allergen_code.to_dict()
 
         # Fallback if no participant found or create_codeable_concept returned None
         return {"text": "Unknown allergen"}
@@ -689,7 +690,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     # Only add manifestation if it's valid (not None)
                     # Per FHIR R4: manifestation is required (1..*) for reaction
                     if manifestation:
-                        reaction["manifestation"] = [manifestation]
+                        reaction["manifestation"] = [manifestation.to_dict()]
                     else:
                         logger.warning(
                             f"Skipping reaction manifestation due to missing code_system or content. "

@@ -15,9 +15,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ccda_to_fhir.constants import FHIRCodes
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 
-from .author_references import make_ref
 from .base import BaseConverter
 
 if TYPE_CHECKING:
@@ -127,7 +126,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Map managingOrganization (US Core Must Support)
         managing_org = self._get_managing_organization_reference(participant_role)
         if managing_org:
-            location["managingOrganization"] = managing_org
+            location["managingOrganization"] = managing_org.to_dict()
 
         return location
 
@@ -580,8 +579,9 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         return "instance"
 
     def _get_managing_organization_reference(
-        self, participant_role: ParticipantRole
-    ) -> JSONObject | None:
+        self,
+        participant_role: ParticipantRole
+    ) -> FHIRReference | None:
         """Extract managing organization reference from location's scoping entity.
 
         The managing organization is the organization responsible for the provisioning
@@ -594,7 +594,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
             participant_role: C-CDA ParticipantRole with potential scopingEntity
 
         Returns:
-            Organization reference dict or None if no managing organization found
+            FHIRReference or None if no managing organization found
 
         Examples:
             >>> # Location with scoping organization
@@ -622,7 +622,7 @@ class LocationConverter(BaseConverter["ParticipantRole"]):
         # Only create reference if the Organization has been registered
         if self.reference_registry and self.reference_registry.has_resource("Organization", org_id):
             display = scoping_entity.desc or None
-            return make_ref(f"urn:uuid:{org_id}", display)
+            return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
 
         # If no Organization resource exists in registry, don't create dangling reference
         # The organization may be created later or may not be relevant
