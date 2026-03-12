@@ -10,7 +10,7 @@ from fhir_core.fhirabstractmodel import FHIRAbstractModel
 from pydantic import ValidationError as PydanticValidationError
 
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRResourceDict
+from ccda_to_fhir.types import FHIRResourceDict, ValidationStats
 
 logger = get_logger(__name__)
 
@@ -56,12 +56,7 @@ class FHIRValidator:
                    If False, log errors and continue.
         """
         self.strict = strict
-        self._validation_stats = {
-            "validated": 0,
-            "passed": 0,
-            "failed": 0,
-            "warnings": 0,
-        }
+        self._stats = ValidationStats()
 
     def validate_resource(
         self, resource_dict: FHIRResourceDict, resource_class: type[FHIRAbstractModel]
@@ -80,7 +75,7 @@ class FHIRValidator:
         Raises:
             ValidationError: If validation fails and strict mode is enabled
         """
-        self._validation_stats["validated"] += 1
+        self._stats.validated += 1
         resource_type = resource_dict.get("resourceType", "Unknown")
 
         try:
@@ -88,7 +83,7 @@ class FHIRValidator:
             # This will raise pydantic ValidationError if the resource is invalid
             validated_resource = resource_class(**resource_dict)
 
-            self._validation_stats["passed"] += 1
+            self._stats.passed += 1
             logger.debug(
                 f"Validation passed for {resource_type}",
                 resource_id=resource_dict.get("id"),
@@ -96,7 +91,7 @@ class FHIRValidator:
             return validated_resource
 
         except Exception as e:
-            self._validation_stats["failed"] += 1
+            self._stats.failed += 1
             errors = self._extract_validation_errors(e)
 
             logger.error(
@@ -125,12 +120,12 @@ class FHIRValidator:
         # Import here to avoid circular imports
         from fhir.resources.R4B.bundle import Bundle
 
-        self._validation_stats["validated"] += 1
+        self._stats.validated += 1
 
         try:
             # Validate the bundle structure
             validated_bundle = Bundle(**bundle_dict)
-            self._validation_stats["passed"] += 1
+            self._stats.passed += 1
 
             logger.info(
                 "Bundle validation passed",
@@ -139,7 +134,7 @@ class FHIRValidator:
             return bundle_dict
 
         except Exception as e:
-            self._validation_stats["failed"] += 1
+            self._stats.failed += 1
             errors = self._extract_validation_errors(e)
 
             logger.error(
@@ -176,22 +171,17 @@ class FHIRValidator:
 
         return errors
 
-    def get_stats(self) -> dict[str, int]:
+    def get_stats(self) -> ValidationStats:
         """Get validation statistics.
 
         Returns:
-            Dictionary with validation stats (validated, passed, failed, warnings)
+            ValidationStats with validated, passed, failed, warnings counts
         """
-        return self._validation_stats.copy()
+        return self._stats.model_copy()
 
     def reset_stats(self) -> None:
         """Reset validation statistics."""
-        self._validation_stats = {
-            "validated": 0,
-            "passed": 0,
-            "failed": 0,
-            "warnings": 0,
-        }
+        self._stats = ValidationStats()
 
 
 # Global validator instance (can be configured)

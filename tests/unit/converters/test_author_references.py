@@ -62,22 +62,22 @@ class TestBuildAuthorReferences:
     def test_person_author_creates_practitioner_ref(self) -> None:
         refs = build_author_references([_make_person_author()])
         assert len(refs) == 1
-        assert refs[0]["reference"].startswith("urn:uuid:")
+        assert refs[0].reference.startswith("urn:uuid:")
 
     def test_multiple_person_authors(self) -> None:
         refs = build_author_references([_make_person_author("111"), _make_person_author("222")])
         assert len(refs) == 2
-        assert refs[0]["reference"] != refs[1]["reference"]
+        assert refs[0].reference != refs[1].reference
 
     def test_device_author_creates_device_ref(self) -> None:
         refs = build_author_references([_make_device_author(org_root=None)])
         assert len(refs) == 1
-        assert refs[0]["reference"].startswith("urn:uuid:")
+        assert refs[0].reference.startswith("urn:uuid:")
 
     def test_device_author_with_org_creates_both_refs(self) -> None:
         refs = build_author_references([_make_device_author()])
         assert len(refs) == 2
-        assert refs[0]["reference"] != refs[1]["reference"]
+        assert refs[0].reference != refs[1].reference
 
     def test_no_fallback_when_person_exists(self) -> None:
         author = Author(
@@ -131,7 +131,7 @@ class TestBuildAuthorReferences:
     def test_deterministic_ids(self) -> None:
         refs1 = build_author_references([_make_person_author()])
         refs2 = build_author_references([_make_person_author()])
-        assert refs1[0]["reference"] == refs2[0]["reference"]
+        assert refs1[0].reference == refs2[0].reference
 
     def test_org_only_fallback(self) -> None:
         """Author with only representedOrganization (no device, no person)."""
@@ -146,7 +146,7 @@ class TestBuildAuthorReferences:
         )
         refs = build_author_references([author])
         assert len(refs) == 1
-        assert refs[0]["reference"].startswith("urn:uuid:")
+        assert refs[0].reference.startswith("urn:uuid:")
 
 
 # ============================================================================

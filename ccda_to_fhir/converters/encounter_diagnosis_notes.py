@@ -26,7 +26,7 @@ from ccda_to_fhir.ccda.models.struc_doc import (
     TableRow,
 )
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.struc_doc_utils import extract_cell_text
 
 from .references import ReferenceRegistry
@@ -184,7 +184,7 @@ def create_diagnosis_note_doc_refs(
     condition_snomed_map: dict[str, list[str]],
     reference_registry: ReferenceRegistry,
     encounter_date_map: dict[str, str] | None = None,
-    author_references: list[JSONObject] | None = None,
+    author_references: list[FHIRReference] | None = None,
 ) -> list[FHIRResourceDict]:
     """Create DocumentReference resources for extracted diagnosis notes.
 
@@ -225,7 +225,7 @@ def _build_doc_ref(
     condition_snomed_map: dict[str, list[str]],
     reference_registry: ReferenceRegistry,
     encounter_date: str | None,
-    author_references: list[JSONObject] | None = None,
+    author_references: list[FHIRReference] | None = None,
 ) -> FHIRResourceDict:
     """Build a single DocumentReference for a diagnosis note."""
     # Generate deterministic ID from encounter + diagnosis
@@ -260,7 +260,7 @@ def _build_doc_ref(
                 ]
             }
         ],
-        "subject": reference_registry.get_patient_reference(),
+        "subject": reference_registry.get_patient_reference().to_dict(),
         "content": [
             {
                 "attachment": {
@@ -275,23 +275,21 @@ def _build_doc_ref(
         doc_ref["date"] = fhir_date_to_instant(encounter_date)
 
     if author_references:
-        doc_ref["author"] = author_references
+        doc_ref["author"] = [a.to_dict() for a in author_references]
 
     # Context: link to Encounter and optionally Condition(s)
     context: dict = {}
 
     if encounter_resource_id:
-        context["encounter"] = [{"reference": f"urn:uuid:{encounter_resource_id}"}]
+        encounter_ref = FHIRReference(reference=f"urn:uuid:{encounter_resource_id}")
+        context["encounter"] = [encounter_ref.to_dict()]
 
     if note.snomed_code and note.snomed_code in condition_snomed_map:
         condition_ids = condition_snomed_map[note.snomed_code]
         related_refs: list[JSONObject] = []
         for cid in condition_ids:
-            ref: JSONObject = {"reference": f"urn:uuid:{cid}"}
-            # Add display from diagnosis note display text
-            if note.diagnosis_display:
-                ref["display"] = note.diagnosis_display
-            related_refs.append(ref)
+            condition_ref = FHIRReference(reference=f"urn:uuid:{cid}", display=note.diagnosis_display or None)
+            related_refs.append(condition_ref.to_dict())
         context["related"] = related_refs
 
     if context:
@@ -407,7 +405,7 @@ def extract_encounter_diagnosis_notes(
     encounters: list[FHIRResourceDict],
     conditions: list[FHIRResourceDict],
     reference_registry: ReferenceRegistry,
-    author_references: list[JSONObject] | None = None,
+    author_references: list[FHIRReference] | None = None,
 ) -> list[FHIRResourceDict]:
     """Top-level function: extract diagnosis notes from encounter narrative tables.
 

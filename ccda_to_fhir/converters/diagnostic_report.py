@@ -140,7 +140,7 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
                 "reference_registry is required. "
                 "Cannot create DiagnosticReport without patient reference."
             )
-        report["subject"] = self.reference_registry.get_patient_reference()
+        report["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         # 7. Effective time
         effective_time = self._extract_effective_time(organizer)
@@ -160,11 +160,13 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
                             practitioner_id = self._generate_practitioner_id(
                                 id_elem.root, id_elem.extension
                             )
-                            from ccda_to_fhir.converters.author_references import format_person_display, make_ref
+                            from ccda_to_fhir.converters.author_references import format_person_display
+                            from ccda_to_fhir.types import FHIRReference
                             display = format_person_display(
                                 performer.assigned_entity.assigned_person
                             )
-                            interpreters.append(make_ref(f"urn:uuid:{practitioner_id}", display))
+                            interpreter_ref = FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
+                            interpreters.append(interpreter_ref.to_dict())
                             break  # Use first valid ID
             if interpreters:
                 report["resultsInterpreter"] = interpreters
