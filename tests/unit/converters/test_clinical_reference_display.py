@@ -86,10 +86,9 @@ class TestReasonReferenceDisplay:
         entry_rels = [EntryRelationship(type_code="RSON", observation=obs)]
         result = converter.extract_reasons_from_entry_relationships(entry_rels)
 
-        refs = result["references"]
-        assert len(refs) == 1
-        assert refs[0]["reference"] == f"urn:uuid:{condition_id}"
-        assert refs[0]["display"] == "Pneumonia"
+        assert len(result.references) == 1
+        assert result.references[0].reference == f"urn:uuid:{condition_id}"
+        assert result.references[0].display == "Pneumonia"
 
     def test_reason_reference_no_display_when_none(self, registry: ReferenceRegistry) -> None:
         obs = self._make_problem_observation(value_display=None)
@@ -103,9 +102,8 @@ class TestReasonReferenceDisplay:
         entry_rels = [EntryRelationship(type_code="RSON", observation=obs)]
         result = converter.extract_reasons_from_entry_relationships(entry_rels)
 
-        refs = result["references"]
-        assert len(refs) == 1
-        assert "display" not in refs[0]
+        assert len(result.references) == 1
+        assert result.references[0].display is None
 
 
 # ============================================================================
@@ -281,7 +279,7 @@ class TestCarePlanOutcomeDisplay:
 
         result = converter._create_outcome_reference(outcome_entry)
         assert result is not None
-        assert result["display"] == "Problem"
+        assert result.display == "Problem"
 
     def test_outcome_reference_no_display_when_code_missing(self, registry: ReferenceRegistry) -> None:
         from ccda_to_fhir.converters.careplan import CarePlanConverter

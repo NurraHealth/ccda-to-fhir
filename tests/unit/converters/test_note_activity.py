@@ -291,7 +291,7 @@ class TestConvertAuthorReferences:
     def test_single_author(self) -> None:
         refs = build_author_references([_make_author()])
         assert len(refs) == 1
-        assert refs[0]["reference"].startswith("urn:uuid:")
+        assert refs[0].reference.startswith("urn:uuid:")
 
     def test_multiple_authors(self) -> None:
         refs = build_author_references([_make_author("111"), _make_author("222")])
@@ -317,7 +317,7 @@ class TestConvertAuthorReferences:
     def test_deterministic_ids(self) -> None:
         refs1 = build_author_references([_make_author()])
         refs2 = build_author_references([_make_author()])
-        assert refs1[0]["reference"] == refs2[0]["reference"]
+        assert refs1[0].reference == refs2[0].reference
 
 
 # ============================================================================

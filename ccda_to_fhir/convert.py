@@ -46,8 +46,10 @@ from ccda_to_fhir.types import (
     ConversionMetadata,
     ConversionResult,
     EncounterContext,
+    FHIRReference,
     FHIRResourceDict,
     JSONObject,
+    ValidationStats,
     format_human_name_display,
 )
 from ccda_to_fhir.validation import FHIRValidator
@@ -156,7 +158,7 @@ def convert_careteam_organizer(
     if not reference_registry:
         raise ValueError("Reference registry required for CareTeam conversion")
 
-    patient_reference = reference_registry.get_patient_reference()
+    patient_reference = reference_registry.get_patient_reference().to_dict()
 
     converter = CareTeamConverter(
         patient_reference=patient_reference,
@@ -479,15 +481,15 @@ class DocumentConverter:
         validated = self.validator.validate_resource(resource, resource_class)
         return validated is not None
 
-    def get_validation_stats(self) -> dict[str, int]:
+    def get_validation_stats(self) -> ValidationStats:
         """Get validation statistics.
 
         Returns:
-            Dictionary with validation stats (validated, passed, failed, warnings)
+            ValidationStats with validated, passed, failed, warnings counts
         """
         if self.validator:
             return self.validator.get_stats()
-        return {"validated": 0, "passed": 0, "failed": 0, "warnings": 0}
+        return ValidationStats()
 
     def convert(self, ccda_doc: ClinicalDocument) -> ConversionResult:
         """Convert a C-CDA document to a FHIR Bundle with metadata.
@@ -1075,13 +1077,15 @@ class DocumentConverter:
                 if TemplateIds.GOALS_SECTION in section_resource_map:
                     for goal in section_resource_map[TemplateIds.GOALS_SECTION]:
                         if goal.get("id"):
-                            goal_refs.append({"reference": f"urn:uuid:{goal['id']}"})
+                            goal_ref = FHIRReference(reference=f"urn:uuid:{goal['id']}")
+                            goal_refs.append(goal_ref.to_dict())
 
                 health_concern_refs = []
                 if TemplateIds.HEALTH_CONCERNS_SECTION in section_resource_map:
                     for condition in section_resource_map[TemplateIds.HEALTH_CONCERNS_SECTION]:
                         if condition.get("id"):
-                            health_concern_refs.append({"reference": f"urn:uuid:{condition['id']}"})
+                            concern_ref = FHIRReference(reference=f"urn:uuid:{condition['id']}")
+                            health_concern_refs.append(concern_ref.to_dict())
 
                 # Extract intervention and outcome entries from sections for CarePlan linking
                 # NOTE: Intervention/outcome resources have already been processed and registered
@@ -1173,11 +1177,11 @@ class DocumentConverter:
             stats = self.get_validation_stats()
             logger.info(
                 "FHIR validation complete",
-                validated=stats["validated"],
-                passed=stats["passed"],
-                failed=stats["failed"],
-                warnings=stats["warnings"],
-                pass_rate=f"{(stats['passed'] / stats['validated'] * 100):.1f}%" if stats["validated"] > 0 else "N/A"
+                validated=stats.validated,
+                passed=stats.passed,
+                failed=stats.failed,
+                warnings=stats.warnings,
+                pass_rate=f"{(stats.passed / stats.validated * 100):.1f}%" if stats.validated > 0 else "N/A"
             )
 
         return {
@@ -1550,7 +1554,7 @@ class DocumentConverter:
                                 if gender_identity_codeable:
                                     gender_identity_ext = {
                                         "url": FHIRSystems.US_CORE_GENDER_IDENTITY,
-                                        "valueCodeableConcept": gender_identity_codeable,
+                                        "valueCodeableConcept": gender_identity_codeable.to_dict(),
                                     }
                                     extensions.append(gender_identity_ext)
                             processed = True
@@ -1587,10 +1591,11 @@ class DocumentConverter:
                                     code_system=getattr(obs.value, "code_system", None),
                                     display_name=getattr(obs.value, "display_name", None),
                                 )
-                                spcu_ext["extension"].append({
-                                    "url": "value",
-                                    "valueCodeableConcept": value_concept
-                                })
+                                if value_concept:
+                                    spcu_ext["extension"].append({
+                                        "url": "value",
+                                        "valueCodeableConcept": value_concept.to_dict()
+                                    })
 
                                 # period sub-extension (optional)
                                 # C-CDA effectiveTime is a snapshot, map to period.start
@@ -1689,7 +1694,7 @@ class DocumentConverter:
                                         "extension": [
                                             {
                                                 "url": "tribalAffiliation",
-                                                "valueCodeableConcept": tribal_affiliation_codeable,
+                                                "valueCodeableConcept": tribal_affiliation_codeable.to_dict(),
                                             }
                                         ]
                                     }
@@ -1714,7 +1719,7 @@ class DocumentConverter:
                                             "extension": [
                                                 {
                                                     "url": "tribalAffiliation",
-                                                    "valueCodeableConcept": tribal_affiliation_codeable,
+                                                    "valueCodeableConcept": tribal_affiliation_codeable.to_dict(),
                                                 }
                                             ]
                                         }
@@ -1737,10 +1742,11 @@ class DocumentConverter:
                                         code_system=getattr(obs.value, "code_system", None),
                                         display_name=getattr(obs.value, "display_name", None),
                                     )
-                                    spcu_ext["extension"].append({
-                                        "url": "value",
-                                        "valueCodeableConcept": value_concept
-                                    })
+                                    if value_concept:
+                                        spcu_ext["extension"].append({
+                                            "url": "value",
+                                            "valueCodeableConcept": value_concept.to_dict()
+                                        })
 
                                     # period sub-extension (optional)
                                     if obs.effective_time:
@@ -2634,16 +2640,13 @@ class DocumentConverter:
 
     def _build_document_author_references(
         self, ccda_doc: ClinicalDocument
-    ) -> list[JSONObject]:
+    ) -> list[FHIRReference]:
         """Build author references from document-level authors.
-
-        Uses the same ID generation as the resource converters, so the
-        references will match resources already in the bundle.
 
         Delegates to the shared ``build_author_references`` helper.
 
         Returns:
-            List of FHIR Reference objects (e.g. [{"reference": "urn:uuid:..."}])
+            List of FHIRReference objects.
         """
         from ccda_to_fhir.converters.author_references import build_author_references
 
@@ -3105,9 +3108,8 @@ class DocumentConverter:
                         self._temp_header_locations.append(location_resource)
 
                 if location_id:
-                    location_dict = {"reference": f"urn:uuid:{location_id}"}
-                    if location_display:
-                        location_dict["display"] = location_display
+                    location_ref = FHIRReference(reference=f"urn:uuid:{location_id}", display=location_display)
+                    location_dict = location_ref.to_dict()
 
                     fhir_encounter["location"] = [{
                         "location": location_dict,
@@ -3120,7 +3122,7 @@ class DocumentConverter:
                 "reference_registry is required. "
                 "Cannot create header Encounter without patient reference."
             )
-        fhir_encounter["subject"] = self.reference_registry.get_patient_reference()
+        fhir_encounter["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
         return fhir_encounter
 
