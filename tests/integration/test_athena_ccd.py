@@ -269,7 +269,7 @@ def test_athena_ccd_comprehensive() -> None:
         if "context" in dr and "encounter" in dr["context"]:
             for enc_ref in dr["context"]["encounter"]:
                 if "display" in enc_ref:
-                    assert enc_ref["display"] == "Family Medicine visit", (
+                    assert enc_ref["display"] == "Family Medicine", (
                         "Athena CCD encounter display should fall back to "
                         f"participant specialty, got '{enc_ref['display']}'"
                     )

@@ -2759,7 +2759,7 @@ class DocumentConverter:
                 if ep.assigned_entity and ep.assigned_entity.code:
                     ep_display = ep.assigned_entity.code.display_name
                     if ep_display:
-                        enc_display = f"{ep_display} visit"
+                        enc_display = ep_display
                         break
 
         return EncounterContext(

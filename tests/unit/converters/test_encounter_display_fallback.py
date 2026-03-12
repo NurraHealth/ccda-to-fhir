@@ -78,7 +78,7 @@ class TestEncounterDisplayFallback:
         converter = _make_converter()
         ctx = converter._get_encompassing_encounter_context(_make_mock_ccda(enc))
 
-        assert ctx.display == "Family Medicine visit"
+        assert ctx.display == "Family Medicine"
 
     def test_no_display_when_no_code_or_participant(self) -> None:
         """When neither code nor participant specialty exists, display is None."""

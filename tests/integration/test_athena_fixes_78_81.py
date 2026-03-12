@@ -83,7 +83,7 @@ class TestEncounterDisplayFallback:
             context = dr.get("context", {})
             for enc_ref in context.get("encounter", []):
                 if "display" in enc_ref:
-                    assert enc_ref["display"] == "Family Medicine visit"
+                    assert enc_ref["display"] == "Family Medicine"
                     refs_with_display += 1
 
         assert refs_with_display >= 1, "Expected at least one encounter ref with fallback display"
