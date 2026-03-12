@@ -275,8 +275,6 @@ class TestAuthorReferences:
         )
         author_refs = [FHIRReference(reference="urn:uuid:prac-1")]
         results = extract_narrative_sections(body, _make_registry(), author_references=author_refs)
-        author_refs = [{"reference": "urn:uuid:prac-1"}]
-        results = extract_narrative_sections(body, _make_registry(), author_references=author_refs)
         assert len(results) == 2
         for dr in results:
             assert dr["author"] == [{"reference": "urn:uuid:prac-1"}]

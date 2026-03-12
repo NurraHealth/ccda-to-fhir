@@ -614,11 +614,8 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                             pract_id = self._generate_practitioner_id(
                                 id_elem.root, id_elem.extension
                             )
-                            ref: JSONObject = {"reference": f"urn:uuid:{pract_id}"}
                             display = format_person_display(assigned_author.assigned_person)
-                            if display:
-                                ref["display"] = display
-                            return ref
+                            return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
 
             # Check for device (assigned_authoring_device)
             elif assigned_author.assigned_authoring_device:
@@ -626,13 +623,10 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                     for id_elem in assigned_author.id:
                         if id_elem.root:
                             device_id = self._generate_device_id(id_elem.root, id_elem.extension)
-                            ref = {"reference": f"urn:uuid:{device_id}"}
                             display = format_device_display(
                                 assigned_author.assigned_authoring_device
                             )
-                            if display:
-                                ref["display"] = display
-                            return ref
+                            return FHIRReference(reference=f"urn:uuid:{device_id}", display=display)
 
         return None
 

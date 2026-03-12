@@ -47,8 +47,8 @@ class TestProcedureRecorderDisplay:
         recorder = converter._extract_recorder(authors)
 
         assert recorder is not None
-        assert recorder["reference"].startswith("urn:uuid:")
-        assert recorder["display"] == "Henry Doe"
+        assert recorder.reference.startswith("urn:uuid:")
+        assert recorder.display == "Henry Doe"
 
     def test_recorder_has_device_display(self) -> None:
         """Procedure.recorder should include display from device name."""
@@ -68,8 +68,8 @@ class TestProcedureRecorderDisplay:
         recorder = converter._extract_recorder(authors)
 
         assert recorder is not None
-        assert recorder["reference"].startswith("urn:uuid:")
-        assert recorder["display"] == "Athena (athenaCollector)"
+        assert recorder.reference.startswith("urn:uuid:")
+        assert recorder.display == "Athena (athenaCollector)"
 
     def test_recorder_no_name_omits_display(self) -> None:
         """When person has no name, display should be absent."""
@@ -86,4 +86,4 @@ class TestProcedureRecorderDisplay:
         recorder = converter._extract_recorder(authors)
 
         assert recorder is not None
-        assert "display" not in recorder
+        assert recorder.display is None
