@@ -622,7 +622,11 @@ def _paragraph_to_html(para) -> str:
 
 
 def _content_to_html(content) -> str:
-    """Convert Content to HTML <span> element.
+    """Convert Content to an HTML element.
+
+    Leaf elements (no nested content) become ``<span>`` (inline).
+    Containers whose children all lack further nesting become ``<p>`` (block).
+    Structural containers with deeply nested children become ``<div>`` (block).
 
     Args:
         content: Content element
