@@ -441,47 +441,46 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         """
         for participant in participants:
             # Look for location participants (typeCode="LOC")
-            if participant.type_code == "LOC":
-                if participant.participant_role:
-                    role = participant.participant_role
+            if participant.type_code == "LOC" and participant.participant_role:
+                role = participant.participant_role
 
-                    # Generate location ID from role ID - REQUIRED
-                    location_id = None
-                    if role.id:
-                        for id_elem in role.id:
-                            if id_elem.root:
-                                location_id = self._generate_location_id(
-                                    id_elem.root, id_elem.extension
-                                )
-                                break
+                # Generate location ID from role ID - REQUIRED
+                location_id = None
+                if role.id:
+                    for id_elem in role.id:
+                        if id_elem.root:
+                            location_id = self._generate_location_id(
+                                id_elem.root, id_elem.extension
+                            )
+                            break
 
-                    if not location_id:
-                        raise ValueError(
-                            "Cannot create Location reference: missing location identifier"
-                        )
+                if not location_id:
+                    raise ValueError(
+                        "Cannot create Location reference: missing location identifier"
+                    )
 
-                    # Extract location name from playingEntity
-                    display = None
-                    if role.playing_entity:
-                        entity = role.playing_entity
-                        if entity.name:
-                            # name is list[ON | str] | None
-                            if isinstance(entity.name, list) and len(entity.name) > 0:
-                                first_name = entity.name[0]
-                                if isinstance(first_name, str):
-                                    display = first_name
-                                elif first_name.value:
-                                    # ON (Organization Name) has value attribute
-                                    display = first_name.value
-                            elif isinstance(entity.name, str):
-                                display = entity.name
+                # Extract location name from playingEntity
+                display = None
+                if role.playing_entity:
+                    entity = role.playing_entity
+                    if entity.name:
+                        # name is list[ON | str] | None
+                        if isinstance(entity.name, list) and len(entity.name) > 0:
+                            first_name = entity.name[0]
+                            if isinstance(first_name, str):
+                                display = first_name
+                            elif first_name.value:
+                                # ON (Organization Name) has value attribute
+                                display = first_name.value
+                        elif isinstance(entity.name, str):
+                            display = entity.name
 
-                    # Create location reference (or would have raised error above)
-                    location_ref: JSONObject = {"reference": f"urn:uuid:{location_id}"}
-                    if display:
-                        location_ref["display"] = display
+                # Create location reference (or would have raised error above)
+                location_ref: JSONObject = {"reference": f"urn:uuid:{location_id}"}
+                if display:
+                    location_ref["display"] = display
 
-                    return location_ref
+                return location_ref
 
         return None
 
@@ -803,10 +802,15 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if code.qualifier:
             for qualifier in code.qualifier:
                 # Check if this is a laterality qualifier
-                if qualifier.name and qualifier.name.code in laterality_qualifier_codes:
-                    if qualifier.value and qualifier.value.code and qualifier.value.code_system:
-                        laterality_value = qualifier.value
-                        break
+                if (
+                    qualifier.name
+                    and qualifier.name.code in laterality_qualifier_codes
+                    and qualifier.value
+                    and qualifier.value.code
+                    and qualifier.value.code_system
+                ):
+                    laterality_value = qualifier.value
+                    break
 
         # If we found a laterality qualifier, add it as additional coding
         if laterality_value:

@@ -486,13 +486,16 @@ class ObservationConverter(BaseConverter[Observation]):
                         continue
 
                     # Ensure it has an ID for referencing
-                    if "id" not in individual:
+                    if (
+                        "id" not in individual
                         # Generate ID if not present
-                        if component.observation.id and len(component.observation.id) > 0:
-                            obs_id = component.observation.id[0]
-                            individual["id"] = self._generate_observation_id(
-                                obs_id.root, obs_id.extension
-                            )
+                        and component.observation.id
+                        and len(component.observation.id) > 0
+                    ):
+                        obs_id = component.observation.id[0]
+                        individual["id"] = self._generate_observation_id(
+                            obs_id.root, obs_id.extension
+                        )
 
                     # Check if this is a special vital sign requiring component handling
                     obs_code = self._get_observation_loinc_code(individual)
@@ -829,10 +832,9 @@ class ObservationConverter(BaseConverter[Observation]):
         codeable_concept: JSONObject = {"coding": codings}
 
         # Original text
-        if code.original_text:
-            # original_text is ED (Encapsulated Data) - value attr holds text content
-            if code.original_text.value:
-                codeable_concept["text"] = code.original_text.value
+        # original_text is ED (Encapsulated Data) - value attr holds text content
+        if code.original_text and code.original_text.value:
+            codeable_concept["text"] = code.original_text.value
 
         return codeable_concept
 
@@ -875,10 +877,15 @@ class ObservationConverter(BaseConverter[Observation]):
         if code.qualifier:
             for qualifier in code.qualifier:
                 # Check if this is a laterality qualifier
-                if qualifier.name and qualifier.name.code in laterality_qualifier_codes:
-                    if qualifier.value and qualifier.value.code and qualifier.value.code_system:
-                        laterality_value = qualifier.value
-                        break
+                if (
+                    qualifier.name
+                    and qualifier.name.code in laterality_qualifier_codes
+                    and qualifier.value
+                    and qualifier.value.code
+                    and qualifier.value.code_system
+                ):
+                    laterality_value = qualifier.value
+                    break
 
         # If we found a laterality qualifier, add it as additional coding
         if laterality_value:
@@ -1227,11 +1234,10 @@ class ObservationConverter(BaseConverter[Observation]):
                     ref_range["high"] = high_quantity
 
         # Add text if present
-        if observation_range.text:
-            # Extract text content from ED (encapsulated data) type
-            # ED.value is aliased from _text in the XML
-            if observation_range.text.value:
-                ref_range["text"] = observation_range.text.value
+        # Extract text content from ED (encapsulated data) type
+        # ED.value is aliased from _text in the XML
+        if observation_range.text and observation_range.text.value:
+            ref_range["text"] = observation_range.text.value
 
         if ref_range:
             return ref_range
