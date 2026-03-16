@@ -139,7 +139,6 @@ def convert_careteam_organizer(
     organizer: Organizer,
     code_system_mapper: CodeSystemMapper | None = None,
     metadata_callback: Callable[..., None] | None = None,
-    section: Section | None = None,  # noqa: ARG001
     reference_registry: ReferenceRegistry | None = None,
 ) -> list[FHIRResourceDict]:
     """Convert a Care Team Organizer to FHIR CareTeam and related resources.
@@ -148,7 +147,6 @@ def convert_careteam_organizer(
         organizer: The Care Team Organizer
         code_system_mapper: Optional code system mapper
         metadata_callback: Optional callback for storing metadata
-        section: The C-CDA Section containing this care team (for narrative)
         reference_registry: Reference registry for patient reference
 
     Returns:
@@ -1367,7 +1365,7 @@ class DocumentConverter:
     ) -> list[FHIRResourceDict]:
         """Extract and convert CareTeams from the structured body."""
         resources: list[FHIRResourceDict] = []
-        for org, section, _section_code in iter_matching_organizers(
+        for org, _section, _section_code in iter_matching_organizers(
             structured_body, TemplateIds.CARE_TEAM_ORGANIZER
         ):
             with converting(
@@ -1377,7 +1375,6 @@ class DocumentConverter:
                     org,
                     code_system_mapper=self.code_system_mapper,
                     reference_registry=self.reference_registry,
-                    section=section,
                 )
                 collect_results(resources, result)
         return resources
