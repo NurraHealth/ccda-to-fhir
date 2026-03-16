@@ -2355,6 +2355,16 @@ class DocumentConverter:
                     result = self.service_request_converter.convert(act, section=section)
                     collect_results(service_requests, result)
 
+        # Patient Referral Acts (template .140) — always referrals by definition
+        for act, section, _section_code in iter_matching_acts(
+            structured_body, TemplateIds.PATIENT_REFERRAL_ACT
+        ):
+            with converting(
+                metadata, TemplateIds.PATIENT_REFERRAL_ACT, act.id, "patient referral act"
+            ):
+                result = self.referral_converter.convert(act, section=section)
+                collect_results(referrals, result)
+
         return service_requests, referrals
 
     def _extract_appointments(
