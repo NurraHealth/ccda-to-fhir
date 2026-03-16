@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from fhir.resources.R4B.allergyintolerance import AllergyIntolerance
+from fhir.resources.R4B.appointment import Appointment
 from fhir.resources.R4B.careplan import CarePlan
 from fhir.resources.R4B.careteam import CareTeam
 from fhir.resources.R4B.composition import Composition
@@ -55,6 +56,7 @@ from ccda_to_fhir.utils import fhir_date_to_instant
 from ccda_to_fhir.validation import FHIRValidator
 
 from .converters.allergy_intolerance import convert_allergy_concern_act
+from .converters.appointment import AppointmentConverter
 from .converters.author_extractor import AuthorExtractor, AuthorInfo
 from .converters.careplan import CarePlanConverter
 from .converters.careteam import CareTeamConverter
@@ -88,6 +90,7 @@ from .converters.practitioner_role import PractitionerRoleConverter
 from .converters.procedure import ProcedureConverter
 from .converters.provenance import ProvenanceConverter
 from .converters.references import ReferenceRegistry
+from .converters.referral import ReferralConverter, is_referral_code
 from .converters.section_traversal import (
     ClinicalStatement,
     collect_results,
@@ -132,6 +135,7 @@ RESOURCE_TYPE_MAPPING: dict[str, type[FHIRAbstractModel]] = {
     "CarePlan": CarePlan,
     "CareTeam": CareTeam,
     "Coverage": Coverage,
+    "Appointment": Appointment,
 }
 
 
@@ -314,6 +318,14 @@ class DocumentConverter:
             reference_registry=self.reference_registry,
         )
         self.service_request_converter = ServiceRequestConverter(
+            code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
+        )
+        self.appointment_converter = AppointmentConverter(
+            code_system_mapper=self.code_system_mapper,
+            reference_registry=self.reference_registry,
+        )
+        self.referral_converter = ReferralConverter(
             code_system_mapper=self.code_system_mapper,
             reference_registry=self.reference_registry,
         )
@@ -866,6 +878,18 @@ class DocumentConverter:
                 self.reference_registry.register_resource(service_request)
             if service_requests:
                 section_resource_map[TemplateIds.PLAN_OF_TREATMENT_SECTION] = service_requests
+
+            # Appointments (from Planned Encounter entries with APT/ARQ moodCode)
+            appointments = self._extract_appointments(ccda_doc.component.structured_body, metadata)
+            resources.extend(appointments)
+            for appointment in appointments:
+                self.reference_registry.register_resource(appointment)
+
+            # Referrals (from Planned Act/Encounter entries with referral codes)
+            referrals = self._extract_referrals(ccda_doc.component.structured_body, metadata)
+            resources.extend(referrals)
+            for referral in referrals:
+                self.reference_registry.register_resource(referral)
 
             # Encounters (from Encounters sections)
             encounters = self._extract_encounters(ccda_doc.component.structured_body, metadata)
@@ -2307,13 +2331,86 @@ class DocumentConverter:
                 result = self.service_request_converter.convert(proc, section=section)
                 collect_results(resources, result)
 
-        # Planned Acts
+        # Planned Acts (skip referral-coded acts — handled by _extract_referrals)
         for act, section, _section_code in iter_matching_acts(
             structured_body, TemplateIds.PLANNED_ACT
         ):
+            if is_referral_code(act.code):
+                continue
             with converting(metadata, TemplateIds.PLANNED_ACT, act.id, "planned act"):
                 result = self.service_request_converter.convert(act, section=section)
                 collect_results(resources, result)
+
+        return resources
+
+    def _extract_appointments(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
+        """Extract and convert Appointments from Planned Encounter entries.
+
+        Finds Planned Encounter (V2) entries with moodCode APT or ARQ and
+        converts them to FHIR Appointment resources.
+        """
+        resources: list[FHIRResourceDict] = []
+
+        for enc, section, _section_code in iter_matching_encounters(
+            structured_body, TemplateIds.PLANNED_ENCOUNTER
+        ):
+            # Only convert encounters with appointment moodCodes
+            mood_code = (enc.mood_code or "").upper()
+            if mood_code not in AppointmentConverter.APPOINTMENT_MOOD_CODES:
+                continue
+
+            with converting(
+                metadata, TemplateIds.PLANNED_ENCOUNTER, enc.id, "planned encounter (appointment)"
+            ):
+                result = self.appointment_converter.convert(enc, section=section)
+                collect_results(resources, result)
+
+        return resources
+
+    def _extract_referrals(
+        self,
+        structured_body: StructuredBody,
+        metadata: ConversionMetadata | None = None,
+    ) -> list[FHIRResourceDict]:
+        """Extract and convert referrals from the structured body.
+
+        Finds referral-coded entries:
+        1. Planned Act entries with referral SNOMED codes
+        2. Planned Encounter entries with non-appointment moodCodes and referral codes
+        """
+        resources: list[FHIRResourceDict] = []
+
+        # Referral-coded Planned Acts
+        for act, section, _section_code in iter_matching_acts(
+            structured_body, TemplateIds.PLANNED_ACT
+        ):
+            if is_referral_code(act.code):
+                with converting(
+                    metadata, TemplateIds.PLANNED_ACT, act.id, "referral (planned act)"
+                ):
+                    result = self.referral_converter.convert(act, section=section)
+                    collect_results(resources, result)
+
+        # Planned Encounters with non-appointment moodCodes and referral codes
+        for enc, section, _section_code in iter_matching_encounters(
+            structured_body, TemplateIds.PLANNED_ENCOUNTER
+        ):
+            mood_code = (enc.mood_code or "").upper()
+            if mood_code in AppointmentConverter.APPOINTMENT_MOOD_CODES:
+                continue  # Already handled by _extract_appointments
+            if is_referral_code(enc.code):
+                with converting(
+                    metadata,
+                    TemplateIds.PLANNED_ENCOUNTER,
+                    enc.id,
+                    "referral (planned encounter)",
+                ):
+                    result = self.referral_converter.convert(enc, section=section)
+                    collect_results(resources, result)
 
         return resources
 
