@@ -1315,3 +1315,220 @@ class TestCareTeamConverter:
         assert "category" in careteam
         assert len(careteam["category"]) == 1
         assert any("missing or invalid extension" in record.message for record in caplog.records)
+
+
+class TestCareTeamTypeSafety:
+    """Tests for type-safe code paths in the CareTeam converter.
+
+    These tests exercise type narrowing, helper functions, and edge cases
+    introduced during the type safety refactoring (issue #24).
+    """
+
+    def test_skips_non_cd_observation_value_for_category(
+        self, care_team_converter: CareTeamConverter, minimal_care_team_member: Act
+    ) -> None:
+        """Category extraction skips observation values that are not CD/CE types.
+
+        The observation value type is a broad union (ObservationValueType).
+        Only CD-family types (CD, CE, CV, CO) have code/code_system/display_name.
+        Non-coded values (e.g., PQ, ST, BL) must be skipped without error.
+        """
+        from ccda_to_fhir.ccda.models.datatypes import PQ
+
+        team_type_obs = Observation(
+            class_code="OBS",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.2", extension="2019-07-01")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            value=PQ(value=42.0, unit="kg"),  # Non-CD type
+        )
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-non-cd")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[
+                OrganizerComponent(observation=team_type_obs),
+                OrganizerComponent(act=minimal_care_team_member),
+            ],
+        )
+
+        careteam = care_team_converter.convert(organizer)
+        assert careteam is not None
+        # PQ value should be skipped, so no category
+        assert "category" not in careteam
+
+    def test_participant_without_function_code_omitted(
+        self, care_team_converter: CareTeamConverter
+    ) -> None:
+        """Participant without function_code (role) is omitted per FHIR requirement.
+
+        CareTeam.participant requires both role (1..*) and member (1..1).
+        A performer without function_code cannot satisfy the role requirement.
+        """
+        member_no_role = Act(
+            class_code="PCPR",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2022-06-01")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            performer=[
+                Performer(
+                    # No function_code
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="9999999999")],
+                        assigned_person=AssignedPerson(
+                            name=[PN(given=[ENXP(value="Jane")], family=ENXP(value="Doe"))]
+                        ),
+                    ),
+                )
+            ],
+        )
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-no-role")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[OrganizerComponent(act=member_no_role)],
+        )
+
+        with pytest.raises(ValueError, match="at least one participant"):
+            care_team_converter.convert(organizer)
+
+    def test_organization_with_none_root_oid_skipped(
+        self, care_team_converter: CareTeamConverter
+    ) -> None:
+        """Organization with None root OID is gracefully skipped.
+
+        When II.root is None, the organization cannot be identified or
+        registered for deduplication, so it is safely skipped.
+        """
+        member_with_null_org = Act(
+            class_code="PCPR",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.1", extension="2022-06-01")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            performer=[
+                Performer(
+                    function_code=CE(code="PCP", code_system="2.16.840.1.113883.5.88"),
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="1111111111")],
+                        assigned_person=AssignedPerson(
+                            name=[PN(given=[ENXP(value="Bob")], family=ENXP(value="Test"))]
+                        ),
+                        represented_organization=RepresentedOrganization(
+                            id=[II(root=None)],  # None root
+                            name=["Unknown Org"],
+                        ),
+                    ),
+                )
+            ],
+        )
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-null-org")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[OrganizerComponent(act=member_with_null_org)],
+        )
+
+        careteam = care_team_converter.convert(organizer)
+        assert careteam is not None
+        assert len(careteam["participant"]) == 1
+        # Organization should not be registered
+        assert len(care_team_converter.organization_registry) == 0
+
+    def test_name_reflects_condition_category_type(
+        self, care_team_converter: CareTeamConverter, minimal_care_team_member: Act
+    ) -> None:
+        """CareTeam name changes based on category type observation.
+
+        Each LOINC care team type code (LA27976-2 longitudinal, LA28865-6 condition, etc.)
+        should produce a descriptive team name.
+        """
+        condition_type_obs = Observation(
+            class_code="OBS",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500.2", extension="2019-07-01")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            value=CE(
+                code="LA28865-6",
+                code_system="2.16.840.1.113883.6.1",
+                display_name="Condition focused care team",
+            ),
+        )
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-condition")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[
+                OrganizerComponent(observation=condition_type_obs),
+                OrganizerComponent(act=minimal_care_team_member),
+            ],
+        )
+
+        careteam = care_team_converter.convert(organizer)
+        assert careteam["name"] == "Condition Care Team for Patient"
+
+    def test_narrative_includes_participant_roles(
+        self, care_team_converter: CareTeamConverter, minimal_care_team_member: Act
+    ) -> None:
+        """Generated narrative includes role display names from participants."""
+        minimal_care_team_member.performer[0].function_code = CE(
+            code="PCP",
+            code_system="2.16.840.1.113883.5.88",
+            display_name="Primary Care Physician",
+        )
+
+        organizer = Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-narrative")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[OrganizerComponent(act=minimal_care_team_member)],
+        )
+
+        careteam = care_team_converter.convert(organizer)
+        text = careteam.get("text")
+        assert text is not None
+        assert isinstance(text, dict)
+        assert text["status"] == "generated"
+        div = text["div"]
+        assert isinstance(div, str)
+        assert "Primary Care Physician" in div
+
+    def test_constructor_accepts_code_system_mapper_and_registry(self) -> None:
+        """Constructor properly forwards code_system_mapper and reference_registry."""
+        from ccda_to_fhir.converters.code_systems import CodeSystemMapper
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        mapper = CodeSystemMapper()
+        registry = ReferenceRegistry()
+        converter = CareTeamConverter(
+            patient_reference={"reference": "Patient/test"},
+            code_system_mapper=mapper,
+            reference_registry=registry,
+        )
+        assert converter.code_system_mapper is mapper
+        assert converter.reference_registry is registry

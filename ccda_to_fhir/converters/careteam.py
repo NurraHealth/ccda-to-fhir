@@ -12,20 +12,63 @@ Reference:
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
+from ccda_to_fhir.ccda.models.datatypes import CD, CS, II, IVL_TS, ON, TS
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRCodeableConcept, FHIRReference, FHIRResourceDict, JSONObject
 
-from .author_references import format_organization_display
 from .base import BaseConverter
+from .code_systems import CodeSystemMapper
 from .organization import OrganizationConverter
 from .practitioner import PractitionerConverter
 from .practitioner_role import PractitionerRoleConverter
+from .references import ReferenceRegistry
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.organizer import Organizer
+    from ccda_to_fhir.ccda.models.performer import (
+        AssignedEntity,
+        Performer,
+        RepresentedOrganization,
+    )
+
+logger = logging.getLogger(__name__)
+
+
+def _format_org_display(org: RepresentedOrganization) -> str | None:
+    """Extract display name from a performer RepresentedOrganization.
+
+    Args:
+        org: RepresentedOrganization from performer module
+
+    Returns:
+        Organization name or None
+    """
+    if not org.name:
+        return None
+    first_name = org.name[0]
+    if isinstance(first_name, str):
+        return first_name or None
+    if isinstance(first_name, ON):
+        return first_name.value or None
+    return None
+
+
+def _extract_resource_id(resource: FHIRResourceDict, fallback: str) -> str:
+    """Extract the 'id' field from a FHIR resource dict as a string.
+
+    Args:
+        resource: FHIR resource dictionary
+        fallback: Fallback value if 'id' is missing or not a string
+
+    Returns:
+        The resource ID as a string
+    """
+    raw = resource.get("id")
+    return str(raw) if isinstance(raw, str) else fallback
 
 
 class CareTeamConverter(BaseConverter["Organizer"]):
@@ -60,7 +103,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
     US_CORE_CARETEAM_PROFILE = "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam"
 
     # Status mapping: C-CDA statusCode -> FHIR status
-    STATUS_MAP = {
+    STATUS_MAP: dict[str, str] = {
         "active": "active",
         "completed": "inactive",
         "aborted": "inactive",
@@ -69,17 +112,25 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         "obsolete": "inactive",
     }
 
-    def __init__(self, patient_reference: JSONObject | None = None, **kwargs):
+    def __init__(
+        self,
+        patient_reference: JSONObject | None = None,
+        code_system_mapper: CodeSystemMapper | None = None,
+        reference_registry: ReferenceRegistry | None = None,
+    ) -> None:
         """Initialize the CareTeamConverter.
 
         Args:
             patient_reference: Reference to Patient resource (required)
-            **kwargs: Additional arguments passed to BaseConverter
+            code_system_mapper: Optional code system mapper for OID to URI conversion
+            reference_registry: Optional reference registry for tracking converted resources
 
         Raises:
             ValueError: If patient_reference is None
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            code_system_mapper=code_system_mapper, reference_registry=reference_registry
+        )
 
         if not patient_reference:
             raise ValueError("patient_reference is required for CareTeam conversion")
@@ -153,17 +204,15 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         #   - When missing, CareTeam.period is derived from document effectiveTime or omitted
         #
         # Trade-offs:
-        #   ✓ Robustness: Accepts real-world data variations
-        #   ✓ Usability: Does not block conversion for minor omissions
-        #   ✗ Strict Compliance: Deviates from C-CDA SHALL requirement
+        #   + Robustness: Accepts real-world data variations
+        #   + Usability: Does not block conversion for minor omissions
+        #   - Strict Compliance: Deviates from C-CDA SHALL requirement
         #
         # See: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-CareTeamOrganizer.html
         # ====================================================================
 
         # Validate effectiveTime.low when effectiveTime is present
         if organizer.effective_time:
-            from ccda_to_fhir.ccda.models.datatypes import IVL_TS, TS
-
             if isinstance(organizer.effective_time, IVL_TS):
                 if not organizer.effective_time.low:
                     raise ValueError(
@@ -202,7 +251,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         # Map category from team type observations
         categories = self._extract_categories(organizer)
         if categories:
-            careteam["category"] = categories
+            careteam["category"] = [c.to_dict() for c in categories]
 
         # Map participants from Care Team Member Acts (required, at least one)
         participants = self._extract_participants(organizer)
@@ -216,12 +265,12 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             careteam["managingOrganization"] = [managing_org.to_dict()]
 
         # Extract narrative text from code originalText or generate from data
-        narrative = self._generate_narrative(organizer, categories, participants)
+        narrative = self._build_careteam_narrative(organizer, categories, participants)
         if narrative:
             careteam["text"] = narrative
 
         # Generate human-readable name
-        careteam["name"] = self._generate_name(organizer, categories)
+        careteam["name"] = self._generate_name(categories)
 
         return careteam
 
@@ -282,7 +331,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 f"Found: {', '.join(found_templates)}"
             )
 
-    def _generate_careteam_id(self, identifiers: list) -> str:
+    def _generate_careteam_id(self, identifiers: list[II]) -> str:
         """Generate FHIR CareTeam ID from C-CDA identifiers.
 
         Uses UUID v4 caching based on identifiers.
@@ -298,7 +347,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return generate_id_from_identifiers("CareTeam", root, extension)
 
-    def _convert_identifiers(self, identifiers: list | None) -> list[JSONObject]:
+    def _convert_identifiers(self, identifiers: list[II] | None) -> list[JSONObject]:
         """Convert C-CDA identifiers to FHIR identifiers.
 
         Args:
@@ -326,7 +375,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return fhir_identifiers
 
-    def _map_status(self, status_code) -> str:
+    def _map_status(self, status_code: CS | None) -> str:
         """Map C-CDA statusCode to FHIR CareTeam status.
 
         ====================================================================
@@ -348,20 +397,20 @@ class CareTeamConverter(BaseConverter["Organizer"]):
           - Defaulting enables successful conversion of imperfect but usable data
 
         Trade-offs:
-          ✓ Robustness: Handles documents with missing required elements
-          ✓ Usability: Provides sensible default behavior
-          ✓ Safety: "active" is conservative assumption for ongoing teams
-          ✗ Strict Compliance: Deviates from C-CDA SHALL requirement
+          + Robustness: Handles documents with missing required elements
+          + Usability: Provides sensible default behavior
+          + Safety: "active" is conservative assumption for ongoing teams
+          - Strict Compliance: Deviates from C-CDA SHALL requirement
 
         Mapping:
-          C-CDA statusCode  →  FHIR CareTeam.status
-          active            →  active
-          completed         →  inactive
-          aborted           →  inactive
-          suspended         →  suspended
-          nullified         →  entered-in-error
-          obsolete          →  inactive
-          missing/unknown   →  active (default)
+          C-CDA statusCode  ->  FHIR CareTeam.status
+          active            ->  active
+          completed         ->  inactive
+          aborted           ->  inactive
+          suspended         ->  suspended
+          nullified         ->  entered-in-error
+          obsolete          ->  inactive
+          missing/unknown   ->  active (default)
 
         See: https://build.fhir.org/ig/HL7/CDA-ccda/StructureDefinition-CareTeamOrganizer.html
         ====================================================================
@@ -378,17 +427,15 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         ccda_status = status_code.code.lower()
         return self.STATUS_MAP.get(ccda_status, "active")
 
-    def _convert_effective_time_to_period(self, effective_time) -> JSONObject | None:
+    def _convert_effective_time_to_period(self, effective_time: IVL_TS | TS) -> JSONObject | None:
         """Convert C-CDA effectiveTime to FHIR Period.
 
         Args:
-            effective_time: C-CDA effectiveTime element (IVL_TS)
+            effective_time: C-CDA effectiveTime element (IVL_TS or TS)
 
         Returns:
             FHIR Period or None
         """
-        from ccda_to_fhir.ccda.models.datatypes import IVL_TS
-
         period: JSONObject = {}
 
         if isinstance(effective_time, IVL_TS):
@@ -404,7 +451,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return period if period else None
 
-    def _extract_categories(self, organizer: Organizer) -> list[JSONObject]:
+    def _extract_categories(self, organizer: Organizer) -> list[FHIRCodeableConcept]:
         """Extract category from Care Team Type Observations.
 
         Validates both root OID and extension date per C-CDA specification.
@@ -431,9 +478,9 @@ class CareTeamConverter(BaseConverter["Organizer"]):
           - Team members and period are more critical than categorization
 
         Trade-offs:
-          ✓ Robustness: Accepts care teams without explicit type
-          ✓ Flexibility: Works with minimal C-CDA implementations
-          ✓ Standards Aligned: Follows C-CDA MAY conformance level
+          + Robustness: Accepts care teams without explicit type
+          + Flexibility: Works with minimal C-CDA implementations
+          + Standards Aligned: Follows C-CDA MAY conformance level
           ~ Discoverability: Care teams without category may be harder to filter
 
         When Type Observation is present:
@@ -448,9 +495,9 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             organizer: Care Team Organizer
 
         Returns:
-            List of FHIR CodeableConcept for categories (may be empty)
+            List of FHIRCodeableConcept for categories (may be empty)
         """
-        categories: list[JSONObject] = []
+        categories: list[FHIRCodeableConcept] = []
 
         if not organizer.component:
             return categories  # No components - acceptable per MAY conformance
@@ -481,21 +528,19 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 )
                 if has_matching_root:
                     # Log warning but continue (lenient for real-world data)
-                    import logging
-
-                    logger = logging.getLogger(__name__)
                     logger.warning(
-                        f"Care Team Type Observation has correct root "
-                        f"{self.CARE_TEAM_TYPE_OBSERVATION_TEMPLATE} but missing or "
-                        f"invalid extension (expected {self.CARE_TEAM_TYPE_OBSERVATION_EXTENSION})"
+                        "Care Team Type Observation has correct root "
+                        "%s but missing or invalid extension (expected %s)",
+                        self.CARE_TEAM_TYPE_OBSERVATION_TEMPLATE,
+                        self.CARE_TEAM_TYPE_OBSERVATION_EXTENSION,
                     )
                     # Continue processing despite extension issue
                 else:
                     # Different template, skip
                     continue
 
-            # Extract value (team type code)
-            if observation.value:
+            # Extract value (team type code) - narrow to CD which has code/code_system/display_name
+            if observation.value and isinstance(observation.value, CD):
                 type_code = observation.value
                 category = self.create_codeable_concept(
                     code=type_code.code,
@@ -503,7 +548,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     display_name=type_code.display_name,
                 )
                 if category:
-                    categories.append(category.to_dict())
+                    categories.append(category)
 
         return categories
 
@@ -564,7 +609,9 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 org = assigned_entity.represented_organization
                 if org.id and len(org.id) > 0:
                     org_oid = org.id[0].root
-                    display = format_organization_display(org)
+                    if not org_oid:
+                        continue
+                    display = _format_org_display(org)
                     # Check if we already created this organization
                     if org_oid in self.organization_registry:
                         return FHIRReference(
@@ -574,7 +621,9 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     # Try to convert it
                     try:
                         organization = self.organization_converter.convert(org)
-                        organization_id = organization.get("id", f"org-{org_oid.replace('.', '-')}")
+                        organization_id = _extract_resource_id(
+                            organization, f"org-{org_oid.replace('.', '-')}"
+                        )
                         self.organization_registry[org_oid] = organization_id
                         return FHIRReference(
                             reference=f"urn:uuid:{organization_id}", display=display
@@ -628,13 +677,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 )
                 if has_matching_root:
                     # Log warning but continue (lenient for real-world data)
-                    import logging
-
-                    logger = logging.getLogger(__name__)
                     logger.warning(
-                        f"Care Team Member Act has correct root "
-                        f"{self.CARE_TEAM_MEMBER_ACT_TEMPLATE} but missing or "
-                        f"invalid extension (expected {' or '.join(self.CARE_TEAM_MEMBER_ACT_EXTENSIONS)})"
+                        "Care Team Member Act has correct root "
+                        "%s but missing or invalid extension (expected %s)",
+                        self.CARE_TEAM_MEMBER_ACT_TEMPLATE,
+                        " or ".join(self.CARE_TEAM_MEMBER_ACT_EXTENSIONS),
                     )
                     # Continue processing despite extension issue
                 else:
@@ -684,7 +731,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return participants
 
-    def _identify_team_lead(self, organizer: Organizer) -> object | None:
+    def _identify_team_lead(self, organizer: Organizer) -> II | None:
         """Identify team lead from participant with typeCode='PPRF'.
 
         Args:
@@ -706,7 +753,9 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return None
 
-    def _create_participant_from_performer(self, performer, effective_time) -> JSONObject | None:
+    def _create_participant_from_performer(
+        self, performer: Performer, effective_time: IVL_TS | None
+    ) -> JSONObject | None:
         """Create CareTeam participant from Care Team Member Act performer.
 
         Args:
@@ -717,6 +766,8 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             FHIR CareTeam participant object
         """
         assigned_entity = performer.assigned_entity
+        if not assigned_entity:
+            return None
 
         participant: JSONObject = {}
 
@@ -748,7 +799,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return None
 
-    def _create_member_reference(self, assigned_entity) -> FHIRReference | None:
+    def _create_member_reference(self, assigned_entity: AssignedEntity) -> FHIRReference | None:
         """Create member reference (Practitioner/PractitionerRole).
 
         Creates Practitioner, Organization, and PractitionerRole resources,
@@ -760,8 +811,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         Returns:
             FHIR Reference to PractitionerRole
         """
+        if not assigned_entity.id:
+            return None
+
         # Extract NPI for deduplication
-        npi = None
+        npi: str | None = None
         for entity_id in assigned_entity.id:
             if entity_id.root == "2.16.840.1.113883.4.6" and entity_id.extension:
                 npi = entity_id.extension
@@ -769,11 +823,14 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         if not npi:
             # Use first identifier for ID generation
-            if assigned_entity.id and len(assigned_entity.id) > 0:
+            if len(assigned_entity.id) > 0:
                 first_id = assigned_entity.id[0]
                 npi = first_id.extension if first_id.extension else first_id.root
             else:
                 return None
+
+        if not npi:
+            return None
 
         # Check if we already created Practitioner for this NPI
         if npi in self.practitioner_registry:
@@ -782,7 +839,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             # Create Practitioner resource
             if assigned_entity.assigned_person:
                 practitioner = self.practitioner_converter.convert(assigned_entity)
-                practitioner_id = practitioner.get("id", f"practitioner-{npi}")
+                practitioner_id = _extract_resource_id(practitioner, f"practitioner-{npi}")
                 self.practitioner_registry[npi] = practitioner_id
                 # Store the created resource
                 self.created_practitioners[practitioner_id] = practitioner
@@ -791,17 +848,21 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 return None
 
         # Create Organization if present
-        organization_id = None
+        organization_id: str | None = None
         if assigned_entity.represented_organization:
             org = assigned_entity.represented_organization
             if org.id and len(org.id) > 0:
                 org_oid = org.id[0].root
-                if org_oid in self.organization_registry:
+                if not org_oid:
+                    pass  # Skip org without root OID
+                elif org_oid in self.organization_registry:
                     organization_id = self.organization_registry[org_oid]
                 else:
                     try:
                         organization = self.organization_converter.convert(org)
-                        organization_id = organization.get("id", f"org-{org_oid.replace('.', '-')}")
+                        organization_id = _extract_resource_id(
+                            organization, f"org-{org_oid.replace('.', '-')}"
+                        )
                         self.organization_registry[org_oid] = organization_id
                         # Store the created resource
                         self.created_organizations[organization_id] = organization
@@ -821,7 +882,9 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     practitioner_id=practitioner_id,
                     organization_id=organization_id,
                 )
-                role_id = practitioner_role.get("id", f"role-{practitioner_id}-{organization_id}")
+                role_id = _extract_resource_id(
+                    practitioner_role, f"role-{practitioner_id}-{organization_id}"
+                )
                 self.practitioner_role_registry[role_key] = role_id
                 # Store the created resource
                 self.created_practitioner_roles[role_id] = practitioner_role
@@ -831,31 +894,31 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return FHIRReference(reference=f"urn:uuid:{role_id}")
 
-    def _generate_name(self, organizer: Organizer, categories: list[JSONObject]) -> str:
+    def _generate_name(self, categories: list[FHIRCodeableConcept]) -> str:
         """Generate human-readable name for the care team.
 
         Args:
-            organizer: Care Team Organizer
-            categories: Extracted categories
+            categories: Extracted category models
 
         Returns:
             Human-readable care team name
         """
         # Extract team type from category
         team_type = "Care Team"
-        if categories and len(categories) > 0:
-            category = categories[0]
-            if "coding" in category and len(category["coding"]) > 0:
-                display = category["coding"][0].get("display", "")
-                if "longitudinal" in display.lower() or "coordination" in display.lower():
+        if categories:
+            first_category = categories[0]
+            if first_category.coding:
+                display = first_category.coding[0].display or ""
+                display_lower = display.lower()
+                if "longitudinal" in display_lower or "coordination" in display_lower:
                     team_type = "Primary Care Team"
-                elif "condition" in display.lower():
+                elif "condition" in display_lower:
                     team_type = "Condition Care Team"
-                elif "encounter" in display.lower():
+                elif "encounter" in display_lower:
                     team_type = "Encounter Care Team"
-                elif "episode" in display.lower():
+                elif "episode" in display_lower:
                     team_type = "Episode Care Team"
-                elif "event" in display.lower():
+                elif "event" in display_lower:
                     team_type = "Event Care Team"
 
         # Try to get patient name from reference (basic approach)
@@ -864,8 +927,11 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return f"{team_type} for {patient_name}"
 
-    def _generate_narrative(
-        self, organizer: Organizer, categories: list[JSONObject], participants: list[JSONObject]
+    def _build_careteam_narrative(
+        self,
+        organizer: Organizer,
+        categories: list[FHIRCodeableConcept],
+        participants: list[JSONObject],
     ) -> JSONObject | None:
         """Generate narrative text for the care team.
 
@@ -873,14 +939,14 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         Args:
             organizer: Care Team Organizer
-            categories: Extracted categories
+            categories: Extracted category models
             participants: Extracted participants
 
         Returns:
             FHIR Narrative object or None
         """
         # First, try to extract originalText from code
-        original_text = None
+        original_text: str | None = None
         if organizer.code and organizer.code.original_text:
             if organizer.code.original_text.reference:
                 # Reference to narrative block - we can't resolve this without section context
@@ -894,19 +960,12 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             return {"status": "generated", "div": div_content}
 
         # Otherwise, generate narrative from structured data
-        team_name = self._generate_name(organizer, categories)
+        team_name = self._generate_name(categories)
 
         # Build participant list
-        participant_lines = []
-        for _i, participant in enumerate(participants[:5]):  # Limit to first 5
-            role_display = "Team Member"
-            if "role" in participant and participant["role"]:
-                role_data = participant["role"]
-                if isinstance(role_data, list) and len(role_data) > 0:
-                    role_data = role_data[0]
-                if "coding" in role_data and len(role_data["coding"]) > 0:
-                    role_display = role_data["coding"][0].get("display", "Team Member")
-
+        participant_lines: list[str] = []
+        for participant in participants[:5]:  # Limit to first 5
+            role_display = self._extract_participant_role_display(participant)
             participant_lines.append(f"<li>{role_display}</li>")
 
         if len(participants) > 5:
@@ -923,3 +982,38 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         )
 
         return {"status": "generated", "div": div_content}
+
+    @staticmethod
+    def _extract_participant_role_display(participant: JSONObject) -> str:
+        """Extract role display text from a participant dict.
+
+        Navigates participant["role"][0]["coding"][0]["display"] safely,
+        returning "Team Member" if any part is missing.
+
+        Args:
+            participant: FHIR CareTeam participant object
+
+        Returns:
+            Role display string
+        """
+        role_value = participant.get("role")
+        if not isinstance(role_value, list) or len(role_value) == 0:
+            return "Team Member"
+
+        first_role = role_value[0]
+        if not isinstance(first_role, dict):
+            return "Team Member"
+
+        coding_value = first_role.get("coding")
+        if not isinstance(coding_value, list) or len(coding_value) == 0:
+            return "Team Member"
+
+        first_coding = coding_value[0]
+        if not isinstance(first_coding, dict):
+            return "Team Member"
+
+        display = first_coding.get("display")
+        if isinstance(display, str) and display:
+            return display
+
+        return "Team Member"
