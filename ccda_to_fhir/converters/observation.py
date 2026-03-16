@@ -1195,7 +1195,7 @@ class ObservationConverter(BaseConverter[Observation]):
             return {}
 
         # Create extension with R5 backport URL
-        extension = {
+        extension: JSONObject = {
             "extension": [
                 {
                     "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.value",

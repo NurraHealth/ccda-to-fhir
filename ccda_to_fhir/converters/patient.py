@@ -232,7 +232,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
         birth_date = self.convert_date(date_portion)
 
         # If has time component, create extension
-        birth_time_ext = None
+        birth_time_ext: JSONObject | None = None
         if has_time:
             # Convert full timestamp to datetime format
             birth_date_time = self.convert_date(birth_time_str)
