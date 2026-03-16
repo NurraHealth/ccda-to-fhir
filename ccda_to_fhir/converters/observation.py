@@ -1075,14 +1075,17 @@ class ObservationConverter(BaseConverter[Observation]):
         effective_value = pq.value
         effective_unit = pq.unit
 
+        is_from_translation = False
         if effective_value is None and pq.translation:
             for trans in pq.translation:
                 if trans.value is not None:
                     effective_value = trans.value
-                    effective_unit = effective_unit or trans.unit
+                    # Prefer the translation's own unit over the parent's
+                    effective_unit = trans.unit or effective_unit
                     # Use originalText as unit if no explicit unit on translation
                     if effective_unit is None and trans.original_text and trans.original_text.value:
                         effective_unit = trans.original_text.value
+                    is_from_translation = True
                     break
 
         quantity: JSONObject = {}
@@ -1102,11 +1105,13 @@ class ObservationConverter(BaseConverter[Observation]):
             else:
                 quantity["value"] = effective_value
 
-        # Add unit
+        # Add unit — only set UCUM system when the unit came from a standard PQ,
+        # not from a translation originalText which may be non-UCUM (e.g. x10e3/uL)
         if effective_unit:
             quantity["unit"] = effective_unit
-            quantity["system"] = FHIRSystems.UCUM
-            quantity["code"] = effective_unit
+            if not is_from_translation:
+                quantity["system"] = FHIRSystems.UCUM
+                quantity["code"] = effective_unit
 
         # Don't return empty valueQuantity — let caller handle dataAbsentReason
         if not quantity:

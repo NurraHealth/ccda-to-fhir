@@ -221,6 +221,9 @@ class TestPQTranslationFallback:
         assert "valueQuantity" in wbc, "valueQuantity missing — PQ translation fallback not working"
         assert wbc["valueQuantity"]["value"] == 11.5
         assert wbc["valueQuantity"]["unit"] == "x10e3/uL"
+        # Translation-sourced units are not necessarily valid UCUM, so no system/code
+        assert "system" not in wbc["valueQuantity"]
+        assert "code" not in wbc["valueQuantity"]
 
     def test_pq_translation_no_empty_value_quantity(self, ccda_result_pq_translation: str) -> None:
         """No observation should have an empty valueQuantity."""
@@ -254,6 +257,8 @@ class TestPQTranslationFallback:
         assert "valueQuantity" in hgb
         assert hgb["valueQuantity"]["value"] == 12.8
         assert hgb["valueQuantity"]["unit"] == "g/dL"
+        assert hgb["valueQuantity"]["system"] == "http://unitsofmeasure.org"
+        assert hgb["valueQuantity"]["code"] == "g/dL"
 
     def test_pq_nullflavor_no_translation_gets_data_absent_reason(
         self, ccda_result_pq_nullflavor_no_translation: str
@@ -306,6 +311,7 @@ class TestPQTranslationFallback:
         assert obs["valueQuantity"]["unit"] == "x10e3/uL", (
             "Should use first translation's originalText as unit"
         )
+        assert "system" not in obs["valueQuantity"]
 
     def test_direct_value_takes_precedence_over_translation(
         self, ccda_result_pq_direct_value_with_translation: str
@@ -321,6 +327,8 @@ class TestPQTranslationFallback:
         assert "valueQuantity" in obs
         assert obs["valueQuantity"]["value"] == 13.5, "Should use direct PQ value, not translation"
         assert obs["valueQuantity"]["unit"] == "g/dL", "Should use direct PQ unit, not translation"
+        # Direct PQ values should have UCUM system
+        assert obs["valueQuantity"]["system"] == "http://unitsofmeasure.org"
 
     def test_empty_translation_gets_data_absent_reason(
         self, ccda_result_pq_empty_translation_list: str
@@ -352,6 +360,7 @@ class TestPQTranslationFallback:
         assert isinstance(obs["valueQuantity"]["value"], (int, float))
         assert obs["valueQuantity"]["value"] in (179, 179.0)
         assert obs["valueQuantity"]["unit"] == "x10e3/uL"
+        assert "system" not in obs["valueQuantity"]
 
 
 class TestAthenaCCDFullDocument:
