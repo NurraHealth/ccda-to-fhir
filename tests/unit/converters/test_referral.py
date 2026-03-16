@@ -15,7 +15,7 @@ import pytest
 
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.author import AssignedAuthor, Author
-from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II, IVL_TS, TS
+from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, ENXP, II, IVL_TS, PN, TS, AssignedPerson
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
 from ccda_to_fhir.ccda.models.performer import AssignedEntity, Performer
 from ccda_to_fhir.constants import FHIRCodes
@@ -557,3 +557,423 @@ class TestIDGeneration:
         result = converter.convert(basic_referral_act)
         assert "identifier" in result
         assert len(result["identifier"]) > 0
+
+    def test_no_id_no_identifier(self, mock_reference_registry):
+        """No C-CDA id → no id or identifier fields."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=None,
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "id" not in result
+        assert "identifier" not in result
+
+
+# ============================================================================
+# Edge Case Tests — MoodCode
+# ============================================================================
+
+
+class TestMoodCodeEdgeCases:
+    """Edge cases for moodCode validation."""
+
+    def test_invalid_non_evn_mood_code_rejected(self, mock_reference_registry):
+        """Non-EVN invalid moodCode (e.g., GOL) → generic ValueError."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="GOL",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        with pytest.raises(ValueError, match="Invalid moodCode"):
+            converter.convert(act)
+
+
+# ============================================================================
+# Edge Case Tests — Status Mapping
+# ============================================================================
+
+
+class TestStatusMappingEdgeCases:
+    """Edge cases for status code mapping."""
+
+    def test_null_flavor_ni_maps_to_active(self, mock_reference_registry):
+        """nullFlavor NI (no information) → active (default)."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(null_flavor="NI"),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert result["status"] == "active"
+
+    def test_no_status_code_defaults_to_active(self, mock_reference_registry):
+        """status_code=None → active."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=None,
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert result["status"] == "active"
+
+
+# ============================================================================
+# Edge Case Tests — Intent Mapping
+# ============================================================================
+
+
+class TestIntentMappingEdgeCases:
+    """Edge cases for intent mapping."""
+
+    def test_arq_maps_to_order(self, mock_reference_registry):
+        """ARQ → order."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="ARQ",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert result["intent"] == "order"
+
+    def test_prms_maps_to_directive(self, mock_reference_registry):
+        """PRMS → directive (promise)."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="PRMS",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        # PRMS maps per SERVICE_REQUEST_MOOD_TO_INTENT
+        assert result["intent"] in ("directive", "order")
+
+
+# ============================================================================
+# Edge Case Tests — Occurrence
+# ============================================================================
+
+
+class TestOccurrenceEdgeCases:
+    """Edge cases for occurrence conversion."""
+
+    def test_low_only_occurrence_period(self, mock_reference_registry):
+        """IVL_TS with only low → occurrencePeriod with start only."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20240601")),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "occurrencePeriod" in result
+        assert "start" in result["occurrencePeriod"]
+        assert "end" not in result["occurrencePeriod"]
+
+    def test_high_only_occurrence_period(self, mock_reference_registry):
+        """IVL_TS with only high → occurrencePeriod with end only."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(high=TS(value="20240901")),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "occurrencePeriod" in result
+        assert "end" in result["occurrencePeriod"]
+
+    def test_empty_ivl_ts_no_occurrence(self, mock_reference_registry):
+        """IVL_TS with no value/low/high → no occurrence."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "occurrenceDateTime" not in result
+        assert "occurrencePeriod" not in result
+
+    def test_ivl_ts_value_occurrence_datetime(self, mock_reference_registry):
+        """IVL_TS with value (no low/high) → occurrenceDateTime."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(value="20240615"),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "occurrenceDateTime" in result
+
+
+# ============================================================================
+# Edge Case Tests — AuthoredOn
+# ============================================================================
+
+
+class TestAuthoredOnEdgeCases:
+    """Edge cases for authoredOn extraction."""
+
+    def test_multiple_authors_picks_latest(self, mock_reference_registry):
+        """Multiple authors → picks latest timestamp for authoredOn."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            author=[
+                Author(
+                    time=TS(value="20240501"),
+                    assigned_author=AssignedAuthor(id=[II(root="a1")]),
+                ),
+                Author(
+                    time=TS(value="20240610"),
+                    assigned_author=AssignedAuthor(id=[II(root="a2")]),
+                ),
+                Author(
+                    time=TS(value="20240505"),
+                    assigned_author=AssignedAuthor(id=[II(root="a3")]),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "authoredOn" in result
+        assert "2024-06-10" in result["authoredOn"]
+
+    def test_authors_without_time_no_authored_on(self, mock_reference_registry):
+        """Authors present but none have time → no authoredOn."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            author=[
+                Author(
+                    time=None,
+                    assigned_author=AssignedAuthor(id=[II(root="a1")]),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "authoredOn" not in result
+
+
+# ============================================================================
+# Edge Case Tests — Requester
+# ============================================================================
+
+
+class TestRequester:
+    """Test requester extraction from authors."""
+
+    def test_requester_from_author_with_person(self, mock_reference_registry):
+        """Author with assigned_person → requester reference."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            author=[
+                Author(
+                    time=TS(value="20240601"),
+                    assigned_author=AssignedAuthor(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+                        assigned_person=AssignedPerson(
+                            name=[PN(given=[ENXP(value="Dr")], family=ENXP(value="Smith"))]
+                        ),
+                    ),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "requester" in result
+        assert result["requester"]["reference"].startswith("urn:uuid:")
+
+    def test_requester_fallback_to_first_author(self, mock_reference_registry):
+        """Authors without timestamps → falls back to first author."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            author=[
+                Author(
+                    time=None,
+                    assigned_author=AssignedAuthor(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="FIRST")],
+                        assigned_person=AssignedPerson(
+                            name=[PN(given=[ENXP(value="First")], family=ENXP(value="Author"))]
+                        ),
+                    ),
+                ),
+                Author(
+                    time=None,
+                    assigned_author=AssignedAuthor(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="SECOND")],
+                        assigned_person=AssignedPerson(
+                            name=[PN(given=[ENXP(value="Second")], family=ENXP(value="Author"))]
+                        ),
+                    ),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "requester" in result
+
+    def test_no_assigned_person_no_requester(self, mock_reference_registry):
+        """Author without assigned_person → no requester."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            author=[
+                Author(
+                    time=TS(value="20240601"),
+                    assigned_author=AssignedAuthor(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+                        assigned_person=None,
+                    ),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "requester" not in result
+
+
+# ============================================================================
+# Edge Case Tests — Encounter Reference
+# ============================================================================
+
+
+class TestEncounterReference:
+    """Test encounter reference population."""
+
+    def test_encounter_reference_present(self):
+        """When encounter reference exists → encounter field set."""
+        registry = Mock(spec=ReferenceRegistry)
+        registry.get_patient_reference = Mock(
+            return_value=FHIRReference(reference="urn:uuid:patient-123")
+        )
+        registry.get_encounter_reference = Mock(
+            return_value=FHIRReference(reference="urn:uuid:encounter-456")
+        )
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+        )
+        converter = ReferralConverter(reference_registry=registry)
+        result = converter.convert(act)
+        assert "encounter" in result
+        assert result["encounter"]["reference"] == "urn:uuid:encounter-456"
+
+
+# ============================================================================
+# Edge Case Tests — Priority
+# ============================================================================
+
+
+class TestPriorityEdgeCases:
+    """Edge cases for priority mapping."""
+
+    def test_unknown_priority_code(self, mock_reference_registry):
+        """Unknown priority code → no priority field."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            priority_code=CE(code="XYZ"),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "priority" not in result
+
+    def test_priority_code_null_code(self, mock_reference_registry):
+        """CE with no code → no priority."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            priority_code=CE(code=None),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "priority" not in result
+
+
+# ============================================================================
+# Edge Case Tests — is_referral_code
+# ============================================================================
+
+
+class TestIsReferralCodeEdgeCases:
+    """Edge cases for is_referral_code helper."""
+
+    def test_non_matching_translation(self):
+        """Translation exists but no matching referral code → False."""
+        code = CD(
+            code="99999",
+            code_system="2.16.840.1.113883.6.12",
+            translation=[
+                CD(code="80146002", code_system="2.16.840.1.113883.6.96"),
+            ],
+        )
+        assert is_referral_code(code) is False
+
+    def test_second_translation_matches(self):
+        """Referral code in second translation → True."""
+        code = CD(
+            code="99999",
+            code_system="2.16.840.1.113883.6.12",
+            translation=[
+                CD(code="80146002", code_system="2.16.840.1.113883.6.96"),
+                CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            ],
+        )
+        assert is_referral_code(code) is True

@@ -15,6 +15,8 @@ import pytest
 from ccda_to_fhir.ccda.models.author import AssignedAuthor, Author
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II, IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
+from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
+from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.ccda.models.performer import AssignedEntity, Performer
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.converters.appointment import AppointmentConverter
@@ -594,3 +596,421 @@ class TestResourceType:
         converter = AppointmentConverter(reference_registry=mock_reference_registry)
         result = converter.convert(basic_appointment)
         assert "meta" not in result
+
+
+# ============================================================================
+# Edge Case Tests — Status Mapping
+# ============================================================================
+
+
+class TestStatusMappingEdgeCases:
+    """Edge cases for status code mapping."""
+
+    def test_held_maps_to_waitlist(self, mock_reference_registry):
+        """held → waitlist."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="held"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert result["status"] == "waitlist"
+
+    def test_suspended_maps_to_waitlist(self, mock_reference_registry):
+        """suspended → waitlist."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="suspended"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert result["status"] == "waitlist"
+
+    def test_unknown_status_code_defaults_from_mood(self, mock_reference_registry):
+        """Unrecognized status code → default from moodCode."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="ARQ",
+            id=[II(root="test")],
+            status_code=CS(code="somethingweird"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert result["status"] == "proposed"
+
+    def test_status_code_no_code_no_null_flavor(self, mock_reference_registry):
+        """CS with neither code nor nullFlavor → default from moodCode."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert result["status"] == "booked"
+
+
+# ============================================================================
+# Edge Case Tests — Timing
+# ============================================================================
+
+
+class TestTimingEdgeCases:
+    """Edge cases for effectiveTime conversion."""
+
+    def test_cancelled_with_start_only_keeps_start(self, mock_reference_registry):
+        """cancelled status + start only → start allowed (app-3 exception)."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="cancelled"),
+            effective_time=IVL_TS(low=TS(value="20240615")),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "start" in result
+        assert "end" not in result
+
+    def test_waitlist_with_start_only_keeps_start(self, mock_reference_registry):
+        """waitlist status + start only → start allowed (app-3 exception)."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="held"),
+            effective_time=IVL_TS(low=TS(value="20240615")),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "start" in result
+        assert "end" not in result
+
+    def test_ivl_ts_high_only(self, mock_reference_registry):
+        """IVL_TS with high only and no low → no start/end (app-1)."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(high=TS(value="20240615110000")),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        # Only end, no start → app-1 drops both for booked status
+        assert "start" not in result
+        assert "end" not in result
+
+    def test_empty_ivl_ts(self, mock_reference_registry):
+        """IVL_TS with no value/low/high → no start/end."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "start" not in result
+        assert "end" not in result
+
+    def test_str_effective_time(self, mock_reference_registry):
+        """String effectiveTime → start only for proposed."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="ARQ",
+            id=[II(root="test")],
+            status_code=CS(code="new"),
+            effective_time=IVL_TS(value="20240615100000"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "start" in result
+        assert "end" not in result
+
+
+# ============================================================================
+# Edge Case Tests — Priority
+# ============================================================================
+
+
+class TestPriorityEdgeCases:
+    """Edge cases for priority mapping."""
+
+    def test_asap_priority(self, mock_reference_registry):
+        """A → priority=3."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            priority_code=CE(code="A"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert result["priority"] == 3
+
+    def test_elective_priority(self, mock_reference_registry):
+        """EL → priority=7."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            priority_code=CE(code="EL"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert result["priority"] == 7
+
+    def test_unknown_priority_code(self, mock_reference_registry):
+        """Unknown priority code → no priority field."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            priority_code=CE(code="XYZ"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "priority" not in result
+
+    def test_priority_code_case_insensitive(self, mock_reference_registry):
+        """Lowercase priority code → still mapped."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            priority_code=CE(code="ur"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert result["priority"] == 2
+
+    def test_priority_code_no_code_value(self, mock_reference_registry):
+        """CE with no code → no priority."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            priority_code=CE(code=None),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "priority" not in result
+
+
+# ============================================================================
+# Edge Case Tests — Created Date
+# ============================================================================
+
+
+class TestCreatedDateEdgeCases:
+    """Edge cases for author time extraction."""
+
+    def test_multiple_authors_picks_earliest(self, mock_reference_registry):
+        """Multiple authors → picks earliest timestamp for created."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            author=[
+                Author(
+                    time=TS(value="20240610"),
+                    assigned_author=AssignedAuthor(id=[II(root="a1")]),
+                ),
+                Author(
+                    time=TS(value="20240601"),
+                    assigned_author=AssignedAuthor(id=[II(root="a2")]),
+                ),
+                Author(
+                    time=TS(value="20240605"),
+                    assigned_author=AssignedAuthor(id=[II(root="a3")]),
+                ),
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "created" in result
+        assert "2024-06-01" in result["created"]
+
+    def test_authors_without_time_no_created(self, mock_reference_registry):
+        """Authors present but none have time → no created."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            author=[
+                Author(
+                    time=None,
+                    assigned_author=AssignedAuthor(id=[II(root="a1")]),
+                ),
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "created" not in result
+
+
+# ============================================================================
+# Edge Case Tests — Reason Codes
+# ============================================================================
+
+
+class TestReasonCodes:
+    """Test reasonCode extraction from entryRelationships."""
+
+    def test_rson_observation_produces_reason_code(self, mock_reference_registry):
+        """RSON entryRelationship with observation value → reasonCode."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            entry_relationship=[
+                EntryRelationship(
+                    type_code="RSON",
+                    observation=Observation(
+                        class_code="OBS",
+                        mood_code="EVN",
+                        value=CD(
+                            code="29857009",
+                            code_system="2.16.840.1.113883.6.96",
+                            display_name="Chest pain",
+                        ),
+                    ),
+                ),
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "reasonCode" in result
+        assert result["reasonCode"][0]["coding"][0]["code"] == "29857009"
+
+    def test_non_rson_entry_relationship_skipped(self, mock_reference_registry):
+        """Non-RSON entryRelationship → no reasonCode."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            entry_relationship=[
+                EntryRelationship(
+                    type_code="SUBJ",
+                    observation=Observation(
+                        class_code="OBS",
+                        mood_code="EVN",
+                        value=CD(code="29857009", code_system="2.16.840.1.113883.6.96"),
+                    ),
+                ),
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "reasonCode" not in result
+
+    def test_rson_without_observation_skipped(self, mock_reference_registry):
+        """RSON entryRelationship without observation → no reasonCode."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            entry_relationship=[
+                EntryRelationship(type_code="RSON", observation=None),
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "reasonCode" not in result
+
+    def test_rson_observation_without_value_skipped(self, mock_reference_registry):
+        """RSON observation with no value → no reasonCode."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            entry_relationship=[
+                EntryRelationship(
+                    type_code="RSON",
+                    observation=Observation(class_code="OBS", mood_code="EVN", value=None),
+                ),
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "reasonCode" not in result
+
+
+# ============================================================================
+# Edge Case Tests — ID / Identifiers
+# ============================================================================
+
+
+class TestIDEdgeCases:
+    """Edge cases for ID and identifier generation."""
+
+    def test_no_id_no_identifier(self, mock_reference_registry):
+        """No C-CDA id → no id or identifier fields."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=None,
+            status_code=CS(code="active"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "id" not in result
+        assert "identifier" not in result
+
+    def test_id_with_null_root_filtered(self, mock_reference_registry):
+        """II elements with root=None filtered from identifiers list."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[
+                II(root="valid-root", extension="ext-1"),
+                II(root=None, extension="ext-2"),
+            ],
+            status_code=CS(code="active"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "identifier" in result
+        # Only the valid root should be in identifiers
+        assert len(result["identifier"]) == 1
+
+
+# ============================================================================
+# Edge Case Tests — Participant
+# ============================================================================
+
+
+class TestParticipantEdgeCases:
+    """Edge cases for participant building."""
+
+    def test_patient_ref_none_raises(self):
+        """Patient reference returning None + no performers → ValueError."""
+        registry = Mock(spec=ReferenceRegistry)
+        registry.get_patient_reference = Mock(return_value=None)
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+        )
+        converter = AppointmentConverter(reference_registry=registry)
+        with pytest.raises(ValueError, match="at least one participant"):
+            converter.convert(enc)
