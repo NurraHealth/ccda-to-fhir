@@ -17,7 +17,9 @@ Per HL7 C-CDA R2.1, Planned Encounter entries use the Encounter class
 
 from __future__ import annotations
 
-from ccda_to_fhir.ccda.models.datatypes import IVL_TS, TS
+from typing import TYPE_CHECKING
+
+from ccda_to_fhir.ccda.models.datatypes import CE, CS, IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
 from ccda_to_fhir.constants import (
     APPOINTMENT_MOOD_TO_STATUS,
@@ -27,6 +29,12 @@ from ccda_to_fhir.constants import (
 from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
+
+if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.author import Author
+    from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
+    from ccda_to_fhir.ccda.models.participant import ParticipantRole
+    from ccda_to_fhir.ccda.models.section import Section
 
 
 class AppointmentConverter(BaseConverter[CCDAEncounter]):
@@ -41,7 +49,9 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
     # moodCodes that indicate an appointment (vs a planned encounter → ServiceRequest)
     APPOINTMENT_MOOD_CODES = {"APT", "ARQ"}
 
-    def convert(self, ccda_model: CCDAEncounter, section=None) -> FHIRResourceDict:
+    def convert(
+        self, ccda_model: CCDAEncounter, section: Section | None = None
+    ) -> FHIRResourceDict:
         """Convert a C-CDA Planned Encounter to a FHIR Appointment resource.
 
         Args:
@@ -67,6 +77,13 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                 f"expected one of {self.APPOINTMENT_MOOD_CODES}"
             )
 
+        # Validate reference_registry (required for patient participant)
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create Appointment without patient reference."
+            )
+
         # Build FHIR Appointment resource
         fhir_appointment: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.APPOINTMENT,
@@ -87,52 +104,50 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                 if id_elem.root
             ]
 
-        # Status (required)
+        # Status (required 1..1)
         status = self._map_status(encounter.status_code, mood_code)
         fhir_appointment["status"] = status
 
-        # ServiceType - from encounter code
+        # ServiceType (0..*) - from encounter code
         if encounter.code:
             service_type = self.convert_code_to_codeable_concept(encounter.code)
             if service_type:
                 fhir_appointment["serviceType"] = [service_type.to_dict()]
 
         # Start / End - from effectiveTime
+        # Per FHIR constraint app-1: either both start and end, or neither
         if encounter.effective_time:
             start, end = self._convert_timing(encounter.effective_time)
-            if start:
+            if start and end:
                 fhir_appointment["start"] = start
-            if end:
                 fhir_appointment["end"] = end
+            elif start and status in ("proposed", "cancelled", "waitlist"):
+                # app-3: only proposed/cancelled/waitlist can omit end
+                fhir_appointment["start"] = start
 
-        # Created (order date) - from first author time
+        # Created (0..1) - from first author time
         if encounter.author:
             created = self._extract_created(encounter.author)
             if created:
                 fhir_appointment["created"] = created
 
-        # Priority - from priorityCode (unsigned int in FHIR)
+        # Priority (0..1) - from priorityCode (unsigned int in FHIR, iCal scale)
         if encounter.priority_code:
             priority = self._map_priority(encounter.priority_code)
             if priority is not None:
                 fhir_appointment["priority"] = priority
 
-        # Participant (required 1..*) - patient + performers
-        participants = self._build_participants(encounter)
-        if not participants:
-            raise ValueError(
-                "Appointment must have at least one participant. "
-                "Ensure reference_registry has a patient reference."
-            )
+        # Participant (required 1..*)
+        participants = self._build_participants(encounter, mood_code)
         fhir_appointment["participant"] = participants
 
-        # Reason - from entryRelationship indications
+        # ReasonCode (0..*) - from entryRelationship indications
         if encounter.entry_relationship:
             reasons = self._extract_reason_codes(encounter.entry_relationship)
             if reasons:
                 fhir_appointment["reasonCode"] = reasons
 
-        # Notes → comment (Appointment uses a single comment string)
+        # Comment (0..1) - Appointment uses a single comment string, not note[]
         notes = self.extract_notes_from_element(encounter, include_comments=False)
         if notes:
             fhir_appointment["comment"] = notes[0].get("text", "")
@@ -150,7 +165,7 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
 
         return generate_id_from_identifiers("Appointment", root, extension)
 
-    def _map_status(self, status_code, mood_code: str) -> str:
+    def _map_status(self, status_code: CS | None, mood_code: str) -> str:
         """Map C-CDA status and moodCode to FHIR Appointment status.
 
         The status is derived from a combination of:
@@ -217,11 +232,13 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
 
         return None, None
 
-    def _extract_created(self, authors: list) -> str | None:
+    def _extract_created(self, authors: list[Author]) -> str | None:
         """Extract created date from authors (earliest author timestamp).
 
         Per FHIR Appointment.created: the date that the appointment was initially
         created. This corresponds to the order/submit date.
+        Uses min() (earliest) because "created" represents when the appointment
+        was first entered, not when it was last modified.
 
         Args:
             authors: List of C-CDA author elements
@@ -236,10 +253,12 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
         if not authors_with_time:
             return None
 
-        earliest = min(authors_with_time, key=lambda a: a.time.value)
-        return self.convert_date(earliest.time.value)
+        earliest = min(authors_with_time, key=lambda a: str(a.time.value))  # type: ignore[union-attr]
+        time = earliest.time
+        assert time is not None and time.value is not None  # guaranteed by filter
+        return self.convert_date(time.value)
 
-    def _map_priority(self, priority_code) -> int | None:
+    def _map_priority(self, priority_code: CE | None) -> int | None:
         """Map C-CDA priorityCode to FHIR Appointment priority (unsigned int).
 
         Per FHIR R4B: 0 = undefined, lower number = higher priority.
@@ -264,19 +283,29 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
         }
         return mapping.get(code)
 
-    def _build_participants(self, encounter: CCDAEncounter) -> list[JSONObject]:
+    def _build_participants(self, encounter: CCDAEncounter, mood_code: str) -> list[JSONObject]:
         """Build FHIR Appointment.participant list.
 
         Per FHIR R4B, participant is required (1..*) and must include at least
         the patient. Additional participants come from performers and locations.
 
+        For confirmed appointments (APT), all participants get status "accepted".
+        For appointment requests (ARQ), non-patient participants get "needs-action"
+        since the appointment is not yet confirmed.
+
         Args:
             encounter: The C-CDA encounter element
+            mood_code: The C-CDA moodCode (APT or ARQ)
 
         Returns:
-            List of FHIR Appointment.participant objects
+            List of FHIR Appointment.participant objects (always non-empty)
+
+        Raises:
+            ValueError: If no participants can be built (spec requires 1..*)
         """
         participants: list[JSONObject] = []
+        # ARQ = request, providers haven't accepted yet
+        provider_status = "accepted" if mood_code == "APT" else "needs-action"
 
         # Patient participant (required)
         if self.reference_registry:
@@ -298,7 +327,7 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                     {
                         "actor": ref.to_dict(),
                         "required": "required",
-                        "status": "accepted",
+                        "status": provider_status,
                     }
                 )
 
@@ -318,14 +347,20 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                                             "display": self._get_location_display(role),
                                         },
                                         "required": "information-only",
-                                        "status": "accepted",
+                                        "status": provider_status,
                                     }
                                 )
                                 break
 
+        if not participants:
+            raise ValueError(
+                "Appointment must have at least one participant (FHIR 1..*). "
+                "Ensure reference_registry has a patient reference."
+            )
+
         return participants
 
-    def _get_location_display(self, participant_role) -> str | None:
+    def _get_location_display(self, participant_role: ParticipantRole) -> str | None:
         """Extract display name from participant role for location."""
         if participant_role.playing_entity and participant_role.playing_entity.name:
             names = participant_role.playing_entity.name
@@ -337,7 +372,9 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                     return name.value
         return None
 
-    def _extract_reason_codes(self, entry_relationships: list) -> list[JSONObject]:
+    def _extract_reason_codes(
+        self, entry_relationships: list[EntryRelationship]
+    ) -> list[JSONObject]:
         """Extract reason codes from entry relationships.
 
         Args:

@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
-from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
+from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
 from ccda_to_fhir.constants import (
     REFERRAL_SNOMED_CODES,
@@ -33,6 +33,9 @@ from ccda_to_fhir.constants import (
     TemplateIds,
 )
 from ccda_to_fhir.types import (
+    FHIRCodeableConcept,
+    FHIRCoding,
+    FHIRReference,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -41,21 +44,26 @@ from ccda_to_fhir.types import (
 from .base import BaseConverter
 
 if TYPE_CHECKING:
+    from ccda_to_fhir.ccda.models.author import Author
     from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
+    from ccda_to_fhir.ccda.models.section import Section
 
 
-# Referral category coding per SNOMED CT
-REFERRAL_CATEGORY = {
-    "coding": [
-        {
-            "system": "http://snomed.info/sct",
-            "code": "3457005",
-            "display": "Patient referral",
-        }
+# Referral category coding per SNOMED CT, typed as a proper Pydantic model
+REFERRAL_CATEGORY = FHIRCodeableConcept(
+    coding=[
+        FHIRCoding(
+            system="http://snomed.info/sct",
+            code="3457005",
+            display="Patient referral",
+        )
     ]
-}
+)
 
-# MoodCodes valid for referral ServiceRequests
+# MoodCodes valid for referral ServiceRequests.
+# Note: ARQ overlaps with AppointmentConverter.APPOINTMENT_MOOD_CODES but is
+# valid here for Planned Acts (not Encounters) that carry referral codes.
+# Routing in DocumentConverter ensures ARQ Encounters go to AppointmentConverter.
 REFERRAL_MOOD_CODES = {"INT", "RQO", "PRP", "ARQ", "PRMS"}
 
 
@@ -69,7 +77,9 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
     Reference: docs/mapping/20-referral.md
     """
 
-    def convert(self, ccda_model: CCDAAct | CCDAEncounter, section=None) -> FHIRResourceDict:
+    def convert(
+        self, ccda_model: CCDAAct | CCDAEncounter, section: Section | None = None
+    ) -> FHIRResourceDict:
         """Convert a C-CDA referral entry to a FHIR ServiceRequest (referral).
 
         Args:
@@ -99,6 +109,13 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
                 f"expected one of {REFERRAL_MOOD_CODES}"
             )
 
+        # Validate reference_registry (required for patient subject)
+        if not self.reference_registry:
+            raise ValueError(
+                "reference_registry is required. "
+                "Cannot create referral ServiceRequest without patient reference."
+            )
+
         # Build FHIR ServiceRequest
         fhir_service_request: JSONObject = {
             "resourceType": FHIRCodes.ResourceTypes.SERVICE_REQUEST,
@@ -124,38 +141,35 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
                 if id_elem.root
             ]
 
-        # Status (required)
+        # Status (required 1..1)
         status = self._map_status(entry.status_code)
         fhir_service_request["status"] = status
 
-        # Intent (required)
+        # Intent (required 1..1)
         intent = self._map_intent(mood_code)
         fhir_service_request["intent"] = intent
 
-        # Category - always "Patient referral" for referral ServiceRequests
-        fhir_service_request["category"] = [REFERRAL_CATEGORY]
+        # Category (MS) - always "Patient referral" for referral ServiceRequests
+        fhir_service_request["category"] = [REFERRAL_CATEGORY.to_dict()]
 
-        # Code
+        # Code (required 1..1 per US Core)
         if entry.code:
             code = self.convert_code_to_codeable_concept(entry.code)
             if code:
                 fhir_service_request["code"] = code.to_dict()
+        # US Core requires code — fall back to referral category code if entry has no code
+        if "code" not in fhir_service_request:
+            fhir_service_request["code"] = REFERRAL_CATEGORY.to_dict()
 
-        # Subject (required) - patient reference
-        if not self.reference_registry:
-            raise ValueError(
-                "reference_registry is required. "
-                "Cannot create referral ServiceRequest without patient reference."
-            )
+        # Subject (required 1..1) - patient reference
         fhir_service_request["subject"] = self.reference_registry.get_patient_reference().to_dict()
 
-        # Encounter
-        if self.reference_registry:
-            encounter_ref = self.reference_registry.get_encounter_reference()
-            if encounter_ref:
-                fhir_service_request["encounter"] = encounter_ref.to_dict()
+        # Encounter (MS)
+        encounter_ref = self.reference_registry.get_encounter_reference()
+        if encounter_ref:
+            fhir_service_request["encounter"] = encounter_ref.to_dict()
 
-        # Occurrence[x] - from effectiveTime
+        # Occurrence[x] (MS) - from effectiveTime
         if entry.effective_time:
             occurrence = self._convert_occurrence(entry.effective_time)
             if occurrence:
@@ -164,13 +178,13 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
                 else:
                     fhir_service_request["occurrenceDateTime"] = occurrence
 
-        # AuthoredOn - from author/time
+        # AuthoredOn (MS) - from author/time
         if entry.author:
             authored_on = self._extract_authored_on(entry.author)
             if authored_on:
                 fhir_service_request["authoredOn"] = authored_on
 
-        # Requester - from author
+        # Requester (MS) - from author
         if entry.author:
             requester = self._extract_requester(entry.author)
             if requester:
@@ -188,7 +202,7 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
             if priority:
                 fhir_service_request["priority"] = priority
 
-        # Reason codes - from entryRelationship
+        # Reason codes (MS) - from entryRelationship
         if entry.entry_relationship:
             reasons = self._extract_reasons(entry.entry_relationship)
             if reasons.codes:
@@ -214,7 +228,7 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
 
         return generate_id_from_identifiers("ServiceRequest", root, extension)
 
-    def _map_status(self, status_code) -> str:
+    def _map_status(self, status_code: CS | None) -> str:
         """Map C-CDA status code to FHIR ServiceRequest status."""
         if status_code and status_code.null_flavor:
             null_flavor_upper = status_code.null_flavor.upper()
@@ -232,7 +246,7 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
         """Map C-CDA moodCode to FHIR ServiceRequest intent."""
         return SERVICE_REQUEST_MOOD_TO_INTENT.get(mood_code, FHIRCodes.ServiceRequestIntent.ORDER)
 
-    def _map_priority(self, priority_code) -> str | None:
+    def _map_priority(self, priority_code: CE | None) -> str | None:
         """Map C-CDA priorityCode to FHIR ServiceRequest priority."""
         if not priority_code or not priority_code.code:
             return None
@@ -263,8 +277,12 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
 
         return None
 
-    def _extract_authored_on(self, authors: list) -> str | None:
-        """Extract authoredOn from the latest author timestamp."""
+    def _extract_authored_on(self, authors: list[Author]) -> str | None:
+        """Extract authoredOn from the latest author timestamp.
+
+        Uses max() (latest) because authoredOn represents the most recent
+        authoring action, unlike Appointment.created which uses the earliest.
+        """
         if not authors:
             return None
 
@@ -272,23 +290,24 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
         if not authors_with_time:
             return None
 
-        latest = max(authors_with_time, key=lambda a: a.time.value)
-        return self.convert_date(latest.time.value)
+        latest = max(authors_with_time, key=lambda a: str(a.time.value))  # type: ignore[union-attr]
+        time = latest.time
+        assert time is not None and time.value is not None  # guaranteed by filter
+        return self.convert_date(time.value)
 
-    def _extract_requester(self, authors: list):
+    def _extract_requester(self, authors: list[Author]) -> FHIRReference | None:
         """Extract requester reference from the latest author.
 
         Falls back to the first author if none have timestamps.
         """
         from ccda_to_fhir.converters.author_references import format_person_display
-        from ccda_to_fhir.types import FHIRReference
 
         if not authors:
             return None
 
         authors_with_time = [a for a in authors if a.time and a.time.value]
         if authors_with_time:
-            selected = max(authors_with_time, key=lambda a: a.time.value)
+            selected = max(authors_with_time, key=lambda a: str(a.time.value))  # type: ignore[union-attr]
         else:
             # Fall back to first author when no timestamps present
             selected = authors[0]

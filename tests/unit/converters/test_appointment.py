@@ -336,14 +336,30 @@ class TestTiming:
         assert "start" in result
         assert "end" in result
 
-    def test_point_in_time(self, mock_reference_registry):
-        """effectiveTime with just value → start only."""
+    def test_point_in_time_booked_drops_start(self, mock_reference_registry):
+        """effectiveTime with value only + booked status → no start/end (app-1: both or neither)."""
         enc = CCDAEncounter(
             class_code="ENC",
             mood_code="APT",
             id=[II(root="test")],
             code=CD(code="185389009", code_system="2.16.840.1.113883.6.96"),
             status_code=CS(code="active"),
+            effective_time=IVL_TS(value="20240615100000"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        # app-1: booked status requires both start+end; point-in-time has no end
+        assert "start" not in result
+        assert "end" not in result
+
+    def test_point_in_time_proposed_keeps_start(self, mock_reference_registry):
+        """effectiveTime with value only + proposed status → start only (app-3 exception)."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="ARQ",
+            id=[II(root="test")],
+            code=CD(code="185389009", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="new"),
             effective_time=IVL_TS(value="20240615100000"),
         )
         converter = AppointmentConverter(reference_registry=mock_reference_registry)
@@ -492,12 +508,48 @@ class TestParticipants:
         result = converter.convert(appointment_with_performer)
         assert len(result["participant"]) >= 2  # patient + performer
 
-    def test_participant_status_accepted(self, basic_appointment, mock_reference_registry):
-        """All participants should have status=accepted."""
+    def test_apt_participant_status_accepted(self, basic_appointment, mock_reference_registry):
+        """APT: all participants should have status=accepted."""
         converter = AppointmentConverter(reference_registry=mock_reference_registry)
         result = converter.convert(basic_appointment)
         for participant in result["participant"]:
             assert participant["status"] == "accepted"
+
+    def test_arq_patient_accepted_performer_needs_action(self, mock_reference_registry):
+        """ARQ: patient=accepted, performers=needs-action (unconfirmed request)."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="ARQ",
+            id=[II(root="test")],
+            code=CD(code="185389009", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="new"),
+            performer=[
+                Performer(
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+                    ),
+                )
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        # Patient participant should be accepted
+        assert result["participant"][0]["status"] == "accepted"
+        # Performer participant should be needs-action
+        assert result["participant"][1]["status"] == "needs-action"
+
+    def test_no_registry_raises(self):
+        """Missing registry should raise ValueError."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            code=CD(code="185389009", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+        )
+        converter = AppointmentConverter()
+        with pytest.raises(ValueError, match="reference_registry is required"):
+            converter.convert(enc)
 
 
 # ============================================================================

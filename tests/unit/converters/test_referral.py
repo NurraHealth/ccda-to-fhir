@@ -433,6 +433,21 @@ class TestCode:
         result = converter.convert(referral_with_details)
         assert result["code"]["coding"][0]["code"] == "306206005"
 
+    def test_missing_code_falls_back_to_referral_category(self, mock_reference_registry):
+        """US Core requires code (1..1); missing entry code falls back to referral category."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=None,
+            status_code=CS(code="active"),
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "code" in result
+        assert result["code"]["coding"][0]["code"] == "3457005"
+        assert result["code"]["coding"][0]["display"] == "Patient referral"
+
 
 # ============================================================================
 # Encounter Input Tests (Planned Encounter as referral)
