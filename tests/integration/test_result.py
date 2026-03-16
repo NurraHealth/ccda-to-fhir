@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ccda_to_fhir.convert import convert_document
 from ccda_to_fhir.types import JSONObject
 
 from .conftest import wrap_in_ccda_document
+
+DOCUMENTS_DIR = Path(__file__).parent / "fixtures" / "documents"
 
 RESULTS_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.3.1"
 
@@ -346,5 +350,43 @@ class TestPQTranslationFallback:
         assert "valueQuantity" in obs
         # Value should be numeric (int or float), not a string
         assert isinstance(obs["valueQuantity"]["value"], (int, float))
-        assert obs["valueQuantity"]["value"] == 179 or obs["valueQuantity"]["value"] == 179.0
+        assert obs["valueQuantity"]["value"] in (179, 179.0)
         assert obs["valueQuantity"]["unit"] == "x10e3/uL"
+
+
+class TestAthenaCCDFullDocument:
+    """Full-document integration test for Athena CCD with PQ translation pattern.
+
+    Validates that a real anonymized Athena CCD converts successfully and all
+    observations with PQ translations produce valid valueQuantity (not empty).
+    """
+
+    def test_all_observations_have_valid_value_or_data_absent_reason(self) -> None:
+        """Every Observation must have either a non-empty valueQuantity or dataAbsentReason."""
+        xml = (DOCUMENTS_DIR / "athena_ccd_pq_translation.xml").read_text()
+        bundle = convert_document(xml)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        assert len(observations) > 0, "Bundle should contain Observations"
+
+        for obs in observations:
+            has_value = any(k.startswith("value") and obs[k] for k in obs)
+            has_data_absent = "dataAbsentReason" in obs
+            has_component = "component" in obs
+            has_member = "hasMember" in obs
+            assert has_value or has_data_absent or has_component or has_member, (
+                f"Observation {obs.get('code')} has neither a value, dataAbsentReason, component, nor hasMember"
+            )
+
+    def test_no_empty_value_quantity(self) -> None:
+        """No observation should have an empty valueQuantity dict."""
+        xml = (DOCUMENTS_DIR / "athena_ccd_pq_translation.xml").read_text()
+        bundle = convert_document(xml)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        for obs in observations:
+            if "valueQuantity" in obs:
+                assert obs["valueQuantity"], f"Empty valueQuantity in {obs.get('code')}"
+                assert "value" in obs["valueQuantity"], (
+                    f"valueQuantity missing value in {obs.get('code')}"
+                )
