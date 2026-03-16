@@ -54,6 +54,8 @@ class SupportedTemplates:
         TemplateIds.PROCEDURE_ACTIVITY_OBSERVATION: "Procedure Activity Observation",
         TemplateIds.PLANNED_PROCEDURE: "Planned Procedure",
         TemplateIds.PLANNED_ACT: "Planned Act",
+        # Appointments and Referrals (19-appointment.md, 20-referral.md)
+        TemplateIds.PLANNED_ENCOUNTER: "Planned Encounter",
         # Immunizations (06-immunization.md)
         TemplateIds.IMMUNIZATION_ACTIVITY: "Immunization Activity",
         TemplateIds.IMMUNIZATION_MEDICATION_INFORMATION: "Immunization Medication Information",

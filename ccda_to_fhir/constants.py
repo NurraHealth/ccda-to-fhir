@@ -74,6 +74,7 @@ class TemplateIds:
     # Encounter templates
     ENCOUNTER_ACTIVITY = "2.16.840.1.113883.10.20.22.4.49"
     ENCOUNTER_DIAGNOSIS = "2.16.840.1.113883.10.20.22.4.80"
+    PLANNED_ENCOUNTER = "2.16.840.1.113883.10.20.22.4.40"
 
     # Note templates
     NOTE_ACTIVITY = "2.16.840.1.113883.10.20.22.4.202"
@@ -635,6 +636,19 @@ class FHIRCodes:
         ASAP = "asap"
         STAT = "stat"
 
+    # Appointment status
+    class AppointmentStatus:
+        PROPOSED = "proposed"
+        PENDING = "pending"
+        BOOKED = "booked"
+        ARRIVED = "arrived"
+        FULFILLED = "fulfilled"
+        CANCELLED = "cancelled"
+        NOSHOW = "noshow"
+        ENTERED_IN_ERROR = "entered-in-error"
+        CHECKED_IN = "checked-in"
+        WAITLIST = "waitlist"
+
     # Encounter status
     class EncounterStatus:
         PLANNED = "planned"
@@ -758,6 +772,7 @@ class FHIRCodes:
         CARETEAM = "CareTeam"
         COVERAGE = "Coverage"
         SERVICE_REQUEST = "ServiceRequest"
+        APPOINTMENT = "Appointment"
 
     # Patient gender
     class PatientGender:
@@ -1197,6 +1212,52 @@ SERVICE_REQUEST_PRIORITY_TO_FHIR = {
     "A": FHIRCodes.ServiceRequestPriority.ASAP,  # ASAP
     "EL": FHIRCodes.ServiceRequestPriority.ROUTINE,  # Elective
 }
+
+# =============================================================================
+# Appointment Mappings
+# =============================================================================
+
+# Map C-CDA Planned Encounter statusCode to FHIR Appointment status
+# Per FHIR R4B: proposed | pending | booked | arrived | fulfilled | cancelled |
+#               noshow | entered-in-error | checked-in | waitlist
+APPOINTMENT_STATUS_TO_FHIR = {
+    "new": "proposed",
+    "active": "booked",
+    "completed": "fulfilled",
+    "aborted": "cancelled",
+    "cancelled": "cancelled",
+    "held": "waitlist",
+    "suspended": "waitlist",
+}
+
+# Map C-CDA moodCode to FHIR Appointment status hint
+# APT (appointment) → booked, ARQ (appointment request) → proposed
+APPOINTMENT_MOOD_TO_STATUS = {
+    "APT": "booked",
+    "ARQ": "proposed",
+}
+
+# =============================================================================
+# Referral Mappings
+# =============================================================================
+
+# SNOMED codes that identify referral-type procedures/acts
+REFERRAL_SNOMED_CODES = {
+    "3457005",  # Patient referral
+    "306206005",  # Referral to service
+    "183515008",  # Referral to joint clinic
+    "183561008",  # Referral to general practitioner
+    "183866009",  # Referral to mental health team
+    "308459004",  # Referral to physiotherapist
+    "183583007",  # Referral to psychiatrist
+    "306353006",  # Referral to ear, nose and throat service
+    "183519002",  # Referral to chiropodist
+    "183523005",  # Referral to dietician
+    "306294006",  # Referral to establishment
+}
+
+# LOINC section code for referrals (non-standard but used by some EHRs)
+REFERRAL_SECTION_LOINC = "42349-1"
 
 # =============================================================================
 # Encounter Mappings
