@@ -139,7 +139,7 @@ def convert_careteam_organizer(
     organizer: Organizer,
     code_system_mapper: CodeSystemMapper | None = None,
     metadata_callback: Callable[..., None] | None = None,
-    _section: Section | None = None,
+    section: Section | None = None,  # noqa: ARG001
     reference_registry: ReferenceRegistry | None = None,
 ) -> list[FHIRResourceDict]:
     """Convert a Care Team Organizer to FHIR CareTeam and related resources.
