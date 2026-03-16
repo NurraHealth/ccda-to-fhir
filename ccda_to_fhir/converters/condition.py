@@ -628,8 +628,8 @@ class ConditionConverter(BaseConverter[Observation]):
         Returns:
             Tuple of (onset_dict, abatement_dict)
         """
-        onset = None
-        abatement = None
+        onset: JSONObject | None = None
+        abatement: JSONObject | None = None
 
         if not observation.effective_time:
             return onset, abatement
