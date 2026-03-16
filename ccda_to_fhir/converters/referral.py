@@ -41,11 +41,13 @@ from ccda_to_fhir.types import (
     ReasonResult,
 )
 
+from .author_references import format_organization_display
 from .base import BaseConverter
 
 if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.author import Author
     from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
+    from ccda_to_fhir.ccda.models.performer import Performer
     from ccda_to_fhir.ccda.models.section import Section
 
 
@@ -190,11 +192,21 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
             if requester:
                 fhir_service_request["requester"] = requester.to_dict()
 
-        # Performer - from performer
+        # Performer - from performer (practitioners + organizations)
         if entry.performer:
-            performers = self.extract_performer_references(entry.performer)
+            performers = self._extract_performer_and_org_references(entry.performer)
             if performers:
                 fhir_service_request["performer"] = [p.to_dict() for p in performers]
+
+        # PerformerType - from performer assignedEntity code
+        if entry.performer:
+            performer_type = self._extract_performer_type(entry.performer)
+            if performer_type:
+                fhir_service_request["performerType"] = performer_type.to_dict()
+
+        # doNotPerform - from negationInd (only Acts have this)
+        if isinstance(entry, CCDAAct) and entry.negation_ind:
+            fhir_service_request["doNotPerform"] = True
 
         # Priority
         if entry.priority_code:
@@ -209,6 +221,12 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
                 fhir_service_request["reasonCode"] = [c.to_dict() for c in reasons.codes]
             if reasons.references:
                 fhir_service_request["reasonReference"] = [r.to_dict() for r in reasons.references]
+
+        # Patient instruction - from entryRelationship with Instruction template
+        if entry.entry_relationship:
+            patient_instruction = self._extract_patient_instruction(entry.entry_relationship)
+            if patient_instruction:
+                fhir_service_request["patientInstruction"] = patient_instruction
 
         # Notes
         notes = self.extract_notes_from_element(entry, include_comments=False)
@@ -299,8 +317,13 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
         """Extract requester reference from the latest author.
 
         Falls back to the first author if none have timestamps.
+        When the author has a representedOrganization but no assignedPerson,
+        creates an Organization reference instead.
         """
-        from ccda_to_fhir.converters.author_references import format_person_display
+        from ccda_to_fhir.converters.author_references import (
+            format_organization_display,
+            format_person_display,
+        )
 
         if not authors:
             return None
@@ -312,14 +335,111 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
             # Fall back to first author when no timestamps present
             selected = authors[0]
 
-        if selected.assigned_author and selected.assigned_author.assigned_person:
-            assigned_author = selected.assigned_author
-            if assigned_author.id:
-                for id_elem in assigned_author.id:
+        if not selected.assigned_author:
+            return None
+
+        assigned_author = selected.assigned_author
+
+        # Prefer Practitioner reference when assignedPerson is present
+        if assigned_author.assigned_person and assigned_author.id:
+            for id_elem in assigned_author.id:
+                if id_elem.root:
+                    pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
+                    display = format_person_display(assigned_author.assigned_person)
+                    return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+
+        # Fall back to Organization when no assignedPerson but representedOrganization exists
+        if assigned_author.represented_organization and assigned_author.represented_organization.id:
+            org = assigned_author.represented_organization
+            for id_elem in org.id:  # type: ignore[union-attr]
+                if id_elem.root:
+                    org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
+                    display = format_organization_display(org)
+                    return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+
+        return None
+
+    def _extract_performer_and_org_references(
+        self,
+        performers: list[Performer],
+    ) -> list[FHIRReference]:
+        """Extract performer references including both Practitioner and Organization.
+
+        For each performer, creates a Practitioner reference from assignedEntity.
+        Additionally, if the performer's assignedEntity has a representedOrganization,
+        adds an Organization reference.
+
+        Args:
+            performers: List of C-CDA Performer elements
+
+        Returns:
+            List of FHIRReference objects (Practitioners and Organizations)
+        """
+        references = self.extract_performer_references(performers)
+
+        for performer in performers:
+            if not performer or not performer.assigned_entity:
+                continue
+
+            org = performer.assigned_entity.represented_organization
+            if org and org.id:
+                for id_elem in org.id:
                     if id_elem.root:
-                        pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                        display = format_person_display(assigned_author.assigned_person)
-                        return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                        org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
+                        display = format_organization_display(org)
+                        references.append(
+                            FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+                        )
+                        break
+
+        return references
+
+    def _extract_performer_type(self, performers: list[Performer]) -> FHIRCodeableConcept | None:
+        """Extract performerType from C-CDA performer assignedEntity code.
+
+        Args:
+            performers: List of C-CDA performer elements
+
+        Returns:
+            FHIRCodeableConcept or None
+        """
+        for performer in performers:
+            if performer.assigned_entity and performer.assigned_entity.code:
+                return self.convert_code_to_codeable_concept(performer.assigned_entity.code)
+        return None
+
+    def _extract_patient_instruction(
+        self,
+        entry_relationships: list[EntryRelationship],
+    ) -> str | None:
+        """Extract patient instruction from entryRelationships.
+
+        Looks for Instruction Act (2.16.840.1.113883.10.20.22.4.20) with
+        typeCode="SUBJ" and inversionInd="true".
+
+        Args:
+            entry_relationships: List of C-CDA entry relationship elements
+
+        Returns:
+            Patient instruction text or None
+        """
+        for entry_rel in entry_relationships:
+            if (entry_rel.type_code == "SUBJ" and entry_rel.inversion_ind) and entry_rel.act:
+                act = entry_rel.act
+
+                is_instruction = False
+                if act.template_id:
+                    for template in act.template_id:
+                        if template.root == TemplateIds.INSTRUCTION_ACT:
+                            is_instruction = True
+                            break
+
+                if is_instruction and act.text:
+                    if isinstance(act.text, str):
+                        return act.text
+                    elif act.text.value:
+                        return act.text.value
+
         return None
 
     def _extract_reasons(self, entry_relationships: list[EntryRelationship]) -> ReasonResult:

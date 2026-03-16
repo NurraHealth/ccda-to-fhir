@@ -25,9 +25,16 @@ from ccda_to_fhir.constants import (
     APPOINTMENT_MOOD_TO_STATUS,
     APPOINTMENT_STATUS_TO_FHIR,
     FHIRCodes,
+    TemplateIds,
 )
-from ccda_to_fhir.types import FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import (
+    FHIRReference,
+    FHIRResourceDict,
+    JSONObject,
+    ReasonResult,
+)
 
+from .author_references import format_organization_display
 from .base import BaseConverter
 
 if TYPE_CHECKING:
@@ -114,6 +121,12 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
             if service_type:
                 fhir_appointment["serviceType"] = [service_type.to_dict()]
 
+        # Description (0..1) - from code displayName or originalText
+        if encounter.code:
+            description = self._extract_description(encounter.code)
+            if description:
+                fhir_appointment["description"] = description
+
         # Start / End - from effectiveTime
         # Per FHIR constraint app-1: either both start and end, or neither
         if encounter.effective_time:
@@ -121,6 +134,10 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
             if start and end:
                 fhir_appointment["start"] = start
                 fhir_appointment["end"] = end
+                # minutesDuration - calculate when both start and end present
+                duration = self._calculate_minutes_duration(start, end)
+                if duration is not None:
+                    fhir_appointment["minutesDuration"] = duration
             elif start and status in ("proposed", "cancelled", "waitlist"):
                 # app-3: only proposed/cancelled/waitlist can omit end
                 fhir_appointment["start"] = start
@@ -141,11 +158,13 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
         participants = self._build_participants(encounter, mood_code)
         fhir_appointment["participant"] = participants
 
-        # ReasonCode (0..*) - from entryRelationship indications
+        # ReasonCode / ReasonReference (0..*) - from entryRelationship indications
         if encounter.entry_relationship:
-            reasons = self._extract_reason_codes(encounter.entry_relationship)
-            if reasons:
-                fhir_appointment["reasonCode"] = reasons
+            reasons = self._extract_reasons(encounter.entry_relationship)
+            if reasons.codes:
+                fhir_appointment["reasonCode"] = [c.to_dict() for c in reasons.codes]
+            if reasons.references:
+                fhir_appointment["reasonReference"] = [r.to_dict() for r in reasons.references]
 
         # Comment (0..1) - Appointment uses a single comment string, not note[]
         notes = self.extract_notes_from_element(encounter, include_comments=False)
@@ -319,17 +338,53 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                     }
                 )
 
-        # Performer participants (providers)
+        # Performer participants (providers + organizations)
         if encounter.performer:
-            performer_refs = self.extract_performer_references(encounter.performer)
-            for ref in performer_refs:
-                participants.append(
-                    {
-                        "actor": ref.to_dict(),
-                        "required": "required",
-                        "status": provider_status,
-                    }
-                )
+            for performer in encounter.performer:
+                if not performer or not performer.assigned_entity:
+                    continue
+
+                entity = performer.assigned_entity
+
+                # Practitioner participant
+                if entity.id:
+                    root, extension = self.select_preferred_identifier(entity.id)
+                    if root:
+                        pract_id = self._generate_practitioner_id(root, extension)
+                        from .author_references import format_person_display
+
+                        display = format_person_display(entity.assigned_person)
+                        participant_entry: JSONObject = {
+                            "actor": FHIRReference(
+                                reference=f"urn:uuid:{pract_id}", display=display
+                            ).to_dict(),
+                            "required": "required",
+                            "status": provider_status,
+                        }
+                        # Add participant type from assignedEntity code (specialty/role)
+                        if entity.code:
+                            ptype = self.convert_code_to_codeable_concept(entity.code)
+                            if ptype:
+                                participant_entry["type"] = [ptype.to_dict()]
+                        participants.append(participant_entry)
+
+                # Organization participant (from representedOrganization)
+                org = entity.represented_organization
+                if org and org.id:
+                    for id_elem in org.id:
+                        if id_elem.root:
+                            org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
+                            org_display = format_organization_display(org)
+                            participants.append(
+                                {
+                                    "actor": FHIRReference(
+                                        reference=f"urn:uuid:{org_id}", display=org_display
+                                    ).to_dict(),
+                                    "required": "information-only",
+                                    "status": provider_status,
+                                }
+                            )
+                            break
 
         # Location participants (from participant with LOC typeCode)
         if encounter.participant:
@@ -372,23 +427,63 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                     return name.value
         return None
 
-    def _extract_reason_codes(
-        self, entry_relationships: list[EntryRelationship]
-    ) -> list[JSONObject]:
-        """Extract reason codes from entry relationships.
+    def _extract_reasons(self, entry_relationships: list[EntryRelationship]) -> ReasonResult:
+        """Extract reason codes and references from entryRelationships.
+
+        Delegates to base class method for consistent handling across converters,
+        producing both reasonCode and reasonReference when a Problem Observation
+        matches a Condition in the bundle.
 
         Args:
             entry_relationships: List of C-CDA entry relationship elements
 
         Returns:
-            List of FHIR CodeableConcept dicts
+            ReasonResult with codes and references lists
         """
-        reasons: list[JSONObject] = []
-        for entry_rel in entry_relationships:
-            if entry_rel.type_code == "RSON" and entry_rel.observation:
-                obs = entry_rel.observation
-                if obs.value:
-                    code = self.convert_code_to_codeable_concept(obs.value)
-                    if code:
-                        reasons.append(code.to_dict())
-        return reasons
+        return self.extract_reasons_from_entry_relationships(
+            entry_relationships,
+            problem_template_id=TemplateIds.PROBLEM_OBSERVATION,
+        )
+
+    def _extract_description(self, code: CE) -> str | None:
+        """Extract appointment description from C-CDA code element.
+
+        Uses displayName first, falls back to originalText.
+
+        Args:
+            code: The C-CDA code element
+
+        Returns:
+            Description string or None
+        """
+        if code.display_name:
+            return code.display_name
+        if code.original_text:
+            text = code.original_text
+            if isinstance(text, str):
+                return text
+            if hasattr(text, "value") and text.value:
+                return text.value
+        return None
+
+    def _calculate_minutes_duration(self, start: str, end: str) -> int | None:
+        """Calculate duration in minutes between start and end datetimes.
+
+        Args:
+            start: FHIR dateTime string
+            end: FHIR dateTime string
+
+        Returns:
+            Duration in minutes (positive integer) or None if unable to calculate
+        """
+        from datetime import datetime
+
+        try:
+            # Parse ISO 8601 datetime strings
+            start_dt = datetime.fromisoformat(start)
+            end_dt = datetime.fromisoformat(end)
+            delta = end_dt - start_dt
+            minutes = int(delta.total_seconds() // 60)
+            return minutes if minutes > 0 else None
+        except (ValueError, TypeError):
+            return None

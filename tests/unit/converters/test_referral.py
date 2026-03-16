@@ -15,9 +15,23 @@ import pytest
 
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.author import AssignedAuthor, Author
-from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, ENXP, II, IVL_TS, PN, TS, AssignedPerson
+from ccda_to_fhir.ccda.models.author import RepresentedOrganization as AuthorRepresentedOrganization
+from ccda_to_fhir.ccda.models.datatypes import (
+    CD,
+    CE,
+    CS,
+    ED,
+    ENXP,
+    II,
+    IVL_TS,
+    ON,
+    PN,
+    TS,
+    AssignedPerson,
+)
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
-from ccda_to_fhir.ccda.models.performer import AssignedEntity, Performer
+from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
+from ccda_to_fhir.ccda.models.performer import AssignedEntity, Performer, RepresentedOrganization
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.converters.referral import ReferralConverter, is_referral_code
@@ -977,3 +991,355 @@ class TestIsReferralCodeEdgeCases:
             ],
         )
         assert is_referral_code(code) is True
+
+
+# ============================================================================
+# Requester as Organization Tests
+# ============================================================================
+
+
+class TestRequesterOrganization:
+    """Test requester extraction falls back to Organization when no assignedPerson."""
+
+    def test_requester_organization_when_no_person(self, mock_reference_registry):
+        """Author with representedOrganization but no assignedPerson → Organization reference."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            author=[
+                Author(
+                    time=TS(value="20240601"),
+                    assigned_author=AssignedAuthor(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+                        assigned_person=None,
+                        represented_organization=AuthorRepresentedOrganization(
+                            id=[II(root="2.16.840.1.113883.4.2", extension="org-001")],
+                            name=[ON(value="Acme Health Clinic")],
+                        ),
+                    ),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "requester" in result
+        assert result["requester"]["reference"].startswith("urn:uuid:")
+        assert result["requester"]["display"] == "Acme Health Clinic"
+
+    def test_requester_prefers_person_over_org(self, mock_reference_registry):
+        """Author with both assignedPerson and representedOrganization → Practitioner ref."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            author=[
+                Author(
+                    time=TS(value="20240601"),
+                    assigned_author=AssignedAuthor(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+                        assigned_person=AssignedPerson(
+                            name=[PN(given=[ENXP(value="Dr")], family=ENXP(value="Smith"))]
+                        ),
+                        represented_organization=AuthorRepresentedOrganization(
+                            id=[II(root="2.16.840.1.113883.4.2", extension="org-001")],
+                            name=[ON(value="Acme Health")],
+                        ),
+                    ),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "requester" in result
+        # Should be the practitioner, not the org
+        assert "Smith" in result["requester"]["display"]
+
+    def test_requester_org_no_id_returns_none(self, mock_reference_registry):
+        """Author with representedOrganization but no org id → no requester."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            author=[
+                Author(
+                    time=TS(value="20240601"),
+                    assigned_author=AssignedAuthor(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="1234567890")],
+                        assigned_person=None,
+                        represented_organization=AuthorRepresentedOrganization(
+                            id=None,
+                            name=[ON(value="Org Without ID")],
+                        ),
+                    ),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "requester" not in result
+
+
+# ============================================================================
+# Performer Organization Tests
+# ============================================================================
+
+
+class TestPerformerOrganization:
+    """Test performer extraction includes Organization references."""
+
+    def test_performer_with_org(self, mock_reference_registry):
+        """Performer with representedOrganization → both Practitioner and Organization refs."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            performer=[
+                Performer(
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+                        represented_organization=RepresentedOrganization(
+                            id=[II(root="2.16.840.1.113883.4.2", extension="org-perf")],
+                            name=["Performer Clinic"],
+                        ),
+                    ),
+                )
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "performer" in result
+        assert len(result["performer"]) == 2  # Practitioner + Organization
+
+    def test_performer_without_org(self, mock_reference_registry):
+        """Performer without representedOrganization → only Practitioner ref."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            performer=[
+                Performer(
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+                    ),
+                )
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "performer" in result
+        assert len(result["performer"]) == 1
+
+
+# ============================================================================
+# PerformerType Tests
+# ============================================================================
+
+
+class TestPerformerType:
+    """Test performerType extraction from performer assignedEntity code."""
+
+    def test_performer_type_present(self, mock_reference_registry):
+        """Performer with assignedEntity code → performerType."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            performer=[
+                Performer(
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+                        code=CE(
+                            code="208D00000X",
+                            code_system="2.16.840.1.113883.6.101",
+                            display_name="General Practice",
+                        ),
+                    ),
+                )
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "performerType" in result
+        assert result["performerType"]["coding"][0]["code"] == "208D00000X"
+        assert result["performerType"]["coding"][0]["display"] == "General Practice"
+
+    def test_no_performer_type_without_code(self, mock_reference_registry):
+        """Performer without assignedEntity code → no performerType."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            performer=[
+                Performer(
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+                    ),
+                )
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "performerType" not in result
+
+    def test_no_performer_no_performer_type(self, basic_referral_act, mock_reference_registry):
+        """No performer → no performerType."""
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(basic_referral_act)
+        assert "performerType" not in result
+
+
+# ============================================================================
+# Patient Instruction Tests
+# ============================================================================
+
+
+class TestPatientInstruction:
+    """Test patientInstruction extraction from entryRelationships."""
+
+    def test_patient_instruction_present(self, mock_reference_registry):
+        """Instruction Act with SUBJ+inversionInd → patientInstruction."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            entry_relationship=[
+                EntryRelationship(
+                    type_code="SUBJ",
+                    inversion_ind=True,
+                    act=CCDAAct(
+                        class_code="ACT",
+                        mood_code="INT",
+                        template_id=[II(root="2.16.840.1.113883.10.20.22.4.20")],
+                        text=ED(value="Please fast for 12 hours before appointment"),
+                    ),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "patientInstruction" in result
+        assert result["patientInstruction"] == "Please fast for 12 hours before appointment"
+
+    def test_no_instruction_without_template(self, mock_reference_registry):
+        """SUBJ entryRelationship without Instruction template → no patientInstruction."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            entry_relationship=[
+                EntryRelationship(
+                    type_code="SUBJ",
+                    inversion_ind=True,
+                    act=CCDAAct(
+                        class_code="ACT",
+                        mood_code="INT",
+                        template_id=[II(root="2.16.840.1.113883.10.20.22.4.999")],
+                        text=ED(value="Not an instruction"),
+                    ),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "patientInstruction" not in result
+
+    def test_no_instruction_without_inversion_ind(self, mock_reference_registry):
+        """SUBJ entryRelationship without inversionInd → no patientInstruction."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            entry_relationship=[
+                EntryRelationship(
+                    type_code="SUBJ",
+                    inversion_ind=False,
+                    act=CCDAAct(
+                        class_code="ACT",
+                        mood_code="INT",
+                        template_id=[II(root="2.16.840.1.113883.10.20.22.4.20")],
+                        text=ED(value="Should not appear"),
+                    ),
+                ),
+            ],
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "patientInstruction" not in result
+
+    def test_no_entry_relationships_no_instruction(
+        self, basic_referral_act, mock_reference_registry
+    ):
+        """No entryRelationships → no patientInstruction."""
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(basic_referral_act)
+        assert "patientInstruction" not in result
+
+
+# ============================================================================
+# doNotPerform Tests
+# ============================================================================
+
+
+class TestDoNotPerform:
+    """Test doNotPerform from negationInd."""
+
+    def test_negation_ind_true(self, mock_reference_registry):
+        """negationInd=true → doNotPerform=true."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            negation_ind=True,
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert result["doNotPerform"] is True
+
+    def test_negation_ind_false(self, mock_reference_registry):
+        """negationInd=false → no doNotPerform."""
+        act = CCDAAct(
+            class_code="ACT",
+            mood_code="RQO",
+            id=[II(root="test")],
+            code=CD(code="3457005", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            negation_ind=False,
+        )
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(act)
+        assert "doNotPerform" not in result
+
+    def test_negation_ind_none(self, basic_referral_act, mock_reference_registry):
+        """No negationInd → no doNotPerform."""
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(basic_referral_act)
+        assert "doNotPerform" not in result
+
+    def test_encounter_no_negation_ind(self, referral_encounter, mock_reference_registry):
+        """Encounter entries don't have negationInd → no doNotPerform."""
+        converter = ReferralConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(referral_encounter)
+        assert "doNotPerform" not in result
