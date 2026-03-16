@@ -8,16 +8,29 @@ entry-level author reference builders.
 from __future__ import annotations
 
 import re
+from typing import Protocol, runtime_checkable
 
 from ccda_to_fhir.ccda.models.author import (
     AssignedAuthor,
     AssignedAuthoringDevice,
     Author,
-    RepresentedOrganization,
 )
 from ccda_to_fhir.ccda.models.datatypes import ON, PN, AssignedPerson
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRReference
+
+
+@runtime_checkable
+class HasOrganizationName(Protocol):
+    """Structural type for any model with an optional name list.
+
+    Satisfied by both author.RepresentedOrganization and
+    performer.RepresentedOrganization, which are structurally identical
+    but defined in separate modules.
+    """
+
+    @property
+    def name(self) -> list[ON | str] | None: ...
 
 
 def _extract_enxp_values(parts: list | None) -> list[str]:
@@ -107,7 +120,7 @@ def format_device_display(device: AssignedAuthoringDevice | None) -> str | None:
     return manufacturer or software or None
 
 
-def format_organization_display(org: RepresentedOrganization | None) -> str | None:
+def format_organization_display(org: HasOrganizationName | None) -> str | None:
     """Format an organization name for FHIR Reference.display.
 
     Extracts the first name from the organization's name list.
