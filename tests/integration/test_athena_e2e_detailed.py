@@ -3348,3 +3348,57 @@ class TestAthenaDetailedValidation:
                         assert quantity.system == "http://unitsofmeasure.org", (
                             f"Observation.component[{i}].valueQuantity.system should be UCUM"
                         )
+
+    def test_no_appointments_in_bundle(self, athena_bundle):
+        """Athena Planned Encounters have moodCode=INT — no Appointments should exist.
+
+        The athena_ccd.xml has 3 Planned Encounter entries with moodCode=INT.
+        Only APT/ARQ moodCodes produce Appointment resources.
+        """
+        appointments = [
+            e.resource
+            for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "Appointment"
+        ]
+        assert len(appointments) == 0, (
+            "Planned Encounters with moodCode=INT should not produce Appointment resources"
+        )
+
+    def test_planned_encounters_with_bad_codes_skipped(self, athena_bundle):
+        """Athena Planned Encounters have nullFlavor/invalid codes — no ServiceRequests produced.
+
+        The athena_ccd.xml has 3 Planned Encounter (V2) entries and 2 Planned Procedures,
+        but all have nullFlavor or codes that fail validation, so they are gracefully skipped
+        rather than producing invalid ServiceRequest resources.
+        """
+        service_requests = [
+            e.resource
+            for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "ServiceRequest"
+        ]
+        assert len(service_requests) == 0, (
+            f"Expected 0 ServiceRequests (all Athena planned entries have invalid codes), "
+            f"got {len(service_requests)}"
+        )
+
+    def test_no_referral_service_requests(self, athena_bundle):
+        """Athena has no canonical referral SNOMED codes — no referral-categorized ServiceRequests.
+
+        Although the Athena document has codes like 444831000124102 (physical therapy referral)
+        and 308474002 (neurologist referral), these are not in the canonical REFERRAL_SNOMED_CODES
+        set (3457005, 306206005, etc.), so they should be regular ServiceRequests without
+        referral category.
+        """
+        service_requests = [
+            e.resource
+            for e in athena_bundle.entry
+            if e.resource.get_resource_type() == "ServiceRequest"
+        ]
+        for sr_res in service_requests:
+            sr = sr_res.dict() if hasattr(sr_res, "dict") else sr_res.model_dump()
+            for cat in sr.get("category", []):
+                for coding in cat.get("coding", []):
+                    assert coding.get("code") != "3457005", (
+                        "No ServiceRequest should have referral category (3457005) — "
+                        "Athena codes are not in REFERRAL_SNOMED_CODES"
+                    )

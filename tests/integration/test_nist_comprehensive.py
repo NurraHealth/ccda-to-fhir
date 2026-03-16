@@ -963,6 +963,30 @@ class TestNISTComprehensive:
         assert "reference" in sr["subject"]
         assert sr["subject"]["reference"].startswith("urn:uuid:")
 
+    def test_no_appointments_in_bundle(self, nist_bundle):
+        """NIST Planned Encounter has moodCode=INT, not APT/ARQ — no Appointments should exist."""
+        appointments = [
+            e.resource for e in nist_bundle.entry if e.resource.get_resource_type() == "Appointment"
+        ]
+        assert len(appointments) == 0, (
+            "Planned Encounters with moodCode=INT should not produce Appointment resources"
+        )
+
+    def test_no_referral_service_requests(self, nist_bundle):
+        """NIST has no referral-coded entries — no ServiceRequest should have referral category."""
+        service_requests = [
+            e.resource
+            for e in nist_bundle.entry
+            if e.resource.get_resource_type() == "ServiceRequest"
+        ]
+        for sr_res in service_requests:
+            sr = sr_res.dict() if hasattr(sr_res, "dict") else sr_res.model_dump()
+            for cat in sr.get("category", []):
+                for coding in cat.get("coding", []):
+                    assert coding.get("code") != "3457005", (
+                        "No ServiceRequest should have referral category (3457005)"
+                    )
+
     def test_location_exact_values(self, nist_bundle):
         """Validate Location has EXACT values."""
         locations = [
