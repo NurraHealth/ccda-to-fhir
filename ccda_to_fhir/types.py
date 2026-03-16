@@ -99,6 +99,84 @@ class FHIRReference(BaseModel, frozen=True):
         return self.model_dump(exclude_none=True)
 
 
+class FHIRPeriod(BaseModel, frozen=True):
+    """FHIR Period element (start and/or end datetime strings)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    start: str | None = None
+    end: str | None = None
+
+    def to_dict(self) -> JSONObject:
+        return self.model_dump(exclude_none=True)
+
+
+class FHIRAttachment(BaseModel, frozen=True):
+    """FHIR Attachment element (contentType + data or data-absent-reason extension).
+
+    When ``data`` is provided, the attachment carries inline content.
+    When ``data_extension`` is provided instead, it represents the FHIR
+    ``_data`` element with a data-absent-reason extension.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    content_type: str
+    data: str | None = None
+    data_extension: list[dict[str, str]] | None = None
+
+    def to_dict(self) -> JSONObject:
+        result: JSONObject = {"contentType": self.content_type}
+        if self.data is not None:
+            result["data"] = self.data
+        if self.data_extension is not None:
+            result["_data"] = {"extension": self.data_extension}
+        return result
+
+
+class FHIRDocRefContent(BaseModel, frozen=True):
+    """FHIR DocumentReference.content element (wraps an attachment)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    attachment: FHIRAttachment
+
+    def to_dict(self) -> JSONObject:
+        return {"attachment": self.attachment.to_dict()}
+
+
+class FHIRDocRefContext(BaseModel, frozen=True):
+    """FHIR DocumentReference.context element (period + encounter references)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    period: FHIRPeriod | None = None
+    encounter: list[FHIRReference] = Field(default_factory=list)
+
+    def __bool__(self) -> bool:
+        return self.period is not None or bool(self.encounter)
+
+    def to_dict(self) -> JSONObject:
+        result: JSONObject = {}
+        if self.period is not None:
+            result["period"] = self.period.to_dict()
+        if self.encounter:
+            result["encounter"] = [e.to_dict() for e in self.encounter]
+        return result
+
+
+class FHIRRelatesTo(BaseModel, frozen=True):
+    """FHIR DocumentReference.relatesTo element (code + target reference)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+    target: FHIRReference
+
+    def to_dict(self) -> JSONObject:
+        return {"code": self.code, "target": self.target.to_dict()}
+
+
 class ReasonResult(BaseModel, frozen=True):
     """Result of extracting reason codes and references from C-CDA entry relationships."""
 
