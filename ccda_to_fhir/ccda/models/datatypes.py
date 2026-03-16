@@ -214,6 +214,7 @@ class PQ(CDAModel):
     value: float | str | None = None
     unit: str | None = None
     null_flavor: str | None = Field(default=None, alias="nullFlavor")
+    original_text: ED | None = Field(default=None, alias="originalText")
     translation: list[PQ] | None = None
 
 

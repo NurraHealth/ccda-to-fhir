@@ -1061,34 +1061,61 @@ class ObservationConverter(BaseConverter[Observation]):
     def _convert_pq_to_value_quantity(self, pq: PQ) -> JSONObject:
         """Convert C-CDA PQ to FHIR valueQuantity.
 
+        When the PQ has nullFlavor with no direct value/unit, falls back to
+        the first translation element (common in Athena CDAs where non-standard
+        UCUM units like x10e3/uL are placed in a translation child).
+
         Args:
             pq: The C-CDA Physical Quantity
 
         Returns:
-            Dictionary with valueQuantity element
+            Dictionary with valueQuantity element, or empty dict if no value
         """
+        # Resolve effective value and unit, falling back to translation
+        effective_value = pq.value
+        effective_unit = pq.unit
+
+        is_from_translation = False
+        if effective_value is None and pq.translation:
+            for trans in pq.translation:
+                if trans.value is not None:
+                    effective_value = trans.value
+                    # Prefer the translation's own unit over the parent's
+                    effective_unit = trans.unit or effective_unit
+                    # Use originalText as unit if no explicit unit on translation
+                    if effective_unit is None and trans.original_text and trans.original_text.value:
+                        effective_unit = trans.original_text.value
+                    is_from_translation = True
+                    break
+
         quantity: JSONObject = {}
 
         # Handle value (may be string from parser)
-        if pq.value is not None:
-            if isinstance(pq.value, str):
+        if effective_value is not None:
+            if isinstance(effective_value, str):
                 # Try to convert to numeric
                 try:
-                    if "." in pq.value:
-                        quantity["value"] = float(pq.value)
+                    if "." in effective_value:
+                        quantity["value"] = float(effective_value)
                     else:
-                        quantity["value"] = int(pq.value)
+                        quantity["value"] = int(effective_value)
                 except (ValueError, TypeError):
                     # If conversion fails, use as string
-                    quantity["value"] = pq.value
+                    quantity["value"] = effective_value
             else:
-                quantity["value"] = pq.value
+                quantity["value"] = effective_value
 
-        # Add unit
-        if pq.unit:
-            quantity["unit"] = pq.unit
-            quantity["system"] = FHIRSystems.UCUM
-            quantity["code"] = pq.unit
+        # Add unit — only set UCUM system when the unit came from a standard PQ,
+        # not from a translation originalText which may be non-UCUM (e.g. x10e3/uL)
+        if effective_unit:
+            quantity["unit"] = effective_unit
+            if not is_from_translation:
+                quantity["system"] = FHIRSystems.UCUM
+                quantity["code"] = effective_unit
+
+        # Don't return empty valueQuantity — let caller handle dataAbsentReason
+        if not quantity:
+            return {}
 
         return {"valueQuantity": quantity}
 

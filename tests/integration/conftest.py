@@ -474,6 +474,48 @@ def fhir_result() -> dict[str, Any]:
 
 
 @pytest.fixture
+def ccda_result_pq_translation() -> str:
+    """Load C-CDA result with PQ nullFlavor and value in translation."""
+    return (CCDA_FIXTURES_DIR / "result_pq_translation.xml").read_text()
+
+
+@pytest.fixture
+def ccda_result_pq_nullflavor_no_translation() -> str:
+    """Load C-CDA result with PQ nullFlavor but no translation element."""
+    return (CCDA_FIXTURES_DIR / "result_pq_nullflavor_no_translation.xml").read_text()
+
+
+@pytest.fixture
+def ccda_result_pq_translation_no_original_text() -> str:
+    """Load C-CDA result with PQ translation that has value but no originalText."""
+    return (CCDA_FIXTURES_DIR / "result_pq_translation_no_original_text.xml").read_text()
+
+
+@pytest.fixture
+def ccda_result_pq_multiple_translations() -> str:
+    """Load C-CDA result with PQ nullFlavor and multiple translations."""
+    return (CCDA_FIXTURES_DIR / "result_pq_multiple_translations.xml").read_text()
+
+
+@pytest.fixture
+def ccda_result_pq_direct_value_with_translation() -> str:
+    """Load C-CDA result with PQ that has both direct value and translation."""
+    return (CCDA_FIXTURES_DIR / "result_pq_direct_value_with_translation.xml").read_text()
+
+
+@pytest.fixture
+def ccda_result_pq_empty_translation_list() -> str:
+    """Load C-CDA result with PQ nullFlavor and translation with no value."""
+    return (CCDA_FIXTURES_DIR / "result_pq_empty_translation_list.xml").read_text()
+
+
+@pytest.fixture
+def ccda_result_pq_translation_string_int() -> str:
+    """Load C-CDA result with PQ translation where value is a string integer."""
+    return (CCDA_FIXTURES_DIR / "result_pq_translation_string_int.xml").read_text()
+
+
+@pytest.fixture
 def ccda_encounter() -> str:
     """Load C-CDA encounter fixture."""
     return (CCDA_FIXTURES_DIR / "encounter.xml").read_text()

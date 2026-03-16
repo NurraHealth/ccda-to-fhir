@@ -1,0 +1,593 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet href="CCDA.xsl" type="text/xsl"?><ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <realmCode code="US"/>
+    <typeId extension="POCD_HD000040" root="2.16.840.1.113883.1.3"/>
+    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.1.1"/>
+    <templateId extension="2023-05-01" root="2.16.840.1.113883.10.20.22.1.1"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.1.2"/>
+    <templateId root="2.16.840.1.113883.10.20.22.1.2"/>
+    <id root="2a3b3536-660b-4b3c-aebe-8437be282232"/>
+    <code code="34133-9" codeSystem="2.16.840.1.113883.6.1" displayName="Summarization of Episode Note"/>
+    <title>Continuity of Care Document</title>
+    <effectiveTime value="20260304112847-0500"/>
+    <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+    <languageCode code="en-US"/>
+    <recordTarget>
+        <patientRole>
+            <id extension="a-55123.E-100234.P-100234" root="2.16.840.1.113883.3.564"/>
+            <addr use="HP">
+                <streetAddressLine>12400 MESA VERDE DR</streetAddressLine>
+                <city>CHANDLER</city>
+                <state>CA</state>
+                <postalCode>85225</postalCode>
+                <country>USA</country>
+            </addr>
+            <telecom use="HP" value="tel:+1-(480) 555-0101"/>
+            <patient>
+                <name use="L">
+                    <given>Maria</given>
+                    <family>Santos</family>
+                </name>
+                <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1" codeSystemName="AdministrativeGender" displayName="Female"/>
+                <birthTime value="19610207"/>
+                <raceCode codeSystem="2.16.840.1.113883.6.238" codeSystemName="Race &amp; Ethnicity - CDC" nullFlavor="NI"/>
+                <ethnicGroupCode code="2135-2" codeSystem="2.16.840.1.113883.6.238" codeSystemName="Race &amp; Ethnicity - CDC" displayName="Hispanic or Latino"/>
+                <languageCommunication>
+                    <languageCode code="en"/>
+                </languageCommunication>
+            </patient>
+            <providerOrganization>
+                <id extension="1234567890" root="2.16.840.1.113883.4.6"/>
+                <name>AZ - SAGUARO HEALTH PARTNERS LLC</name>
+                <telecom use="WP" value="tel: (480) 555-0102"/>
+                <addr use="WP">
+                    <streetAddressLine>100 N Central Ave.</streetAddressLine>
+                    <city>SCOTTSDALE</city>
+                    <state>CA</state>
+                    <postalCode>85251-4500</postalCode>
+                    <country>USA</country>
+                </addr>
+            </providerOrganization>
+        </patientRole>
+    </recordTarget>
+    <author>
+        <time value="20260304112847-0500"/>
+        <assignedAuthor>
+            <id root="2.16.840.1.113883.3.564"/>
+            <addr use="WP">
+                <streetAddressLine>Boston Landing</streetAddressLine>
+                <city>Boston</city>
+                <state>MA</state>
+                <postalCode>02135</postalCode>
+                <country>US</country>
+            </addr>
+            <telecom use="WP" value="tel:+1-617-4021000"/>
+            <assignedAuthoringDevice>
+                <manufacturerModelName>athenahealth</manufacturerModelName>
+                <softwareName>Document Generation Engine</softwareName>
+            </assignedAuthoringDevice>
+            <representedOrganization>
+                <id extension="55123" root="137cbfd1-dcef-4b42-90bc-1c93b07c5fd1"/>
+                <name>AZ - SAGUARO HEALTH PARTNERS LLC, SAGUARO SCOTTSDALE CAMELBACK RD</name>
+                <telecom use="WP" value="tel: (480) 555-0102"/>
+                <addr use="WP">
+                    <streetAddressLine>100 N Central Ave.</streetAddressLine>
+                    <city>SCOTTSDALE</city>
+                    <state>CA</state>
+                    <postalCode>85251-4500</postalCode>
+                    <country>USA</country>
+                </addr>
+            </representedOrganization>
+        </assignedAuthor>
+    </author>
+    <custodian>
+        <assignedCustodian>
+            <representedCustodianOrganization>
+                <id root="2.16.840.1.113883.3.564"/>
+                <name>athenahealth</name>
+                <telecom use="WP" value="tel:+1-617-4021000"/>
+                <addr use="WP">
+                    <streetAddressLine>Boston Landing</streetAddressLine>
+                    <city>Boston</city>
+                    <state>MA</state>
+                    <postalCode>02135</postalCode>
+                    <country>US</country>
+                </addr>
+            </representedCustodianOrganization>
+        </assignedCustodian>
+    </custodian>
+    <documentationOf>
+        <serviceEvent classCode="PCPR">
+            <effectiveTime>
+                <low value="20260218"/>
+                <high nullFlavor="NI"/>
+            </effectiveTime>
+            <performer typeCode="PRF">
+                <templateId root="2.16.840.1.113883.10.20.6.2.1"/>
+                <functionCode code="UNK" displayName="Primary Care Provider"/>
+                <assignedEntity>
+                    <id extension="1234567890" root="2.16.840.1.113883.4.6"/>
+                    <code codeSystem="2.16.840.1.113883.6.101" codeSystemName="NUCC" nullFlavor="NI"/>
+                    <addr use="WP">
+                        <streetAddressLine>100 N Central Ave 300</streetAddressLine>
+                        <city>Scottsdale</city>
+                        <state>CA</state>
+                        <postalCode>85251</postalCode>
+                        <country>US</country>
+                    </addr>
+                    <telecom use="WP" value="tel: (480) 555-0103"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Elena</given>
+                            <family>Chen</family>
+                        </name>
+                    </assignedPerson>
+                    <representedOrganization>
+                        <id root="6ea19fa1-8af8-45c8-9e29-9fccdf1635f2"/>
+                        <name nullFlavor="NI"/>
+                        <telecom use="WP" value="tel: (480) 555-0103"/>
+                        <addr use="WP">
+                            <streetAddressLine>100 N Central Ave 300</streetAddressLine>
+                            <city>Scottsdale</city>
+                            <state>CA</state>
+                            <postalCode>85251</postalCode>
+                            <country>US</country>
+                        </addr>
+                    </representedOrganization>
+                </assignedEntity>
+            </performer>
+        </serviceEvent>
+    </documentationOf>
+    <componentOf>
+        <encompassingEncounter>
+            <id extension="E-5500123.A-4400567" root="2.16.840.1.113883.19"/>
+            <effectiveTime value="20260218"/>
+            <encounterParticipant typeCode="ATND">
+                <assignedEntity>
+                    <id extension="1234567890" root="2.16.840.1.113883.4.6"/>
+                    <code code="207Q00000X" codeSystem="2.16.840.1.113883.6.101" codeSystemName="NUCC" displayName="Family Practice"/>
+                    <addr use="WP">
+                        <streetAddressLine>100 N Central Ave.</streetAddressLine>
+                        <city>SCOTTSDALE</city>
+                        <state>CA</state>
+                        <postalCode>85251-4500</postalCode>
+                        <country>USA</country>
+                    </addr>
+                    <telecom use="WP" value="tel: (480) 555-0102"/>
+                    <assignedPerson>
+                        <name>
+                            <given>Elena</given>
+                            <family>Chen</family>
+                        </name>
+                    </assignedPerson>
+                </assignedEntity>
+            </encounterParticipant>
+        </encompassingEncounter>
+    </componentOf>
+    <component>
+        <structuredBody>
+            <!-- Results Section -->
+            <component>
+                <section>
+                    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.2.3.1"/>
+                    <templateId root="2.16.840.1.113883.10.20.22.2.3.1"/>
+                    <id root="01a04d09-aefa-4705-8d07-115570b960f3"/>
+                    <code code="30954-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"/>
+                    <title>Results</title>
+                    <text>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Value</th>
+                                    <th>Unit</th>
+                                    <th>Range</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><content ID="result28365437">LEUKOCYTES</content></td><td>11.5</td><td>x10e3/uL</td><td>3.4-10.8</td></tr>
+                                <tr><td><content ID="result28365438">ERYTHROCYTES</content></td><td>4.25</td><td>x10e6/uL</td><td>3.77-5.28</td></tr>
+                                <tr><td><content ID="result28365439">HEMOGLOBIN</content></td><td>13.1</td><td>g/dL</td><td>11.1-15.9</td></tr>
+                                <tr><td><content ID="result28365440">HEMATOCRIT</content></td><td>40.5</td><td>%</td><td>34.0-46.6</td></tr>
+                                <tr><td><content ID="result28365450">PLATELETS</content></td><td>179</td><td>x10e3/uL</td><td>150-379</td></tr>
+                                <tr><td><content ID="result28365451">LYMPHOCYTES.IMMATURE</content></td><td>NP</td><td/><td/></tr>
+                                <tr><td><content ID="result28365461">HEMOGLOBIN A1C</content></td><td>8.4</td><td>%</td><td>4.8-5.6</td></tr>
+                            </tbody>
+                        </table>
+                    </text>
+                    <!-- CBC Organizer with PQ translation pattern observations -->
+                    <entry>
+                        <organizer classCode="BATTERY" moodCode="EVN">
+                            <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.1"/>
+                            <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+                            <id root="7d14c389-e2bf-4689-8d3a-a9aba9777ff7"/>
+                            <code code="57021-8" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="COMPLETE BLOOD COUNT W AUTO DIFFERENTIAL PANEL" xsi:type="CE"/>
+                            <statusCode code="completed"/>
+                            <effectiveTime>
+                                <low value="20260211114300-0500"/>
+                                <high value="20260211114300-0500"/>
+                            </effectiveTime>
+                            <author>
+                                <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+                                <time value="20260221135549-0500"/>
+                                <assignedAuthor>
+                                    <id extension="1234567890" root="2.16.840.1.113883.4.6"/>
+                                    <addr use="WP">
+                                        <streetAddressLine>200 W Main St</streetAddressLine>
+                                        <city>Phoenix</city>
+                                        <state>AZ</state>
+                                        <postalCode>85003</postalCode>
+                                        <country>US</country>
+                                    </addr>
+                                    <assignedPerson>
+                                        <name>
+                                            <given>Elena Chen, MD</given>
+                                            <family>Chen</family>
+                                        </name>
+                                    </assignedPerson>
+                                    <representedOrganization>
+                                        <id extension="9900001234" root="0470aca6-3e42-489e-87b4-2119b047c0e5"/>
+                                        <name>Sample Reference Lab</name>
+                                        <telecom value="tel: (800) 555-0199"/>
+                                    </representedOrganization>
+                                </assignedAuthor>
+                            </author>
+                            <!-- Obs 1: PQ nullFlavor with translation (Athena pattern) - WBC -->
+                            <component>
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <id root="ef64bea8-2750-477d-95f5-a316fcd6515c"/>
+                                    <code code="6690-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="LEUKOCYTES"/>
+                                    <text>
+                                        <reference value="#result28365437"/>
+                                    </text>
+                                    <statusCode code="completed"/>
+                                    <effectiveTime value="20260212000000-0500"/>
+                                    <value nullFlavor="OTH" xsi:type="PQ">
+                                        <translation nullFlavor="OTH" value="11.5">
+                                            <originalText>x10e3/uL</originalText>
+                                        </translation>
+                                    </value>
+                                    <interpretationCode code="H" codeSystem="2.16.840.1.113883.5.83" displayName="above high normal"/>
+                                    <referenceRange>
+                                        <observationRange>
+                                            <text>3.4-10.8</text>
+                                            <value xsi:type="ST">3.4-10.8</value>
+                                        </observationRange>
+                                    </referenceRange>
+                                </observation>
+                            </component>
+                            <!-- Obs 2: PQ nullFlavor with translation (Athena pattern) - RBC -->
+                            <component>
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <id root="7291c7e2-56c9-469d-b6b4-bb8df8f65022"/>
+                                    <code code="789-8" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="ERYTHROCYTES"/>
+                                    <text>
+                                        <reference value="#result28365438"/>
+                                    </text>
+                                    <statusCode code="completed"/>
+                                    <effectiveTime value="20260212000000-0500"/>
+                                    <value nullFlavor="OTH" xsi:type="PQ">
+                                        <translation nullFlavor="OTH" value="4.25">
+                                            <originalText>x10e6/uL</originalText>
+                                        </translation>
+                                    </value>
+                                    <interpretationCode code="N" codeSystem="2.16.840.1.113883.5.83" displayName="normal"/>
+                                    <referenceRange>
+                                        <observationRange>
+                                            <text>3.77-5.28</text>
+                                            <value xsi:type="ST">3.77-5.28</value>
+                                        </observationRange>
+                                    </referenceRange>
+                                </observation>
+                            </component>
+                            <!-- Obs 3: Normal direct PQ value - Hemoglobin -->
+                            <component>
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <id root="08dd2aa8-47e7-4468-9856-14f43cf4ef82"/>
+                                    <code code="718-7" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="HEMOGLOBIN"/>
+                                    <text>
+                                        <reference value="#result28365439"/>
+                                    </text>
+                                    <statusCode code="completed"/>
+                                    <effectiveTime value="20260212000000-0500"/>
+                                    <value unit="g/dL" value="13.1" xsi:type="PQ"/>
+                                    <interpretationCode code="N" codeSystem="2.16.840.1.113883.5.83" displayName="normal"/>
+                                    <referenceRange>
+                                        <observationRange>
+                                            <text>11.1-15.9</text>
+                                            <value xsi:type="ST">11.1-15.9</value>
+                                        </observationRange>
+                                    </referenceRange>
+                                </observation>
+                            </component>
+                            <!-- Obs 4: Normal direct PQ value - Hematocrit -->
+                            <component>
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <id root="a072a1a8-c1d3-478a-8a9f-ea6957f123cd"/>
+                                    <code code="4544-3" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="ERYTHROCYTE/BLOOD"/>
+                                    <text>
+                                        <reference value="#result28365440"/>
+                                    </text>
+                                    <statusCode code="completed"/>
+                                    <effectiveTime value="20260212000000-0500"/>
+                                    <value unit="%" value="40.5" xsi:type="PQ"/>
+                                    <interpretationCode code="N" codeSystem="2.16.840.1.113883.5.83" displayName="normal"/>
+                                    <referenceRange>
+                                        <observationRange>
+                                            <text>34.0-46.6</text>
+                                            <value xsi:type="ST">34.0-46.6</value>
+                                        </observationRange>
+                                    </referenceRange>
+                                </observation>
+                            </component>
+                            <!-- Obs 5: PQ nullFlavor with translation, integer value - Platelets -->
+                            <component>
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <id root="d15ec9c4-8d7a-4b3e-a97f-3c1e7db5e8a1"/>
+                                    <code code="777-3" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="PLATELETS"/>
+                                    <text>
+                                        <reference value="#result28365450"/>
+                                    </text>
+                                    <statusCode code="completed"/>
+                                    <effectiveTime value="20260212000000-0500"/>
+                                    <value nullFlavor="OTH" xsi:type="PQ">
+                                        <translation nullFlavor="OTH" value="179">
+                                            <originalText>x10e3/uL</originalText>
+                                        </translation>
+                                    </value>
+                                    <interpretationCode code="N" codeSystem="2.16.840.1.113883.5.83" displayName="normal"/>
+                                    <referenceRange>
+                                        <observationRange>
+                                            <text>150-379</text>
+                                            <value xsi:type="ST">150-379</value>
+                                        </observationRange>
+                                    </referenceRange>
+                                </observation>
+                            </component>
+                            <!-- Obs 6: Cancelled observation with ST value "NP" (dataAbsentReason) -->
+                            <component>
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <id root="379599e5-3342-49fc-a8b4-9a382dc45602"/>
+                                    <code code="75652-8" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="LYMPHOCYTES.IMMATURE"/>
+                                    <text>
+                                        <reference value="#result28365451"/>
+                                    </text>
+                                    <statusCode code="cancelled"/>
+                                    <effectiveTime value="20260212000000-0500"/>
+                                    <value xsi:type="ST">NP</value>
+                                    <interpretationCode nullFlavor="NI"/>
+                                    <referenceRange>
+                                        <observationRange>
+                                            <text nullFlavor="NI"/>
+                                            <value nullFlavor="NI" xsi:type="ST"/>
+                                        </observationRange>
+                                    </referenceRange>
+                                </observation>
+                            </component>
+                        </organizer>
+                    </entry>
+                    <!-- HbA1c Organizer - single observation with normal PQ -->
+                    <entry>
+                        <organizer classCode="BATTERY" moodCode="EVN">
+                            <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.1"/>
+                            <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+                            <id root="03cd26f5-f6b8-4be9-922b-283f4aa0ed67"/>
+                            <code code="4548-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL" xsi:type="CE"/>
+                            <statusCode code="completed"/>
+                            <effectiveTime>
+                                <low value="20260211114300-0500"/>
+                                <high value="20260211114300-0500"/>
+                            </effectiveTime>
+                            <author>
+                                <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+                                <time value="20260221135549-0500"/>
+                                <assignedAuthor>
+                                    <id extension="1234567890" root="2.16.840.1.113883.4.6"/>
+                                    <addr use="WP">
+                                        <streetAddressLine>200 W Main St</streetAddressLine>
+                                        <city>Phoenix</city>
+                                        <state>AZ</state>
+                                        <postalCode>85003</postalCode>
+                                        <country>US</country>
+                                    </addr>
+                                    <assignedPerson>
+                                        <name>
+                                            <given>Elena Chen, MD</given>
+                                            <family>Chen</family>
+                                        </name>
+                                    </assignedPerson>
+                                    <representedOrganization>
+                                        <id extension="9900001234" root="82a9f893-5ad0-45ea-af9b-6c2520092773"/>
+                                        <name>Sample Reference Lab</name>
+                                        <telecom value="tel: (800) 555-0199"/>
+                                    </representedOrganization>
+                                </assignedAuthor>
+                            </author>
+                            <component>
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                                    <id root="c4ca5ba5-9f64-4151-8183-f1ca7ec39489"/>
+                                    <code code="4548-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL"/>
+                                    <text>
+                                        <reference value="#result28365461"/>
+                                    </text>
+                                    <statusCode code="completed"/>
+                                    <effectiveTime value="20260212000000-0500"/>
+                                    <value unit="%" value="8.4" xsi:type="PQ"/>
+                                    <interpretationCode code="H" codeSystem="2.16.840.1.113883.5.83" displayName="above high normal"/>
+                                    <entryRelationship typeCode="SUBJ">
+                                        <act classCode="ACT" moodCode="EVN">
+                                            <templateId root="2.16.840.1.113883.10.20.22.4.64"/>
+                                            <code code="48767-8" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="ANNOTATION COMMENT"/>
+                                            <text>
+                                                Prediabetes: 5.7 - 6.4 Diabetes: &gt;6.4 Glycemic control for adults with diabetes: &lt;7.0
+                                                <reference value="#resultnote28365461"/>
+                                            </text>
+                                        </act>
+                                    </entryRelationship>
+                                    <referenceRange>
+                                        <observationRange>
+                                            <text>4.8-5.6</text>
+                                            <value xsi:type="ST">4.8-5.6</value>
+                                        </observationRange>
+                                    </referenceRange>
+                                </observation>
+                            </component>
+                        </organizer>
+                    </entry>
+                </section>
+            </component>
+            <!-- Vital Signs Section -->
+            <component>
+                <section>
+                    <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.2.4.1"/>
+                    <id root="64822fc9-038a-4d41-a44e-61bd2fe4c105"/>
+                    <code code="8716-3" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="VITAL SIGNS"/>
+                    <title>Vitals</title>
+                    <text>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date Recorded</th>
+                                    <th>Body height</th>
+                                    <th>Heart rate</th>
+                                    <th>Body weight</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>02/18/2026</td>
+                                    <td><content ID="vital1">154.94 cm</content></td>
+                                    <td><content ID="vital2">86 /min</content></td>
+                                    <td><content ID="vital4">93893.62 g</content></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </text>
+                    <entry typeCode="DRIV">
+                        <organizer classCode="CLUSTER" moodCode="EVN">
+                            <templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.26"/>
+                            <templateId root="2.16.840.1.113883.10.20.22.4.26"/>
+                            <id root="36d20b37-1183-4748-9179-c8df0ae321d6"/>
+                            <code code="46680005" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Vital signs">
+                                <translation code="74728-7" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Vital signs, weight, height, head circumference, oximetry, BMI, and BSA panel"/>
+                            </code>
+                            <statusCode code="completed"/>
+                            <effectiveTime value="20260218"/>
+                            <component>
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId extension="2014-06-09" root="2.16.840.1.113883.10.20.22.4.27"/>
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+                                    <id root="c49a8636-f489-456d-aec4-5541f67c472d"/>
+                                    <code code="8302-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Body height"/>
+                                    <text>
+                                        <reference value="#vital1"/>
+                                    </text>
+                                    <statusCode code="completed"/>
+                                    <effectiveTime value="20260218000000-0500"/>
+                                    <value unit="cm" value="154.94" xsi:type="PQ"/>
+                                    <author>
+                                        <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+                                        <time value="20260218161932-0500"/>
+                                        <assignedAuthor>
+                                            <id root="2.16.840.1.113883.4.6"/>
+                                            <assignedPerson>
+                                                <name>
+                                                    <given>Rebecca Torres</given>
+                                                    <family>Torres</family>
+                                                </name>
+                                            </assignedPerson>
+                                            <representedOrganization>
+                                                <id nullFlavor="UNK" root="f08f5d32-4aca-4202-8e21-1ae1b453da0b"/>
+                                                <name>AZ - SAGUARO HEALTH PARTNERS LLC</name>
+                                                <telecom nullFlavor="NI"/>
+                                            </representedOrganization>
+                                        </assignedAuthor>
+                                    </author>
+                                </observation>
+                            </component>
+                            <component>
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId extension="2014-06-09" root="2.16.840.1.113883.10.20.22.4.27"/>
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+                                    <id root="57540efd-aa76-4bef-b9f5-c0e89294389f"/>
+                                    <code code="8867-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Heart rate"/>
+                                    <text>
+                                        <reference value="#vital2"/>
+                                    </text>
+                                    <statusCode code="completed"/>
+                                    <effectiveTime value="20260218000000-0500"/>
+                                    <value unit="/min" value="86" xsi:type="PQ"/>
+                                    <author>
+                                        <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+                                        <time value="20260218164655-0500"/>
+                                        <assignedAuthor>
+                                            <id root="2.16.840.1.113883.4.6"/>
+                                            <assignedPerson>
+                                                <name>
+                                                    <given>Rebecca Torres</given>
+                                                    <family>Torres</family>
+                                                </name>
+                                            </assignedPerson>
+                                            <representedOrganization>
+                                                <id nullFlavor="UNK" root="695d90ec-4e85-43d3-853a-313c58f556c9"/>
+                                                <name>AZ - SAGUARO HEALTH PARTNERS LLC</name>
+                                                <telecom nullFlavor="NI"/>
+                                            </representedOrganization>
+                                        </assignedAuthor>
+                                    </author>
+                                </observation>
+                            </component>
+                            <component>
+                                <observation classCode="OBS" moodCode="EVN">
+                                    <templateId extension="2014-06-09" root="2.16.840.1.113883.10.20.22.4.27"/>
+                                    <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+                                    <id root="2d53a5b8-33f7-4e95-b28a-9d360558c10d"/>
+                                    <code code="29463-7" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Body weight"/>
+                                    <text>
+                                        <reference value="#vital4"/>
+                                    </text>
+                                    <statusCode code="completed"/>
+                                    <effectiveTime value="20260218000000-0500"/>
+                                    <value unit="g" value="93893.62" xsi:type="PQ"/>
+                                    <author>
+                                        <templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+                                        <time value="20260218164659-0500"/>
+                                        <assignedAuthor>
+                                            <id root="2.16.840.1.113883.4.6"/>
+                                            <assignedPerson>
+                                                <name>
+                                                    <given>Rebecca Torres</given>
+                                                    <family>Torres</family>
+                                                </name>
+                                            </assignedPerson>
+                                            <representedOrganization>
+                                                <id nullFlavor="UNK" root="9ef8af25-31c7-4a84-a694-7b4745dba700"/>
+                                                <name>AZ - SAGUARO HEALTH PARTNERS LLC</name>
+                                                <telecom nullFlavor="NI"/>
+                                            </representedOrganization>
+                                        </assignedAuthor>
+                                    </author>
+                                </observation>
+                            </component>
+                        </organizer>
+                    </entry>
+                </section>
+            </component>
+        </structuredBody>
+    </component>
+</ClinicalDocument>
