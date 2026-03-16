@@ -188,3 +188,65 @@ class TestResultConversion:
         assert len(report["result"]) == len(observations)
         for ref in report["result"]:
             assert ref["reference"].startswith("urn:uuid:")
+
+
+class TestPQTranslationFallback:
+    """Tests for PQ values with nullFlavor where the actual value is in a translation child.
+
+    This is a pattern used by Athena when the unit is non-standard UCUM (e.g., x10e3/uL).
+    The PQ element has nullFlavor="OTH" with no value/unit, and a <translation> child
+    carries the actual numeric value and unit via originalText.
+    """
+
+    def test_pq_translation_produces_value_quantity(self, ccda_result_pq_translation: str) -> None:
+        """PQ with nullFlavor and translation should produce a valueQuantity, not an empty one."""
+        ccda_doc = wrap_in_ccda_document(ccda_result_pq_translation, RESULTS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        # Find the WBC observation (LOINC 6690-2) which uses PQ translation
+        wbc = next(
+            (
+                o
+                for o in observations
+                if any(c.get("code") == "6690-2" for c in o.get("code", {}).get("coding", []))
+            ),
+            None,
+        )
+        assert wbc is not None, "WBC observation not found"
+        assert "valueQuantity" in wbc, "valueQuantity missing — PQ translation fallback not working"
+        assert wbc["valueQuantity"]["value"] == 11.5
+        assert wbc["valueQuantity"]["unit"] == "x10e3/uL"
+
+    def test_pq_translation_no_empty_value_quantity(self, ccda_result_pq_translation: str) -> None:
+        """No observation should have an empty valueQuantity."""
+        ccda_doc = wrap_in_ccda_document(ccda_result_pq_translation, RESULTS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        for obs in observations:
+            if "valueQuantity" in obs:
+                assert obs["valueQuantity"], f"Empty valueQuantity in {obs.get('code')}"
+                assert "value" in obs["valueQuantity"], (
+                    f"valueQuantity missing value in {obs.get('code')}"
+                )
+
+    def test_normal_pq_still_works(self, ccda_result_pq_translation: str) -> None:
+        """Normal PQ with direct value/unit should still convert correctly."""
+        ccda_doc = wrap_in_ccda_document(ccda_result_pq_translation, RESULTS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        # Find the HGB observation (LOINC 718-7) which uses normal PQ
+        hgb = next(
+            (
+                o
+                for o in observations
+                if any(c.get("code") == "718-7" for c in o.get("code", {}).get("coding", []))
+            ),
+            None,
+        )
+        assert hgb is not None, "HGB observation not found"
+        assert "valueQuantity" in hgb
+        assert hgb["valueQuantity"]["value"] == 12.8
+        assert hgb["valueQuantity"]["unit"] == "g/dL"

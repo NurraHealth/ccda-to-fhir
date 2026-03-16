@@ -474,6 +474,12 @@ def fhir_result() -> dict[str, Any]:
 
 
 @pytest.fixture
+def ccda_result_pq_translation() -> str:
+    """Load C-CDA result with PQ nullFlavor and value in translation."""
+    return (CCDA_FIXTURES_DIR / "result_pq_translation.xml").read_text()
+
+
+@pytest.fixture
 def ccda_encounter() -> str:
     """Load C-CDA encounter fixture."""
     return (CCDA_FIXTURES_DIR / "encounter.xml").read_text()
