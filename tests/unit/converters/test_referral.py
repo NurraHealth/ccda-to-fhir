@@ -1059,8 +1059,8 @@ class TestRequesterOrganization:
         # Should be the practitioner, not the org
         assert "Smith" in result["requester"]["display"]
 
-    def test_requester_org_no_id_returns_none(self, mock_reference_registry):
-        """Author with representedOrganization but no org id → no requester."""
+    def test_requester_org_no_id_falls_back_to_author_id(self, mock_reference_registry):
+        """Author with representedOrganization but no org id → uses author id for org reference."""
         act = CCDAAct(
             class_code="ACT",
             mood_code="RQO",
@@ -1083,7 +1083,8 @@ class TestRequesterOrganization:
         )
         converter = ReferralConverter(reference_registry=mock_reference_registry)
         result = converter.convert(act)
-        assert "requester" not in result
+        assert "requester" in result
+        assert result["requester"]["display"] == "Org Without ID"
 
 
 # ============================================================================

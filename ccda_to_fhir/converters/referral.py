@@ -349,13 +349,27 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
                     return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
 
         # Fall back to Organization when no assignedPerson but representedOrganization exists
-        if assigned_author.represented_organization and assigned_author.represented_organization.id:
+        if assigned_author.represented_organization:
             org = assigned_author.represented_organization
-            for id_elem in org.id:  # type: ignore[union-attr]
-                if id_elem.root:
-                    org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
-                    display = format_organization_display(org)
-                    return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+            display = format_organization_display(org)
+
+            # Try org's own IDs first
+            if org.id:
+                for id_elem in org.id:
+                    if id_elem.root:
+                        org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
+                        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+
+            # Fall back to author's ID to generate org reference (org has no ID but author does)
+            if assigned_author.id:
+                for id_elem in assigned_author.id:
+                    if id_elem.root:
+                        org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
+                        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+
+            # Last resort: display-only reference (no resolvable ID)
+            if display:
+                return FHIRReference(display=display)
 
         return None
 
@@ -382,15 +396,24 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
                 continue
 
             org = performer.assigned_entity.represented_organization
-            if org and org.id:
+            if not org:
+                continue
+
+            display = format_organization_display(org)
+            added = False
+
+            if org.id:
                 for id_elem in org.id:
                     if id_elem.root:
                         org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
-                        display = format_organization_display(org)
                         references.append(
                             FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
                         )
+                        added = True
                         break
+
+            if not added and display:
+                references.append(FHIRReference(display=display))
 
         return references
 

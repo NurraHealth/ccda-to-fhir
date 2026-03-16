@@ -370,21 +370,46 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
 
                 # Organization participant (from representedOrganization)
                 org = entity.represented_organization
-                if org and org.id:
-                    for id_elem in org.id:
-                        if id_elem.root:
-                            org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
-                            org_display = format_organization_display(org)
-                            participants.append(
-                                {
-                                    "actor": FHIRReference(
-                                        reference=f"urn:uuid:{org_id}", display=org_display
-                                    ).to_dict(),
-                                    "required": "information-only",
-                                    "status": provider_status,
-                                }
-                            )
-                            break
+                if org:
+                    org_display = format_organization_display(org)
+                    org_ref: FHIRReference | None = None
+
+                    # Try org's own IDs
+                    if org.id:
+                        for id_elem in org.id:
+                            if id_elem.root:
+                                org_id = self._generate_organization_id(
+                                    id_elem.root, id_elem.extension
+                                )
+                                org_ref = FHIRReference(
+                                    reference=f"urn:uuid:{org_id}", display=org_display
+                                )
+                                break
+
+                    # Fall back to entity's ID for org reference
+                    if not org_ref and entity.id:
+                        for id_elem in entity.id:
+                            if id_elem.root:
+                                org_id = self._generate_organization_id(
+                                    id_elem.root, id_elem.extension
+                                )
+                                org_ref = FHIRReference(
+                                    reference=f"urn:uuid:{org_id}", display=org_display
+                                )
+                                break
+
+                    # Last resort: display-only
+                    if not org_ref and org_display:
+                        org_ref = FHIRReference(display=org_display)
+
+                    if org_ref:
+                        participants.append(
+                            {
+                                "actor": org_ref.to_dict(),
+                                "required": "information-only",
+                                "status": provider_status,
+                            }
+                        )
 
         # Location participants (from participant with LOC typeCode)
         if encounter.participant:
