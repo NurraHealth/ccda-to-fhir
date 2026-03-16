@@ -15,11 +15,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from ccda_to_fhir.ccda.models.datatypes import CD, CS, II, IVL_TS, ON, TS
+from ccda_to_fhir.ccda.models.datatypes import CD, CS, II, IVL_TS, TS
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
 from ccda_to_fhir.types import FHIRCodeableConcept, FHIRReference, FHIRResourceDict, JSONObject
 
+from .author_references import format_organization_display
 from .base import BaseConverter
 from .code_systems import CodeSystemMapper
 from .organization import OrganizationConverter
@@ -32,29 +33,9 @@ if TYPE_CHECKING:
     from ccda_to_fhir.ccda.models.performer import (
         AssignedEntity,
         Performer,
-        RepresentedOrganization,
     )
 
 logger = logging.getLogger(__name__)
-
-
-def _format_org_display(org: RepresentedOrganization) -> str | None:
-    """Extract display name from a performer RepresentedOrganization.
-
-    Args:
-        org: RepresentedOrganization from performer module
-
-    Returns:
-        Organization name or None
-    """
-    if not org.name:
-        return None
-    first_name = org.name[0]
-    if isinstance(first_name, str):
-        return first_name or None
-    if isinstance(first_name, ON):
-        return first_name.value or None
-    return None
 
 
 def _extract_resource_id(resource: FHIRResourceDict, fallback: str) -> str:
@@ -611,7 +592,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     org_oid = org.id[0].root
                     if not org_oid:
                         continue
-                    display = _format_org_display(org)
+                    display = format_organization_display(org)
                     # Check if we already created this organization
                     if org_oid in self.organization_registry:
                         return FHIRReference(
@@ -853,22 +834,21 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             org = assigned_entity.represented_organization
             if org.id and len(org.id) > 0:
                 org_oid = org.id[0].root
-                if not org_oid:
-                    pass  # Skip org without root OID
-                elif org_oid in self.organization_registry:
-                    organization_id = self.organization_registry[org_oid]
-                else:
-                    try:
-                        organization = self.organization_converter.convert(org)
-                        organization_id = _extract_resource_id(
-                            organization, f"org-{org_oid.replace('.', '-')}"
-                        )
-                        self.organization_registry[org_oid] = organization_id
-                        # Store the created resource
-                        self.created_organizations[organization_id] = organization
-                    except Exception:
-                        # Organization conversion failed, continue without it
-                        pass
+                if org_oid:
+                    if org_oid in self.organization_registry:
+                        organization_id = self.organization_registry[org_oid]
+                    else:
+                        try:
+                            organization = self.organization_converter.convert(org)
+                            organization_id = _extract_resource_id(
+                                organization, f"org-{org_oid.replace('.', '-')}"
+                            )
+                            self.organization_registry[org_oid] = organization_id
+                            # Store the created resource
+                            self.created_organizations[organization_id] = organization
+                        except Exception:
+                            # Organization conversion failed, continue without it
+                            pass
 
         # Create PractitionerRole (organization is optional per US Core)
         # Check if we already created this PractitionerRole
@@ -934,6 +914,10 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         participants: list[JSONObject],
     ) -> JSONObject | None:
         """Generate narrative text for the care team.
+
+        Named _build_careteam_narrative (not _generate_narrative) to avoid
+        incompatible override of BaseConverter._generate_narrative which has
+        a different signature (entry, section).
 
         Extracts from code/originalText or generates from structured data.
 
