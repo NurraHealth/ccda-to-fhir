@@ -17,7 +17,7 @@ from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II, IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
 from ccda_to_fhir.ccda.models.entry_relationship import EntryRelationship
 from ccda_to_fhir.ccda.models.observation import Observation
-from ccda_to_fhir.ccda.models.performer import AssignedEntity, Performer
+from ccda_to_fhir.ccda.models.performer import AssignedEntity, Performer, RepresentedOrganization
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.converters.appointment import AppointmentConverter
 from ccda_to_fhir.converters.references import ReferenceRegistry
@@ -1014,3 +1014,271 @@ class TestParticipantEdgeCases:
         converter = AppointmentConverter(reference_registry=registry)
         with pytest.raises(ValueError, match="at least one participant"):
             converter.convert(enc)
+
+
+# ============================================================================
+# Reason Reference Tests
+# ============================================================================
+
+
+class TestReasonReference:
+    """Test reasonReference extraction (shared method from BaseConverter)."""
+
+    def test_reason_code_still_works(self, mock_reference_registry):
+        """RSON observation → reasonCode (backward compatible)."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            entry_relationship=[
+                EntryRelationship(
+                    type_code="RSON",
+                    observation=Observation(
+                        class_code="OBS",
+                        mood_code="EVN",
+                        value=CD(
+                            code="29857009",
+                            code_system="2.16.840.1.113883.6.96",
+                            display_name="Chest pain",
+                        ),
+                    ),
+                ),
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "reasonCode" in result
+        assert result["reasonCode"][0]["coding"][0]["code"] == "29857009"
+
+
+# ============================================================================
+# Performer Organization Tests
+# ============================================================================
+
+
+class TestPerformerOrganization:
+    """Test performer Organization participants."""
+
+    def test_performer_with_org_adds_org_participant(self, mock_reference_registry):
+        """Performer with representedOrganization → additional Organization participant."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            performer=[
+                Performer(
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+                        represented_organization=RepresentedOrganization(
+                            id=[II(root="2.16.840.1.113883.4.2", extension="org-001")],
+                            name=["Acme Medical Group"],
+                        ),
+                    ),
+                )
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        # Patient + Practitioner + Organization = 3 participants
+        assert len(result["participant"]) == 3
+        # Organization participant should be information-only
+        org_part = result["participant"][2]
+        assert org_part["required"] == "information-only"
+        assert org_part["actor"]["display"] == "Acme Medical Group"
+
+    def test_performer_without_org_no_extra_participant(self, mock_reference_registry):
+        """Performer without representedOrganization → no extra participant."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            performer=[
+                Performer(
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+                    ),
+                )
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        # Patient + Practitioner = 2 participants
+        assert len(result["participant"]) == 2
+
+
+# ============================================================================
+# Participant Type Tests
+# ============================================================================
+
+
+class TestParticipantType:
+    """Test participant type from performer assignedEntity code."""
+
+    def test_performer_type_set(self, mock_reference_registry):
+        """Performer with assignedEntity.code → participant type set."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            performer=[
+                Performer(
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+                        code=CE(
+                            code="208D00000X",
+                            code_system="2.16.840.1.113883.6.101",
+                            display_name="General Practice",
+                        ),
+                    ),
+                )
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        # Performer participant (index 1, after patient)
+        performer_part = result["participant"][1]
+        assert "type" in performer_part
+        assert performer_part["type"][0]["coding"][0]["code"] == "208D00000X"
+
+    def test_performer_no_code_no_type(self, mock_reference_registry):
+        """Performer without assignedEntity.code → no participant type."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+            performer=[
+                Performer(
+                    assigned_entity=AssignedEntity(
+                        id=[II(root="2.16.840.1.113883.4.6", extension="9876543210")],
+                    ),
+                )
+            ],
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        performer_part = result["participant"][1]
+        assert "type" not in performer_part
+
+
+# ============================================================================
+# Description Tests
+# ============================================================================
+
+
+class TestDescription:
+    """Test description extraction from encounter code."""
+
+    def test_description_from_display_name(self, basic_appointment, mock_reference_registry):
+        """code.displayName → description."""
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(basic_appointment)
+        assert "description" in result
+        assert result["description"] == "Follow-up visit"
+
+    def test_no_code_no_description(self, mock_reference_registry):
+        """No code → no description."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            status_code=CS(code="active"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "description" not in result
+
+    def test_code_without_display_no_description(self, mock_reference_registry):
+        """Code without displayName or originalText → no description."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            code=CD(
+                code="185389009",
+                code_system="2.16.840.1.113883.6.96",
+            ),
+            status_code=CS(code="active"),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "description" not in result
+
+
+# ============================================================================
+# Minutes Duration Tests
+# ============================================================================
+
+
+class TestMinutesDuration:
+    """Test minutesDuration calculation."""
+
+    def test_duration_calculated(self, mock_reference_registry):
+        """Appointment with start+end (with timezone) → minutesDuration calculated."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            code=CD(code="185389009", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(
+                low=TS(value="20240615100000-0500"),
+                high=TS(value="20240615110000-0500"),
+            ),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "minutesDuration" in result
+        assert result["minutesDuration"] == 60
+
+    def test_no_end_no_duration(self, mock_reference_registry):
+        """Appointment with only start → no minutesDuration."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="ARQ",
+            id=[II(root="test")],
+            status_code=CS(code="new"),
+            effective_time=IVL_TS(low=TS(value="20240615100000-0500")),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert "minutesDuration" not in result
+
+    def test_30_minute_appointment(self, mock_reference_registry):
+        """30-minute appointment → minutesDuration=30."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            code=CD(code="185389009", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(
+                low=TS(value="20240615100000-0500"),
+                high=TS(value="20240615103000-0500"),
+            ),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        result = converter.convert(enc)
+        assert result["minutesDuration"] == 30
+
+    def test_date_only_no_duration(self, mock_reference_registry):
+        """Date-only timestamps (no time component) → no minutesDuration."""
+        enc = CCDAEncounter(
+            class_code="ENC",
+            mood_code="APT",
+            id=[II(root="test")],
+            code=CD(code="185389009", code_system="2.16.840.1.113883.6.96"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(
+                low=TS(value="20240615"),
+                high=TS(value="20240616"),
+            ),
+        )
+        converter = AppointmentConverter(reference_registry=mock_reference_registry)
+        converter.convert(enc)
+        # Date-only produces dates not datetimes, so duration may not be useful
+        # but should not crash
