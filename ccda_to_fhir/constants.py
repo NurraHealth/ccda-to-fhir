@@ -70,6 +70,7 @@ class TemplateIds:
     PROCEDURE_ACTIVITY_OBSERVATION = "2.16.840.1.113883.10.20.22.4.13"
     PLANNED_PROCEDURE = "2.16.840.1.113883.10.20.22.4.41"
     PLANNED_ACT = "2.16.840.1.113883.10.20.22.4.39"
+    PATIENT_REFERRAL_ACT = "2.16.840.1.113883.10.20.22.4.140"
 
     # Encounter templates
     ENCOUNTER_ACTIVITY = "2.16.840.1.113883.10.20.22.4.49"
@@ -1254,6 +1255,9 @@ REFERRAL_SNOMED_CODES = {
     "183519002",  # Referral to chiropodist
     "183523005",  # Referral to dietician
     "306294006",  # Referral to establishment
+    "308474002",  # Referral to neurologist
+    "308476000",  # Referral to gastroenterologist
+    "444831000124102",  # Referral for physical therapy
 }
 
 # LOINC section code for referrals (non-standard but used by some EHRs)
