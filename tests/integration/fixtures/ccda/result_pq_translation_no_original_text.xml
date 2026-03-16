@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<organizer classCode="BATTERY" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.4.1" extension="2015-08-01"/>
+  <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+  <id root="1.3.6.1.4.1.22812.20.1.1.4.5" extension="R-TRANS-NOTEXT"/>
+  <code code="58410-2" codeSystem="2.16.840.1.113883.6.1" displayName="CBC panel">
+    <originalText><reference value="#_cbcPanel"/></originalText>
+  </code>
+  <statusCode code="completed"/>
+  <effectiveTime xsi:type="IVL_TS">
+    <low value="20260304"/>
+    <high value="20260304"/>
+  </effectiveTime>
+  <!-- Translation with value but no originalText and no unit -->
+  <component>
+    <observation classCode="OBS" moodCode="EVN">
+      <templateId root="2.16.840.1.113883.10.20.22.4.2" extension="2015-08-01"/>
+      <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+      <id root="1.3.6.1.4.1.22812.20.1.1.4.5" extension="OBS-TRANS-NOTEXT"/>
+      <code code="6690-2" codeSystem="2.16.840.1.113883.6.1" displayName="Leukocytes [#/volume] in Blood"/>
+      <statusCode code="completed"/>
+      <effectiveTime value="20260304"/>
+      <value nullFlavor="OTH" xsi:type="PQ">
+        <translation nullFlavor="OTH" value="11.5"/>
+      </value>
+    </observation>
+  </component>
+</organizer>

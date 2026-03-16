@@ -250,3 +250,101 @@ class TestPQTranslationFallback:
         assert "valueQuantity" in hgb
         assert hgb["valueQuantity"]["value"] == 12.8
         assert hgb["valueQuantity"]["unit"] == "g/dL"
+
+    def test_pq_nullflavor_no_translation_gets_data_absent_reason(
+        self, ccda_result_pq_nullflavor_no_translation: str
+    ) -> None:
+        """PQ with nullFlavor but no translation should produce dataAbsentReason, not valueQuantity."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_result_pq_nullflavor_no_translation, RESULTS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
+        assert "valueQuantity" not in obs, (
+            "Should not have valueQuantity when PQ has no value and no translation"
+        )
+        assert "dataAbsentReason" in obs, (
+            "Should have dataAbsentReason for nullFlavor PQ without translation"
+        )
+
+    def test_translation_value_no_original_text(
+        self, ccda_result_pq_translation_no_original_text: str
+    ) -> None:
+        """Translation with value but no originalText should produce valueQuantity with value, no unit."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_result_pq_translation_no_original_text, RESULTS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
+        assert "valueQuantity" in obs, "Should have valueQuantity from translation value"
+        assert obs["valueQuantity"]["value"] == 11.5
+        assert "unit" not in obs["valueQuantity"], (
+            "Should not have unit when translation has no originalText or unit"
+        )
+
+    def test_multiple_translations_first_with_value_wins(
+        self, ccda_result_pq_multiple_translations: str
+    ) -> None:
+        """When multiple translations exist, the first with a value should be used."""
+        ccda_doc = wrap_in_ccda_document(ccda_result_pq_multiple_translations, RESULTS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
+        assert "valueQuantity" in obs
+        assert obs["valueQuantity"]["value"] == 9.2, (
+            "Should use first translation's value (9.2), not second (99.9)"
+        )
+        assert obs["valueQuantity"]["unit"] == "x10e3/uL", (
+            "Should use first translation's originalText as unit"
+        )
+
+    def test_direct_value_takes_precedence_over_translation(
+        self, ccda_result_pq_direct_value_with_translation: str
+    ) -> None:
+        """PQ with direct value AND translation should use the direct value."""
+        ccda_doc = wrap_in_ccda_document(
+            ccda_result_pq_direct_value_with_translation, RESULTS_TEMPLATE_ID
+        )
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
+        assert "valueQuantity" in obs
+        assert obs["valueQuantity"]["value"] == 13.5, "Should use direct PQ value, not translation"
+        assert obs["valueQuantity"]["unit"] == "g/dL", "Should use direct PQ unit, not translation"
+
+    def test_empty_translation_gets_data_absent_reason(
+        self, ccda_result_pq_empty_translation_list: str
+    ) -> None:
+        """PQ with nullFlavor and translation with no value should produce dataAbsentReason."""
+        ccda_doc = wrap_in_ccda_document(ccda_result_pq_empty_translation_list, RESULTS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
+        assert "valueQuantity" not in obs, (
+            "Should not have valueQuantity when translation has no value"
+        )
+        assert "dataAbsentReason" in obs, (
+            "Should have dataAbsentReason when translation is valueless"
+        )
+
+    def test_translation_string_integer_value(
+        self, ccda_result_pq_translation_string_int: str
+    ) -> None:
+        """Translation with integer-like value (e.g., '179') should produce a numeric valueQuantity."""
+        ccda_doc = wrap_in_ccda_document(ccda_result_pq_translation_string_int, RESULTS_TEMPLATE_ID)
+        bundle = convert_document(ccda_doc)["bundle"]
+
+        observations = _find_all_resources_in_bundle(bundle, "Observation")
+        obs = observations[0]
+        assert "valueQuantity" in obs
+        # Value should be numeric (int or float), not a string
+        assert isinstance(obs["valueQuantity"]["value"], (int, float))
+        assert obs["valueQuantity"]["value"] == 179 or obs["valueQuantity"]["value"] == 179.0
+        assert obs["valueQuantity"]["unit"] == "x10e3/uL"
