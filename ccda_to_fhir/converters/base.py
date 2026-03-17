@@ -1505,7 +1505,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     period_value = Period(start=start, end=end)
 
             # Only add if we have meaningful content
-            if use_value or family_value or given_names or prefixes or suffixes or text_value:
+            if use_value or family_value or given_names or prefixes or suffixes or text_value or period_value:
                 fhir_names.append(
                     HumanName(
                         use=use_value,
