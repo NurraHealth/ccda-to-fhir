@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
-from fhir.resources.period import Period
+from fhir.resources.R4B.period import Period
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # JSON primitive types

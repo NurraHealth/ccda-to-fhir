@@ -5,16 +5,14 @@ from __future__ import annotations
 import base64
 from collections.abc import Callable
 
-from fhir.resources.attachment import Attachment
-from fhir.resources.codeableconcept import CodeableConcept
-from fhir.resources.coding import Coding
-from fhir.resources.documentreference import (
+from fhir.resources.R4B.attachment import Attachment
+from fhir.resources.R4B.documentreference import (
     DocumentReferenceContent,
     DocumentReferenceRelatesTo,
 )
-from fhir.resources.extension import Extension
-from fhir.resources.period import Period
-from fhir.resources.reference import Reference as FHIRLibReference
+from fhir.resources.R4B.extension import Extension
+from fhir.resources.R4B.period import Period
+from fhir.resources.R4B.reference import Reference as FHIRLibReference
 
 from ccda_to_fhir.ccda.models.act import Act, Reference
 from ccda_to_fhir.ccda.models.author import Author
@@ -70,9 +68,6 @@ _FALLBACK_TYPE = FHIRCodeableConcept(
     ],
     text="Clinical Note",
 )
-
-# FHIR R4B document-relationship-type system
-_RELATES_TO_SYSTEM = "http://hl7.org/fhir/document-relationship-type"
 
 
 class NoteActivityConverter(BaseConverter[Act]):
@@ -430,7 +425,7 @@ def _convert_relates_to(references: list[Reference]) -> list[DocumentReferenceRe
         )
         relates_to.append(
             DocumentReferenceRelatesTo(
-                code=CodeableConcept(coding=[Coding(system=_RELATES_TO_SYSTEM, code=fhir_code)]),
+                code=fhir_code,
                 target=FHIRLibReference(reference=f"urn:uuid:{doc_id}"),
             )
         )

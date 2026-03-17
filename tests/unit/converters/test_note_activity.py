@@ -9,12 +9,12 @@ from __future__ import annotations
 import base64
 
 import pytest
-from fhir.resources.attachment import Attachment
-from fhir.resources.documentreference import (
+from fhir.resources.R4B.attachment import Attachment
+from fhir.resources.R4B.documentreference import (
     DocumentReferenceContent,
     DocumentReferenceRelatesTo,
 )
-from fhir.resources.period import Period
+from fhir.resources.R4B.period import Period
 from pydantic import ValidationError
 
 from ccda_to_fhir.ccda.models.act import Act, ExternalDocument, Reference
@@ -600,7 +600,7 @@ class TestConvertRelatesTo:
         result = _convert_relates_to(refs)
         assert len(result) == 1
         assert isinstance(result[0], DocumentReferenceRelatesTo)
-        assert result[0].code.coding[0].code == "replaces"
+        assert result[0].code == "replaces"
 
     def test_apnd_maps_to_appends(self) -> None:
         refs = [
@@ -610,7 +610,7 @@ class TestConvertRelatesTo:
             )
         ]
         result = _convert_relates_to(refs)
-        assert result[0].code.coding[0].code == "appends"
+        assert result[0].code == "appends"
 
     def test_xfrm_maps_to_transforms(self) -> None:
         refs = [
@@ -620,7 +620,7 @@ class TestConvertRelatesTo:
             )
         ]
         result = _convert_relates_to(refs)
-        assert result[0].code.coding[0].code == "transforms"
+        assert result[0].code == "transforms"
 
     def test_refr_skipped(self) -> None:
         refs = [
@@ -698,8 +698,8 @@ class TestConvertRelatesTo:
         ]
         result = _convert_relates_to(refs)
         assert len(result) == 2
-        assert result[0].code.coding[0].code == "replaces"
-        assert result[1].code.coding[0].code == "appends"
+        assert result[0].code == "replaces"
+        assert result[1].code == "appends"
 
     def test_mixed_valid_and_invalid(self) -> None:
         refs = [
@@ -712,7 +712,7 @@ class TestConvertRelatesTo:
         ]
         result = _convert_relates_to(refs)
         assert len(result) == 1
-        assert result[0].code.coding[0].code == "replaces"
+        assert result[0].code == "replaces"
 
     def test_empty_list(self) -> None:
         assert _convert_relates_to([]) == []
@@ -726,7 +726,7 @@ class TestConvertRelatesTo:
         ]
         result = _convert_relates_to(refs)
         d = result[0].model_dump(exclude_none=True, mode="json")
-        assert d["code"]["coding"][0]["code"] == "replaces"
+        assert d["code"] == "replaces"
         assert d["target"]["reference"].startswith("urn:uuid:")
 
 
@@ -1107,7 +1107,7 @@ class TestRelatesToIntegration:
         result = converter.convert(act)
         relates = result["relatesTo"]
         assert len(relates) == 1
-        assert relates[0]["code"]["coding"][0]["code"] == "replaces"
+        assert relates[0]["code"] == "replaces"
         assert relates[0]["target"]["reference"].startswith("urn:uuid:")
 
     def test_refr_not_in_relates_to(self, converter: NoteActivityConverter) -> None:
@@ -1335,18 +1335,13 @@ class TestPydanticModelTypeSafety:
         assert ctx
 
     def test_relates_to_construction(self) -> None:
-        from fhir.resources.codeableconcept import CodeableConcept
-        from fhir.resources.reference import Reference as LibRef
+        from fhir.resources.R4B.reference import Reference as LibRef
 
         rt = DocumentReferenceRelatesTo(
-            code=CodeableConcept(
-                coding=[
-                    {"system": "http://hl7.org/fhir/document-relationship-type", "code": "replaces"}
-                ]
-            ),
+            code="replaces",
             target=LibRef(reference="urn:uuid:doc-1"),
         )
-        assert rt.code.coding[0].code == "replaces"
+        assert rt.code == "replaces"
         assert rt.target.reference == "urn:uuid:doc-1"
 
     def test_period_model_dump_omits_none(self) -> None:
@@ -1447,7 +1442,7 @@ class TestEdgeCases:
         ]
         result = _convert_relates_to(refs)
         assert len(result) == 3
-        codes = {r.code.coding[0].code for r in result}
+        codes = {r.code for r in result}
         assert codes == {"replaces", "appends", "transforms"}
 
     def test_full_document_reference_structure(self, converter: NoteActivityConverter) -> None:
@@ -1489,4 +1484,4 @@ class TestEdgeCases:
         assert result["context"]["period"]["start"] == "2026-01-15"
         assert len(result["context"]["encounter"]) == 1
         assert len(result["relatesTo"]) == 1
-        assert result["relatesTo"][0]["code"]["coding"][0]["code"] == "replaces"
+        assert result["relatesTo"][0]["code"] == "replaces"
