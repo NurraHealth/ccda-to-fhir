@@ -30,7 +30,6 @@ from ccda_to_fhir.types import (
     FHIRDocRefContext,
     FHIRReference,
     FHIRResourceDict,
-    JSONObject,
 )
 
 from .author_references import build_author_references
@@ -379,7 +378,7 @@ def _create_context(
     When none are found, falls back to ``fallback_encounter_context`` (typically
     derived from the document header's encompassingEncounter).
     """
-    period: JSONObject | None = None
+    period: dict[str, str] | None = None
     encounter_refs: list[FHIRReference] = []
 
     if note_act.effective_time:
