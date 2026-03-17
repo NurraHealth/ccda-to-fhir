@@ -91,7 +91,7 @@ class FHIRCodeableConcept(BaseModel, frozen=True):
 class ReasonResult(BaseModel, frozen=True):
     """Result of extracting reason codes and references from C-CDA entry relationships."""
 
-    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+    model_config = ConfigDict(extra="forbid")
 
     codes: list[FHIRCodeableConcept] = Field(default_factory=list)
     """FHIR CodeableConcept elements for reason codes."""
