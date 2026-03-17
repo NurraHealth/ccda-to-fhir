@@ -22,11 +22,11 @@ from ccda_to_fhir.types import (
     FHIRCoding,
     FHIRDocRefContent,
     FHIRDocRefContext,
+    FHIRExtension,
     FHIRPeriod,
     FHIRReference,
     FHIRRelatesTo,
     FHIRResourceDict,
-    JSONObject,
 )
 
 from .author_references import build_author_references
@@ -148,15 +148,9 @@ class NoteActivityConverter(BaseConverter[Act]):
             if content_list:
                 doc_ref["content"] = [c.to_dict() for c in content_list]
             else:
-                doc_ref["content"] = [
-                    c.to_dict()
-                    for c in _create_missing_content(self.create_data_absent_reason_extension)
-                ]
+                doc_ref["content"] = [c.to_dict() for c in _create_missing_content("unknown")]
         else:
-            doc_ref["content"] = [
-                c.to_dict()
-                for c in _create_missing_content(self.create_data_absent_reason_extension)
-            ]
+            doc_ref["content"] = [c.to_dict() for c in _create_missing_content("unknown")]
 
         # Context - encounter and period
         context = _create_context(
@@ -332,18 +326,24 @@ def _create_reference_content(reference: TEL, section: Section) -> FHIRDocRefCon
     )
 
 
-def _create_missing_content(
-    create_absent_reason_fn: Callable[[str | None], JSONObject],
-) -> list[FHIRDocRefContent]:
-    """Create content with data-absent-reason extension when text is missing."""
-    ext = create_absent_reason_fn(None)
-    # data-absent-reason extensions always have url (str) and valueCode (str)
-    ext_typed: dict[str, str] = {k: str(v) for k, v in ext.items() if isinstance(v, str)}
+def _create_missing_content(reason_code: str) -> list[FHIRDocRefContent]:
+    """Create content with data-absent-reason extension when text is missing.
+
+    Args:
+        reason_code: FHIR data-absent-reason code (e.g. "unknown", "asked-unknown").
+    """
+    from ccda_to_fhir.constants import FHIRSystems
+
     return [
         FHIRDocRefContent(
             attachment=FHIRAttachment(
                 content_type="text/plain",
-                data_extension=[ext_typed],
+                data_extension=[
+                    FHIRExtension(
+                        url=FHIRSystems.DATA_ABSENT_REASON,
+                        value_code=reason_code,
+                    )
+                ],
             )
         )
     ]

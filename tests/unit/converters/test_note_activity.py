@@ -45,6 +45,7 @@ from ccda_to_fhir.types import (
     FHIRCoding,
     FHIRDocRefContent,
     FHIRDocRefContext,
+    FHIRExtension,
     FHIRPeriod,
     FHIRReference,
     FHIRRelatesTo,
@@ -467,43 +468,36 @@ class TestCreateContentList:
 
 class TestCreateMissingContent:
     def test_structure(self) -> None:
-        def fn(nf: str | None) -> dict[str, str]:
-            return {"url": "http://test", "valueCode": "unknown"}
-
-        result = _create_missing_content(fn)
+        result = _create_missing_content("unknown")
         assert len(result) == 1
         assert isinstance(result[0], FHIRDocRefContent)
         assert result[0].attachment.content_type == "text/plain"
         assert result[0].attachment.data is None
         assert result[0].attachment.data_extension is not None
 
-    def test_calls_absent_reason_fn(self) -> None:
-        calls: list[str | None] = []
+    def test_extension_model(self) -> None:
+        result = _create_missing_content("unknown")
+        ext = result[0].attachment.data_extension
+        assert ext is not None
+        assert len(ext) == 1
+        assert isinstance(ext[0], FHIRExtension)
+        assert ext[0].url == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert ext[0].value_code == "unknown"
 
-        def fake_fn(nf: str | None) -> dict[str, str]:
-            calls.append(nf)
-            return {"url": "http://test", "valueCode": "unknown"}
-
-        _create_missing_content(fake_fn)
-        assert calls == [None]
-
-    def test_extension_in_data(self) -> None:
-        ext = {
-            "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
-            "valueCode": "unknown",
-        }
-        result = _create_missing_content(lambda nf: ext)
-        assert result[0].attachment.data_extension == [ext]
+    def test_custom_reason_code(self) -> None:
+        result = _create_missing_content("asked-unknown")
+        ext = result[0].attachment.data_extension
+        assert ext is not None
+        assert ext[0].value_code == "asked-unknown"
 
     def test_to_dict_structure(self) -> None:
-        ext = {
-            "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
-            "valueCode": "unknown",
-        }
-        result = _create_missing_content(lambda nf: ext)
+        result = _create_missing_content("unknown")
         d = result[0].to_dict()
         assert d["attachment"]["contentType"] == "text/plain"
-        assert d["attachment"]["_data"]["extension"] == [ext]
+        ext_list = d["attachment"]["_data"]["extension"]
+        assert len(ext_list) == 1
+        assert ext_list[0]["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert ext_list[0]["valueCode"] == "unknown"
 
 
 # ============================================================================

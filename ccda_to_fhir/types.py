@@ -111,26 +111,45 @@ class FHIRPeriod(BaseModel, frozen=True):
         return self.model_dump(exclude_none=True)
 
 
+class FHIRExtension(BaseModel, frozen=True):
+    """FHIR Extension element (url + typed value).
+
+    Covers the common ``valueCode`` case used by data-absent-reason.
+    Add additional ``value_*`` fields as needed for other extension types.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    url: str
+    value_code: str | None = None
+
+    def to_dict(self) -> JSONObject:
+        result: JSONObject = {"url": self.url}
+        if self.value_code is not None:
+            result["valueCode"] = self.value_code
+        return result
+
+
 class FHIRAttachment(BaseModel, frozen=True):
     """FHIR Attachment element (contentType + data or data-absent-reason extension).
 
     When ``data`` is provided, the attachment carries inline content.
     When ``data_extension`` is provided instead, it represents the FHIR
-    ``_data`` element with a data-absent-reason extension.
+    ``_data`` element with extension(s) on the data primitive.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     content_type: str
     data: str | None = None
-    data_extension: list[dict[str, str]] | None = None
+    data_extension: list[FHIRExtension] | None = None
 
     def to_dict(self) -> JSONObject:
         result: JSONObject = {"contentType": self.content_type}
         if self.data is not None:
             result["data"] = self.data
         if self.data_extension is not None:
-            result["_data"] = {"extension": self.data_extension}
+            result["_data"] = {"extension": [e.to_dict() for e in self.data_extension]}
         return result
 
 
