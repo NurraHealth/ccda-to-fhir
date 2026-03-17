@@ -8,6 +8,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
 from fhir.resources.narrative import Narrative
+from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.reference import Reference
 
 from ccda_to_fhir.ccda.models.datatypes import CD, CE
@@ -17,7 +18,6 @@ from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import (
     FHIRCodeableConcept,
-    FHIRCoding,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -254,7 +254,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if not code and not original_text:
             return None
 
-        codings: list[FHIRCoding] = []
+        codings: list[Coding] = []
 
         # Primary coding
         if code and code_system:
@@ -269,7 +269,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
                 resolved_display = get_display_for_code(system_uri, sanitized_code)
             codings.append(
-                FHIRCoding(
+                Coding(
                     system=system_uri,
                     code=sanitized_code,
                     display=resolved_display,
@@ -298,7 +298,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
                     resolved_trans_display = get_display_for_code(trans_system_uri, trans_code)
                 codings.append(
-                    FHIRCoding(
+                    Coding(
                         system=trans_system_uri,
                         code=trans_code,
                         display=resolved_trans_display,

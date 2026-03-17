@@ -45,10 +45,11 @@ from ccda_to_fhir.converters.note_activity import (
     convert_note_activity,
 )
 from ccda_to_fhir.converters.references import ReferenceRegistry
+from fhir.resources.R4B.coding import Coding
+
 from ccda_to_fhir.types import (
     EncounterContext,
     FHIRCodeableConcept,
-    FHIRCoding,
 )
 
 # ============================================================================
@@ -250,7 +251,7 @@ class TestConvertType:
 
 
 # ============================================================================
-# _make_coding — returns FHIRCoding | None
+# _make_coding — returns Coding | None
 # ============================================================================
 
 
@@ -258,7 +259,7 @@ class TestMakeCoding:
     def test_full_coding(self, mapper: CodeSystemMapper) -> None:
         result = _make_coding("12345", "2.16.840.1.113883.6.1", "Test", mapper)
         assert result is not None
-        assert isinstance(result, FHIRCoding)
+        assert isinstance(result, Coding)
         assert result.code == "12345"
         assert result.system == "http://loinc.org"
         assert result.display == "Test"
@@ -287,13 +288,13 @@ class TestMakeCoding:
     def test_coding_to_dict_with_system(self, mapper: CodeSystemMapper) -> None:
         result = _make_coding("12345", "2.16.840.1.113883.6.1", "Test", mapper)
         assert result is not None
-        d = result.to_dict()
+        d = result.model_dump(exclude_none=True)
         assert d == {"code": "12345", "system": "http://loinc.org", "display": "Test"}
 
     def test_coding_to_dict_display_only(self, mapper: CodeSystemMapper) -> None:
         result = _make_coding("12345", None, "Test", mapper)
         assert result is not None
-        d = result.to_dict()
+        d = result.model_dump(exclude_none=True)
         assert d == {"display": "Test"}
 
 
@@ -1302,16 +1303,8 @@ class TestConvertNoteActivity:
 class TestPydanticModelTypeSafety:
     """Tests verifying that Pydantic models enforce type constraints."""
 
-    def test_fhir_coding_system_code_co_occurrence(self) -> None:
-        with pytest.raises(ValueError, match="system and code must both be provided"):
-            FHIRCoding(system="http://loinc.org")
-
-    def test_fhir_coding_code_without_system_rejected(self) -> None:
-        with pytest.raises(ValueError, match="system and code must both be provided"):
-            FHIRCoding(code="12345")
-
     def test_fhir_coding_display_only_allowed(self) -> None:
-        coding = FHIRCoding(display="Some display")
+        coding = Coding(display="Some display")
         assert coding.display == "Some display"
         assert coding.system is None
         assert coding.code is None

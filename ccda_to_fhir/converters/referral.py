@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.reference import Reference
 
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
@@ -36,7 +37,6 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.types import (
     FHIRCodeableConcept,
-    FHIRCoding,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 # Referral category coding per SNOMED CT, typed as a proper Pydantic model
 REFERRAL_CATEGORY = FHIRCodeableConcept(
     coding=[
-        FHIRCoding(
+        Coding(
             system="http://snomed.info/sct",
             code="3457005",
             display="Patient referral",

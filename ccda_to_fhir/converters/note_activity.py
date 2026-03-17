@@ -6,6 +6,7 @@ import base64
 from collections.abc import Callable
 
 from fhir.resources.R4B.attachment import Attachment
+from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.documentreference import (
     DocumentReferenceContent,
     DocumentReferenceContext,
@@ -29,7 +30,6 @@ from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 from ccda_to_fhir.types import (
     EncounterContext,
     FHIRCodeableConcept,
-    FHIRCoding,
     FHIRResourceDict,
     JSONObject,
 )
@@ -48,7 +48,7 @@ _DOC_STATUS_MAP: dict[str, str] = {
 # Fixed US Core clinical-note category
 _CLINICAL_NOTE_CATEGORY = FHIRCodeableConcept(
     coding=[
-        FHIRCoding(
+        Coding(
             system="http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category",
             code="clinical-note",
             display="Clinical Note",
@@ -59,7 +59,7 @@ _CLINICAL_NOTE_CATEGORY = FHIRCodeableConcept(
 # US Core fallback type when no code is available
 _FALLBACK_TYPE = FHIRCodeableConcept(
     coding=[
-        FHIRCoding(
+        Coding(
             system="http://loinc.org",
             code="34133-9",
             display="Summarization of Episode Note",
@@ -212,7 +212,7 @@ def _extract_doc_status(note_act: Act) -> str | None:
 def _convert_type(code: CD | None, mapper: CodeSystemMapper) -> FHIRCodeableConcept:
     """Convert note type code to FHIR CodeableConcept, with US Core fallback."""
     if code and code.code:
-        codings: list[FHIRCoding] = []
+        codings: list[Coding] = []
 
         primary = _make_coding(code.code, code.code_system, code.display_name, mapper)
         if primary:
@@ -238,7 +238,7 @@ def _make_coding(
     system: str | None,
     display: str | None,
     mapper: CodeSystemMapper,
-) -> FHIRCoding | None:
+) -> Coding | None:
     """Create a FHIR Coding element, mapping OID to URI.
 
     Per FHIR R4: ``system`` SHALL be present when ``code`` is present.
@@ -249,11 +249,11 @@ def _make_coding(
         return None
     if system:
         mapped_system = mapper.oid_to_uri(system)
-        return FHIRCoding(system=mapped_system, code=code, display=display)
+        return Coding(system=mapped_system, code=code, display=display)
     # No system → can't produce a valid system+code coding per FHIR spec.
     # Preserve display text if available.
     if display:
-        return FHIRCoding(display=display)
+        return Coding(display=display)
     return None
 
 
