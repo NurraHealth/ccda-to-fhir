@@ -32,9 +32,10 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
+from fhir.resources.R4B.coding import Coding
+
 from ccda_to_fhir.types import (
     FHIRCodeableConcept,
-    FHIRCoding,
     FHIRReference,
     FHIRResourceDict,
     JSONObject,
@@ -54,7 +55,7 @@ if TYPE_CHECKING:
 # Referral category coding per SNOMED CT, typed as a proper Pydantic model
 REFERRAL_CATEGORY = FHIRCodeableConcept(
     coding=[
-        FHIRCoding(
+        Coding(
             system="http://snomed.info/sct",
             code="3457005",
             display="Patient referral",
