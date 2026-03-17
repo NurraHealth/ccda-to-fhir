@@ -5,10 +5,11 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from fhir.resources.R4B.coding import Coding
+
 from ccda_to_fhir.types import (
     DiagnosisRole,
     FHIRCodeableConcept,
-    FHIRCoding,
     FHIRReference,
     OperationStats,
     ReasonResult,
@@ -17,50 +18,37 @@ from ccda_to_fhir.types import (
 )
 
 # ============================================================================
-# FHIRCoding
+# Coding (fhir.resources R4B)
 # ============================================================================
 
 
-class TestFHIRCoding:
-    def test_system_and_code_required_together(self):
-        with pytest.raises(ValueError, match="system and code must both be provided"):
-            FHIRCoding(system="http://snomed.info/sct", code=None)
-
-    def test_code_without_system_raises(self):
-        with pytest.raises(ValueError, match="system and code must both be provided"):
-            FHIRCoding(code="1234")
-
+class TestCoding:
     def test_display_only_is_valid(self):
-        c = FHIRCoding(display="Some display")
+        c = Coding(display="Some display")
         assert c.display == "Some display"
         assert c.system is None
         assert c.code is None
 
     def test_full_coding(self):
-        c = FHIRCoding(system="http://snomed.info/sct", code="1234", display="Test")
+        c = Coding(system="http://snomed.info/sct", code="1234", display="Test")
         assert c.system == "http://snomed.info/sct"
         assert c.code == "1234"
         assert c.display == "Test"
 
-    def test_to_dict_excludes_none(self):
-        c = FHIRCoding(system="http://snomed.info/sct", code="1234")
-        d = c.to_dict()
+    def test_model_dump_excludes_none(self):
+        c = Coding(system="http://snomed.info/sct", code="1234")
+        d = c.model_dump(exclude_none=True)
         assert d == {"system": "http://snomed.info/sct", "code": "1234"}
         assert "display" not in d
 
-    def test_to_dict_includes_display(self):
-        c = FHIRCoding(system="http://snomed.info/sct", code="1234", display="Test")
-        d = c.to_dict()
+    def test_model_dump_includes_display(self):
+        c = Coding(system="http://snomed.info/sct", code="1234", display="Test")
+        d = c.model_dump(exclude_none=True)
         assert d == {"system": "http://snomed.info/sct", "code": "1234", "display": "Test"}
-
-    def test_frozen(self):
-        c = FHIRCoding(system="http://snomed.info/sct", code="1234")
-        with pytest.raises(ValidationError):
-            c.code = "5678"
 
     def test_extra_fields_forbidden(self):
         with pytest.raises(ValidationError):
-            FHIRCoding(system="http://snomed.info/sct", code="1234", version="1.0")
+            Coding(system="http://snomed.info/sct", code="1234", foo="bar")
 
 
 # ============================================================================
@@ -82,7 +70,7 @@ class TestFHIRCodeableConcept:
 
     def test_to_dict_with_codings(self):
         cc = FHIRCodeableConcept(
-            coding=[FHIRCoding(system="http://snomed.info/sct", code="1234", display="Test")],
+            coding=[Coding(system="http://snomed.info/sct", code="1234", display="Test")],
             text="Test",
         )
         d = cc.to_dict()
@@ -93,7 +81,7 @@ class TestFHIRCodeableConcept:
 
     def test_to_dict_no_text(self):
         cc = FHIRCodeableConcept(
-            coding=[FHIRCoding(system="http://snomed.info/sct", code="1234")],
+            coding=[Coding(system="http://snomed.info/sct", code="1234")],
         )
         d = cc.to_dict()
         assert d == {"coding": [{"system": "http://snomed.info/sct", "code": "1234"}]}

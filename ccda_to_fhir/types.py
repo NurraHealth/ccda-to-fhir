@@ -9,7 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from fhir.resources.R4B.coding import Coding
+from pydantic import BaseModel, ConfigDict, Field
 
 # JSON primitive types
 JSONPrimitive: TypeAlias = str | int | float | bool | None
@@ -34,37 +35,9 @@ JSONArray: TypeAlias = list[JSONValue]
 #
 # Pydantic representations of common FHIR R4 data types.  These are used
 # inside typed return values (e.g. ReasonResult) so the converters carry
-# structured data instead of raw dicts.  Call `.to_dict()` when you need
-# to embed the value in a FHIRResourceDict.
+# structured data instead of raw dicts.  Call `.to_dict()` or
+# `.model_dump(exclude_none=True)` to embed in a FHIRResourceDict.
 # ============================================================================
-
-
-class FHIRCoding(BaseModel, frozen=True):
-    """FHIR Coding element (system + code + display).
-
-    Per FHIR R4, ``system`` is required when ``code`` is present and vice-versa.
-    A FHIRCoding with only ``display`` (no system/code) is permitted by the spec.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    system: str | None = None
-    code: str | None = None
-    display: str | None = None
-
-    @model_validator(mode="after")
-    def _system_and_code_must_co_occur(self) -> FHIRCoding:
-        has_system = self.system is not None
-        has_code = self.code is not None
-        if has_system != has_code:
-            raise ValueError(
-                "system and code must both be provided or both omitted; "
-                f"got system={self.system!r}, code={self.code!r}"
-            )
-        return self
-
-    def to_dict(self) -> JSONObject:
-        return self.model_dump(exclude_none=True)
 
 
 class FHIRCodeableConcept(BaseModel, frozen=True):
@@ -72,16 +45,16 @@ class FHIRCodeableConcept(BaseModel, frozen=True):
 
     model_config = ConfigDict(extra="forbid")
 
-    coding: list[FHIRCoding] = Field(default_factory=list)
+    coding: list[Coding] = Field(default_factory=list)
     text: str | None = None
 
     def to_dict(self) -> JSONObject:
         # Custom serialization: omit empty coding list (model_dump would
-        # include it as []), unlike FHIRCoding/FHIRReference which use
+        # include it as []), unlike Coding/FHIRReference which use
         # model_dump(exclude_none=True) since they only need to drop None fields.
         d: JSONObject = {}
         if self.coding:
-            d["coding"] = [c.to_dict() for c in self.coding]
+            d["coding"] = [c.model_dump(exclude_none=True) for c in self.coding]
         if self.text is not None:
             d["text"] = self.text
         return d

@@ -24,6 +24,8 @@ from typing import TYPE_CHECKING
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
+from fhir.resources.R4B.coding import Coding
+
 from ccda_to_fhir.constants import (
     REFERRAL_SNOMED_CODES,
     SERVICE_REQUEST_MOOD_TO_INTENT,
@@ -34,7 +36,6 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.types import (
     FHIRCodeableConcept,
-    FHIRCoding,
     FHIRReference,
     FHIRResourceDict,
     JSONObject,
@@ -54,7 +55,7 @@ if TYPE_CHECKING:
 # Referral category coding per SNOMED CT, typed as a proper Pydantic model
 REFERRAL_CATEGORY = FHIRCodeableConcept(
     coding=[
-        FHIRCoding(
+        Coding(
             system="http://snomed.info/sct",
             code="3457005",
             display="Patient referral",
