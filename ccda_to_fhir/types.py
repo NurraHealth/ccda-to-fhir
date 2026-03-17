@@ -114,21 +114,8 @@ class RegistryStats(BaseModel):
     failed: int = 0
 
 
-class HumanName(TypedDict, total=False):
-    """FHIR R4 HumanName element (all fields optional)."""
-
-    use: str
-    text: str
-    family: str
-    given: list[str]
-    prefix: list[str]
-    suffix: list[str]
-    period: JSONObject
-    extension: list[JSONObject]
-
-
-def format_human_name_display(name: HumanName) -> str | None:
-    """Build a display string from a FHIR HumanName.
+def format_human_name_display(name: JSONObject) -> str | None:
+    """Build a display string from a FHIR HumanName dict.
 
     Per FHIR R4, HumanName.text is "the entire name as it should be displayed"
     and is preferred when present. Falls back to "prefix given family suffix".
