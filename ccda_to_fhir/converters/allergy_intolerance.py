@@ -607,7 +607,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     )
                     # REQUIRED field - use fallback if None
                     if allergen_code:
-                        return allergen_code.to_dict()
+                        return allergen_code.model_dump(exclude_none=True)
 
         # Fallback if no participant found or create_codeable_concept returned None
         return {"text": "Unknown allergen"}
@@ -695,7 +695,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                     # Only add manifestation if it's valid (not None)
                     # Per FHIR R4: manifestation is required (1..*) for reaction
                     if manifestation:
-                        reaction["manifestation"] = [manifestation.to_dict()]
+                        reaction["manifestation"] = [manifestation.model_dump(exclude_none=True)]
                     else:
                         logger.warning(
                             f"Skipping reaction manifestation due to missing code_system or content. "

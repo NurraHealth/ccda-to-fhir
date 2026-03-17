@@ -119,7 +119,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
                 display_name=patient_data.marital_status_code.display_name,
             )
             if marital_status:
-                patient["maritalStatus"] = marital_status.to_dict()
+                patient["maritalStatus"] = marital_status.model_dump(exclude_none=True)
 
         # Multiple birth
         if patient_data.sdtc_multiple_birth_ind or patient_data.sdtc_multiple_birth_order_number:
@@ -181,7 +181,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
             if religion_codeable:
                 religion_ext = {
                     "url": FHIRSystems.PATIENT_RELIGION,
-                    "valueCodeableConcept": religion_codeable.to_dict(),
+                    "valueCodeableConcept": religion_codeable.model_dump(exclude_none=True),
                 }
                 extensions.append(religion_ext)
 
@@ -358,7 +358,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
                     display_name=guardian.code.display_name,
                 )
                 if specific_coding:
-                    specific_coding_dict = specific_coding.to_dict()
+                    specific_coding_dict = specific_coding.model_dump(exclude_none=True)
                     if specific_coding_dict.get("coding"):
                         relationships.append(specific_coding_dict)
 

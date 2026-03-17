@@ -8,6 +8,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
 from fhir.resources.narrative import Narrative
+from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.reference import Reference
 
@@ -17,7 +18,6 @@ from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldErr
 from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import (
-    FHIRCodeableConcept,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -235,11 +235,11 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         display_name: str | None = None,
         original_text: str | None = None,
         translations: list[JSONObject] | None = None,
-    ) -> FHIRCodeableConcept | None:
+    ) -> CodeableConcept | None:
         """Create a FHIR CodeableConcept from C-CDA code elements.
 
         Returns the Pydantic model. Callers embedding into FHIRResourceDict
-        should call ``.to_dict()`` on the result.
+        should call ``.model_dump(exclude_none=True)`` to embed.
 
         Args:
             code: The code value
@@ -249,7 +249,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             translations: List of translation codes
 
         Returns:
-            FHIRCodeableConcept, or None if no content available
+            CodeableConcept, or None if no content available
         """
         if not code and not original_text:
             return None
@@ -317,7 +317,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         if not codings and text is None:
             return None
 
-        return FHIRCodeableConcept(coding=codings, text=text)
+        return CodeableConcept(coding=codings or None, text=text)
 
     def create_quantity(self, value: float | int | None, unit: str | None = None) -> JSONObject:
         """Create a FHIR Quantity from C-CDA PQ (Physical Quantity).
@@ -1192,7 +1192,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         """
         from ccda_to_fhir.constants import FHIRCodes
 
-        reason_codes: list[FHIRCodeableConcept] = []
+        reason_codes: list[CodeableConcept] = []
         reason_refs: list[Reference] = []
 
         if not entry_relationships:
@@ -1255,7 +1255,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return ReasonResult(codes=reason_codes, references=reason_refs)
 
-    def _extract_reason_codes_from_observation(self, obs: Observation) -> list[FHIRCodeableConcept]:
+    def _extract_reason_codes_from_observation(self, obs: Observation) -> list[CodeableConcept]:
         """Extract CodeableConcepts from an observation's value field.
 
         Handles both single value objects and lists of values, as C-CDA allows both.
@@ -1265,9 +1265,9 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             obs: C-CDA Observation element
 
         Returns:
-            List of FHIRCodeableConcept models
+            List of CodeableConcept models
         """
-        codes: list[FHIRCodeableConcept] = []
+        codes: list[CodeableConcept] = []
 
         if not obs.value:
             return codes
@@ -1890,11 +1890,10 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         code,
         section=None,
         include_original_text: bool = True,
-    ) -> FHIRCodeableConcept | None:
+    ) -> CodeableConcept | None:
         """Convert a C-CDA coded element to FHIR CodeableConcept model with translations.
 
-        Returns the Pydantic model directly. Callers should call .to_dict()
-        when embedding the result into a FHIRResourceDict.
+        Returns the Pydantic model directly. Call ``.model_dump(exclude_none=True)`` to embed.
 
         This is a higher-level method that combines translation extraction with
         CodeableConcept creation. It handles:
@@ -1908,7 +1907,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             include_original_text: Whether to include original_text in the result
 
         Returns:
-            FHIRCodeableConcept model or None if code is invalid
+            CodeableConcept model or None if code is invalid
         """
         if not code or not code.code:
             return None

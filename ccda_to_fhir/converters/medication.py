@@ -91,7 +91,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
                 translations=translations,
             )
             if med_code:
-                medication["code"] = med_code.to_dict()
+                medication["code"] = med_code.model_dump(exclude_none=True)
 
         # 3. Manufacturer (from manufacturerOrganization)
         if manufactured_product.manufacturer_organization:
@@ -122,7 +122,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
                 display_name=form_code.display_name,
             )
             if form:
-                medication["form"] = form.to_dict()
+                medication["form"] = form.model_dump(exclude_none=True)
 
         # 5. Ingredients (from participant with typeCode="CSM" - drug vehicle)
         if substance_admin and substance_admin.participant:
@@ -206,7 +206,7 @@ class MedicationConverter(BaseConverter[ManufacturedProduct]):
                             display_name=playing_entity.code.display_name,
                         )
                         if item_code:
-                            ingredient["itemCodeableConcept"] = item_code.to_dict()
+                            ingredient["itemCodeableConcept"] = item_code.model_dump(exclude_none=True)
 
                         # Drug vehicle is inactive ingredient
                         ingredient["isActive"] = False

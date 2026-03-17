@@ -277,7 +277,7 @@ class GoalConverter(BaseConverter[Observation]):
             original_text=original_text,
             translations=translations,
         )
-        return result.to_dict() if result else None
+        return result.model_dump(exclude_none=True) if result else None
 
     def _convert_component_goal_to_target(self, component_obs: Observation) -> JSONObject | None:
         """Convert a component Goal Observation to a FHIR target.

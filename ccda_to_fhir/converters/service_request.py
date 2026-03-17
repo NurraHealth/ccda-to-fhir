@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.reference import Reference
 
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
@@ -17,7 +18,6 @@ from ccda_to_fhir.constants import (
     TemplateIds,
 )
 from ccda_to_fhir.types import (
-    FHIRCodeableConcept,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -131,7 +131,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         # Code (required)
         code = self._convert_code(procedure.code)
         if code:
-            fhir_service_request["code"] = code.to_dict()
+            fhir_service_request["code"] = code.model_dump(exclude_none=True)
 
         # Subject (required) - patient reference
         if not self.reference_registry:
@@ -182,7 +182,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if procedure.performer:
             performer_type = self._extract_performer_type(procedure.performer)
             if performer_type:
-                fhir_service_request["performerType"] = performer_type.to_dict()
+                fhir_service_request["performerType"] = performer_type.model_dump(exclude_none=True)
 
         # Priority - from priorityCode (both CCDAProcedure and CCDAAct have this)
         if procedure.priority_code:
@@ -197,7 +197,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                 if site_code.code:
                     body_site = self._convert_code(site_code)
                     if body_site:
-                        body_sites.append(body_site.to_dict())
+                        body_sites.append(body_site.model_dump(exclude_none=True))
             if body_sites:
                 fhir_service_request["bodySite"] = body_sites
 
@@ -205,7 +205,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if procedure.entry_relationship:
             reasons = self._extract_reasons(procedure.entry_relationship)
             if reasons.codes:
-                fhir_service_request["reasonCode"] = [c.to_dict() for c in reasons.codes]
+                fhir_service_request["reasonCode"] = [c.model_dump(exclude_none=True) for c in reasons.codes]
             if reasons.references:
                 fhir_service_request["reasonReference"] = [
                     r.model_dump(exclude_none=True) for r in reasons.references
@@ -389,14 +389,14 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             ]
         }
 
-    def _convert_code(self, code: CD) -> FHIRCodeableConcept | None:
+    def _convert_code(self, code: CD) -> CodeableConcept | None:
         """Convert C-CDA code to FHIR CodeableConcept model.
 
         Args:
             code: The C-CDA code
 
         Returns:
-            FHIRCodeableConcept or None
+            CodeableConcept or None
         """
         return self.convert_code_to_codeable_concept(code)
 
@@ -505,14 +505,14 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
 
         return None
 
-    def _extract_performer_type(self, performers: list[Performer]) -> FHIRCodeableConcept | None:
+    def _extract_performer_type(self, performers: list[Performer]) -> CodeableConcept | None:
         """Extract performerType from C-CDA performer functionCode.
 
         Args:
             performers: List of C-CDA performer elements
 
         Returns:
-            FHIRCodeableConcept or None
+            CodeableConcept or None
         """
         for performer in performers:
             if performer.function_code:

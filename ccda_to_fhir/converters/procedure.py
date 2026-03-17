@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.reference import Reference
 
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
@@ -16,7 +17,6 @@ from ccda_to_fhir.constants import (
     TemplateIds,
 )
 from ccda_to_fhir.types import (
-    FHIRCodeableConcept,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -140,7 +140,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if has_valid_code:
             converted_code = self._convert_code(procedure.code)
             if converted_code is not None:
-                fhir_procedure["code"] = converted_code.to_dict()
+                fhir_procedure["code"] = converted_code.model_dump(exclude_none=True)
             else:
                 # _convert_code returned None (e.g., code exists but code_system is missing)
                 # Fall through to the nullFlavor handling below
@@ -242,7 +242,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if procedure.entry_relationship:
             reasons = self._extract_reasons(procedure.entry_relationship)
             if reasons.codes:
-                fhir_procedure["reasonCode"] = [c.to_dict() for c in reasons.codes]
+                fhir_procedure["reasonCode"] = [c.model_dump(exclude_none=True) for c in reasons.codes]
             if reasons.references:
                 fhir_procedure["reasonReference"] = [
                     r.model_dump(exclude_none=True) for r in reasons.references
@@ -332,14 +332,14 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
             FHIRCodes.ProcedureStatus.UNKNOWN,
         )
 
-    def _convert_code(self, code: CD) -> FHIRCodeableConcept | None:
+    def _convert_code(self, code: CD) -> CodeableConcept | None:
         """Convert C-CDA procedure code to FHIR CodeableConcept model.
 
         Args:
             code: The C-CDA procedure code
 
         Returns:
-            FHIRCodeableConcept or None
+            CodeableConcept or None
         """
         return self.convert_code_to_codeable_concept(code)
 
@@ -678,7 +678,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                                 code_system=value.code_system,
                                 display_name=value.display_name,
                             )
-                            return result.to_dict() if result else None
+                            return result.model_dump(exclude_none=True) if result else None
 
         return None
 
@@ -707,7 +707,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                                 display_name=value.display_name,
                             )
                             if complication:
-                                complications.append(complication.to_dict())
+                                complications.append(complication.model_dump(exclude_none=True))
 
         return complications
 
@@ -734,7 +734,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
                             display_name=act.code.display_name,
                         )
                         if followup:
-                            followups.append(followup.to_dict())
+                            followups.append(followup.model_dump(exclude_none=True))
 
         return followups
 
@@ -822,7 +822,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         if not codeable_concept_model:
             return None
 
-        codeable_concept = codeable_concept_model.to_dict()
+        codeable_concept = codeable_concept_model.model_dump(exclude_none=True)
 
         # Check for laterality qualifiers
         # Per C-CDA: laterality is specified using qualifier with name code 272741003 or 78615007

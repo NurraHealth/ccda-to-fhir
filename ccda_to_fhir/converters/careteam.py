@@ -15,12 +15,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.reference import Reference
 
 from ccda_to_fhir.ccda.models.datatypes import CD, CS, II, IVL_TS, TS
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import FHIRCodeableConcept, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .author_references import format_organization_display
 from .base import BaseConverter
@@ -234,7 +235,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         # Map category from team type observations
         categories = self._extract_categories(organizer)
         if categories:
-            careteam["category"] = [c.to_dict() for c in categories]
+            careteam["category"] = [c.model_dump(exclude_none=True) for c in categories]
 
         # Map participants from Care Team Member Acts (required, at least one)
         participants = self._extract_participants(organizer)
@@ -434,7 +435,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return period if period else None
 
-    def _extract_categories(self, organizer: Organizer) -> list[FHIRCodeableConcept]:
+    def _extract_categories(self, organizer: Organizer) -> list[CodeableConcept]:
         """Extract category from Care Team Type Observations.
 
         Validates both root OID and extension date per C-CDA specification.
@@ -478,9 +479,9 @@ class CareTeamConverter(BaseConverter["Organizer"]):
             organizer: Care Team Organizer
 
         Returns:
-            List of FHIRCodeableConcept for categories (may be empty)
+            List of CodeableConcept for categories (may be empty)
         """
-        categories: list[FHIRCodeableConcept] = []
+        categories: list[CodeableConcept] = []
 
         if not organizer.component:
             return categories  # No components - acceptable per MAY conformance
@@ -760,7 +761,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 display_name=performer.function_code.display_name,
             )
             if role:
-                participant["role"] = [role.to_dict()]
+                participant["role"] = [role.model_dump(exclude_none=True)]
 
         # Create member reference (required) - prefer PractitionerRole
         if assigned_entity.id and len(assigned_entity.id) > 0:
@@ -874,7 +875,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return Reference(reference=f"urn:uuid:{role_id}")
 
-    def _generate_name(self, categories: list[FHIRCodeableConcept]) -> str:
+    def _generate_name(self, categories: list[CodeableConcept]) -> str:
         """Generate human-readable name for the care team.
 
         Args:
@@ -910,7 +911,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
     def _build_careteam_narrative(
         self,
         organizer: Organizer,
-        categories: list[FHIRCodeableConcept],
+        categories: list[CodeableConcept],
         participants: list[JSONObject],
     ) -> JSONObject | None:
         """Generate narrative text for the care team.
