@@ -6,12 +6,15 @@ import base64
 from collections.abc import Callable
 
 from fhir.resources.attachment import Attachment
+from fhir.resources.codeableconcept import CodeableConcept
+from fhir.resources.coding import Coding
 from fhir.resources.documentreference import (
     DocumentReferenceContent,
     DocumentReferenceRelatesTo,
 )
 from fhir.resources.extension import Extension
 from fhir.resources.period import Period
+from fhir.resources.reference import Reference as FHIRLibReference
 
 from ccda_to_fhir.ccda.models.act import Act, Reference
 from ccda_to_fhir.ccda.models.author import Author
@@ -21,6 +24,7 @@ from ccda_to_fhir.constants import (
     CCDA_TYPECODE_TO_FHIR_RELATES_TO,
     DOCUMENT_REFERENCE_STATUS_TO_FHIR,
     FHIRCodes,
+    FHIRSystems,
 )
 from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 from ccda_to_fhir.types import (
@@ -30,6 +34,7 @@ from ccda_to_fhir.types import (
     FHIRDocRefContext,
     FHIRReference,
     FHIRResourceDict,
+    JSONObject,
 )
 
 from .author_references import build_author_references
@@ -156,15 +161,9 @@ class NoteActivityConverter(BaseConverter[Act]):
                     c.model_dump(exclude_none=True, mode="json") for c in content_list
                 ]
             else:
-                doc_ref["content"] = [
-                    c.model_dump(exclude_none=True, mode="json")
-                    for c in _create_missing_content("unknown")
-                ]
+                doc_ref["content"] = _create_missing_content()
         else:
-            doc_ref["content"] = [
-                c.model_dump(exclude_none=True, mode="json")
-                for c in _create_missing_content("unknown")
-            ]
+            doc_ref["content"] = _create_missing_content()
 
         # Context - encounter and period
         context = _create_context(
@@ -208,7 +207,7 @@ def _generate_note_id(identifier: II | None) -> str:
 
 
 def _extract_doc_status(note_act: Act) -> str | None:
-    """Map C-CDA statusCode to FHIR docStatus (completed->final, active->preliminary)."""
+    """Map C-CDA statusCode to FHIR docStatus (completed→final, active→preliminary)."""
     if note_act.status_code and note_act.status_code.code:
         return _DOC_STATUS_MAP.get(note_act.status_code.code.lower())
     return None
@@ -342,14 +341,8 @@ def _create_reference_content(reference: TEL, section: Section) -> DocumentRefer
     )
 
 
-def _create_missing_content(reason_code: str) -> list[DocumentReferenceContent]:
-    """Create content with data-absent-reason extension when text is missing.
-
-    Args:
-        reason_code: FHIR data-absent-reason code (e.g. "unknown", "asked-unknown").
-    """
-    from ccda_to_fhir.constants import FHIRSystems
-
+def _create_missing_content() -> list[JSONObject]:
+    """Create content with data-absent-reason extension when text is missing."""
     return [
         DocumentReferenceContent(
             attachment=Attachment(
@@ -358,12 +351,12 @@ def _create_missing_content(reason_code: str) -> list[DocumentReferenceContent]:
                     "extension": [
                         Extension(
                             url=FHIRSystems.DATA_ABSENT_REASON,
-                            valueCode=reason_code,
+                            valueCode="unknown",
                         ).model_dump(exclude_none=True, mode="json")
                     ]
                 },
             )
-        )
+        ).model_dump(exclude_none=True, mode="json")
     ]
 
 
@@ -378,7 +371,7 @@ def _create_context(
     When none are found, falls back to ``fallback_encounter_context`` (typically
     derived from the document header's encompassingEncounter).
     """
-    period: dict[str, str] | None = None
+    period: Period | None = None
     encounter_refs: list[FHIRReference] = []
 
     if note_act.effective_time:
@@ -392,7 +385,7 @@ def _create_context(
         if ts_value:
             start = convert_date_fn(ts_value)
             if start:
-                period = Period(start=start).model_dump(exclude_none=True, mode="json")
+                period = Period(start=start)
 
     if note_act.entry_relationship:
         for entry_rel in note_act.entry_relationship:
@@ -419,7 +412,7 @@ def _convert_relates_to(references: list[Reference]) -> list[DocumentReferenceRe
     """Convert reference to externalDocument to FHIR relatesTo.
 
     Maps C-CDA typeCode to FHIR relatesTo.code (R4B CodeableConcept):
-      RPLC -> replaces, APND -> appends, XFRM -> transforms.
+      RPLC → replaces, APND → appends, XFRM → transforms.
     REFR and unmapped typeCodes are skipped (no FHIR relatesTo equivalent).
     """
     relates_to: list[DocumentReferenceRelatesTo] = []
@@ -437,8 +430,8 @@ def _convert_relates_to(references: list[Reference]) -> list[DocumentReferenceRe
         )
         relates_to.append(
             DocumentReferenceRelatesTo(
-                code={"coding": [{"system": _RELATES_TO_SYSTEM, "code": fhir_code}]},
-                target={"reference": f"urn:uuid:{doc_id}"},
+                code=CodeableConcept(coding=[Coding(system=_RELATES_TO_SYSTEM, code=fhir_code)]),
+                target=FHIRLibReference(reference=f"urn:uuid:{doc_id}"),
             )
         )
     return relates_to

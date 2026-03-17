@@ -235,14 +235,14 @@ class TestConvertType:
         assert result.coding[0].system is None
         assert result.coding[0].code is None
 
-    def test_to_dict_round_trip(self, mapper: CodeSystemMapper) -> None:
+    def test_type_to_dict_with_primary_code(self, mapper: CodeSystemMapper) -> None:
         code = CD(code="34109-9", code_system="2.16.840.1.113883.6.1", display_name="Note")
         result = _convert_type(code, mapper)
         d = result.to_dict()
         assert d["coding"][0]["code"] == "34109-9"
         assert d["text"] == "Note"
 
-    def test_fallback_to_dict(self, mapper: CodeSystemMapper) -> None:
+    def test_type_to_dict_with_fallback(self, mapper: CodeSystemMapper) -> None:
         result = _convert_type(None, mapper)
         d = result.to_dict()
         assert d["coding"][0]["system"] == "http://loinc.org"
@@ -285,13 +285,13 @@ class TestMakeCoding:
         assert result is not None
         assert result.system == "urn:oid:9.9.9.9.9"
 
-    def test_to_dict_full(self, mapper: CodeSystemMapper) -> None:
+    def test_coding_to_dict_with_system(self, mapper: CodeSystemMapper) -> None:
         result = _make_coding("12345", "2.16.840.1.113883.6.1", "Test", mapper)
         assert result is not None
         d = result.to_dict()
         assert d == {"code": "12345", "system": "http://loinc.org", "display": "Test"}
 
-    def test_to_dict_display_only(self, mapper: CodeSystemMapper) -> None:
+    def test_coding_to_dict_display_only(self, mapper: CodeSystemMapper) -> None:
         result = _make_coding("12345", None, "Test", mapper)
         assert result is not None
         d = result.to_dict()
@@ -420,7 +420,7 @@ class TestCreateInlineContent:
     def test_b64_no_value_returns_none(self) -> None:
         assert _create_inline_content(ED(representation="B64")) is None
 
-    def test_to_dict_structure(self) -> None:
+    def test_inline_content_to_dict(self) -> None:
         text = ED(value="note text", media_type="text/plain")
         result = _create_inline_content(text)
         assert result is not None
@@ -463,37 +463,20 @@ class TestCreateContentList:
 
 
 # ============================================================================
-# _create_missing_content — returns list[DocumentReferenceContent]
+# _create_missing_content — returns list[JSONObject] (pre-serialized)
 # ============================================================================
 
 
 class TestCreateMissingContent:
-    def test_structure(self) -> None:
-        result = _create_missing_content("unknown")
+    def test_returns_single_element(self) -> None:
+        result = _create_missing_content()
         assert len(result) == 1
-        assert isinstance(result[0], DocumentReferenceContent)
-        assert result[0].attachment.contentType == "text/plain"
-        assert result[0].attachment.data is None
+        assert isinstance(result[0], dict)
+        assert result[0]["attachment"]["contentType"] == "text/plain"
 
-    def test_extension_model(self) -> None:
-        result = _create_missing_content("unknown")
-        d = result[0].model_dump(exclude_none=True, mode="json")
-        ext_list = d["attachment"]["_data"]["extension"]
-        assert len(ext_list) == 1
-        assert ext_list[0]["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
-        assert ext_list[0]["valueCode"] == "unknown"
-
-    def test_custom_reason_code(self) -> None:
-        result = _create_missing_content("asked-unknown")
-        d = result[0].model_dump(exclude_none=True, mode="json")
-        ext_list = d["attachment"]["_data"]["extension"]
-        assert ext_list[0]["valueCode"] == "asked-unknown"
-
-    def test_to_dict_structure(self) -> None:
-        result = _create_missing_content("unknown")
-        d = result[0].model_dump(exclude_none=True, mode="json")
-        assert d["attachment"]["contentType"] == "text/plain"
-        ext_list = d["attachment"]["_data"]["extension"]
+    def test_data_absent_reason_extension(self) -> None:
+        result = _create_missing_content()
+        ext_list = result[0]["attachment"]["_data"]["extension"]
         assert len(ext_list) == 1
         assert ext_list[0]["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
         assert ext_list[0]["valueCode"] == "unknown"
@@ -513,21 +496,21 @@ class TestCreateContext:
         assert result is not None
         assert isinstance(result, FHIRDocRefContext)
         assert result.period is not None
-        assert result.period["start"] == "2026-01-15"
+        assert result.period.start == "2026-01-15"
 
     def test_period_from_ivl_ts_low(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(low=TS(value="20260110")))
         result = _create_context(act, lambda v: "2026-01-10", self._NO_ENC)
         assert result is not None
         assert result.period is not None
-        assert result.period["start"] == "2026-01-10"
+        assert result.period.start == "2026-01-10"
 
     def test_ivl_ts_value_preferred_over_low(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260101", low=TS(value="20260110")))
         result = _create_context(act, lambda v: "2026-01-01", self._NO_ENC)
         assert result is not None
         assert result.period is not None
-        assert result.period["start"] == "2026-01-01"
+        assert result.period.start == "2026-01-01"
 
     def test_no_effective_time_returns_none(self) -> None:
         act = _make_note_act()
@@ -586,7 +569,7 @@ class TestCreateContext:
         assert result.period is not None
         assert len(result.encounter) == 1
 
-    def test_to_dict_structure(self) -> None:
+    def test_context_to_dict_with_period_and_encounter(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
         act.entry_relationship = [
             EntryRelationship(
@@ -734,7 +717,7 @@ class TestConvertRelatesTo:
     def test_empty_list(self) -> None:
         assert _convert_relates_to([]) == []
 
-    def test_to_dict_structure(self) -> None:
+    def test_relates_to_serializes_to_fhir_dict(self) -> None:
         refs = [
             Reference(
                 type_code="RPLC",
@@ -1187,7 +1170,7 @@ class TestFallbackEncounterReference:
         result = _create_context(act, lambda v: "2026-01-15", ctx)
         assert result is not None
         assert result.period is not None
-        assert result.period["start"] == "2026-01-15"
+        assert result.period.start == "2026-01-15"
         assert result.encounter[0].reference == "urn:uuid:enc-fb"
 
     def test_empty_context_no_encounter(self) -> None:
@@ -1237,7 +1220,7 @@ class TestFallbackEncounterDisplay:
         result = _create_context(act, lambda v: "2026-01-15", ctx)
         assert result is not None
         assert result.period is not None
-        assert result.period["start"] == "2026-01-15"
+        assert result.period.start == "2026-01-15"
         assert result.encounter[0].display == "Checkup"
 
 
@@ -1344,7 +1327,7 @@ class TestPydanticModelTypeSafety:
         assert not ctx
 
     def test_fhir_doc_ref_context_truthy_with_period(self) -> None:
-        ctx = FHIRDocRefContext(period={"start": "2026-01-01"})
+        ctx = FHIRDocRefContext(period=Period(start="2026-01-01"))
         assert ctx
 
     def test_fhir_doc_ref_context_truthy_with_encounter(self) -> None:
@@ -1426,7 +1409,7 @@ class TestEdgeCases:
         assert result.coding[0].code == "34133-9"
 
     def test_make_coding_empty_string_code(self, mapper: CodeSystemMapper) -> None:
-        """Empty string code should still produce a coding (code is truthy check)."""
+        """Empty string code is falsy, so _make_coding returns None."""
         result = _make_coding("", None, None, mapper)
         assert result is None
 
