@@ -29,6 +29,7 @@ from fhir.resources.R4B.practitioner import Practitioner
 from fhir.resources.R4B.practitionerrole import PractitionerRole
 from fhir.resources.R4B.procedure import Procedure
 from fhir.resources.R4B.provenance import Provenance
+from fhir.resources.R4B.reference import Reference
 from fhir.resources.R4B.relatedperson import RelatedPerson
 from fhir.resources.R4B.servicerequest import ServiceRequest
 from fhir_core.fhirabstractmodel import FHIRAbstractModel
@@ -46,7 +47,6 @@ from ccda_to_fhir.types import (
     ConversionMetadata,
     ConversionResult,
     EncounterContext,
-    FHIRReference,
     FHIRResourceDict,
     JSONObject,
     ValidationStats,
@@ -162,7 +162,7 @@ def convert_careteam_organizer(
     if not reference_registry:
         raise ValueError("Reference registry required for CareTeam conversion")
 
-    patient_reference = reference_registry.get_patient_reference().to_dict()
+    patient_reference = reference_registry.get_patient_reference().model_dump(exclude_none=True)
 
     converter = CareTeamConverter(
         patient_reference=patient_reference,
@@ -1150,15 +1150,15 @@ class DocumentConverter:
                 if TemplateIds.GOALS_SECTION in section_resource_map:
                     for goal in section_resource_map[TemplateIds.GOALS_SECTION]:
                         if goal.get("id"):
-                            goal_ref = FHIRReference(reference=f"urn:uuid:{goal['id']}")
-                            goal_refs.append(goal_ref.to_dict())
+                            goal_ref = Reference(reference=f"urn:uuid:{goal['id']}")
+                            goal_refs.append(goal_ref.model_dump(exclude_none=True))
 
                 health_concern_refs = []
                 if TemplateIds.HEALTH_CONCERNS_SECTION in section_resource_map:
                     for condition in section_resource_map[TemplateIds.HEALTH_CONCERNS_SECTION]:
                         if condition.get("id"):
-                            concern_ref = FHIRReference(reference=f"urn:uuid:{condition['id']}")
-                            health_concern_refs.append(concern_ref.to_dict())
+                            concern_ref = Reference(reference=f"urn:uuid:{condition['id']}")
+                            health_concern_refs.append(concern_ref.model_dump(exclude_none=True))
 
                 # Extract intervention and outcome entries from sections for CarePlan linking
                 # NOTE: Intervention/outcome resources have already been processed and registered
@@ -2876,13 +2876,13 @@ class DocumentConverter:
             display=enc_display,
         )
 
-    def _build_document_author_references(self, ccda_doc: ClinicalDocument) -> list[FHIRReference]:
+    def _build_document_author_references(self, ccda_doc: ClinicalDocument) -> list[Reference]:
         """Build author references from document-level authors.
 
         Delegates to the shared ``build_author_references`` helper.
 
         Returns:
-            List of FHIRReference objects.
+            List of Reference objects.
         """
         from ccda_to_fhir.converters.author_references import build_author_references
 
@@ -3374,10 +3374,10 @@ class DocumentConverter:
                         self._temp_header_locations.append(location_resource)
 
                 if location_id:
-                    location_ref = FHIRReference(
+                    location_ref = Reference(
                         reference=f"urn:uuid:{location_id}", display=location_display
                     )
-                    location_dict = location_ref.to_dict()
+                    location_dict = location_ref.model_dump(exclude_none=True)
 
                     fhir_encounter["location"] = [
                         {
@@ -3392,7 +3392,9 @@ class DocumentConverter:
                 "reference_registry is required. "
                 "Cannot create header Encounter without patient reference."
             )
-        fhir_encounter["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        fhir_encounter["subject"] = self.reference_registry.get_patient_reference().model_dump(
+            exclude_none=True
+        )
 
         return fhir_encounter
 

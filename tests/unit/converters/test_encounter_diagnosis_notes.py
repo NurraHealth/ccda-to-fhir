@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 
 import pytest
+from fhir.resources.R4B.reference import Reference
 
 from ccda_to_fhir.ccda.models.datatypes import CE
 from ccda_to_fhir.ccda.models.section import Section, SectionComponent, StructuredBody
@@ -30,7 +31,6 @@ from ccda_to_fhir.converters.encounter_diagnosis_notes import (
 )
 from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.id_generator import reset_id_cache
-from ccda_to_fhir.types import FHIRReference
 
 # ============================================================================
 # Fixtures
@@ -602,7 +602,7 @@ class TestAuthorReferences:
                 note_text="Improving on antibiotics.",
             )
         ]
-        author_refs = [FHIRReference(reference="urn:uuid:prac-1")]
+        author_refs = [Reference(reference="urn:uuid:prac-1")]
         result = create_diagnosis_note_doc_refs(
             notes, {}, {}, registry, author_references=author_refs
         )
@@ -619,8 +619,8 @@ class TestAuthorReferences:
             )
         ]
         author_refs = [
-            FHIRReference(reference="urn:uuid:prac-1"),
-            FHIRReference(reference="urn:uuid:prac-2"),
+            Reference(reference="urn:uuid:prac-1"),
+            Reference(reference="urn:uuid:prac-2"),
         ]
         result = create_diagnosis_note_doc_refs(
             notes, {}, {}, registry, author_references=author_refs

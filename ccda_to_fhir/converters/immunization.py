@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, IVL_TS, PQ, TS
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 
@@ -21,7 +23,7 @@ from ccda_to_fhir.constants import (
     TypeCodes,
     V2ParticipationFunctionCodes,
 )
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 from .medication_request import MedicationRequestConverter
@@ -136,7 +138,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create Immunization without patient reference."
             )
-        immunization["patient"] = self.reference_registry.get_patient_reference().to_dict()
+        immunization["patient"] = self.reference_registry.get_patient_reference().model_dump(
+            exclude_none=True
+        )
 
         # 6. OccurrenceDateTime - from effectiveTime (required field)
         occurrence_date = self._extract_occurrence_date(substance_admin)
@@ -673,7 +677,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create Observation without patient reference."
             )
-        observation_resource["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        observation_resource["subject"] = (
+            self.reference_registry.get_patient_reference().model_dump(exclude_none=True)
+        )
 
         # Extract effectiveDateTime if available
         if observation.effective_time:
@@ -781,7 +787,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create Observation without patient reference."
             )
-        observation_resource["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        observation_resource["subject"] = (
+            self.reference_registry.get_patient_reference().model_dump(exclude_none=True)
+        )
 
         # Extract effectiveDateTime if available
         if observation.effective_time:
@@ -928,7 +936,9 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create Observation without patient reference."
             )
-        observation_resource["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        observation_resource["subject"] = (
+            self.reference_registry.get_patient_reference().model_dump(exclude_none=True)
+        )
 
         # Extract effectiveDateTime if available (usually has low value for when complication started)
         if observation.effective_time:
@@ -975,7 +985,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             # Prefer non-nullFlavor IDs, but use nullFlavor ID as fallback
             actor_ref = self._select_performer_actor(assigned_entity)
             if actor_ref:
-                performer_obj["actor"] = actor_ref.to_dict()
+                performer_obj["actor"] = actor_ref.model_dump(exclude_none=True)
 
             # Set function (who administered the vaccine) - fixed for immunizations
             performer_obj["function"] = {
@@ -995,7 +1005,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
 
         return performers
 
-    def _select_performer_actor(self, assigned_entity) -> FHIRReference | None:
+    def _select_performer_actor(self, assigned_entity) -> Reference | None:
         """Select the actor reference for a performer, handling nullFlavor and fallbacks.
 
         Priority:
@@ -1007,7 +1017,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             assigned_entity: C-CDA AssignedEntity element
 
         Returns:
-            FHIRReference or None
+            Reference or None
         """
         from ccda_to_fhir.converters.author_references import (
             format_organization_display,
@@ -1022,13 +1032,13 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             for id_elem in assigned_entity.id:
                 if id_elem.root and not getattr(id_elem, "null_flavor", None):
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                    return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                    return Reference(reference=f"urn:uuid:{pract_id}", display=display)
 
             # Second pass: use first ID with root (including nullFlavor)
             for id_elem in assigned_entity.id:
                 if id_elem.root:
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
-                    return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                    return Reference(reference=f"urn:uuid:{pract_id}", display=display)
 
         # Fallback: try represented organization
         org = assigned_entity.represented_organization
@@ -1038,7 +1048,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             if root:
                 org_id = self._generate_organization_id(root, extension)
                 display = format_organization_display(org)
-                return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+                return Reference(reference=f"urn:uuid:{org_id}", display=display)
 
         return None
 

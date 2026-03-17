@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from typing import Protocol, runtime_checkable
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.author import (
     AssignedAuthor,
     AssignedAuthoringDevice,
@@ -17,7 +19,6 @@ from ccda_to_fhir.ccda.models.author import (
 )
 from ccda_to_fhir.ccda.models.datatypes import ON, PN, AssignedPerson
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import FHIRReference
 
 
 @runtime_checkable
@@ -142,16 +143,16 @@ def format_organization_display(org: HasOrganizationName | None) -> str | None:
     return None
 
 
-def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[FHIRReference]:
+def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[Reference]:
     """Build Device and/or Organization refs when no assignedPerson exists.
 
     Args:
         assigned: The AssignedAuthor element (already confirmed to lack assignedPerson).
 
     Returns:
-        List of FHIRReference objects for Device and/or Organization.
+        List of Reference objects for Device and/or Organization.
     """
-    refs: list[FHIRReference] = []
+    refs: list[Reference] = []
     # Device uses the author-level assigned.id (not a device-specific ID)
     # because C-CDA assigns the identifier to the author role, not the device itself
     if assigned.assigned_authoring_device and assigned.id:
@@ -162,7 +163,7 @@ def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[FHIRRefere
             first_id.extension or None,
         )
         display = format_device_display(assigned.assigned_authoring_device)
-        refs.append(FHIRReference(reference=f"urn:uuid:{device_id}", display=display))
+        refs.append(Reference(reference=f"urn:uuid:{device_id}", display=display))
     # Organization uses its own identifier
     if assigned.represented_organization and assigned.represented_organization.id:
         org_first_id = assigned.represented_organization.id[0]
@@ -172,11 +173,11 @@ def _build_device_org_fallback_refs(assigned: AssignedAuthor) -> list[FHIRRefere
             org_first_id.extension or None,
         )
         display = format_organization_display(assigned.represented_organization)
-        refs.append(FHIRReference(reference=f"urn:uuid:{org_id}", display=display))
+        refs.append(Reference(reference=f"urn:uuid:{org_id}", display=display))
     return refs
 
 
-def build_author_references(authors: list[Author]) -> list[FHIRReference]:
+def build_author_references(authors: list[Author]) -> list[Reference]:
     """Convert C-CDA authors to FHIR references (Practitioner, Device, or Organization).
 
     When an author has an assignedPerson, a Practitioner reference is created.
@@ -184,7 +185,7 @@ def build_author_references(authors: list[Author]) -> list[FHIRReference]:
     Organization (from representedOrganization) per FHIR DocumentReference.author
     which accepts Practitioner | Device | Organization.
     """
-    refs: list[FHIRReference] = []
+    refs: list[Reference] = []
     for author in authors:
         if not author.assigned_author:
             continue
@@ -197,7 +198,7 @@ def build_author_references(authors: list[Author]) -> list[FHIRReference]:
                 first_id.extension or None,
             )
             display = format_person_display(assigned.assigned_person)
-            refs.append(FHIRReference(reference=f"urn:uuid:{prac_id}", display=display))
+            refs.append(Reference(reference=f"urn:uuid:{prac_id}", display=display))
         else:
             refs.extend(_build_device_org_fallback_refs(assigned))
     return refs

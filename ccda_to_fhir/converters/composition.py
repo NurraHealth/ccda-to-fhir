@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.ccda.models.datatypes import II
 from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -282,7 +284,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         if self.reference_registry:
             encounter_ref = self.reference_registry.get_encounter_reference()
             if encounter_ref:
-                composition["encounter"] = encounter_ref.to_dict()
+                composition["encounter"] = encounter_ref.model_dump(exclude_none=True)
 
         # Sections - convert structured body to Composition sections
         if clinical_document.component and clinical_document.component.structured_body:
@@ -346,7 +348,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
         # Patient reference (from recordTarget in document header)
         if self.reference_registry:
             try:
-                return self.reference_registry.get_patient_reference().to_dict()
+                return self.reference_registry.get_patient_reference().model_dump(exclude_none=True)
             except Exception:
                 # Patient not registered (conversion failed) - return None to trigger fail-fast
                 return None
@@ -497,13 +499,12 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if assigned.id:
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
+                    from fhir.resources.R4B.reference import Reference
+
                     from ccda_to_fhir.converters.author_references import format_person_display
-                    from ccda_to_fhir.types import FHIRReference
 
                     display = format_person_display(assigned.assigned_person)
-                    party_ref = FHIRReference(
-                        reference=f"urn:uuid:{practitioner_id}", display=display
-                    )
+                    party_ref = Reference(reference=f"urn:uuid:{practitioner_id}", display=display)
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
         if not party_ref:
@@ -511,7 +512,9 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         attester: JSONObject = {
             "mode": "legal",  # Legal attestation
-            "party": party_ref.to_dict(),  # Required per US Realm Header Profile
+            "party": party_ref.model_dump(
+                exclude_none=True
+            ),  # Required per US Realm Header Profile
         }
 
         # Extract time (optional)
@@ -559,13 +562,12 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
             if assigned.id:
                 practitioner_id = self._generate_practitioner_id(assigned.id)
                 if practitioner_id:
+                    from fhir.resources.R4B.reference import Reference
+
                     from ccda_to_fhir.converters.author_references import format_person_display
-                    from ccda_to_fhir.types import FHIRReference
 
                     display = format_person_display(assigned.assigned_person)
-                    party_ref = FHIRReference(
-                        reference=f"urn:uuid:{practitioner_id}", display=display
-                    )
+                    party_ref = Reference(reference=f"urn:uuid:{practitioner_id}", display=display)
 
         # If we can't create party, don't create attester (US Realm Header requires party 1..1)
         if not party_ref:
@@ -573,7 +575,9 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         attester: JSONObject = {
             "mode": "professional",  # Professional attestation
-            "party": party_ref.to_dict(),  # Required per US Realm Header Profile
+            "party": party_ref.model_dump(
+                exclude_none=True
+            ),  # Required per US Realm Header Profile
         }
 
         # Extract time (optional)
@@ -1124,8 +1128,8 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                         # Only add if not already added (deduplicate)
                         if reference not in seen_references:
                             seen_references.add(reference)
-                            entry_ref = FHIRReference(reference=reference)
-                            entries.append(entry_ref.to_dict())
+                            entry_ref = Reference(reference=reference)
+                            entries.append(entry_ref.model_dump(exclude_none=True))
 
         return entries
 

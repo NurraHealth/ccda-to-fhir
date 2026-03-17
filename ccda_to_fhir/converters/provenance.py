@@ -5,12 +5,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.constants import (
     CCDA_ROLE_TO_PROVENANCE_AGENT,
     FHIRCodes,
     FHIRSystems,
 )
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -66,8 +68,8 @@ class ProvenanceConverter(BaseConverter[None]):
         )
 
         # Target - reference to the resource(s) this Provenance is about
-        target_ref = FHIRReference(reference=f"urn:uuid:{resource_id}")
-        provenance["target"] = [target_ref.to_dict()]
+        target_ref = Reference(reference=f"urn:uuid:{resource_id}")
+        provenance["target"] = [target_ref.model_dump(exclude_none=True)]
 
         # Recorded - when the provenance was recorded (use earliest author time)
         recorded_date = self._get_earliest_author_time(authors)
@@ -135,23 +137,23 @@ class ProvenanceConverter(BaseConverter[None]):
 
         # Who - reference to Practitioner or Device
         if author_info.practitioner_id:
-            who_ref = FHIRReference(
+            who_ref = Reference(
                 reference=f"urn:uuid:{author_info.practitioner_id}", display=author_info.display
             )
-            agent["who"] = who_ref.to_dict()
+            agent["who"] = who_ref.model_dump(exclude_none=True)
         elif author_info.device_id:
-            who_ref = FHIRReference(
+            who_ref = Reference(
                 reference=f"urn:uuid:{author_info.device_id}", display=author_info.display
             )
-            agent["who"] = who_ref.to_dict()
+            agent["who"] = who_ref.model_dump(exclude_none=True)
 
         # OnBehalfOf - reference to Organization (optional)
         if author_info.organization_id:
-            on_behalf_of_ref = FHIRReference(
+            on_behalf_of_ref = Reference(
                 reference=f"urn:uuid:{author_info.organization_id}",
                 display=author_info.organization_display,
             )
-            agent["onBehalfOf"] = on_behalf_of_ref.to_dict()
+            agent["onBehalfOf"] = on_behalf_of_ref.model_dump(exclude_none=True)
 
         return agent
 

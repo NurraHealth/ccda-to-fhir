@@ -15,10 +15,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CS, II, IVL_TS, TS
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.id_generator import generate_id_from_identifiers
-from ccda_to_fhir.types import FHIRCodeableConcept, FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRCodeableConcept, FHIRResourceDict, JSONObject
 
 from .author_references import format_organization_display
 from .base import BaseConverter
@@ -243,7 +245,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         # Extract managing organization from first member's organization
         managing_org = self._extract_managing_organization(organizer)
         if managing_org:
-            careteam["managingOrganization"] = [managing_org.to_dict()]
+            careteam["managingOrganization"] = [managing_org.model_dump(exclude_none=True)]
 
         # Extract narrative text from code originalText or generate from data
         narrative = self._build_careteam_narrative(organizer, categories, participants)
@@ -533,16 +535,16 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return categories
 
-    def _extract_managing_organization(self, organizer: Organizer) -> FHIRReference | None:
+    def _extract_managing_organization(self, organizer: Organizer) -> Reference | None:
         """Extract managing organization from Care Team Member Acts.
 
-        Returns a FHIRReference for the first member who has an organization.
+        Returns a Reference for the first member who has an organization.
 
         Args:
             organizer: Care Team Organizer
 
         Returns:
-            FHIRReference or None if not found
+            Reference or None if not found
         """
         if not organizer.component:
             return None
@@ -595,7 +597,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                     display = format_organization_display(org)
                     # Check if we already created this organization
                     if org_oid in self.organization_registry:
-                        return FHIRReference(
+                        return Reference(
                             reference=f"urn:uuid:{self.organization_registry[org_oid]}",
                             display=display,
                         )
@@ -606,9 +608,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                             organization, f"org-{org_oid.replace('.', '-')}"
                         )
                         self.organization_registry[org_oid] = organization_id
-                        return FHIRReference(
-                            reference=f"urn:uuid:{organization_id}", display=display
-                        )
+                        return Reference(reference=f"urn:uuid:{organization_id}", display=display)
                     except Exception:
                         # Organization conversion failed, continue to next member
                         continue
@@ -766,7 +766,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
         if assigned_entity.id and len(assigned_entity.id) > 0:
             member_ref = self._create_member_reference(assigned_entity)
             if member_ref:
-                participant["member"] = member_ref.to_dict()
+                participant["member"] = member_ref.model_dump(exclude_none=True)
 
         # Map effective time to period
         if effective_time:
@@ -780,7 +780,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
 
         return None
 
-    def _create_member_reference(self, assigned_entity: AssignedEntity) -> FHIRReference | None:
+    def _create_member_reference(self, assigned_entity: AssignedEntity) -> Reference | None:
         """Create member reference (Practitioner/PractitionerRole).
 
         Creates Practitioner, Organization, and PractitionerRole resources,
@@ -870,9 +870,9 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 self.created_practitioner_roles[role_id] = practitioner_role
             except Exception:
                 # PractitionerRole conversion failed, fallback to Practitioner
-                return FHIRReference(reference=f"urn:uuid:{practitioner_id}")
+                return Reference(reference=f"urn:uuid:{practitioner_id}")
 
-        return FHIRReference(reference=f"urn:uuid:{role_id}")
+        return Reference(reference=f"urn:uuid:{role_id}")
 
     def _generate_name(self, categories: list[FHIRCodeableConcept]) -> str:
         """Generate human-readable name for the care team.

@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.datatypes import CE, CS, IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
 from ccda_to_fhir.constants import (
@@ -28,7 +30,6 @@ from ccda_to_fhir.constants import (
     TemplateIds,
 )
 from ccda_to_fhir.types import (
-    FHIRReference,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -164,7 +165,9 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
             if reasons.codes:
                 fhir_appointment["reasonCode"] = [c.to_dict() for c in reasons.codes]
             if reasons.references:
-                fhir_appointment["reasonReference"] = [r.to_dict() for r in reasons.references]
+                fhir_appointment["reasonReference"] = [
+                    r.model_dump(exclude_none=True) for r in reasons.references
+                ]
 
         # Comment (0..1) - Appointment uses a single comment string, not note[]
         notes = self.extract_notes_from_element(encounter, include_comments=False)
@@ -332,7 +335,7 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
             if patient_ref:
                 participants.append(
                     {
-                        "actor": patient_ref.to_dict(),
+                        "actor": patient_ref.model_dump(exclude_none=True),
                         "required": "required",
                         "status": "accepted",
                     }
@@ -355,9 +358,9 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
 
                         display = format_person_display(entity.assigned_person)
                         participant_entry: JSONObject = {
-                            "actor": FHIRReference(
+                            "actor": Reference(
                                 reference=f"urn:uuid:{pract_id}", display=display
-                            ).to_dict(),
+                            ).model_dump(exclude_none=True),
                             "required": "required",
                             "status": provider_status,
                         }
@@ -372,7 +375,7 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                 org = entity.represented_organization
                 if org:
                     org_display = format_organization_display(org)
-                    org_ref: FHIRReference | None = None
+                    org_ref: Reference | None = None
 
                     # Try org's own IDs
                     if org.id:
@@ -381,7 +384,7 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                                 org_id = self._generate_organization_id(
                                     id_elem.root, id_elem.extension
                                 )
-                                org_ref = FHIRReference(
+                                org_ref = Reference(
                                     reference=f"urn:uuid:{org_id}", display=org_display
                                 )
                                 break
@@ -393,19 +396,19 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                                 org_id = self._generate_organization_id(
                                     id_elem.root, id_elem.extension
                                 )
-                                org_ref = FHIRReference(
+                                org_ref = Reference(
                                     reference=f"urn:uuid:{org_id}", display=org_display
                                 )
                                 break
 
                     # Last resort: display-only
                     if not org_ref and org_display:
-                        org_ref = FHIRReference(display=org_display)
+                        org_ref = Reference(display=org_display)
 
                     if org_ref:
                         participants.append(
                             {
-                                "actor": org_ref.to_dict(),
+                                "actor": org_ref.model_dump(exclude_none=True),
                                 "required": "information-only",
                                 "status": provider_status,
                             }

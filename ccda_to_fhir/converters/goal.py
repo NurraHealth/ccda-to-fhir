@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_PQ, PQ
 from ccda_to_fhir.ccda.models.observation import Observation
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -148,7 +150,9 @@ class GoalConverter(BaseConverter[Observation]):
             raise ValueError(
                 "reference_registry is required. Cannot create Goal without patient reference."
             )
-        fhir_goal["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        fhir_goal["subject"] = self.reference_registry.get_patient_reference().model_dump(
+            exclude_none=True
+        )
 
         # 6. Start date and target due date from effectiveTime
         target_due_date = None  # Initialize outside if block to avoid UnboundLocalError
@@ -189,7 +193,7 @@ class GoalConverter(BaseConverter[Observation]):
             first_author = observation.author[0]
             expressed_by_ref = self._convert_author_to_reference(first_author)
             if expressed_by_ref:
-                fhir_goal["expressedBy"] = expressed_by_ref.to_dict()
+                fhir_goal["expressedBy"] = expressed_by_ref.model_dump(exclude_none=True)
 
         # 9. Priority from Priority Preference entry relationship
         if observation.entry_relationship:
@@ -225,7 +229,7 @@ class GoalConverter(BaseConverter[Observation]):
                     if self._is_entry_reference(entry_rel.observation):
                         address_ref = self._extract_health_concern_reference(entry_rel.observation)
                         if address_ref:
-                            addresses.append(address_ref.to_dict())
+                            addresses.append(address_ref.model_dump(exclude_none=True))
             if addresses:
                 fhir_goal["addresses"] = addresses
 
@@ -347,14 +351,14 @@ class GoalConverter(BaseConverter[Observation]):
 
         return target if target else None
 
-    def _convert_author_to_reference(self, author) -> FHIRReference | None:
-        """Convert C-CDA author to FHIRReference.
+    def _convert_author_to_reference(self, author) -> Reference | None:
+        """Convert C-CDA author to Reference.
 
         Args:
             author: C-CDA Author element
 
         Returns:
-            FHIRReference or None
+            Reference or None
         """
         if not author or not author.assigned_author:
             return None
@@ -376,7 +380,7 @@ class GoalConverter(BaseConverter[Observation]):
                 practitioner_id = generate_id_from_identifiers(
                     "Practitioner", first_id.root, first_id.extension
                 )
-                return FHIRReference(reference=f"urn:uuid:{practitioner_id}")
+                return Reference(reference=f"urn:uuid:{practitioner_id}")
             else:
                 # Assume it's the patient
                 if not self.reference_registry:
@@ -449,14 +453,14 @@ class GoalConverter(BaseConverter[Observation]):
 
         return None
 
-    def _extract_health_concern_reference(self, entry_ref_obs: Observation) -> FHIRReference | None:
+    def _extract_health_concern_reference(self, entry_ref_obs: Observation) -> Reference | None:
         """Extract health concern reference from Entry Reference observation.
 
         Args:
             entry_ref_obs: Entry Reference observation
 
         Returns:
-            FHIRReference or None
+            Reference or None
         """
         # Look for the referenced observation's ID
         if entry_ref_obs.id and len(entry_ref_obs.id) > 0:
@@ -473,6 +477,6 @@ class GoalConverter(BaseConverter[Observation]):
                 if isinstance(entry_ref_obs.value, (CD, CE)) and entry_ref_obs.value.display_name:
                     display = entry_ref_obs.value.display_name
 
-            return FHIRReference(reference=f"urn:uuid:{condition_id}", display=display)
+            return Reference(reference=f"urn:uuid:{condition_id}", display=display)
 
         return None

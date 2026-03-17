@@ -21,11 +21,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.coding import Coding
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
-from fhir.resources.R4B.coding import Coding
-
 from ccda_to_fhir.constants import (
     REFERRAL_SNOMED_CODES,
     SERVICE_REQUEST_MOOD_TO_INTENT,
@@ -36,7 +37,6 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.types import (
     FHIRCodeableConcept,
-    FHIRReference,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -165,12 +165,14 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
             fhir_service_request["code"] = REFERRAL_CATEGORY.to_dict()
 
         # Subject (required 1..1) - patient reference
-        fhir_service_request["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        fhir_service_request["subject"] = (
+            self.reference_registry.get_patient_reference().model_dump(exclude_none=True)
+        )
 
         # Encounter (MS)
         encounter_ref = self.reference_registry.get_encounter_reference()
         if encounter_ref:
-            fhir_service_request["encounter"] = encounter_ref.to_dict()
+            fhir_service_request["encounter"] = encounter_ref.model_dump(exclude_none=True)
 
         # Occurrence[x] (MS) - from effectiveTime
         if entry.effective_time:
@@ -191,13 +193,15 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
         if entry.author:
             requester = self._extract_requester(entry.author)
             if requester:
-                fhir_service_request["requester"] = requester.to_dict()
+                fhir_service_request["requester"] = requester.model_dump(exclude_none=True)
 
         # Performer - from performer (practitioners + organizations)
         if entry.performer:
             performers = self._extract_performer_and_org_references(entry.performer)
             if performers:
-                fhir_service_request["performer"] = [p.to_dict() for p in performers]
+                fhir_service_request["performer"] = [
+                    p.model_dump(exclude_none=True) for p in performers
+                ]
 
         # PerformerType - from performer assignedEntity code
         if entry.performer:
@@ -221,7 +225,9 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
             if reasons.codes:
                 fhir_service_request["reasonCode"] = [c.to_dict() for c in reasons.codes]
             if reasons.references:
-                fhir_service_request["reasonReference"] = [r.to_dict() for r in reasons.references]
+                fhir_service_request["reasonReference"] = [
+                    r.model_dump(exclude_none=True) for r in reasons.references
+                ]
 
         # Patient instruction - from entryRelationship with Instruction template
         if entry.entry_relationship:
@@ -314,7 +320,7 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
         assert time is not None and time.value is not None  # guaranteed by filter
         return self.convert_date(time.value)
 
-    def _extract_requester(self, authors: list[Author]) -> FHIRReference | None:
+    def _extract_requester(self, authors: list[Author]) -> Reference | None:
         """Extract requester reference from the latest author.
 
         Falls back to the first author if none have timestamps.
@@ -347,7 +353,7 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
                 if id_elem.root:
                     pract_id = self._generate_practitioner_id(id_elem.root, id_elem.extension)
                     display = format_person_display(assigned_author.assigned_person)
-                    return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                    return Reference(reference=f"urn:uuid:{pract_id}", display=display)
 
         # Fall back to Organization when no assignedPerson but representedOrganization exists
         if assigned_author.represented_organization:
@@ -359,25 +365,25 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
                 for id_elem in org.id:
                     if id_elem.root:
                         org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
-                        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+                        return Reference(reference=f"urn:uuid:{org_id}", display=display)
 
             # Fall back to author's ID to generate org reference (org has no ID but author does)
             if assigned_author.id:
                 for id_elem in assigned_author.id:
                     if id_elem.root:
                         org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
-                        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+                        return Reference(reference=f"urn:uuid:{org_id}", display=display)
 
             # Last resort: display-only reference (no resolvable ID)
             if display:
-                return FHIRReference(display=display)
+                return Reference(display=display)
 
         return None
 
     def _extract_performer_and_org_references(
         self,
         performers: list[Performer],
-    ) -> list[FHIRReference]:
+    ) -> list[Reference]:
         """Extract performer references including both Practitioner and Organization.
 
         For each performer, creates a Practitioner reference from assignedEntity.
@@ -388,7 +394,7 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
             performers: List of C-CDA Performer elements
 
         Returns:
-            List of FHIRReference objects (Practitioners and Organizations)
+            List of Reference objects (Practitioners and Organizations)
         """
         references = self.extract_performer_references(performers)
 
@@ -408,13 +414,13 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
                     if id_elem.root:
                         org_id = self._generate_organization_id(id_elem.root, id_elem.extension)
                         references.append(
-                            FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+                            Reference(reference=f"urn:uuid:{org_id}", display=display)
                         )
                         added = True
                         break
 
             if not added and display:
-                references.append(FHIRReference(display=display))
+                references.append(Reference(display=display))
 
         return references
 

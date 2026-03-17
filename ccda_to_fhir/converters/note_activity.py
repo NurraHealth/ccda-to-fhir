@@ -6,6 +6,7 @@ import base64
 from collections.abc import Callable
 
 from fhir.resources.R4B.attachment import Attachment
+from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.documentreference import (
     DocumentReferenceContent,
     DocumentReferenceContext,
@@ -13,7 +14,6 @@ from fhir.resources.R4B.documentreference import (
 )
 from fhir.resources.R4B.extension import Extension
 from fhir.resources.R4B.period import Period
-from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.reference import Reference as FHIRLibReference
 
 from ccda_to_fhir.ccda.models.act import Act, Reference
@@ -135,7 +135,9 @@ class NoteActivityConverter(BaseConverter[Act]):
         doc_ref["category"] = [_CLINICAL_NOTE_CATEGORY.to_dict()]
 
         # Subject
-        doc_ref["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        doc_ref["subject"] = self.reference_registry.get_patient_reference().model_dump(
+            exclude_none=True
+        )
 
         # Date and author references
         if note_act.author:
@@ -145,7 +147,7 @@ class NoteActivityConverter(BaseConverter[Act]):
 
             authors = build_author_references(note_act.author)
             if authors:
-                doc_ref["author"] = [a.to_dict() for a in authors]
+                doc_ref["author"] = [a.model_dump(exclude_none=True) for a in authors]
 
         # Content (required by US Core)
         if note_act.text:

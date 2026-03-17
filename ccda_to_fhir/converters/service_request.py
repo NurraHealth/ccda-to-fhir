@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, IVL_TS, TS
 from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
@@ -16,7 +18,6 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.types import (
     FHIRCodeableConcept,
-    FHIRReference,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -138,13 +139,15 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                 "reference_registry is required. "
                 "Cannot create ServiceRequest without patient reference."
             )
-        fhir_service_request["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        fhir_service_request["subject"] = (
+            self.reference_registry.get_patient_reference().model_dump(exclude_none=True)
+        )
 
         # Encounter (must support)
         if self.reference_registry:
             encounter_ref = self.reference_registry.get_encounter_reference()
             if encounter_ref:
-                fhir_service_request["encounter"] = encounter_ref.to_dict()
+                fhir_service_request["encounter"] = encounter_ref.model_dump(exclude_none=True)
 
         # Occurrence[x] (must support) - from effectiveTime
         if procedure.effective_time:
@@ -165,13 +168,15 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         if procedure.author:
             requester = self._extract_requester(procedure.author)
             if requester:
-                fhir_service_request["requester"] = requester.to_dict()
+                fhir_service_request["requester"] = requester.model_dump(exclude_none=True)
 
         # Performer - from performer/assignedEntity
         if procedure.performer:
             performers = self.extract_performer_references(procedure.performer)
             if performers:
-                fhir_service_request["performer"] = [p.to_dict() for p in performers]
+                fhir_service_request["performer"] = [
+                    p.model_dump(exclude_none=True) for p in performers
+                ]
 
         # PerformerType - from performer/functionCode
         if procedure.performer:
@@ -202,7 +207,9 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             if reasons.codes:
                 fhir_service_request["reasonCode"] = [c.to_dict() for c in reasons.codes]
             if reasons.references:
-                fhir_service_request["reasonReference"] = [r.to_dict() for r in reasons.references]
+                fhir_service_request["reasonReference"] = [
+                    r.model_dump(exclude_none=True) for r in reasons.references
+                ]
 
         # Patient instruction - from entryRelationship with Instruction template
         if procedure.entry_relationship:
@@ -458,7 +465,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         latest_author = max(authors_with_time, key=lambda a: a.time.value)
         return self.convert_date(latest_author.time.value)
 
-    def _extract_requester(self, authors: list) -> FHIRReference | None:
+    def _extract_requester(self, authors: list) -> Reference | None:
         """Extract requester reference from C-CDA authors.
 
         Uses the latest author.
@@ -467,7 +474,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
             authors: List of C-CDA author elements
 
         Returns:
-            FHIRReference or None
+            Reference or None
         """
         if not authors or len(authors) == 0:
             return None
@@ -494,7 +501,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
                             )
 
                             display = format_person_display(assigned_author.assigned_person)
-                            return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+                            return Reference(reference=f"urn:uuid:{pract_id}", display=display)
 
         return None
 

@@ -22,8 +22,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.constants import FHIRCodes, FHIRSystems
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -68,10 +70,10 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         related_person["id"] = self._generate_related_person_id(related_entity)
 
         # Patient reference (required)
-        patient_ref = FHIRReference(
+        patient_ref = Reference(
             reference=f"urn:uuid:{self.patient_id}", display=self.patient_display
         )
-        related_person["patient"] = patient_ref.to_dict()
+        related_person["patient"] = patient_ref.model_dump(exclude_none=True)
 
         # Map relationship code
         if related_entity.code:

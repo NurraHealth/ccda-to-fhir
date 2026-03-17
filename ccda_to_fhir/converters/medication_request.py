@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, EIVL_TS, IVL_PQ, IVL_TS, PIVL_TS, PQ
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.constants import (
@@ -15,7 +17,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 from .medication import MedicationConverter
@@ -157,7 +159,9 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 "reference_registry is required. "
                 "Cannot create MedicationRequest without patient reference."
             )
-        med_request["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        med_request["subject"] = self.reference_registry.get_patient_reference().model_dump(
+            exclude_none=True
+        )
 
         # 7. AuthoredOn (from author time)
         authored_on = self._extract_authored_on(substance_admin)
@@ -191,10 +195,12 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                         id_elem.root, id_elem.extension
                                     )
                                     display = format_person_display(assigned.assigned_person)
-                                    requester_ref = FHIRReference(
+                                    requester_ref = Reference(
                                         reference=f"urn:uuid:{pract_id}", display=display
                                     )
-                                    med_request["requester"] = requester_ref.to_dict()
+                                    med_request["requester"] = requester_ref.model_dump(
+                                        exclude_none=True
+                                    )
                                     break
                     # Check for device
                     elif assigned.assigned_authoring_device:
@@ -207,10 +213,12 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                     display = format_device_display(
                                         assigned.assigned_authoring_device
                                     )
-                                    requester_ref = FHIRReference(
+                                    requester_ref = Reference(
                                         reference=f"urn:uuid:{device_id}", display=display
                                     )
-                                    med_request["requester"] = requester_ref.to_dict()
+                                    med_request["requester"] = requester_ref.model_dump(
+                                        exclude_none=True
+                                    )
                                     break
 
         # 8. ReasonCode (from indication entry relationship)
@@ -372,8 +380,8 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             display: str | None = None
             if manufactured_material.code and manufactured_material.code.display_name:
                 display = manufactured_material.code.display_name
-            med_ref_obj = FHIRReference(reference=f"urn:uuid:{medication_id}", display=display)
-            med_ref: JSONObject = med_ref_obj.to_dict()
+            med_ref_obj = Reference(reference=f"urn:uuid:{medication_id}", display=display)
+            med_ref: JSONObject = med_ref_obj.model_dump(exclude_none=True)
 
             return {"medicationReference": med_ref}
         else:

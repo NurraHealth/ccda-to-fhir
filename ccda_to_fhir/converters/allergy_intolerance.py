@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.datatypes import CD, CE
 from ccda_to_fhir.ccda.models.observation import Observation
@@ -26,7 +28,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.terminology import get_display_for_allergy_clinical_status
 
 from .author_extractor import AuthorExtractor
@@ -229,7 +231,9 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
                 "reference_registry is required. "
                 "Cannot create AllergyIntolerance without patient reference."
             )
-        allergy["patient"] = self.reference_registry.get_patient_reference().to_dict()
+        allergy["patient"] = self.reference_registry.get_patient_reference().model_dump(
+            exclude_none=True
+        )
 
         # Onset date
         if (
@@ -294,16 +298,16 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
             latest_author = max(authors_with_time, key=lambda a: a.time)
 
             if latest_author.practitioner_id:
-                recorder_ref = FHIRReference(
+                recorder_ref = Reference(
                     reference=f"urn:uuid:{latest_author.practitioner_id}",
                     display=latest_author.display,
                 )
-                allergy["recorder"] = recorder_ref.to_dict()
+                allergy["recorder"] = recorder_ref.model_dump(exclude_none=True)
             elif latest_author.device_id:
-                recorder_ref = FHIRReference(
+                recorder_ref = Reference(
                     reference=f"urn:uuid:{latest_author.device_id}", display=latest_author.display
                 )
-                allergy["recorder"] = recorder_ref.to_dict()
+                allergy["recorder"] = recorder_ref.model_dump(exclude_none=True)
 
         # Extract allergy-level severity (if present)
         allergy_level_severity = self._extract_allergy_level_severity(observation)

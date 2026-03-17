@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
 from fhir.resources.R4B.coding import Coding
+from fhir.resources.R4B.reference import Reference
 from pydantic import BaseModel, ConfigDict, Field
 
 # JSON primitive types
@@ -50,7 +51,7 @@ class FHIRCodeableConcept(BaseModel, frozen=True):
 
     def to_dict(self) -> JSONObject:
         # Custom serialization: omit empty coding list (model_dump would
-        # include it as []), unlike Coding/FHIRReference which use
+        # include it as []), unlike Coding which uses
         # model_dump(exclude_none=True) since they only need to drop None fields.
         d: JSONObject = {}
         if self.coding:
@@ -58,18 +59,6 @@ class FHIRCodeableConcept(BaseModel, frozen=True):
         if self.text is not None:
             d["text"] = self.text
         return d
-
-
-class FHIRReference(BaseModel, frozen=True):
-    """FHIR Reference element (reference URI + optional display)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    reference: str
-    display: str | None = None
-
-    def to_dict(self) -> JSONObject:
-        return self.model_dump(exclude_none=True)
 
 
 class ReasonResult(BaseModel, frozen=True):
@@ -80,7 +69,7 @@ class ReasonResult(BaseModel, frozen=True):
     codes: list[FHIRCodeableConcept] = Field(default_factory=list)
     """FHIR CodeableConcept elements for reason codes."""
 
-    references: list[FHIRReference] = Field(default_factory=list)
+    references: list[Reference] = Field(default_factory=list)
     """FHIR Reference elements for reason references."""
 
     def __bool__(self) -> bool:
@@ -194,11 +183,11 @@ class EncounterContext(BaseModel, frozen=True):
     display: str | None = None
     """Human-readable label from encompassingEncounter code.displayName."""
 
-    def to_fhir_reference(self) -> FHIRReference | None:
-        """Build a FHIRReference, or None if no reference is set."""
+    def to_fhir_reference(self) -> Reference | None:
+        """Build a FHIR Reference, or None if no reference is set."""
         if not self.reference:
             return None
-        return FHIRReference(reference=self.reference, display=self.display)
+        return Reference(reference=self.reference, display=self.display)
 
 
 # =============================================================================
