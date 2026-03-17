@@ -61,7 +61,9 @@ class TestAuthorConversion:
         assert "name" in practitioner
         assert len(practitioner["name"]) >= 1
         name = practitioner["name"][0]
+        assert isinstance(name, dict)
         assert name["family"] == "Seven"
+        assert isinstance(name["given"], list)
         assert "Henry" in name["given"]
 
     def test_converts_name_prefix(self, ccda_author: str, fhir_practitioner: JSONObject) -> None:
@@ -73,7 +75,9 @@ class TestAuthorConversion:
         assert practitioner is not None
         assert "name" in practitioner
         name = practitioner["name"][0]
+        assert isinstance(name, dict)
         assert "prefix" in name
+        assert isinstance(name["prefix"], list)
         assert "Dr." in name["prefix"]
 
     def test_converts_name_suffix(self, ccda_author: str, fhir_practitioner: JSONObject) -> None:
@@ -85,7 +89,9 @@ class TestAuthorConversion:
         assert practitioner is not None
         assert "name" in practitioner
         name = practitioner["name"][0]
+        assert isinstance(name, dict)
         assert "suffix" in name
+        assert isinstance(name["suffix"], list)
         assert "MD" in name["suffix"]
 
     def test_converts_telecom(self, ccda_author: str, fhir_practitioner: JSONObject) -> None:
@@ -97,8 +103,10 @@ class TestAuthorConversion:
         assert practitioner is not None
         assert "telecom" in practitioner
         phone = practitioner["telecom"][0]
+        assert isinstance(phone, dict)
         assert phone["system"] == "phone"
         assert phone["use"] == "work"
+        assert isinstance(phone["value"], str)
         assert "555-555-1002" in phone["value"]
 
     def test_converts_address(self, ccda_author: str, fhir_practitioner: JSONObject) -> None:
@@ -144,6 +152,7 @@ class TestAuthorConversion:
 
         # Verify the specialty values are correct (from author.xml fixture)
         specialty = practitioner_role["specialty"][0]
+        assert isinstance(specialty, dict)
         assert "coding" in specialty
         coding = specialty["coding"][0]
         assert coding["code"] == "207Q00000X"

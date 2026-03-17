@@ -75,6 +75,7 @@ class TestCompositionConversion:
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         assert "type" in composition
+        assert isinstance(composition["type"], dict)
         assert "coding" in composition["type"]
         assert len(composition["type"]["coding"]) >= 1
 
@@ -93,7 +94,9 @@ class TestCompositionConversion:
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
+        assert isinstance(composition, dict)
         assert "subject" in composition
+        assert isinstance(composition["subject"], dict)
         assert "reference" in composition["subject"]
         # Should reference the Patient resource
         assert composition["subject"]["reference"].startswith("urn:uuid:")
@@ -121,6 +124,7 @@ class TestCompositionConversion:
         assert "author" in composition
         assert len(composition["author"]) >= 1
         # Should have a reference or display
+        assert isinstance(composition["author"][0], dict)
         assert "reference" in composition["author"][0] or "display" in composition["author"][0]
 
     def test_converts_title(self) -> None:
@@ -154,6 +158,7 @@ class TestCompositionConversion:
         assert composition is not None
         assert "custodian" in composition
         # Should have a reference or display
+        assert isinstance(composition["custodian"], dict)
         assert "reference" in composition["custodian"] or "display" in composition["custodian"]
 
     def test_resource_type_is_composition(self) -> None:
@@ -200,6 +205,7 @@ class TestCompositionConversion:
         assert attester["mode"] == "legal"
 
         # Should have time
+        assert isinstance(attester, dict)
         assert "time" in attester
         assert attester["time"] == "2020-03-01"
 
@@ -275,6 +281,7 @@ class TestCompositionConversion:
         attester = composition["attester"][0]
         assert attester["mode"] == "legal"
         # Should NOT have time when not provided
+        assert isinstance(attester, dict)
         assert "time" not in attester
         # Should still have party reference
         assert "party" in attester
@@ -347,6 +354,7 @@ class TestCompositionConversion:
         assert attester["mode"] == "professional"
 
         # Should have time
+        assert isinstance(attester, dict)
         assert "time" in attester
         assert attester["time"] == "2020-03-02"
 
@@ -486,6 +494,7 @@ class TestCompositionConversion:
         assert "attester" in composition
 
         attester = composition["attester"][0]
+        assert isinstance(attester, dict)
         assert attester["mode"] == "professional"
         # Should NOT have time when not provided
         assert "time" not in attester
@@ -657,6 +666,7 @@ class TestCompositionConversion:
         )
 
         # Should reference the actual Patient resource
+        assert isinstance(composition["subject"], dict)
         assert "reference" in composition["subject"]
         assert composition["subject"]["reference"].startswith("urn:uuid:")
 
@@ -917,7 +927,9 @@ class TestCompositionSections:
         assert len(composition["section"]) >= 1
 
         section = composition["section"][0]
+        assert isinstance(section, dict)
         assert "code" in section
+        assert isinstance(section["code"], dict)
         assert "coding" in section["code"]
 
         loinc_coding = next(
@@ -990,9 +1002,12 @@ class TestCompositionSections:
         assert len(composition["section"]) >= 1
 
         section = composition["section"][0]
+        assert isinstance(section, dict)
         assert "text" in section
+        assert isinstance(section["text"], dict)
         assert "status" in section["text"]
         assert "div" in section["text"]
+        assert isinstance(section["text"]["div"], str)
         assert "Problem section narrative" in section["text"]["div"]
 
     def test_section_has_structured_narrative(self) -> None:
@@ -1076,7 +1091,9 @@ class TestCompositionSections:
         section = composition["section"][0]
 
         # Verify narrative structure exists
+        assert isinstance(section, dict)
         assert "text" in section
+        assert isinstance(section["text"], dict)
         assert "status" in section["text"]
         assert section["text"]["status"] == "generated"
         assert "div" in section["text"]
@@ -1084,6 +1101,7 @@ class TestCompositionSections:
         div_content = section["text"]["div"]
 
         # Verify XHTML namespace
+        assert isinstance(div_content, str)
         assert 'xmlns="http://www.w3.org/1999/xhtml"' in div_content
 
         # Verify paragraph with ID and styled content
@@ -1173,6 +1191,7 @@ class TestEmptySectionsWithNullFlavor:
         section = composition["section"][0]
 
         # Should have emptyReason
+        assert isinstance(section, dict)
         assert "emptyReason" in section
         assert section["emptyReason"]["coding"][0]["code"] == "notasked"
         assert (
@@ -1243,6 +1262,7 @@ class TestEmptySectionsWithNullFlavor:
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         section = composition["section"][0]
+        assert isinstance(section, dict)
 
         assert "emptyReason" in section
         assert section["emptyReason"]["coding"][0]["code"] == "unavailable"
@@ -1305,6 +1325,7 @@ class TestEmptySectionsWithNullFlavor:
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         section = composition["section"][0]
+        assert isinstance(section, dict)
 
         assert "emptyReason" in section
         assert section["emptyReason"]["coding"][0]["code"] == "unavailable"
@@ -1367,6 +1388,7 @@ class TestEmptySectionsWithNullFlavor:
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         section = composition["section"][0]
+        assert isinstance(section, dict)
 
         assert "emptyReason" in section
         assert section["emptyReason"]["coding"][0]["code"] == "withheld"
@@ -1429,6 +1451,7 @@ class TestEmptySectionsWithNullFlavor:
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         section = composition["section"][0]
+        assert isinstance(section, dict)
 
         # Should still have emptyReason (default to unavailable)
         assert "emptyReason" in section
@@ -1492,6 +1515,7 @@ class TestEmptySectionsWithNullFlavor:
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
         section = composition["section"][0]
+        assert isinstance(section, dict)
 
         # Should map lowercase "nask" to "notasked"
         assert "emptyReason" in section
@@ -1929,6 +1953,7 @@ class TestBundleStructure:
         # Default timestamp from wrap_in_ccda_document: 20231215120000-0500
         assert bundle["timestamp"].startswith("2023-12-15")
         # Verify it's a valid ISO 8601 datetime
+        assert isinstance(bundle["timestamp"], str)
         assert "T" in bundle["timestamp"]
 
     def test_bundle_identifier_matches_composition_identifier(self) -> None:
@@ -2059,6 +2084,7 @@ class TestBundleEdgeCases:
 
         assert "timestamp" in bundle
         # Verify it's a valid instant (has timezone)
+        assert isinstance(bundle["timestamp"], str)
         assert "T" in bundle["timestamp"]
         assert "+" in bundle["timestamp"] or "-" in bundle["timestamp"]
 
@@ -2112,6 +2138,7 @@ class TestBundleEdgeCases:
         bundle = convert_document(ccda_doc)["bundle"]
 
         assert "identifier" in bundle
+        assert isinstance(bundle["identifier"], dict)
         assert "system" in bundle["identifier"]
         # No extension in document ID, so no value field expected
         assert "value" not in bundle["identifier"]

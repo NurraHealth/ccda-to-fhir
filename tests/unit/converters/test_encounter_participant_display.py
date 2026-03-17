@@ -75,4 +75,5 @@ class TestEncounterParticipantDisplay:
 
         assert len(participants) >= 1
         individual = participants[0]["individual"]
+        assert isinstance(individual, dict)
         assert "display" not in individual

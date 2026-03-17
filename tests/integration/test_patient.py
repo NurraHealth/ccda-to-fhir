@@ -77,8 +77,10 @@ class TestPatientConversion:
         assert "telecom" in patient
         assert len(patient["telecom"]) >= 1
         telecom = patient["telecom"][0]
+        assert isinstance(telecom, dict)
         assert telecom["system"] == "phone"
         assert telecom["use"] == "mobile"
+        assert isinstance(telecom["value"], str)
         assert "+1(565)867-5309" in telecom["value"]
 
     def test_converts_marital_status(self, ccda_patient: str, fhir_patient: JSONObject) -> None:
@@ -154,10 +156,14 @@ class TestPatientConversion:
         assert "contact" in patient
         assert len(patient["contact"]) >= 1
         contact = patient["contact"][0]
+        assert isinstance(contact, dict)
 
         # Check name
-        assert contact["name"]["family"] == "Betterhalf"
-        assert "Boris" in contact["name"]["given"]
+        contact_name = contact["name"]
+        assert isinstance(contact_name, dict)
+        assert contact_name["family"] == "Betterhalf"
+        assert isinstance(contact_name["given"], list)
+        assert "Boris" in contact_name["given"]
 
         # Check relationship includes GUARD
         relationship_codes = []
@@ -804,6 +810,7 @@ class TestPatientConversion:
 
         # Should have _birthDate with patient-birthTime extension
         assert "_birthDate" in patient
+        assert isinstance(patient["_birthDate"], dict)
         assert "extension" in patient["_birthDate"]
         birth_time_ext = next(
             (

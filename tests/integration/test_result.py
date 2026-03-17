@@ -222,6 +222,7 @@ class TestPQTranslationFallback:
         assert wbc["valueQuantity"]["value"] == 11.5
         assert wbc["valueQuantity"]["unit"] == "x10e3/uL"
         # Translation-sourced units are not necessarily valid UCUM, so no system/code
+        assert isinstance(wbc["valueQuantity"], dict)
         assert "system" not in wbc["valueQuantity"]
         assert "code" not in wbc["valueQuantity"]
 
@@ -234,6 +235,7 @@ class TestPQTranslationFallback:
         for obs in observations:
             if "valueQuantity" in obs:
                 assert obs["valueQuantity"], f"Empty valueQuantity in {obs.get('code')}"
+                assert isinstance(obs["valueQuantity"], dict)
                 assert "value" in obs["valueQuantity"], (
                     f"valueQuantity missing value in {obs.get('code')}"
                 )
@@ -290,6 +292,7 @@ class TestPQTranslationFallback:
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = observations[0]
         assert "valueQuantity" in obs, "Should have valueQuantity from translation value"
+        assert isinstance(obs["valueQuantity"], dict)
         assert obs["valueQuantity"]["value"] == 11.5
         assert "unit" not in obs["valueQuantity"], (
             "Should not have unit when translation has no originalText or unit"
@@ -305,6 +308,7 @@ class TestPQTranslationFallback:
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = observations[0]
         assert "valueQuantity" in obs
+        assert isinstance(obs["valueQuantity"], dict)
         assert obs["valueQuantity"]["value"] == 9.2, (
             "Should use first translation's value (9.2), not second (99.9)"
         )
@@ -356,6 +360,7 @@ class TestPQTranslationFallback:
         observations = _find_all_resources_in_bundle(bundle, "Observation")
         obs = observations[0]
         assert "valueQuantity" in obs
+        assert isinstance(obs["valueQuantity"], dict)
         # Value should be numeric (int or float), not a string
         assert isinstance(obs["valueQuantity"]["value"], (int, float))
         assert obs["valueQuantity"]["value"] in (179, 179.0)
@@ -396,6 +401,7 @@ class TestAthenaCCDFullDocument:
         for obs in observations:
             if "valueQuantity" in obs:
                 assert obs["valueQuantity"], f"Empty valueQuantity in {obs.get('code')}"
+                assert isinstance(obs["valueQuantity"], dict)
                 assert "value" in obs["valueQuantity"], (
                     f"valueQuantity missing value in {obs.get('code')}"
                 )

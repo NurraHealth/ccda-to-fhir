@@ -88,6 +88,7 @@ class TestSmokingStatusConversion:
         observation = _find_smoking_status_observation(bundle)
         assert observation is not None
         assert "effectiveDateTime" in observation
+        assert isinstance(observation["effectiveDateTime"], str)
         assert "2014-06-06" in observation["effectiveDateTime"]
 
     def test_converts_value_codeable_concept(
@@ -300,7 +301,9 @@ class TestSmokingStatusConversion:
         assert smoking_obs is not None
 
         # Verify Observation has text.div with resolved narrative
+        assert isinstance(smoking_obs, dict)
         assert "text" in smoking_obs, "Observation should have .text field"
+        assert isinstance(smoking_obs["text"], dict)
         assert "status" in smoking_obs["text"]
         assert smoking_obs["text"]["status"] == "generated"
         assert "div" in smoking_obs["text"], "Observation should have .text.div"
@@ -308,6 +311,7 @@ class TestSmokingStatusConversion:
         div_content = smoking_obs["text"]["div"]
 
         # Verify XHTML namespace
+        assert isinstance(div_content, str)
         assert 'xmlns="http://www.w3.org/1999/xhtml"' in div_content
 
         # Verify referenced content was resolved

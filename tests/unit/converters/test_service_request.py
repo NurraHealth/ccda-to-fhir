@@ -448,6 +448,7 @@ class TestUSCoreProfile:
         service_request = converter.convert(basic_planned_procedure)
 
         assert "meta" in service_request
+        assert isinstance(service_request["meta"], dict)
         assert "profile" in service_request["meta"]
         assert isinstance(service_request["meta"]["profile"], list)
 
@@ -460,7 +461,9 @@ class TestUSCoreProfile:
         converter = ServiceRequestConverter(reference_registry=mock_reference_registry)
         service_request = converter.convert(basic_planned_procedure)
 
+        assert isinstance(service_request, dict)
         assert "subject" in service_request
+        assert isinstance(service_request["subject"], dict)
         assert "reference" in service_request["subject"]
         assert service_request["subject"]["reference"].startswith("urn:uuid:")
 

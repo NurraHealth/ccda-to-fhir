@@ -217,6 +217,7 @@ class TestConvertType:
         result = _convert_type(code, mapper)
         coding = result["coding"][0]
         assert coding["code"] == "34109-9"
+        assert isinstance(coding, dict)
         assert "system" not in coding
 
 
@@ -379,6 +380,7 @@ class TestCreateContentList:
         text = ED(value="Some text")
         result = _create_content_list(text, section=None)
         assert len(result) == 1
+        assert isinstance(result[0]["attachment"], dict)
         assert "data" in result[0]["attachment"]
 
     def test_empty_text_returns_empty(self) -> None:
@@ -821,6 +823,7 @@ class TestType:
         result = converter.convert(act)
         coding = result["type"]["coding"][0]
         assert coding["code"] == "34109-9"
+        assert isinstance(coding, dict)
         assert "system" not in coding
 
 
@@ -834,10 +837,18 @@ class TestCategory:
         act = _make_note_act()
         result = converter.convert(act)
         category = result["category"]
+        assert isinstance(category, list)
         assert len(category) == 1
-        coding = category[0]["coding"][0]
+        cat0 = category[0]
+        assert isinstance(cat0, dict)
+        coding_list = cat0["coding"]
+        assert isinstance(coding_list, list)
+        coding = coding_list[0]
+        assert isinstance(coding, dict)
         assert coding["code"] == "clinical-note"
-        assert "us-core-documentreference-category" in coding["system"]
+        system = coding["system"]
+        assert isinstance(system, str)
+        assert "us-core-documentreference-category" in system
 
 
 # ============================================================================
@@ -941,6 +952,7 @@ class TestContent:
         assert len(content) == 1
         attachment = content[0]["attachment"]
         assert attachment["contentType"] == "text/plain"
+        assert isinstance(attachment, dict)
         assert "_data" in attachment
         ext = attachment["_data"]["extension"][0]
         assert ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
@@ -948,7 +960,13 @@ class TestContent:
     def test_empty_text_uses_data_absent_reason(self, converter: NoteActivityConverter) -> None:
         act = _make_note_act(text=ED())
         result = converter.convert(act)
-        assert "_data" in result["content"][0]["attachment"]
+        content = result["content"]
+        assert isinstance(content, list)
+        content0 = content[0]
+        assert isinstance(content0, dict)
+        attachment = content0["attachment"]
+        assert isinstance(attachment, dict)
+        assert "_data" in attachment
 
     def test_default_content_type_is_text_plain(self, converter: NoteActivityConverter) -> None:
         act = _make_note_act(text=ED(value="note text"))
@@ -1113,6 +1131,7 @@ class TestFallbackEncounterDisplay:
         assert result is not None
         enc_ref = result["encounter"][0]
         assert enc_ref == {"reference": "urn:uuid:enc-fb"}
+        assert isinstance(enc_ref, dict)
         assert "display" not in enc_ref
 
     def test_display_not_applied_to_explicit_encounter(self) -> None:
@@ -1127,6 +1146,7 @@ class TestFallbackEncounterDisplay:
         result = _create_context(act, lambda v: v, ctx)
         assert result is not None
         enc_ref = result["encounter"][0]
+        assert isinstance(enc_ref, dict)
         assert "display" not in enc_ref
 
     def test_display_combined_with_period(self) -> None:

@@ -129,6 +129,7 @@ class TestExtractNarrativeSections:
         assert cat["code"] == "clinical-note"
 
         # Subject
+        assert isinstance(dr["subject"], dict)
         assert "reference" in dr["subject"]
 
         # Content - plain text
@@ -297,6 +298,7 @@ class TestEncounterDisplay:
         results = extract_narrative_sections(body, _make_registry(), encounter_context=ctx)
         enc_ref = results[0]["context"]["encounter"][0]
         assert enc_ref == {"reference": "urn:uuid:enc-123"}
+        assert isinstance(enc_ref, dict)
         assert "display" not in enc_ref
 
     def test_display_omitted_without_encounter_reference(self) -> None:

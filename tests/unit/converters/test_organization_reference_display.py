@@ -503,6 +503,7 @@ class TestCareTeamManagingOrgDisplay:
         assert "managingOrganization" in result
         managing_org = result["managingOrganization"][0]
         assert managing_org["display"] == "Good Health Clinic"
+        assert isinstance(managing_org, dict)
         assert "reference" in managing_org
 
     def test_managing_org_no_display_when_name_missing(self) -> None:
@@ -516,6 +517,7 @@ class TestCareTeamManagingOrgDisplay:
 
         assert "managingOrganization" in result
         managing_org = result["managingOrganization"][0]
+        assert isinstance(managing_org, dict)
         assert "display" not in managing_org
 
 
@@ -557,6 +559,7 @@ class TestPractitionerRoleOrgDisplay:
         result = converter.convert(assigned, practitioner_id="prac-456", organization_id="org-789")
 
         assert "organization" in result
+        assert isinstance(result["organization"], dict)
         assert "display" not in result["organization"]
         assert result["organization"]["reference"] == "urn:uuid:org-789"
 
@@ -575,4 +578,5 @@ class TestPractitionerRoleOrgDisplay:
         result = converter.convert(assigned, practitioner_id="prac-789", organization_id="org-000")
 
         assert "organization" in result
+        assert isinstance(result["organization"], dict)
         assert "display" not in result["organization"]

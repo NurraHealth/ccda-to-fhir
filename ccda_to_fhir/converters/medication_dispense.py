@@ -197,10 +197,12 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
 
         # FHIR invariant mdd-1: whenHandedOver cannot be before whenPrepared
         # FHIRPath: whenHandedOver.empty() or whenPrepared.empty() or whenHandedOver >= whenPrepared
+        when_handed_over = med_dispense.get("whenHandedOver")
+        when_prepared = med_dispense.get("whenPrepared")
         if (
-            "whenPrepared" in med_dispense
-            and "whenHandedOver" in med_dispense
-            and med_dispense["whenHandedOver"] < med_dispense["whenPrepared"]
+            isinstance(when_handed_over, str)
+            and isinstance(when_prepared, str)
+            and when_handed_over < when_prepared
         ):
             logger.warning(
                 f"FHIR invariant mdd-1 violation: whenHandedOver ({med_dispense['whenHandedOver']}) "

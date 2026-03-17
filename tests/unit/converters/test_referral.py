@@ -211,7 +211,13 @@ class TestUSCoreProfile:
         converter = ReferralConverter(reference_registry=mock_reference_registry)
         result = converter.convert(basic_referral_act)
         assert "meta" in result
-        assert "us-core-servicerequest" in result["meta"]["profile"][0]
+        meta = result["meta"]
+        assert isinstance(meta, dict)
+        profiles = meta["profile"]
+        assert isinstance(profiles, list)
+        profile0 = profiles[0]
+        assert isinstance(profile0, str)
+        assert "us-core-servicerequest" in profile0
 
     def test_required_fields_present(self, basic_referral_act, mock_reference_registry):
         """Required US Core fields: status, intent, subject."""
@@ -336,6 +342,7 @@ class TestOccurrence:
         converter = ReferralConverter(reference_registry=mock_reference_registry)
         result = converter.convert(referral_with_details)
         assert "occurrencePeriod" in result
+        assert isinstance(result["occurrencePeriod"], dict)
         assert "start" in result["occurrencePeriod"]
         assert "end" in result["occurrencePeriod"]
 
@@ -701,6 +708,7 @@ class TestOccurrenceEdgeCases:
         converter = ReferralConverter(reference_registry=mock_reference_registry)
         result = converter.convert(act)
         assert "occurrencePeriod" in result
+        assert isinstance(result["occurrencePeriod"], dict)
         assert "start" in result["occurrencePeriod"]
         assert "end" not in result["occurrencePeriod"]
 
@@ -717,7 +725,9 @@ class TestOccurrenceEdgeCases:
         converter = ReferralConverter(reference_registry=mock_reference_registry)
         result = converter.convert(act)
         assert "occurrencePeriod" in result
-        assert "end" in result["occurrencePeriod"]
+        occ_period = result["occurrencePeriod"]
+        assert isinstance(occ_period, dict)
+        assert "end" in occ_period
 
     def test_empty_ivl_ts_no_occurrence(self, mock_reference_registry):
         """IVL_TS with no value/low/high → no occurrence."""
@@ -783,6 +793,7 @@ class TestAuthoredOnEdgeCases:
         converter = ReferralConverter(reference_registry=mock_reference_registry)
         result = converter.convert(act)
         assert "authoredOn" in result
+        assert isinstance(result["authoredOn"], str)
         assert "2024-06-10" in result["authoredOn"]
 
     def test_authors_without_time_no_authored_on(self, mock_reference_registry):
@@ -1057,6 +1068,7 @@ class TestRequesterOrganization:
         result = converter.convert(act)
         assert "requester" in result
         # Should be the practitioner, not the org
+        assert isinstance(result["requester"]["display"], str)
         assert "Smith" in result["requester"]["display"]
 
     def test_requester_org_no_id_falls_back_to_author_id(self, mock_reference_registry):

@@ -160,6 +160,8 @@ class TestSubstanceExposureRiskExtension:
         bundle = convert_document(ccda_xml)["bundle"]
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
+        assert allergy is not None
+        assert isinstance(allergy, dict)
 
         assert "code" not in allergy, (
             "AllergyIntolerance.code SHALL be omitted when substanceExposureRisk extension is used"

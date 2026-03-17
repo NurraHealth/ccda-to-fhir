@@ -904,7 +904,7 @@ class CareTeamConverter(BaseConverter["Organizer"]):
                 role_data = participant["role"]
                 if isinstance(role_data, list) and len(role_data) > 0:
                     role_data = role_data[0]
-                if "coding" in role_data and len(role_data["coding"]) > 0:
+                if isinstance(role_data, dict) and "coding" in role_data and len(role_data["coding"]) > 0:
                     role_display = role_data["coding"][0].get("display", "Team Member")
 
             participant_lines.append(f"<li>{role_display}</li>")

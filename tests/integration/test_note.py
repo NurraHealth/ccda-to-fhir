@@ -114,6 +114,7 @@ class TestNoteConversion:
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
         assert "date" in doc_ref
+        assert isinstance(doc_ref["date"], str)
         assert "2016-09-08" in doc_ref["date"]
 
     def test_converts_content_attachment(self, ccda_note: str, fhir_note: JSONObject) -> None:
@@ -136,7 +137,10 @@ class TestNoteConversion:
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
         assert doc_ref is not None
         assert "context" in doc_ref
+        assert isinstance(doc_ref["context"], dict)
         assert "period" in doc_ref["context"]
+        assert isinstance(doc_ref["context"]["period"], dict)
+        assert isinstance(doc_ref["context"]["period"]["start"], str)
         assert "2016-09-08" in doc_ref["context"]["period"]["start"]
 
     def test_type_text_from_display(self, ccda_note: str, fhir_note: JSONObject) -> None:
@@ -233,7 +237,9 @@ class TestNoteConversion:
         assert len(doc_ref["content"]) > 0
 
         # Verify attachment has data (base64 encoded resolved text)
+        assert isinstance(doc_ref["content"], list)
         attachment = doc_ref["content"][0]["attachment"]
+        assert isinstance(attachment, dict)
         assert "data" in attachment
         assert attachment["data"] is not None and len(attachment["data"]) > 0
 
@@ -313,11 +319,17 @@ class TestNoteConversion:
         assert doc_ref is not None
 
         type_codes = [c.get("code") for c in doc_ref.get("type", {}).get("coding", [])]
+        assert isinstance(type_codes, list)
         assert "34109-9" in type_codes
 
         # Reference couldn't be resolved, so content should use data-absent-reason
         assert "content" in doc_ref
-        attachment = doc_ref["content"][0]["attachment"]
+        content_list = doc_ref["content"]
+        assert isinstance(content_list, list)
+        content_item = content_list[0]
+        assert isinstance(content_item, dict)
+        attachment = content_item["attachment"]
+        assert isinstance(attachment, dict)
         assert "_data" in attachment
         assert attachment["_data"]["extension"][0]["valueCode"] == "unknown"
 
@@ -916,15 +928,19 @@ class TestNoteMissingContent:
 
         # Should still have content array (required 1..*)
         assert "content" in doc_ref
+        assert isinstance(doc_ref["content"], list)
         assert len(doc_ref["content"]) == 1
 
         # Should have attachment with data-absent-reason
         attachment = doc_ref["content"][0]["attachment"]
+        assert isinstance(attachment, dict)
         assert "contentType" in attachment
+        assert isinstance(attachment["contentType"], str)
         assert attachment["contentType"] == "text/plain"
 
         # Should have _data with data-absent-reason extension
         assert "_data" in attachment
+        assert isinstance(attachment["_data"], dict)
         assert "extension" in attachment["_data"]
 
         extensions = attachment["_data"]["extension"]
@@ -1006,8 +1022,13 @@ class TestNoteMissingContent:
 
         # Should have content with data-absent-reason
         assert "content" in doc_ref
+        assert isinstance(doc_ref["content"], list)
         attachment = doc_ref["content"][0]["attachment"]
+        assert isinstance(attachment, dict)
         assert "_data" in attachment
+        assert isinstance(attachment["_data"], dict)
+        assert isinstance(attachment["_data"]["extension"], list)
+        assert isinstance(attachment["_data"]["extension"][0], dict)
         assert attachment["_data"]["extension"][0]["valueCode"] == "unknown"
 
     def test_data_absent_reason_extension_structure(self) -> None:
@@ -1075,17 +1096,25 @@ class TestNoteMissingContent:
         bundle = convert_document(ccda_doc)["bundle"]
 
         doc_ref = _find_resource_in_bundle(bundle, "DocumentReference")
+        assert doc_ref is not None
+        assert isinstance(doc_ref["content"], list)
+        assert isinstance(doc_ref["content"][0], dict)
         attachment = doc_ref["content"][0]["attachment"]
+        assert isinstance(attachment, dict)
 
         # Verify extension structure
         assert "_data" in attachment, "_data element should be present for missing data"
+        assert isinstance(attachment["_data"], dict)
         assert "extension" in attachment["_data"], "extension array should be present"
         assert isinstance(attachment["_data"]["extension"], list), "extension should be an array"
         assert len(attachment["_data"]["extension"]) == 1, "should have exactly one extension"
 
         ext = attachment["_data"]["extension"][0]
+        assert isinstance(ext, dict)
         assert "url" in ext, "extension should have url"
         assert "valueCode" in ext, "extension should have valueCode"
+        assert isinstance(ext["url"], str)
+        assert isinstance(ext["valueCode"], str)
         assert ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
         assert ext["valueCode"] == "unknown"
 

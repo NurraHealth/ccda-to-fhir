@@ -183,5 +183,6 @@ class TestPulseOximetryComponents:
         # Check metadata
         assert pulse_ox["status"] == "final"
         assert "effectiveDateTime" in pulse_ox
+        assert isinstance(pulse_ox["effectiveDateTime"], str)
         assert "2020-03-15" in pulse_ox["effectiveDateTime"]
         assert pulse_ox["category"][0]["coding"][0]["code"] == "vital-signs"

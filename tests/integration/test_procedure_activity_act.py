@@ -87,6 +87,7 @@ class TestProcedureActivityAct:
 
         # Check first identifier
         identifier = procedure["identifier"][0]
+        assert isinstance(identifier, dict)
         assert "system" in identifier
         assert "value" in identifier
 
@@ -109,7 +110,9 @@ class TestProcedureActivityAct:
 
         # Check performer has actor reference (Practitioner OR Organization)
         performer = procedure["performer"][0]
+        assert isinstance(performer, dict)
         assert "actor" in performer
+        assert isinstance(performer["actor"], dict)
         assert "reference" in performer["actor"]
         assert performer["actor"]["reference"].startswith("urn:uuid:") or performer["actor"][
             "reference"

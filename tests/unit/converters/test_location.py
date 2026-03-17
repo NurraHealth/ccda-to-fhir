@@ -159,10 +159,15 @@ class TestLocationConverter:
         location = location_converter.convert(sample_service_delivery_location)
 
         assert "meta" in location
-        assert "profile" in location["meta"]
+        meta = location["meta"]
+        assert isinstance(meta, dict)
+        assert "profile" in meta
+        profiles = meta["profile"]
+        assert isinstance(profiles, list)
+        profile_strs = [str(p) for p in profiles]
         assert (
             "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location"
-            in location["meta"]["profile"]
+            in profile_strs
         )
 
     def test_generates_id_from_npi(
@@ -872,6 +877,7 @@ class TestLocationConverter:
 
         # Should have managingOrganization reference
         assert "managingOrganization" in location
+        assert isinstance(location["managingOrganization"], dict)
         assert "reference" in location["managingOrganization"]
         assert location["managingOrganization"]["reference"].startswith("urn:uuid:")
 
@@ -955,7 +961,9 @@ class TestLocationConverter:
         """Test physicalType inferred from HSLOC hospital code (→ Building)."""
         location = location_converter.convert(sample_service_delivery_location)
 
+        assert isinstance(location, dict)
         assert "physicalType" in location
+        assert isinstance(location["physicalType"], dict)
         assert "coding" in location["physicalType"]
         assert len(location["physicalType"]["coding"]) == 1
 

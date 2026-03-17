@@ -842,6 +842,7 @@ class TestCreatedDateEdgeCases:
         converter = AppointmentConverter(reference_registry=mock_reference_registry)
         result = converter.convert(enc)
         assert "created" in result
+        assert isinstance(result["created"], str)
         assert "2024-06-01" in result["created"]
 
     def test_authors_without_time_no_created(self, mock_reference_registry):
@@ -1141,6 +1142,7 @@ class TestParticipantType:
         result = converter.convert(enc)
         # Performer participant (index 1, after patient)
         performer_part = result["participant"][1]
+        assert isinstance(performer_part, dict)
         assert "type" in performer_part
         assert performer_part["type"][0]["coding"][0]["code"] == "208D00000X"
 
@@ -1162,6 +1164,7 @@ class TestParticipantType:
         converter = AppointmentConverter(reference_registry=mock_reference_registry)
         result = converter.convert(enc)
         performer_part = result["participant"][1]
+        assert isinstance(performer_part, dict)
         assert "type" not in performer_part
 
 

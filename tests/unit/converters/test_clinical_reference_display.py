@@ -157,6 +157,7 @@ class TestConditionEvidenceDisplay:
         assert result is not None
         assert len(result) == 1
         detail_ref = result[0]["detail"][0]
+        assert isinstance(detail_ref, dict)
         assert "display" not in detail_ref
 
     def test_evidence_detail_no_display_when_display_name_none(
@@ -180,6 +181,7 @@ class TestConditionEvidenceDisplay:
         result = converter._extract_evidence(parent_obs)
         assert result is not None
         detail_ref = result[0]["detail"][0]
+        assert isinstance(detail_ref, dict)
         assert "display" not in detail_ref
 
 
@@ -254,6 +256,7 @@ class TestDiagnosticReportResultDisplay:
 
         result_refs = report.get("result", [])
         assert len(result_refs) == 1
+        assert isinstance(result_refs[0], dict)
         assert "display" not in result_refs[0]
 
 
@@ -303,7 +306,7 @@ class TestCarePlanOutcomeDisplay:
 
         result = converter._create_outcome_reference(outcome_entry)
         if result:
-            assert "display" not in result
+            assert result.display is None
 
 
 # ============================================================================
@@ -362,6 +365,7 @@ class TestEncounterDiagnosisDisplay:
         diagnoses = converter._extract_diagnoses([entry_rel])
         assert len(diagnoses) == 1
         condition_ref = diagnoses[0]["condition"]
+        assert isinstance(condition_ref, dict)
         assert "display" not in condition_ref
 
     def test_diagnosis_condition_ref_no_display_when_display_name_none(
@@ -388,6 +392,7 @@ class TestEncounterDiagnosisDisplay:
         diagnoses = converter._extract_diagnoses([entry_rel])
         assert len(diagnoses) == 1
         condition_ref = diagnoses[0]["condition"]
+        assert isinstance(condition_ref, dict)
         assert "display" not in condition_ref
 
 
@@ -452,8 +457,13 @@ class TestEncounterDiagnosisNotesDisplay:
             reference_registry=registry,
         )
 
-        related = doc_refs[0]["context"]["related"]
-        assert "display" not in related[0]
+        context = doc_refs[0]["context"]
+        assert isinstance(context, dict)
+        related = context["related"]
+        assert isinstance(related, list)
+        related_0 = related[0]
+        assert isinstance(related_0, dict)
+        assert "display" not in related_0
 
 
 # ============================================================================
@@ -537,4 +547,5 @@ class TestMedicationReferenceDisplay:
 
         assert result is not None
         if "medicationReference" in result:
+            assert isinstance(result["medicationReference"], dict)
             assert "display" not in result["medicationReference"]

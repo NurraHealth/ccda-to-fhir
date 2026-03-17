@@ -183,6 +183,7 @@ class TestProcedureConversion:
         assert laterality_coding["display"] == "Left"
 
         # Check that text field combines laterality and site
+        assert isinstance(body_site, dict)
         assert "text" in body_site
         assert body_site["text"] == "Left Colon structure"
 
@@ -194,10 +195,14 @@ class TestProcedureConversion:
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
         assert "performer" in procedure
+        assert isinstance(procedure["performer"], list)
         assert len(procedure["performer"]) >= 1
         performer = procedure["performer"][0]
+        assert isinstance(performer, dict)
         assert "actor" in performer
+        assert isinstance(performer["actor"], dict)
         assert "reference" in performer["actor"]
+        assert isinstance(performer["actor"]["reference"], str)
         assert performer["actor"]["reference"].startswith("urn:uuid:")
 
     def test_maps_prisurg_function_code(self) -> None:
@@ -227,9 +232,14 @@ class TestProcedureConversion:
 
         assert procedure is not None
         assert "performer" in procedure
+        assert isinstance(procedure["performer"], list)
         performer = procedure["performer"][0]
+        assert isinstance(performer, dict)
         assert "function" in performer
+        assert isinstance(performer["function"], dict)
+        assert isinstance(performer["function"]["coding"], list)
         coding = performer["function"]["coding"][0]
+        assert isinstance(coding, dict)
         assert coding["code"] == "PPRF", "C-CDA PRISURG should map to FHIR PPRF (primary performer)"
         assert coding["system"] == "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
         assert coding["display"] == "Primary Surgeon"
@@ -261,9 +271,14 @@ class TestProcedureConversion:
 
         assert procedure is not None
         assert "performer" in procedure
+        assert isinstance(procedure["performer"], list)
         performer = procedure["performer"][0]
+        assert isinstance(performer, dict)
         assert "function" in performer
+        assert isinstance(performer["function"], dict)
+        assert isinstance(performer["function"]["coding"], list)
         coding = performer["function"]["coding"][0]
+        assert isinstance(coding, dict)
         assert coding["code"] == "SPRF", "C-CDA FASST should map to FHIR SPRF (secondary performer)"
         assert coding["display"] == "First Assistant Surgeon"
 
@@ -294,9 +309,14 @@ class TestProcedureConversion:
 
         assert procedure is not None
         assert "performer" in procedure
+        assert isinstance(procedure["performer"], list)
         performer = procedure["performer"][0]
+        assert isinstance(performer, dict)
         assert "function" in performer
+        assert isinstance(performer["function"], dict)
+        assert isinstance(performer["function"]["coding"], list)
         coding = performer["function"]["coding"][0]
+        assert isinstance(coding, dict)
         assert coding["code"] == "SPRF", "C-CDA ANRS should map to FHIR SPRF (secondary performer)"
         assert coding["display"] == "Anesthesia Nurse"
 
@@ -328,13 +348,17 @@ class TestProcedureConversion:
 
         assert procedure is not None
         assert "performer" in procedure
+        assert isinstance(procedure["performer"], list)
         performer = procedure["performer"][0]
+        assert isinstance(performer, dict)
         # ADM is encounter-only, so function should not be included for procedures
         assert "function" not in performer, (
             "Encounter-only codes like ADM should not appear in Procedure.performer.function"
         )
         # But actor should still be present
         assert "actor" in performer
+        assert isinstance(performer["actor"], dict)
+        assert isinstance(performer["actor"]["reference"], str)
         assert performer["actor"]["reference"].startswith("urn:uuid:")
 
     def test_converts_location(self, ccda_procedure_with_location: str) -> None:
@@ -345,7 +369,9 @@ class TestProcedureConversion:
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
         assert "location" in procedure
+        assert isinstance(procedure["location"], dict)
         assert "reference" in procedure["location"]
+        assert isinstance(procedure["location"]["reference"], str)
         assert procedure["location"]["reference"].startswith("urn:uuid:")
         # Display is optional but should include location name if present
         if "display" in procedure["location"]:
@@ -381,12 +407,17 @@ class TestProcedureConversion:
         assert procedure is not None
         # Inline Problem Observation should create reasonCode (not reasonReference)
         assert "reasonCode" in procedure
+        assert isinstance(procedure["reasonCode"], list)
         assert len(procedure["reasonCode"]) >= 1
         reason_code = procedure["reasonCode"][0]
+        assert isinstance(reason_code, dict)
         assert "coding" in reason_code
+        assert isinstance(reason_code["coding"], list)
         coding = reason_code["coding"][0]
+        assert isinstance(coding, dict)
         assert coding["system"] == "http://snomed.info/sct"
         assert coding["code"] == "85189001"
+        assert isinstance(coding["display"], str)
         assert "Acute appendicitis" in coding["display"]
 
     def test_inline_problem_has_no_reason_reference(
@@ -416,9 +447,12 @@ class TestProcedureConversion:
         assert procedure is not None
         # Referenced Problem Observation should create reasonReference
         assert "reasonReference" in procedure
+        assert isinstance(procedure["reasonReference"], list)
         assert len(procedure["reasonReference"]) >= 1
         reason_ref = procedure["reasonReference"][0]
+        assert isinstance(reason_ref, dict)
         assert "reference" in reason_ref
+        assert isinstance(reason_ref["reference"], str)
         assert reason_ref["reference"].startswith("urn:uuid:")
 
         # Capture the generated Condition ID and verify it's a valid UUID v4
@@ -479,7 +513,9 @@ class TestProcedureConversion:
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
         assert "recorder" in procedure
+        assert isinstance(procedure["recorder"], dict)
         assert "reference" in procedure["recorder"]
+        assert isinstance(procedure["recorder"]["reference"], str)
         assert procedure["recorder"]["reference"].startswith("urn:uuid:")
 
     def test_converts_outcome(self, ccda_procedure_with_outcome: str) -> None:
@@ -785,11 +821,14 @@ class TestProcedureConversion:
 
         # Verify Procedure has text.div with resolved narrative
         assert "text" in procedure, "Procedure should have .text field"
+        assert isinstance(procedure["text"], dict)
         assert "status" in procedure["text"]
+        assert isinstance(procedure["text"]["status"], str)
         assert procedure["text"]["status"] == "generated"
         assert "div" in procedure["text"], "Procedure should have .text.div"
 
         div_content = procedure["text"]["div"]
+        assert isinstance(div_content, str)
 
         # Verify XHTML namespace
         assert 'xmlns="http://www.w3.org/1999/xhtml"' in div_content
@@ -879,7 +918,9 @@ class TestRepresentedOrganization:
         assert "telecom" in entry_org
         assert len(entry_org["telecom"]) > 0
         telecom = entry_org["telecom"][0]
+        assert isinstance(telecom, dict)
         assert telecom["system"] == "phone"
+        assert isinstance(telecom["value"], str)
         assert "+1(555)123-4567" in telecom["value"]
 
         # Verify address
@@ -1143,10 +1184,14 @@ class TestProcedureActivityObservation:
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
         assert "performer" in procedure
+        assert isinstance(procedure["performer"], list)
         assert len(procedure["performer"]) >= 1
         performer = procedure["performer"][0]
+        assert isinstance(performer, dict)
         assert "actor" in performer
+        assert isinstance(performer["actor"], dict)
         # Actor reference should be in urn:uuid format
+        assert isinstance(performer["actor"]["reference"], str)
         assert performer["actor"]["reference"].startswith("urn:uuid:")
 
     def test_converts_observation_with_location(
@@ -1161,6 +1206,8 @@ class TestProcedureActivityObservation:
         procedure = _find_resource_in_bundle(bundle, "Procedure")
         assert procedure is not None
         assert "location" in procedure
+        assert isinstance(procedure["location"], dict)
+        assert isinstance(procedure["location"]["reference"], str)
         assert procedure["location"]["reference"].startswith("urn:uuid:")
         # Display is optional, only check if present
         if "display" in procedure["location"]:
@@ -1258,6 +1305,7 @@ class TestProcedureMissingEffectiveTime:
 
         # Should have _performedDateTime with data-absent-reason extension
         assert "_performedDateTime" in procedure
+        assert isinstance(procedure["_performedDateTime"], dict)
         assert "extension" in procedure["_performedDateTime"]
 
         extensions = procedure["_performedDateTime"]["extension"]

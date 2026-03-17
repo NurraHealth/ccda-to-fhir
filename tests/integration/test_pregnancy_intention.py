@@ -28,9 +28,15 @@ class TestPregnancyIntentionObservation:
         assert observation is not None
         assert "code" in observation
 
-        code_coding = observation["code"]["coding"][0]
+        obs_code = observation["code"]
+        assert isinstance(obs_code, dict)
+        obs_coding_list = obs_code["coding"]
+        assert isinstance(obs_coding_list, list)
+        code_coding = obs_coding_list[0]
+        assert isinstance(code_coding, dict)
         assert code_coding["system"] == "http://loinc.org"
         assert code_coding["code"] == "86645-9"
+        assert isinstance(code_coding["display"], str)
         assert "Pregnancy intention" in code_coding["display"]
 
     def test_converts_pregnancy_intention_value(self, ccda_pregnancy_intention: str) -> None:
@@ -42,9 +48,15 @@ class TestPregnancyIntentionObservation:
         assert observation is not None
         assert "valueCodeableConcept" in observation
 
-        value_coding = observation["valueCodeableConcept"]["coding"][0]
+        value_concept = observation["valueCodeableConcept"]
+        assert isinstance(value_concept, dict)
+        value_coding_list = value_concept["coding"]
+        assert isinstance(value_coding_list, list)
+        value_coding = value_coding_list[0]
+        assert isinstance(value_coding, dict)
         assert value_coding["system"] == "http://snomed.info/sct"
         assert value_coding["code"] == "454381000124105"
+        assert isinstance(value_coding["display"], str)
         assert "Wants to become pregnant" in value_coding["display"]
 
     def test_category_is_social_history(self, ccda_pregnancy_intention: str) -> None:
@@ -81,4 +93,5 @@ class TestPregnancyIntentionObservation:
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
         assert "effectiveDateTime" in observation
+        assert isinstance(observation["effectiveDateTime"], str)
         assert "2024-01-15" in observation["effectiveDateTime"]

@@ -83,10 +83,17 @@ class TestPregnancyObservation:
         component = observation["component"][0]
 
         # Verify component code
+        assert isinstance(component, dict)
         assert "code" in component
+        assert isinstance(component["code"], dict)
+        assert isinstance(component["code"]["coding"], list)
         comp_coding = component["code"]["coding"][0]
+        assert isinstance(comp_coding, dict)
+        assert isinstance(comp_coding["system"], str)
         assert comp_coding["system"] == "http://loinc.org"
+        assert isinstance(comp_coding["code"], str)
         assert comp_coding["code"] == "11778-8"
+        assert isinstance(comp_coding["display"], str)
         assert (
             "Delivery date" in comp_coding["display"] or "Estimated date" in comp_coding["display"]
         )
@@ -104,6 +111,7 @@ class TestPregnancyObservation:
         assert observation is not None
         assert "effectiveDateTime" in observation
         # The fixture has effectiveTime/low value="20220824103952+0000"
+        assert isinstance(observation["effectiveDateTime"], str)
         assert "2022-08-24" in observation["effectiveDateTime"]
 
     def test_converts_status(self, ccda_pregnancy: str) -> None:
@@ -148,7 +156,9 @@ class TestPregnancyObservation:
         observation = _find_resource_in_bundle(bundle, "Observation")
         assert observation is not None
         assert "subject" in observation
+        assert isinstance(observation["subject"], dict)
         assert "reference" in observation["subject"]
+        assert isinstance(observation["subject"]["reference"], str)
         assert observation["subject"]["reference"].startswith("urn:uuid:")
 
 
@@ -280,13 +290,21 @@ class TestPregnancyLastMenstrualPeriod:
 
         # Verify LMP component
         lmp_component = observation["component"][0]
-        lmp_code = lmp_component["code"]["coding"][0]
+        assert isinstance(lmp_component, dict)
+        lmp_code_concept = lmp_component["code"]
+        assert isinstance(lmp_code_concept, dict)
+        lmp_coding_list = lmp_code_concept["coding"]
+        assert isinstance(lmp_coding_list, list)
+        lmp_code = lmp_coding_list[0]
+        assert isinstance(lmp_code, dict)
         assert lmp_code["system"] == "http://loinc.org"
         assert lmp_code["code"] == "8665-2"
+        assert isinstance(lmp_code["display"], str)
         assert "Last menstrual period" in lmp_code["display"]
 
         # Verify LMP value
         assert "valueDateTime" in lmp_component
+        assert isinstance(lmp_component["valueDateTime"], str)
         assert lmp_component["valueDateTime"] == "2022-06-01"
 
     def test_lmp_date_conversion(self, ccda_pregnancy_with_lmp: str) -> None:

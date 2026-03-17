@@ -210,6 +210,7 @@ class TestProblemConversion:
 
         # Should have _abatementDateTime with data-absent-reason extension
         assert "_abatementDateTime" in condition
+        assert isinstance(condition["_abatementDateTime"], dict)
         assert "extension" in condition["_abatementDateTime"]
 
         extensions = condition["_abatementDateTime"]["extension"]
@@ -353,7 +354,10 @@ class TestProblemConversion:
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
         assert "note" in condition
+        assert isinstance(condition["note"], list)
         assert len(condition["note"]) == 1
+        assert isinstance(condition["note"][0], dict)
+        assert isinstance(condition["note"][0]["text"], str)
         assert "Patient reports chest pain on exertion" in condition["note"][0]["text"]
 
     def test_converts_supporting_observations_to_evidence(
@@ -366,11 +370,16 @@ class TestProblemConversion:
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
         assert "evidence" in condition
+        assert isinstance(condition["evidence"], list)
         assert len(condition["evidence"]) == 1
+        assert isinstance(condition["evidence"][0], dict)
         assert "detail" in condition["evidence"][0]
+        assert isinstance(condition["evidence"][0]["detail"], list)
         assert len(condition["evidence"][0]["detail"]) == 1
         # Verify the reference points to an Observation resource
+        assert isinstance(condition["evidence"][0]["detail"][0], dict)
         reference = condition["evidence"][0]["detail"][0]["reference"]
+        assert isinstance(reference, str)
         assert reference.startswith("urn:uuid:")
         assert "lab-result-tsh-001" in reference
 
@@ -392,12 +401,17 @@ class TestProblemConversion:
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
         assert "evidence" in condition, "Condition should have evidence from assessment scale"
+        assert isinstance(condition["evidence"], list)
         assert len(condition["evidence"]) == 1
+        assert isinstance(condition["evidence"][0], dict)
         assert "detail" in condition["evidence"][0]
+        assert isinstance(condition["evidence"][0]["detail"], list)
         assert len(condition["evidence"][0]["detail"]) == 1
 
         # Verify the reference points to an Observation resource
+        assert isinstance(condition["evidence"][0]["detail"][0], dict)
         reference = condition["evidence"][0]["detail"][0]["reference"]
+        assert isinstance(reference, str)
         assert reference.startswith("urn:uuid:")
         assert "assessment-phq9-001" in reference, (
             "Should reference the PHQ-9 assessment observation"
@@ -413,7 +427,9 @@ class TestProblemConversion:
         condition = _find_resource_in_bundle(bundle, "Condition")
         assert condition is not None
         assert "recorder" in condition
+        assert isinstance(condition["recorder"], dict)
         assert "reference" in condition["recorder"]
+        assert isinstance(condition["recorder"]["reference"], str)
         assert condition["recorder"]["reference"].startswith("urn:uuid:")
         # Verify the practitioner ID is a valid UUID v4
         import uuid as uuid_module
@@ -672,11 +688,14 @@ class TestProblemConversion:
 
         # Verify Condition has text.div with resolved narrative
         assert "text" in condition, "Condition should have .text field"
+        assert isinstance(condition["text"], dict)
         assert "status" in condition["text"]
+        assert isinstance(condition["text"]["status"], str)
         assert condition["text"]["status"] == "generated"
         assert "div" in condition["text"], "Condition should have .text.div"
 
         div_content = condition["text"]["div"]
+        assert isinstance(div_content, str)
 
         # Verify XHTML namespace
         assert 'xmlns="http://www.w3.org/1999/xhtml"' in div_content

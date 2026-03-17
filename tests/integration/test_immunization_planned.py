@@ -173,6 +173,7 @@ class TestPlannedImmunizationConversion:
         dosage = medication_request["dosageInstruction"][0]
 
         # Check route
+        assert isinstance(dosage, dict)
         assert "route" in dosage
         assert dosage["route"]["coding"][0]["code"] == "C28161"
 
@@ -180,6 +181,7 @@ class TestPlannedImmunizationConversion:
         assert "doseAndRate" in dosage
         assert len(dosage["doseAndRate"]) > 0
         dose_and_rate = dosage["doseAndRate"][0]
+        assert isinstance(dose_and_rate, dict)
         assert "doseQuantity" in dose_and_rate
         assert dose_and_rate["doseQuantity"]["value"] == 0.5
         assert dose_and_rate["doseQuantity"]["unit"] == "mL"
@@ -207,7 +209,9 @@ class TestPlannedImmunizationConversion:
 
         # Check identifier value
         identifier = medication_request["identifier"][0]
+        assert isinstance(identifier, dict)
         assert "value" in identifier
+        assert isinstance(identifier["value"], str)
         assert "f7f1ba43-c0ed-4b9b-9f12-f435d8ad8f93" in identifier["value"]
 
     def test_historical_immunization_still_creates_immunization_resource(

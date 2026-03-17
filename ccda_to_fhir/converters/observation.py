@@ -1400,7 +1400,7 @@ class ObservationConverter(BaseConverter[Observation]):
                         if rel.observation.value and rel.observation.value.value:
                             date_str = rel.observation.value.value
                             # Handle ISO format dates (YYYY-MM-DD) which may appear in C-CDA
-                            if date_str and "-" in date_str:
+                            if isinstance(date_str, str) and "-" in date_str:
                                 # Already in ISO format, use directly
                                 component["valueDateTime"] = date_str
                             else:

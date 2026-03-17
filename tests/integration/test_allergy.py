@@ -66,6 +66,7 @@ class TestAllergyConversion:
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
         assert "category" in allergy
+        assert isinstance(allergy["category"], list)
         assert "medication" in allergy["category"]
 
     def test_converts_onset_date(self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
@@ -90,6 +91,7 @@ class TestAllergyConversion:
         assert "reaction" in allergy
         assert len(allergy["reaction"]) >= 1
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         assert "manifestation" in reaction
 
         snomed_coding = next(
@@ -113,6 +115,7 @@ class TestAllergyConversion:
         assert allergy is not None
         assert "reaction" in allergy
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         assert reaction["severity"] == "severe"
 
     def test_converts_identifiers(self, ccda_allergy: str, fhir_allergy: JSONObject) -> None:
@@ -217,6 +220,7 @@ class TestAllergyConversion:
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
         assert "recordedDate" in allergy
+        assert isinstance(allergy["recordedDate"], str)
         assert "2023-10-15" in allergy["recordedDate"]
 
     def test_converts_comment_activity_to_note(self, ccda_allergy_with_comment: str) -> None:
@@ -227,8 +231,13 @@ class TestAllergyConversion:
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
         assert "note" in allergy
-        assert len(allergy["note"]) == 1
-        assert "severe nausea and vomiting" in allergy["note"][0]["text"]
+        notes = allergy["note"]
+        assert isinstance(notes, list)
+        assert len(notes) == 1
+        note = notes[0]
+        assert isinstance(note, dict)
+        assert isinstance(note["text"], str)
+        assert "severe nausea and vomiting" in note["text"]
 
     def test_converts_recorder_from_latest_author(
         self, ccda_allergy_with_recorded_date: str
@@ -240,6 +249,7 @@ class TestAllergyConversion:
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
         assert "recorder" in allergy
+        assert isinstance(allergy["recorder"], dict)
         assert "reference" in allergy["recorder"]
         assert allergy["recorder"]["reference"].startswith("urn:uuid:")
 
@@ -428,7 +438,9 @@ class TestAllergyConversion:
 
         # Verify reaction onset is populated
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         assert "onset" in reaction
+        assert isinstance(reaction["onset"], str)
         assert "2023-08-21" in reaction["onset"]
 
     def test_converts_reaction_onset_from_simple_value(self) -> None:
@@ -446,6 +458,7 @@ class TestAllergyConversion:
 
         # Verify reaction onset is populated from simple value
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         assert "onset" in reaction
         assert reaction["onset"] == "2023-10-15"
 
@@ -461,6 +474,7 @@ class TestAllergyConversion:
         assert allergy is not None
 
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         assert "manifestation" in reaction
         assert len(reaction["manifestation"]) == 1
         manifestation = reaction["manifestation"][0]
@@ -637,6 +651,7 @@ class TestAllergyInheritanceSeverity:
 
         # Verify reaction has severity from reaction-level observation only
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         assert "severity" in reaction
         assert reaction["severity"] == "severe"
 
@@ -740,14 +755,17 @@ class TestAllergyNarrativePropagation:
 
         # Verify narrative is present
         assert "text" in allergy
+        assert isinstance(allergy["text"], dict)
         assert "status" in allergy["text"]
         assert allergy["text"]["status"] == "generated"
 
         # Verify div element
+        assert isinstance(allergy["text"], dict)
         assert "div" in allergy["text"]
         div_content = allergy["text"]["div"]
 
         # Verify XHTML namespace
+        assert isinstance(div_content, str)
         assert 'xmlns="http://www.w3.org/1999/xhtml"' in div_content
 
         # Verify content is present (only allergy-1 paragraph, per text/reference)
@@ -780,12 +798,15 @@ class TestAllergyReactionDetails:
 
         allergy = _find_resource_in_bundle(bundle, "AllergyIntolerance")
         assert allergy is not None
+        assert isinstance(allergy, dict)
         assert "reaction" in allergy
         assert len(allergy["reaction"]) == 1
 
         # Verify description is populated from text element
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         assert "description" in reaction
+        assert isinstance(reaction["description"], str)
         assert "severe hives and itching" in reaction["description"]
         assert "30 minutes" in reaction["description"]
 
@@ -804,9 +825,15 @@ class TestAllergyReactionDetails:
 
         # Verify note is populated from Comment Activity
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         assert "note" in reaction
-        assert len(reaction["note"]) == 1
-        assert "emergency treatment with epinephrine" in reaction["note"][0]["text"]
+        reaction_notes = reaction["note"]
+        assert isinstance(reaction_notes, list)
+        assert len(reaction_notes) == 1
+        reaction_note = reaction_notes[0]
+        assert isinstance(reaction_note, dict)
+        assert isinstance(reaction_note["text"], str)
+        assert "emergency treatment with epinephrine" in reaction_note["text"]
 
     def test_reaction_multiple_notes(self) -> None:
         """Test that multiple Comment Activities create multiple reaction notes."""
@@ -823,12 +850,16 @@ class TestAllergyReactionDetails:
 
         # Verify multiple notes are created
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         assert "note" in reaction
         assert len(reaction["note"]) == 2
 
         # Verify both note texts
+        assert isinstance(reaction["note"], list)
         note_texts = [note["text"] for note in reaction["note"]]
+        assert isinstance(note_texts[0], str)
         assert "epinephrine auto-injector" in note_texts[0]
+        assert isinstance(note_texts[1], str)
         assert "Avoid all peanut-containing products" in note_texts[1]
 
     def test_reaction_description_and_note_coexist(self) -> None:
@@ -844,6 +875,7 @@ class TestAllergyReactionDetails:
         assert allergy is not None
 
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         # Both should be present
         assert "description" in reaction
         assert "note" in reaction
@@ -863,6 +895,7 @@ class TestAllergyReactionDetails:
         assert allergy is not None
 
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
 
         # Verify manifestation is still present
         assert "manifestation" in reaction
@@ -897,6 +930,7 @@ class TestAllergyReactionDetails:
         assert "reaction" in allergy
 
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         # Should not have description or note fields
         assert "description" not in reaction
         assert "note" not in reaction
@@ -1090,11 +1124,13 @@ class TestAllergyCodeableConceptEdgeCases:
         assert len(allergy["reaction"]) == 1
 
         reaction = allergy["reaction"][0]
+        assert isinstance(reaction, dict)
         assert "manifestation" in reaction
         assert len(reaction["manifestation"]) == 1
 
         manifestation = reaction["manifestation"][0]
         # Should have text but no coding (text-only CodeableConcept)
+        assert isinstance(manifestation, dict)
         assert "text" in manifestation
         assert manifestation["text"] == "Hives"
         # No coding when code_system is missing
@@ -1226,6 +1262,7 @@ class TestAllergyCodeableConceptEdgeCases:
         assert "code" in allergy, "AllergyIntolerance.code is mandatory in US Core"
 
         # Should fall back to "Unknown allergen" text-only CodeableConcept
+        assert isinstance(allergy["code"], dict)
         assert "text" in allergy["code"]
         assert allergy["code"]["text"] == "Unknown allergen"
 
