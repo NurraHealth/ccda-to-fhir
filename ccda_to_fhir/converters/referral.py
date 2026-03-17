@@ -236,7 +236,7 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
         # Narrative
         narrative = self._generate_narrative(entry=entry, section=section)
         if narrative:
-            fhir_service_request["text"] = narrative
+            fhir_service_request["text"] = narrative.model_dump(exclude_none=True)
 
         return fhir_service_request
 

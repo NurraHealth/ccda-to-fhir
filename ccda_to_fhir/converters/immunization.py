@@ -226,7 +226,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=substance_admin, section=section)
         if narrative:
-            immunization["text"] = narrative
+            immunization["text"] = narrative.model_dump(exclude_none=True)
 
         # Collect all additional observations (reactions, supporting, and component observations)
         all_observations = reaction_observations + supporting_observations + component_observations

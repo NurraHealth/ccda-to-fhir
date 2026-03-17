@@ -147,7 +147,7 @@ class NoteActivityConverter(BaseConverter[Act]):
         # Narrative
         narrative = self._generate_narrative(entry=note_act, section=section)
         if narrative:
-            doc_ref["text"] = narrative
+            doc_ref["text"] = narrative.model_dump(exclude_none=True)
 
         return doc_ref
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.narrative import Narrative
+
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.logging_config import get_logger
@@ -238,7 +240,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             health_concern_count=len(self.health_concern_refs),
             goal_count=len(self.goal_refs),
             intervention_entries=self.intervention_entries,
-        )
+        ).model_dump(exclude_none=True)
 
         return careplan
 
@@ -632,7 +634,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         health_concern_count: int,
         goal_count: int,
         intervention_entries: list,
-    ) -> JSONObject:
+    ) -> Narrative:
         """Generate FHIR narrative from Care Plan sections.
 
         Creates meaningful XHTML narrative summarizing the care plan per FHIR R4 and
@@ -647,7 +649,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             intervention_entries: List of intervention entry elements
 
         Returns:
-            FHIR text dict with status and div (well-formed XHTML)
+            Narrative model with status and div (well-formed XHTML)
         """
         import html
 
@@ -693,7 +695,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         lines.append("</div>")
 
-        return {"status": "generated", "div": "\n".join(lines)}
+        return Narrative(status="generated", div="\n".join(lines))
 
     def _format_period_text(self, period: JSONObject) -> str:
         """Format period as readable text.

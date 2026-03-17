@@ -266,7 +266,7 @@ class ProcedureConverter(BaseConverter[CCDAProcedure | CCDAObservation | CCDAAct
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=procedure, section=section)
         if narrative:
-            fhir_procedure["text"] = narrative
+            fhir_procedure["text"] = narrative.model_dump(exclude_none=True)
 
         return fhir_procedure
 

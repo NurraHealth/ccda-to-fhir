@@ -222,7 +222,7 @@ class DiagnosticReportConverter(BaseConverter[Organizer]):
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=organizer, section=section)
         if narrative:
-            report["text"] = narrative
+            report["text"] = narrative.model_dump(exclude_none=True)
 
         return report, observations
 

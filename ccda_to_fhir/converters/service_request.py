@@ -218,7 +218,7 @@ class ServiceRequestConverter(BaseConverter[CCDAProcedure | CCDAAct]):
         # Narrative
         narrative = self._generate_narrative(entry=procedure, section=section)
         if narrative:
-            fhir_service_request["text"] = narrative
+            fhir_service_request["text"] = narrative.model_dump(exclude_none=True)
 
         return fhir_service_request
 
