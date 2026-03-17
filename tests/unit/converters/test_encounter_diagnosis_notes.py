@@ -420,6 +420,7 @@ class TestCreateDiagnosisNoteDocRefs:
 
         assert len(doc_refs) == 1
         context = doc_refs[0]["context"]
+        assert isinstance(context, dict)
         assert "encounter" not in context
         assert context["related"] == [{"reference": "urn:uuid:cond-1", "display": "Diabetes"}]
 

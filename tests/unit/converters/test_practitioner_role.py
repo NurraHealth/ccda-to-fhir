@@ -77,6 +77,7 @@ class TestPractitionerRoleConverter:
         )
 
         assert "id" in result
+        assert isinstance(result["id"], str)
         # ID should combine both practitioner and organization IDs for uniqueness
         assert "practitioner-npi-1234567890" in result["id"]
         assert "org-npi-9999999999" in result["id"]
@@ -116,11 +117,17 @@ class TestPractitionerRoleConverter:
         )
 
         assert "specialty" in result
-        assert len(result["specialty"]) >= 1
-        assert "coding" in result["specialty"][0]
-        assert len(result["specialty"][0]["coding"]) >= 1
+        specialty = result["specialty"]
+        assert isinstance(specialty, list)
+        assert len(specialty) >= 1
+        spec0 = specialty[0]
+        assert isinstance(spec0, dict)
+        assert "coding" in spec0
+        spec_coding = spec0["coding"]
+        assert isinstance(spec_coding, list)
+        assert len(spec_coding) >= 1
 
-        coding = result["specialty"][0]["coding"][0]
+        coding = spec_coding[0]
         assert coding["code"] == "207Q00000X"
 
     def test_converts_specialty_display_name(
@@ -221,10 +228,14 @@ class TestPractitionerRoleConverter:
         # PractitionerRole.identifier is optional - may or may not be present
         # If present, should be derived from assignedAuthor/id
         if "identifier" in result:
-            assert len(result["identifier"]) >= 1
+            identifiers = result["identifier"]
+            assert isinstance(identifiers, list)
+            assert len(identifiers) >= 1
+            id0 = identifiers[0]
+            assert isinstance(id0, dict)
             # At least one identifier should be present
-            assert "system" in result["identifier"][0]
-            assert "value" in result["identifier"][0]
+            assert "system" in id0
+            assert "value" in id0
 
     def test_handles_missing_practitioner_id(
         self, converter: PractitionerRoleConverter, sample_assigned_author: AssignedAuthor
@@ -299,5 +310,9 @@ class TestPractitionerRoleConverter:
         )
 
         # Original text should be preserved in CodeableConcept.text
-        if "text" in result["specialty"][0]:
-            assert result["specialty"][0]["text"] == "Family Practice Physician"
+        specialty = result["specialty"]
+        assert isinstance(specialty, list)
+        spec0 = specialty[0]
+        assert isinstance(spec0, dict)
+        if "text" in spec0:
+            assert spec0["text"] == "Family Practice Physician"

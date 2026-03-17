@@ -297,6 +297,7 @@ class TestIdentifierMapping:
 
         # Verify identifier structure
         identifier = careplan["identifier"][0]
+        assert isinstance(identifier, dict)
         assert "system" in identifier or "value" in identifier
 
     def test_identifier_with_version(self, complete_care_plan_document, mock_reference_registry):
@@ -552,7 +553,9 @@ class TestSubjectMapping:
         converter = CarePlanConverter(reference_registry=mock_reference_registry)  # No registry
         careplan = converter.convert(minimal_care_plan_document)
 
+        assert isinstance(careplan, dict)
         assert "subject" in careplan
+        assert isinstance(careplan["subject"], dict)
         assert "reference" in careplan["subject"]
         assert careplan["subject"]["reference"].startswith("urn:uuid:")
 
@@ -604,6 +607,7 @@ class TestPeriodMapping:
         careplan = converter.convert(complete_care_plan_document)
 
         assert "period" in careplan
+        assert isinstance(careplan["period"], dict)
         assert "start" in careplan["period"]
         assert "end" in careplan["period"]
         assert careplan["period"]["start"] == "2024-01-15"
@@ -627,6 +631,7 @@ class TestPeriodMapping:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "period" in careplan
+        assert isinstance(careplan["period"], dict)
         assert "start" in careplan["period"]
         assert careplan["period"]["start"] == "2024-01-15"
         # end should not be present if not in source
@@ -656,6 +661,7 @@ class TestAuthorAndContributor:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "author" in careplan
+        assert isinstance(careplan["author"], dict)
         assert "reference" in careplan["author"]
         assert careplan["author"]["reference"].startswith("urn:uuid:")
 
@@ -828,6 +834,7 @@ class TestActivityMapping:
 
         assert "activity" in careplan
         assert len(careplan["activity"]) == 1
+        assert isinstance(careplan["activity"][0], dict)
         assert "reference" in careplan["activity"][0]
 
     def test_activity_empty_when_no_interventions(
@@ -857,11 +864,13 @@ class TestNarrative:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
+        assert isinstance(careplan["text"], dict)
         assert "status" in careplan["text"]
         assert "div" in careplan["text"]
 
         # Verify XHTML structure
         assert careplan["text"]["div"].startswith("<div")
+        assert isinstance(careplan["text"]["div"], str)
         assert 'xmlns="http://www.w3.org/1999/xhtml"' in careplan["text"]["div"]
         assert "</div>" in careplan["text"]["div"]
 
@@ -880,6 +889,7 @@ class TestNarrative:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
+        assert isinstance(careplan["text"]["div"], str)
         assert "Patient Care Plan 2024" in careplan["text"]["div"]
         assert "<h2>" in careplan["text"]["div"]
 
@@ -889,7 +899,10 @@ class TestNarrative:
         careplan = converter.convert(complete_care_plan_document)
 
         assert "text" in careplan
-        div = careplan["text"]["div"]
+        text = careplan["text"]
+        assert isinstance(text, dict)
+        div = text["div"]
+        assert isinstance(div, str)
         assert "Period:" in div
         assert "2024-01-15" in div
         assert "2024-04-15" in div
@@ -909,7 +922,10 @@ class TestNarrative:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
-        div = careplan["text"]["div"]
+        text = careplan["text"]
+        assert isinstance(text, dict)
+        div = text["div"]
+        assert isinstance(div, str)
         assert "Health Concerns:" in div
         assert "2 concerns documented" in div
 
@@ -926,7 +942,10 @@ class TestNarrative:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
-        div = careplan["text"]["div"]
+        text = careplan["text"]
+        assert isinstance(text, dict)
+        div = text["div"]
+        assert isinstance(div, str)
         assert "Goals:" in div
         assert "3 goals documented" in div
 
@@ -950,7 +969,10 @@ class TestNarrative:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
-        div = careplan["text"]["div"]
+        text = careplan["text"]
+        assert isinstance(text, dict)
+        div = text["div"]
+        assert isinstance(div, str)
         assert "Planned Interventions" in div
         assert "<h3>" in div
         assert "Oxygen therapy via nasal cannula" in div
@@ -965,7 +987,10 @@ class TestNarrative:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
-        div = careplan["text"]["div"]
+        text = careplan["text"]
+        assert isinstance(text, dict)
+        div = text["div"]
+        assert isinstance(div, str)
         # HTML entities should be escaped
         assert "&lt;" in div  # <
         assert "&gt;" in div  # >
@@ -1021,10 +1046,12 @@ class TestNarrative:
         careplan = converter.convert(doc)
 
         assert "text" in careplan
+        assert isinstance(careplan["text"], dict)
         assert "status" in careplan["text"]
         assert careplan["text"]["status"] == "generated"
         assert "div" in careplan["text"]
         # Should have at least a title
+        assert isinstance(careplan["text"]["div"], str)
         assert "<h2>Care Plan</h2>" in careplan["text"]["div"]
 
     def test_narrative_period_with_start_only(
@@ -1043,7 +1070,10 @@ class TestNarrative:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
-        div = careplan["text"]["div"]
+        text = careplan["text"]
+        assert isinstance(text, dict)
+        div = text["div"]
+        assert isinstance(div, str)
         assert "Period:" in div
         assert "2024-01-15 onwards" in div
 
@@ -1079,7 +1109,10 @@ class TestNarrative:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
-        div = careplan["text"]["div"]
+        text = careplan["text"]
+        assert isinstance(text, dict)
+        div = text["div"]
+        assert isinstance(div, str)
         # Should extract text from nested procedure
         assert "Oxygen administration by nasal cannula" in div
 
@@ -1104,7 +1137,10 @@ class TestNarrative:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "text" in careplan
-        div = careplan["text"]["div"]
+        text = careplan["text"]
+        assert isinstance(text, dict)
+        div = text["div"]
+        assert isinstance(div, str)
         # Should show code value
         assert "12345-6" in div
 
@@ -1208,6 +1244,7 @@ class TestUSCoreProfile:
         careplan = converter.convert(minimal_care_plan_document)
 
         assert "meta" in careplan
+        assert isinstance(careplan["meta"], dict)
         assert "profile" in careplan["meta"]
         assert isinstance(careplan["meta"]["profile"], list)
 
@@ -1226,6 +1263,7 @@ class TestUSCoreProfile:
 
         # Find assess-plan category
         category = careplan["category"][0]
+        assert isinstance(category, dict)
         assert "coding" in category
         assert len(category["coding"]) > 0
 

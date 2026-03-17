@@ -97,6 +97,7 @@ class TestMedicationConversion:
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
         assert "authoredOn" in med_request
+        assert isinstance(med_request["authoredOn"], str)
         assert "2013-09-11" in med_request["authoredOn"]
 
     def test_converts_dosage_timing(
@@ -172,6 +173,7 @@ class TestMedicationConversion:
         dosage = med_request["dosageInstruction"][0]
 
         # Should have asNeededCodeableConcept with the reason code
+        assert isinstance(dosage, dict)
         assert "asNeededCodeableConcept" in dosage
         as_needed = dosage["asNeededCodeableConcept"]
         assert as_needed["coding"][0]["code"] == "56018004"
@@ -201,6 +203,7 @@ class TestMedicationConversion:
         dosage = med_request["dosageInstruction"][0]
 
         # Should have asNeededBoolean = true
+        assert isinstance(dosage, dict)
         assert "asNeededBoolean" in dosage
         assert dosage["asNeededBoolean"] is True
 
@@ -248,6 +251,7 @@ class TestMedicationConversion:
         med_request = _find_resource_in_bundle(bundle, "MedicationRequest")
         assert med_request is not None
         assert "requester" in med_request
+        assert isinstance(med_request["requester"], dict)
         assert "reference" in med_request["requester"]
         assert med_request["requester"]["reference"].startswith("urn:uuid:")
 
@@ -529,6 +533,7 @@ class TestEIVLTimingConversion:
         assert "dosageInstruction" in med_request
 
         timing = med_request["dosageInstruction"][0]["timing"]["repeat"]
+        assert isinstance(timing, dict)
         assert "when" in timing
         assert timing["when"] == ["HS"]
 
@@ -546,6 +551,7 @@ class TestEIVLTimingConversion:
         assert "dosageInstruction" in med_request
 
         timing = med_request["dosageInstruction"][0]["timing"]["repeat"]
+        assert isinstance(timing, dict)
         assert "when" in timing
         assert timing["when"] == ["ACM"]
 
@@ -559,6 +565,7 @@ class TestEIVLTimingConversion:
         assert "dosageInstruction" in med_request
 
         timing = med_request["dosageInstruction"][0]["timing"]["repeat"]
+        assert isinstance(timing, dict)
         assert "when" in timing
         assert timing["when"] == ["PCM"]  # after breakfast
         assert "offset" in timing
@@ -578,6 +585,7 @@ class TestEIVLTimingConversion:
         assert "dosageInstruction" in med_request
 
         timing = med_request["dosageInstruction"][0]["timing"]["repeat"]
+        assert isinstance(timing, dict)
 
         # Should have both PIVL (period) and EIVL (when) elements
         assert "period" in timing
@@ -601,11 +609,14 @@ class TestBoundsPeriodConversion:
         assert "dosageInstruction" in med_request
 
         timing = med_request["dosageInstruction"][0]["timing"]["repeat"]
+        assert isinstance(timing, dict)
         assert "boundsPeriod" in timing
-        assert "start" in timing["boundsPeriod"]
-        assert timing["boundsPeriod"]["start"] == "2020-01-15"
+        bounds_period = timing["boundsPeriod"]
+        assert isinstance(bounds_period, dict)
+        assert "start" in bounds_period
+        assert bounds_period["start"] == "2020-01-15"
         # Should not have end date
-        assert "end" not in timing["boundsPeriod"]
+        assert "end" not in bounds_period
 
     def test_converts_start_and_end_dates(self, ccda_medication_with_start_end_dates: str) -> None:
         """Test that IVL_TS with start and end dates is correctly converted to boundsPeriod."""
@@ -619,11 +630,14 @@ class TestBoundsPeriodConversion:
         assert "dosageInstruction" in med_request
 
         timing = med_request["dosageInstruction"][0]["timing"]["repeat"]
+        assert isinstance(timing, dict)
         assert "boundsPeriod" in timing
-        assert "start" in timing["boundsPeriod"]
-        assert "end" in timing["boundsPeriod"]
-        assert timing["boundsPeriod"]["start"] == "2020-03-01"
-        assert timing["boundsPeriod"]["end"] == "2020-05-31"
+        bounds_period = timing["boundsPeriod"]
+        assert isinstance(bounds_period, dict)
+        assert "start" in bounds_period
+        assert "end" in bounds_period
+        assert bounds_period["start"] == "2020-03-01"
+        assert bounds_period["end"] == "2020-05-31"
 
     def test_converts_bounds_period_with_frequency(
         self, ccda_medication_bounds_period_with_frequency: str
@@ -639,11 +653,14 @@ class TestBoundsPeriodConversion:
         assert "dosageInstruction" in med_request
 
         timing = med_request["dosageInstruction"][0]["timing"]["repeat"]
+        assert isinstance(timing, dict)
 
         # Should have boundsPeriod (from IVL_TS)
         assert "boundsPeriod" in timing
-        assert timing["boundsPeriod"]["start"] == "2021-01-01"
-        assert timing["boundsPeriod"]["end"] == "2021-06-30"
+        bounds_period = timing["boundsPeriod"]
+        assert isinstance(bounds_period, dict)
+        assert bounds_period["start"] == "2021-01-01"
+        assert bounds_period["end"] == "2021-06-30"
 
         # Should also have frequency/period (from PIVL_TS)
         assert "period" in timing
@@ -665,6 +682,7 @@ class TestBoundsPeriodConversion:
         dosage = med_request["dosageInstruction"][0]
 
         # Verify all expected dosage elements are present
+        assert isinstance(dosage, dict)
         assert "timing" in dosage
         assert "route" in dosage
         assert "doseAndRate" in dosage
@@ -692,6 +710,7 @@ class TestDosageInstructionText:
         assert "dosageInstruction" in med_request
 
         dosage = med_request["dosageInstruction"][0]
+        assert isinstance(dosage, dict)
         assert "text" in dosage
         assert dosage["text"] == "Take one tablet by mouth daily"
 
@@ -714,6 +733,7 @@ class TestDosageInstructionText:
         assert "dosageInstruction" in med_request
 
         dosage = med_request["dosageInstruction"][0]
+        assert isinstance(dosage, dict)
 
         # Both text (from substanceAdministration/text) and patientInstruction
         # (from Instruction Act) should be present
@@ -741,6 +761,7 @@ class TestDosageInstructionText:
 
         # Text should be in dosageInstruction.text instead
         assert "dosageInstruction" in med_request
+        assert isinstance(med_request["dosageInstruction"][0], dict)
         assert "text" in med_request["dosageInstruction"][0]
 
     def test_creates_medication_resource_for_complex_medication(self, ccda_medication: str) -> None:
@@ -780,6 +801,7 @@ class TestDosageInstructionText:
         assert "medicationCodeableConcept" not in med_request
 
         # Reference should point to a Medication resource
+        assert isinstance(med_request["medicationReference"], dict)
         assert "reference" in med_request["medicationReference"]
         med_ref = med_request["medicationReference"]["reference"]
         assert med_ref.startswith("urn:uuid:")
@@ -800,6 +822,7 @@ class TestDosageInstructionText:
 
         # Should have code from manufacturedMaterial.code
         assert "code" in medication
+        assert isinstance(medication["code"], dict)
         assert "coding" in medication["code"]
         rxnorm = next(
             (
@@ -822,6 +845,7 @@ class TestDosageInstructionText:
 
         # Should have manufacturer from manufacturerOrganization
         assert "manufacturer" in medication
+        assert isinstance(medication["manufacturer"], dict)
         assert "display" in medication["manufacturer"]
         assert medication["manufacturer"]["display"] == "Good Vaccines Inc"
 
@@ -835,10 +859,18 @@ class TestDosageInstructionText:
 
         # Should have form from administrationUnitCode
         assert "form" in medication
-        assert "coding" in medication["form"]
-        assert len(medication["form"]["coding"]) > 0
-        assert medication["form"]["coding"][0]["code"] == "C48501"
-        assert "Inhalation dosing unit" in medication["form"]["coding"][0]["display"]
+        form = medication["form"]
+        assert isinstance(form, dict)
+        assert "coding" in form
+        coding_list = form["coding"]
+        assert isinstance(coding_list, list)
+        assert len(coding_list) > 0
+        first_coding = coding_list[0]
+        assert isinstance(first_coding, dict)
+        assert first_coding["code"] == "C48501"
+        display = first_coding["display"]
+        assert isinstance(display, str)
+        assert "Inhalation dosing unit" in display
 
     def test_medication_resource_has_ingredient(self, ccda_medication: str) -> None:
         """Test that Medication resource has ingredient from drug vehicle participant."""
@@ -853,7 +885,9 @@ class TestDosageInstructionText:
         assert len(medication["ingredient"]) > 0
 
         ingredient = medication["ingredient"][0]
+        assert isinstance(ingredient, dict)
         assert "itemCodeableConcept" in ingredient
+        assert isinstance(ingredient["itemCodeableConcept"], dict)
         assert "coding" in ingredient["itemCodeableConcept"]
 
         # Should be sodium chloride (the drug vehicle)

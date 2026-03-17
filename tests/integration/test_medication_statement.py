@@ -246,6 +246,7 @@ class TestHistoricalMedicationConversion:
 
         # Should have text from medication name (no coding since code has nullFlavor)
         med_concept = med_statement["medicationCodeableConcept"]
+        assert isinstance(med_concept, dict)
         assert "text" in med_concept
         assert med_concept["text"] == "methylprednisolone 4 mg tablets in a dose pack"
 
@@ -289,6 +290,7 @@ class TestHistoricalMedicationConversion:
 
         # Should prefer originalText over name
         med_concept = med_statement["medicationCodeableConcept"]
+        assert isinstance(med_concept, dict)
         assert "text" in med_concept
         assert med_concept["text"] == "Aspirin 81mg daily"
 
@@ -353,14 +355,17 @@ class TestPPD_PQDataType:
         assert len(med_statement["dosage"]) > 0
 
         dosage = med_statement["dosage"][0]
+        assert isinstance(dosage, dict)
         assert "timing" in dosage
 
         # Should have timing with repeat period
         timing = dosage["timing"]
+        assert isinstance(timing, dict)
         assert "repeat" in timing
 
         repeat = timing["repeat"]
         # Should preserve the period value (5) and unit (h)
+        assert isinstance(repeat, dict)
         assert "period" in repeat
         assert repeat["period"] == 5.0
         assert "periodUnit" in repeat
@@ -409,6 +414,7 @@ class TestMedicationStatementMissingMedication:
         assert "medicationCodeableConcept" in med_statement, "Should have medicationCodeableConcept"
 
         # Should have fallback text
+        assert isinstance(med_statement["medicationCodeableConcept"], dict)
         assert "text" in med_statement["medicationCodeableConcept"]
         assert (
             med_statement["medicationCodeableConcept"]["text"]

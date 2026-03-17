@@ -92,6 +92,7 @@ class TestEncounterConversion:
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
         assert "type" in encounter
+        assert isinstance(encounter["type"][0], dict)
         assert "text" in encounter["type"][0]
 
     def test_converts_period_start(self, ccda_encounter: str, fhir_encounter: JSONObject) -> None:
@@ -101,8 +102,11 @@ class TestEncounterConversion:
 
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
+        assert isinstance(encounter, dict)
         assert "period" in encounter
+        assert isinstance(encounter["period"], dict)
         assert "start" in encounter["period"]
+        assert isinstance(encounter["period"]["start"], str)
         assert "2012-08-15" in encounter["period"]["start"]
 
     def test_converts_reason_code_from_diagnosis(
@@ -117,7 +121,9 @@ class TestEncounterConversion:
         # Encounter diagnoses should be in diagnosis array, not reasonCode
         assert "diagnosis" in encounter
         assert len(encounter["diagnosis"]) == 1
+        assert isinstance(encounter["diagnosis"][0], dict)
         assert "condition" in encounter["diagnosis"][0]
+        assert isinstance(encounter["diagnosis"][0]["condition"], dict)
         assert "reference" in encounter["diagnosis"][0]["condition"]
         assert encounter["diagnosis"][0]["condition"]["reference"].startswith("urn:uuid:")
         # Should have diagnosis use/role
@@ -204,7 +210,9 @@ class TestEncounterConversion:
         assert len(encounter["location"]) == 1
 
         location = encounter["location"][0]
+        assert isinstance(location, dict)
         assert "location" in location
+        assert isinstance(location["location"], dict)
         assert "reference" in location["location"]
 
         # Validate location reference has UUID v4 format
@@ -234,6 +242,7 @@ class TestEncounterConversion:
         assert len(encounter["location"]) == 1
 
         location = encounter["location"][0]
+        assert isinstance(location, dict)
         assert "status" in location
         assert location["status"] == "completed", (
             "Location with complete time period (start+end) should be 'completed'"
@@ -241,6 +250,7 @@ class TestEncounterConversion:
 
         # Verify period is extracted from participant.time
         assert "period" in location
+        assert isinstance(location["period"], dict)
         assert "start" in location["period"]
         assert "end" in location["period"]
         assert location["period"]["start"] == "2020-03-15T10:30:00-05:00"
@@ -259,6 +269,7 @@ class TestEncounterConversion:
         assert len(encounter["location"]) == 1
 
         location = encounter["location"][0]
+        assert isinstance(location, dict)
         assert "status" in location
         assert location["status"] == "active", (
             "Location with only start time (no end) should be 'active'"
@@ -266,6 +277,7 @@ class TestEncounterConversion:
 
         # Verify period has only start
         assert "period" in location
+        assert isinstance(location["period"], dict)
         assert "start" in location["period"]
         assert "end" not in location["period"]
         assert location["period"]["start"] == "2020-03-15T10:30:00-05:00"
@@ -285,6 +297,7 @@ class TestEncounterConversion:
         assert len(encounter["location"]) == 1
 
         location = encounter["location"][0]
+        assert isinstance(location, dict)
         assert "status" in location
         assert location["status"] == "active", (
             "Location without time should derive 'active' from in-progress encounter"
@@ -306,6 +319,7 @@ class TestEncounterConversion:
         assert len(encounter["location"]) == 1
 
         location = encounter["location"][0]
+        assert isinstance(location, dict)
         assert "status" in location
         assert location["status"] == "planned", (
             "Location should be 'planned' for planned encounters"
@@ -322,9 +336,11 @@ class TestEncounterConversion:
         encounter = _find_resource_in_bundle(bundle, "Encounter")
         assert encounter is not None
         assert "hospitalization" in encounter
+        assert isinstance(encounter["hospitalization"], dict)
         assert "dischargeDisposition" in encounter["hospitalization"]
 
         discharge_disp = encounter["hospitalization"]["dischargeDisposition"]
+        assert isinstance(discharge_disp, dict)
         assert "coding" in discharge_disp
         assert len(discharge_disp["coding"]) == 1
         assert discharge_disp["coding"][0]["code"] == "home"
@@ -350,9 +366,11 @@ class TestEncounterConversion:
 
         assert encounter is not None
         assert "hospitalization" in encounter
+        assert isinstance(encounter["hospitalization"], dict)
         assert "admitSource" in encounter["hospitalization"]
 
         admit_source = encounter["hospitalization"]["admitSource"]
+        assert isinstance(admit_source, dict)
         assert "coding" in admit_source
         assert len(admit_source["coding"]) == 1
         assert admit_source["coding"][0]["code"] == "emd"
@@ -380,6 +398,7 @@ class TestEncounterConversion:
 
         assert encounter is not None
         assert "hospitalization" in encounter
+        assert isinstance(encounter["hospitalization"], dict)
         assert "admitSource" in encounter["hospitalization"]
 
         admit_source = encounter["hospitalization"]["admitSource"]
@@ -403,6 +422,7 @@ class TestEncounterConversion:
 
         assert encounter is not None
         assert "hospitalization" in encounter
+        assert isinstance(encounter["hospitalization"], dict)
         assert "admitSource" in encounter["hospitalization"]
 
         admit_source = encounter["hospitalization"]["admitSource"]
@@ -426,6 +446,7 @@ class TestEncounterConversion:
 
         assert encounter is not None
         assert "hospitalization" in encounter
+        assert isinstance(encounter["hospitalization"], dict)
         assert "admitSource" in encounter["hospitalization"]
         assert encounter["hospitalization"]["admitSource"]["coding"][0]["code"] == "other"
 
@@ -447,6 +468,7 @@ class TestEncounterConversion:
         assert encounter is not None
         # Ambulatory encounters should not have hospitalization or should not have admitSource
         if "hospitalization" in encounter:
+            assert isinstance(encounter["hospitalization"], dict)
             assert "admitSource" not in encounter["hospitalization"]
 
     def test_inpatient_with_discharge_has_both_admit_and_discharge(self) -> None:
@@ -467,6 +489,7 @@ class TestEncounterConversion:
 
         assert encounter is not None
         assert "hospitalization" in encounter
+        assert isinstance(encounter["hospitalization"], dict)
 
         # Should have both admitSource and dischargeDisposition
         assert "admitSource" in encounter["hospitalization"]
@@ -497,6 +520,7 @@ class TestEncounterConversion:
 
         assert encounter is not None
         assert "hospitalization" in encounter
+        assert isinstance(encounter["hospitalization"], dict)
         assert "admitSource" in encounter["hospitalization"]
         assert encounter["hospitalization"]["admitSource"]["coding"][0]["code"] == "emd"
 
@@ -725,9 +749,12 @@ class TestEncounterConversion:
 
         # Verify period from effectiveTime
         assert "period" in encounter
+        assert isinstance(encounter["period"], dict)
         assert "start" in encounter["period"]
+        assert isinstance(encounter["period"]["start"], str)
         assert "2023-12-01" in encounter["period"]["start"]
         assert "end" in encounter["period"]
+        assert isinstance(encounter["period"]["end"], str)
         assert "2023-12-01" in encounter["period"]["end"]
 
         # Verify participants from responsibleParty and encounterParticipant
@@ -740,12 +767,16 @@ class TestEncounterConversion:
         assert "location" in encounter
         assert len(encounter["location"]) >= 1
         location = encounter["location"][0]
+        assert isinstance(location, dict)
         assert "location" in location
+        assert isinstance(location["location"], dict)
         assert "display" in location["location"]
+        assert isinstance(location["location"]["display"], str)
         assert "City Medical Center - Main Campus" in location["location"]["display"]
 
         # Verify discharge disposition
         assert "hospitalization" in encounter
+        assert isinstance(encounter["hospitalization"], dict)
         assert "dischargeDisposition" in encounter["hospitalization"]
         assert encounter["hospitalization"]["dischargeDisposition"]["coding"][0]["code"] == "home"
 
@@ -938,6 +969,7 @@ class TestEncounterConversion:
 
         # Verify both agents reference practitioners
         for agent in encounter_provenance["agent"]:
+            assert isinstance(agent, dict)
             assert "who" in agent
             assert "reference" in agent["who"]
             assert agent["who"]["reference"].startswith("urn:uuid:")
@@ -957,10 +989,13 @@ class TestEncounterConversion:
         assert "reasonCode" in encounter
         assert len(encounter["reasonCode"]) >= 1
         reason_code = encounter["reasonCode"][0]
+        assert isinstance(reason_code, dict)
         assert "coding" in reason_code
         coding = reason_code["coding"][0]
+        assert isinstance(coding, dict)
         assert coding["system"] == "http://snomed.info/sct"
         assert coding["code"] == "59621000"
+        assert isinstance(coding["display"], str)
         assert "Essential hypertension" in coding["display"]
 
     def test_inline_problem_has_no_reason_reference(
@@ -994,6 +1029,7 @@ class TestEncounterConversion:
         assert "reasonReference" in encounter
         assert len(encounter["reasonReference"]) >= 1
         reason_ref = encounter["reasonReference"][0]
+        assert isinstance(reason_ref, dict)
         assert "reference" in reason_ref
         assert reason_ref["reference"].startswith("urn:uuid:")
 
@@ -1664,6 +1700,7 @@ class TestEncounterConversion:
         assert encounter is not None
         assert "diagnosis" in encounter
         assert len(encounter["diagnosis"]) == 1
+        assert isinstance(encounter["diagnosis"][0], dict)
         assert "use" in encounter["diagnosis"][0]
         assert encounter["diagnosis"][0]["use"]["coding"][0]["code"] == "billing"
         assert encounter["diagnosis"][0]["use"]["coding"][0]["display"] == "Billing"
@@ -1702,6 +1739,7 @@ class TestEncounterConversion:
         assert encounter is not None
         assert "diagnosis" in encounter
         assert len(encounter["diagnosis"]) == 1
+        assert isinstance(encounter["diagnosis"][0], dict)
         assert "use" in encounter["diagnosis"][0]
         assert encounter["diagnosis"][0]["use"]["coding"][0]["code"] == "AD"
         assert encounter["diagnosis"][0]["use"]["coding"][0]["display"] == "Admission diagnosis"
@@ -1739,10 +1777,20 @@ class TestEncounterConversion:
 
         assert encounter is not None
         assert "diagnosis" in encounter
-        assert len(encounter["diagnosis"]) == 1
-        assert "use" in encounter["diagnosis"][0]
-        assert encounter["diagnosis"][0]["use"]["coding"][0]["code"] == "AD"
-        assert encounter["diagnosis"][0]["use"]["coding"][0]["display"] == "Admission diagnosis"
+        diagnosis_list = encounter["diagnosis"]
+        assert isinstance(diagnosis_list, list)
+        assert len(diagnosis_list) == 1
+        diag0 = diagnosis_list[0]
+        assert isinstance(diag0, dict)
+        assert "use" in diag0
+        use = diag0["use"]
+        assert isinstance(use, dict)
+        coding_list = use["coding"]
+        assert isinstance(coding_list, list)
+        coding0 = coding_list[0]
+        assert isinstance(coding0, dict)
+        assert coding0["code"] == "AD"
+        assert coding0["display"] == "Admission diagnosis"
 
     def test_encounter_with_discharge_uses_discharge_diagnosis_role(self) -> None:
         """Test that encounters with discharge disposition use 'DD' (discharge diagnosis) role."""
@@ -1778,10 +1826,20 @@ class TestEncounterConversion:
 
         assert encounter is not None
         assert "diagnosis" in encounter
-        assert len(encounter["diagnosis"]) == 1
-        assert "use" in encounter["diagnosis"][0]
-        assert encounter["diagnosis"][0]["use"]["coding"][0]["code"] == "DD"
-        assert encounter["diagnosis"][0]["use"]["coding"][0]["display"] == "Discharge diagnosis"
+        diagnosis_list = encounter["diagnosis"]
+        assert isinstance(diagnosis_list, list)
+        assert len(diagnosis_list) == 1
+        diag0 = diagnosis_list[0]
+        assert isinstance(diag0, dict)
+        assert "use" in diag0
+        use = diag0["use"]
+        assert isinstance(use, dict)
+        coding_list = use["coding"]
+        assert isinstance(coding_list, list)
+        coding0 = coding_list[0]
+        assert isinstance(coding0, dict)
+        assert coding0["code"] == "DD"
+        assert coding0["display"] == "Discharge diagnosis"
 
 
 class TestV3ActCodeStandardDisplayNames:

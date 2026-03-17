@@ -77,6 +77,7 @@ class TestGoalConversion:
         target = goal["target"][0]
 
         # Check measure code
+        assert isinstance(target, dict)
         assert "measure" in target
         loinc = next(
             (c for c in target["measure"]["coding"] if c.get("system") == "http://loinc.org"), None
@@ -103,7 +104,9 @@ class TestGoalConversion:
 
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
+        assert isinstance(goal, dict)
         assert "expressedBy" in goal
+        assert isinstance(goal["expressedBy"], dict)
         assert "reference" in goal["expressedBy"]
         assert goal["expressedBy"]["reference"].startswith("urn:uuid:")
 
@@ -147,6 +150,7 @@ class TestGoalConversion:
         assert "addresses" in goal
         assert len(goal["addresses"]) >= 1
         # The reference should point to a Condition resource
+        assert isinstance(goal["addresses"][0], dict)
         assert "reference" in goal["addresses"][0]
         assert goal["addresses"][0]["reference"].startswith("urn:uuid:")
 
@@ -194,10 +198,15 @@ class TestGoalConversion:
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
         assert "meta" in goal
-        assert "profile" in goal["meta"]
+        goal_meta = goal["meta"]
+        assert isinstance(goal_meta, dict)
+        assert "profile" in goal_meta
+        goal_profiles = goal_meta["profile"]
+        assert isinstance(goal_profiles, list)
+        profile_strs = [str(p) for p in goal_profiles]
         assert (
             "http://hl7.org/fhir/us/core/StructureDefinition/us-core-goal"
-            in goal["meta"]["profile"]
+            in profile_strs
         )
 
     def test_has_subject_reference(self, ccda_goal_weight_loss: str) -> None:
@@ -208,6 +217,7 @@ class TestGoalConversion:
         goal = _find_resource_in_bundle(bundle, "Goal")
         assert goal is not None
         assert "subject" in goal
+        assert isinstance(goal["subject"], dict)
         assert "reference" in goal["subject"]
         assert goal["subject"]["reference"].startswith("urn:uuid:")
 
@@ -220,6 +230,7 @@ class TestGoalConversion:
         assert goal is not None
         assert "identifier" in goal
         assert len(goal["identifier"]) >= 1
+        assert isinstance(goal["identifier"][0], dict)
         assert "system" in goal["identifier"][0]
         assert "value" in goal["identifier"][0]
 

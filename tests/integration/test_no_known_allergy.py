@@ -37,6 +37,7 @@ class TestNoKnownAllergies:
 
         # Verify negated concept code
         assert "code" in allergy
+        assert isinstance(allergy["code"], dict)
         assert "coding" in allergy["code"]
         snomed_coding = next(
             (c for c in allergy["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
@@ -60,7 +61,9 @@ class TestNoKnownAllergies:
         assert allergy is not None, "AllergyIntolerance resource not found"
 
         # Verify negated concept code
+        assert isinstance(allergy, dict)
         assert "code" in allergy
+        assert isinstance(allergy["code"], dict)
         assert "coding" in allergy["code"]
         snomed_coding = next(
             (c for c in allergy["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
@@ -85,6 +88,7 @@ class TestNoKnownAllergies:
 
         # Verify negated concept code
         assert "code" in allergy
+        assert isinstance(allergy["code"], dict)
         assert "coding" in allergy["code"]
         snomed_coding = next(
             (c for c in allergy["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
@@ -109,7 +113,9 @@ class TestNoKnownAllergies:
 
         # Verify negated concept code
         assert "code" in allergy
-        assert "coding" in allergy["code"]
+        allergy_code = allergy["code"]
+        assert isinstance(allergy_code, dict)
+        assert "coding" in allergy_code
         snomed_coding = next(
             (c for c in allergy["code"]["coding"] if c.get("system") == "http://snomed.info/sct"),
             None,
@@ -177,6 +183,7 @@ class TestNoKnownAllergies:
         assert "type" in allergy
         assert allergy["type"] == "allergy"
         assert "category" in allergy
+        assert isinstance(allergy["category"], list)
         assert "medication" in allergy["category"]
 
     def test_no_known_food_allergy_has_correct_type_and_category(self) -> None:
@@ -196,6 +203,7 @@ class TestNoKnownAllergies:
         assert "type" in allergy
         assert allergy["type"] == "allergy"
         assert "category" in allergy
+        assert isinstance(allergy["category"], list)
         assert "food" in allergy["category"]
 
     def test_no_known_environmental_allergy_has_correct_type_and_category(self) -> None:
@@ -215,6 +223,7 @@ class TestNoKnownAllergies:
         assert "type" in allergy
         assert allergy["type"] == "allergy"
         assert "category" in allergy
+        assert isinstance(allergy["category"], list)
         assert "environment" in allergy["category"]
 
     def test_no_known_allergy_metadata_preserved(self) -> None:

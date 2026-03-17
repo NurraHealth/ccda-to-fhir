@@ -57,6 +57,7 @@ class TestPractitionerRoleConversion:
         assert practitioner is not None
         assert practitioner_role is not None
         assert "practitioner" in practitioner_role
+        assert isinstance(practitioner_role["practitioner"], dict)
         assert "reference" in practitioner_role["practitioner"]
 
         # Reference should point to the practitioner in the bundle
@@ -73,7 +74,9 @@ class TestPractitionerRoleConversion:
 
         assert organization is not None
         assert practitioner_role is not None
+        assert isinstance(practitioner_role, dict)
         assert "organization" in practitioner_role
+        assert isinstance(practitioner_role["organization"], dict)
         assert "reference" in practitioner_role["organization"]
 
         # Reference should point to the organization in the bundle
@@ -115,6 +118,7 @@ class TestPractitionerRoleConversion:
         assert len(practitioner_role["specialty"]) >= 1
 
         specialty = practitioner_role["specialty"][0]
+        assert isinstance(specialty, dict)
         assert "coding" in specialty
         assert len(specialty["coding"]) >= 1
 

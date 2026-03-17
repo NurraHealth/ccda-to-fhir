@@ -292,6 +292,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
         if period and period.get("end"):
             try:
                 end_date_str = period["end"]
+                if not isinstance(end_date_str, str):
+                    raise ValueError(f"Expected string for period end, got {type(end_date_str)}")
                 # Handle both date (YYYY-MM-DD) and datetime formats
                 if "T" in end_date_str:
                     end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))

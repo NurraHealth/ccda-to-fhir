@@ -368,6 +368,7 @@ class TestDeviceConverter:
         device = device_converter.convert(sample_assigned_author_with_device)
 
         assert "type" in device
+        assert isinstance(device["type"], dict)
         assert "coding" in device["type"]
         assert len(device["type"]["coding"]) == 1
         assert device["type"]["coding"][0]["system"] == "http://snomed.info/sct"
@@ -399,7 +400,9 @@ class TestDeviceConverter:
         assert len(device["version"]) == 1
         assert device["version"][0]["value"] == "2.1"
         # Verify full CodeableConcept structure
+        assert isinstance(device["version"][0], dict)
         assert "type" in device["version"][0]
+        assert isinstance(device["version"][0]["type"], dict)
         assert "coding" in device["version"][0]["type"]
         assert len(device["version"][0]["type"]["coding"]) == 1
         assert (
@@ -588,6 +591,7 @@ class TestProductInstanceConverter:
         device = device_converter.convert_product_instance(participant_role)
 
         assert "type" in device
+        assert isinstance(device["type"], dict)
         assert "coding" in device["type"]
         assert len(device["type"]["coding"]) == 1
         assert device["type"]["coding"][0]["code"] == "14106009"
@@ -839,10 +843,15 @@ class TestProductInstanceConverter:
         )
 
         assert "meta" in device
-        assert "profile" in device["meta"]
+        meta = device["meta"]
+        assert isinstance(meta, dict)
+        assert "profile" in meta
+        profiles = meta["profile"]
+        assert isinstance(profiles, list)
+        profile_strs = [str(p) for p in profiles]
         assert (
             "http://hl7.org/fhir/us/core/StructureDefinition/us-core-implantable-device"
-            in device["meta"]["profile"]
+            in profile_strs
         )
 
     def test_no_profile_when_patient_reference_absent(

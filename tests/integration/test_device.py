@@ -219,6 +219,7 @@ class TestDeviceConversion:
         bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_resource_in_bundle(bundle, "Device")
+        assert isinstance(device, dict)
         assert "identifier" in device
         assert len(device["identifier"]) == 1
         assert device["identifier"][0]["system"] == "urn:oid:2.16.840.1.113883.19.5"
@@ -279,6 +280,7 @@ class TestDeviceConversion:
         bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_resource_in_bundle(bundle, "Device")
+        assert isinstance(device, dict)
         assert "deviceName" in device
         assert len(device["deviceName"]) == 2
 
@@ -436,8 +438,10 @@ class TestDeviceConversion:
 
         composition = _find_resource_in_bundle(bundle, "Composition")
         assert composition is not None
+        assert isinstance(composition, dict)
         assert "author" in composition
         assert len(composition["author"]) == 1
+        assert isinstance(composition["author"][0], dict)
         assert "display" in composition["author"][0]
 
     def test_composition_author_display_format(self) -> None:
@@ -635,7 +639,9 @@ class TestDeviceConversion:
         bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_resource_in_bundle(bundle, "Device")
+        assert isinstance(device, dict)
         assert "type" in device
+        assert isinstance(device["type"], dict)
         assert "coding" in device["type"]
         assert len(device["type"]["coding"]) == 1
         assert device["type"]["coding"][0]["system"] == "http://snomed.info/sct"
@@ -698,11 +704,14 @@ class TestDeviceConversion:
         bundle = convert_document(ccda_xml)["bundle"]
 
         device = _find_resource_in_bundle(bundle, "Device")
+        assert isinstance(device, dict)
         assert "version" in device
         assert len(device["version"]) == 1
 
         # Verify full CodeableConcept structure for type
+        assert isinstance(device["version"][0], dict)
         assert "type" in device["version"][0]
+        assert isinstance(device["version"][0]["type"], dict)
         assert "coding" in device["version"][0]["type"]
         assert len(device["version"][0]["type"]["coding"]) == 1
         assert (

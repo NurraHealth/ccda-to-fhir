@@ -177,6 +177,7 @@ class TestTargetReference:
         assert "target" in provenance
         assert isinstance(provenance["target"], list)
         assert len(provenance["target"]) == 1
+        assert isinstance(provenance["target"][0], dict)
         assert "reference" in provenance["target"][0]
 
     def test_target_reference_format_resource_type_slash_id(
@@ -286,6 +287,7 @@ class TestRecordedDate:
         # Should have current date
         recorded = provenance["recorded"]
         current_year = datetime.now().year
+        assert isinstance(recorded, str)
         assert str(current_year) in recorded
 
 
@@ -326,7 +328,9 @@ class TestAgentCreation:
         )
 
         agent = provenance["agent"][0]
+        assert isinstance(agent, dict)
         assert "who" in agent
+        assert isinstance(agent["who"], dict)
         assert "reference" in agent["who"]
         assert agent["who"]["reference"].startswith("urn:uuid:")
 
@@ -358,7 +362,9 @@ class TestAgentCreation:
         )
 
         agent = provenance["agent"][0]
+        assert isinstance(agent, dict)
         assert "onBehalfOf" in agent
+        assert isinstance(agent["onBehalfOf"], dict)
         assert "reference" in agent["onBehalfOf"]
         assert agent["onBehalfOf"]["reference"].startswith("urn:uuid:")
 
@@ -399,6 +405,7 @@ class TestAgentTypeMapping:
         )
 
         agent = provenance["agent"][0]
+        assert isinstance(agent, dict)
         assert "type" in agent
         assert agent["type"]["coding"][0]["code"] == "author"
 
@@ -486,7 +493,10 @@ class TestEdgeCases:
             authors=[sample_practitioner_author_info],
         )
 
-        agent = provenance["agent"][0]
+        agents = provenance["agent"]
+        assert isinstance(agents, list)
+        agent = agents[0]
+        assert isinstance(agent, dict)
         # Should not have onBehalfOf (optional field)
         assert "onBehalfOf" not in agent or agent.get("onBehalfOf") is None
 
@@ -513,7 +523,10 @@ class TestEdgeCases:
             target_resource=sample_target_condition, authors=authors
         )
 
-        agent = provenance["agent"][0]
+        agents = provenance["agent"]
+        assert isinstance(agents, list)
+        agent = agents[0]
+        assert isinstance(agent, dict)
         assert "onBehalfOf" not in agent
 
     def test_empty_authors_list_creates_no_agents(

@@ -520,8 +520,12 @@ class TestMedicationDispensePerformer:
         result = converter.convert(dispense)
 
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) >= 1
+        assert isinstance(result["performer"][0], dict)
         assert "actor" in result["performer"][0]
+        assert isinstance(result["performer"][0]["actor"], dict)
+        assert isinstance(result["performer"][0]["actor"]["reference"], str)
         assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
     def test_performer_with_only_organization_creates_organization_performer(
@@ -560,12 +564,19 @@ class TestMedicationDispensePerformer:
 
         # Should have performer entry with Organization reference
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) >= 1
+        assert isinstance(result["performer"][0], dict)
         assert "actor" in result["performer"][0]
+        assert isinstance(result["performer"][0]["actor"], dict)
+        assert isinstance(result["performer"][0]["actor"]["reference"], str)
         assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
         # Should have function code
         assert "function" in result["performer"][0]
+        assert isinstance(result["performer"][0]["function"], dict)
+        assert isinstance(result["performer"][0]["function"]["coding"], list)
+        assert isinstance(result["performer"][0]["function"]["coding"][0], dict)
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
 
         # Should have created Organization resource in registry
@@ -607,12 +618,18 @@ class TestMedicationDispensePerformer:
 
         # Should have performer entry with Practitioner reference (person takes precedence)
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) >= 1
+        assert isinstance(result["performer"][0], dict)
         assert "actor" in result["performer"][0]
+        assert isinstance(result["performer"][0]["actor"], dict)
+        assert isinstance(result["performer"][0]["actor"]["reference"], str)
         assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
         # Should also have location (from representedOrganization)
         assert "location" in result
+        assert isinstance(result["location"], dict)
+        assert isinstance(result["location"]["reference"], str)
         assert result["location"]["reference"].startswith("urn:uuid:")
 
     def test_author_creates_performer_with_packager_function(self, mock_reference_registry):
@@ -716,7 +733,9 @@ class TestMedicationDispenseUSCoreProfile:
         result = converter.convert(dispense)
 
         assert "meta" in result
+        assert isinstance(result["meta"], dict)
         assert "profile" in result["meta"]
+        assert isinstance(result["meta"]["profile"], list)
         assert (
             "http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationdispense"
             in result["meta"]["profile"]
@@ -977,7 +996,9 @@ class TestMedicationDispensePharmacyLocation:
 
         # Should have location reference
         assert "location" in result
+        assert isinstance(result["location"], dict)
         assert "reference" in result["location"]
+        assert isinstance(result["location"]["reference"], str)
         assert result["location"]["reference"].startswith("urn:uuid:")
 
         # Location resource should be in registry
@@ -1058,17 +1079,22 @@ class TestMedicationDispensePharmacyLocation:
         result = converter.convert(dispense)
 
         # Get the Location resource from registry
+        assert isinstance(result["location"], dict)
+        assert isinstance(result["location"]["reference"], str)
         location_id = result["location"]["reference"].replace("urn:uuid:", "")
         location = registry.get_resource("Location", location_id)
+        assert location is not None
 
         # Verify identifiers are populated (US Core Must Support)
         assert "identifier" in location, (
             "Location.identifier missing (US Core Must Support violation)"
         )
+        assert isinstance(location["identifier"], list)
         assert len(location["identifier"]) == 2
 
         # Check first identifier (NPI - OID mapped to FHIR URI)
         id1 = location["identifier"][0]
+        assert isinstance(id1, dict)
         assert "system" in id1
         assert "value" in id1
         assert id1["value"] == "1234567890"
@@ -1076,6 +1102,7 @@ class TestMedicationDispensePharmacyLocation:
 
         # Check second identifier (custom OID - becomes urn:oid:)
         id2 = location["identifier"][1]
+        assert isinstance(id2, dict)
         assert "system" in id2
         assert "value" in id2
         assert id2["value"] == "PHARM-001"
@@ -1305,11 +1332,15 @@ class TestMedicationDispensePharmacyLocation:
         result = converter.convert(dispense)
 
         # Get the Location resource
+        assert isinstance(result["location"], dict)
+        assert isinstance(result["location"]["reference"], str)
         location_id = result["location"]["reference"].replace("urn:uuid:", "")
         location = registry.get_resource("Location", location_id)
+        assert location is not None
 
         # Check address has multiple lines
         assert "address" in location
+        assert isinstance(location["address"], dict)
         assert location["address"]["line"] == ["Suite 200", "456 Main Street"]
         assert location["address"]["city"] == "Springfield"
 
@@ -1357,8 +1388,11 @@ class TestMedicationDispensePharmacyLocation:
         assert "location" in result
 
         # Get the Location resource
+        assert isinstance(result["location"], dict)
+        assert isinstance(result["location"]["reference"], str)
         location_id = result["location"]["reference"].replace("urn:uuid:", "")
         location = registry.get_resource("Location", location_id)
+        assert location is not None
 
         # Check minimal required fields
         assert location["resourceType"] == "Location"
@@ -1401,8 +1435,13 @@ class TestPerformerFunction:
 
         # Should have performer with finalchecker function
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) == 1
+        assert isinstance(result["performer"][0], dict)
         assert "function" in result["performer"][0]
+        assert isinstance(result["performer"][0]["function"], dict)
+        assert isinstance(result["performer"][0]["function"]["coding"], list)
+        assert isinstance(result["performer"][0]["function"]["coding"][0], dict)
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
 
@@ -1435,8 +1474,13 @@ class TestPerformerFunction:
 
         # Should have performer with packager function
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) == 1
+        assert isinstance(result["performer"][0], dict)
         assert "function" in result["performer"][0]
+        assert isinstance(result["performer"][0]["function"], dict)
+        assert isinstance(result["performer"][0]["function"]["coding"], list)
+        assert isinstance(result["performer"][0]["function"]["coding"][0], dict)
         assert result["performer"][0]["function"]["coding"][0]["code"] == "packager"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Packager"
 
@@ -1467,8 +1511,13 @@ class TestPerformerFunction:
 
         # Should have performer with default finalchecker function
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) == 1
+        assert isinstance(result["performer"][0], dict)
         assert "function" in result["performer"][0]
+        assert isinstance(result["performer"][0]["function"], dict)
+        assert isinstance(result["performer"][0]["function"]["coding"], list)
+        assert isinstance(result["performer"][0]["function"]["coding"][0], dict)
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
 
@@ -1496,8 +1545,13 @@ class TestPerformerFunction:
 
         # Should have author performer with packager function
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) == 1
+        assert isinstance(result["performer"][0], dict)
         assert "function" in result["performer"][0]
+        assert isinstance(result["performer"][0]["function"], dict)
+        assert isinstance(result["performer"][0]["function"]["coding"], list)
+        assert isinstance(result["performer"][0]["function"]["coding"][0], dict)
         assert result["performer"][0]["function"]["coding"][0]["code"] == "packager"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Packager"
 
@@ -1528,8 +1582,13 @@ class TestPerformerFunction:
 
         # Should have author performer with finalchecker function (mapped from ADMPHYS)
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) == 1
+        assert isinstance(result["performer"][0], dict)
         assert "function" in result["performer"][0]
+        assert isinstance(result["performer"][0]["function"], dict)
+        assert isinstance(result["performer"][0]["function"]["coding"], list)
+        assert isinstance(result["performer"][0]["function"]["coding"][0], dict)
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
 
@@ -1560,8 +1619,13 @@ class TestPerformerFunction:
 
         # Should fall back to default finalchecker function
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) == 1
+        assert isinstance(result["performer"][0], dict)
         assert "function" in result["performer"][0]
+        assert isinstance(result["performer"][0]["function"], dict)
+        assert isinstance(result["performer"][0]["function"]["coding"], list)
+        assert isinstance(result["performer"][0]["function"]["coding"][0], dict)
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
 
@@ -1602,12 +1666,19 @@ class TestPerformerFunction:
 
         # Should have organization performer with default finalchecker function
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) == 1
+        assert isinstance(result["performer"][0], dict)
         assert "function" in result["performer"][0]
+        assert isinstance(result["performer"][0]["function"], dict)
+        assert isinstance(result["performer"][0]["function"]["coding"], list)
+        assert isinstance(result["performer"][0]["function"]["coding"][0], dict)
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
         # Verify it's an organization reference
         assert "actor" in result["performer"][0]
+        assert isinstance(result["performer"][0]["actor"], dict)
+        assert isinstance(result["performer"][0]["actor"]["reference"], str)
         assert result["performer"][0]["actor"]["reference"].startswith("urn:uuid:")
 
     def test_organization_performer_with_function_code_uses_mapped_function(
@@ -1649,8 +1720,13 @@ class TestPerformerFunction:
 
         # Should have organization performer with finalchecker function (mapped from PHARM)
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert len(result["performer"]) == 1
+        assert isinstance(result["performer"][0], dict)
         assert "function" in result["performer"][0]
+        assert isinstance(result["performer"][0]["function"], dict)
+        assert isinstance(result["performer"][0]["function"]["coding"], list)
+        assert isinstance(result["performer"][0]["function"]["coding"][0], dict)
         assert result["performer"][0]["function"]["coding"][0]["code"] == "finalchecker"
         assert result["performer"][0]["function"]["coding"][0]["display"] == "Final Checker"
         # Verify it's an organization reference
@@ -1697,14 +1773,19 @@ class TestLocationManagingOrganization:
 
         # Should have location reference
         assert "location" in result
+        assert isinstance(result["location"], dict)
+        assert isinstance(result["location"]["reference"], str)
         location_id = result["location"]["reference"].replace("urn:uuid:", "")
 
         # Get the Location resource
         location = registry.get_resource("Location", location_id)
+        assert location is not None
 
         # Should have managingOrganization
         assert "managingOrganization" in location
+        assert isinstance(location["managingOrganization"], dict)
         assert "reference" in location["managingOrganization"]
+        assert isinstance(location["managingOrganization"]["reference"], str)
         org_ref = location["managingOrganization"]["reference"]
         assert org_ref.startswith("urn:uuid:")
 
@@ -1751,15 +1832,24 @@ class TestLocationManagingOrganization:
 
         # Should have both performer and location
         assert "performer" in result
+        assert isinstance(result["performer"], list)
         assert "location" in result
 
         # Get performer Organization ID
+        assert isinstance(result["performer"][0], dict)
+        assert isinstance(result["performer"][0]["actor"], dict)
+        assert isinstance(result["performer"][0]["actor"]["reference"], str)
         performer_org_ref = result["performer"][0]["actor"]["reference"]
         performer_org_id = performer_org_ref.replace("urn:uuid:", "")
 
         # Get Location managingOrganization ID
+        assert isinstance(result["location"], dict)
+        assert isinstance(result["location"]["reference"], str)
         location_id = result["location"]["reference"].replace("urn:uuid:", "")
         location = registry.get_resource("Location", location_id)
+        assert location is not None
+        assert isinstance(location["managingOrganization"], dict)
+        assert isinstance(location["managingOrganization"]["reference"], str)
         managing_org_ref = location["managingOrganization"]["reference"]
         managing_org_id = managing_org_ref.replace("urn:uuid:", "")
 
@@ -1820,10 +1910,15 @@ class TestLocationManagingOrganization:
         assert "location" in result
         location_id = result["location"]["reference"].replace("urn:uuid:", "")
         location = registry.get_resource("Location", location_id)
+        assert isinstance(location, dict)
 
         # Should have managingOrganization
         assert "managingOrganization" in location
-        managing_org_id = location["managingOrganization"]["reference"].replace("urn:uuid:", "")
+        managing_org = location["managingOrganization"]
+        assert isinstance(managing_org, dict)
+        managing_org_ref = managing_org["reference"]
+        assert isinstance(managing_org_ref, str)
+        managing_org_id = managing_org_ref.replace("urn:uuid:", "")
 
         # Get second performer's organization reference
         org_performer_id = result["performer"][1]["actor"]["reference"].replace("urn:uuid:", "")

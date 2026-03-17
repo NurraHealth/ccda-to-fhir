@@ -272,7 +272,9 @@ class TestCareTeamConverter:
         careteam = care_team_converter.convert(sample_care_team_organizer)
 
         assert "meta" in careteam
+        assert isinstance(careteam["meta"], dict)
         assert "profile" in careteam["meta"]
+        assert isinstance(careteam["meta"]["profile"], list)
         assert (
             "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam"
             in careteam["meta"]["profile"]
@@ -285,6 +287,7 @@ class TestCareTeamConverter:
         careteam = care_team_converter.convert(sample_care_team_organizer)
 
         assert "id" in careteam
+        assert isinstance(careteam["id"], str)
         # ID should be deterministic based on identifier
         assert (
             "primary-team-001" in careteam["id"] or careteam["id"]
@@ -477,6 +480,7 @@ class TestCareTeamConverter:
         careteam = care_team_converter.convert(sample_care_team_organizer)
 
         assert "period" in careteam
+        assert isinstance(careteam["period"], dict)
         assert "start" in careteam["period"]
         assert careteam["period"]["start"] == "2023-01-15"
 
@@ -704,9 +708,13 @@ class TestCareTeamConverter:
         """Test that participant has required role element."""
         careteam = care_team_converter.convert(sample_care_team_organizer)
 
+        assert isinstance(careteam["participant"], list)
         participant = careteam["participant"][0]
+        assert isinstance(participant, dict)
         assert "role" in participant
+        assert isinstance(participant["role"], list)
         assert len(participant["role"]) >= 1
+        assert isinstance(participant["role"][0], dict)
         assert "coding" in participant["role"][0]
 
     def test_participant_has_required_member(
@@ -715,8 +723,11 @@ class TestCareTeamConverter:
         """Test that participant has required member reference."""
         careteam = care_team_converter.convert(sample_care_team_organizer)
 
+        assert isinstance(careteam["participant"], list)
         participant = careteam["participant"][0]
+        assert isinstance(participant, dict)
         assert "member" in participant
+        assert isinstance(participant["member"], dict)
         assert "reference" in participant["member"]
 
     def test_maps_function_code_to_role(
@@ -792,6 +803,7 @@ class TestCareTeamConverter:
         careteam = care_team_converter.convert(care_team_with_multiple_members)
 
         assert "participant" in careteam
+        assert isinstance(careteam["participant"], list)
         assert len(careteam["participant"]) == 2
 
     def test_maps_member_period(
@@ -800,8 +812,11 @@ class TestCareTeamConverter:
         """Test that member act effectiveTime maps to participant.period."""
         careteam = care_team_converter.convert(sample_care_team_organizer)
 
+        assert isinstance(careteam["participant"], list)
         participant = careteam["participant"][0]
+        assert isinstance(participant, dict)
         assert "period" in participant
+        assert isinstance(participant["period"], dict)
         assert participant["period"]["start"] == "2023-01-15"
 
     def test_orders_team_lead_first(
@@ -811,7 +826,10 @@ class TestCareTeamConverter:
         careteam = care_team_converter.convert(care_team_with_lead)
 
         # First participant should be the team lead (NPI 1234567890)
-        first_participant = careteam["participant"][0]
+        participants = careteam["participant"]
+        assert isinstance(participants, list)
+        first_participant = participants[0]
+        assert isinstance(first_participant, dict)
         # Should be ordered first based on matching ID with PPRF participant
         assert "member" in first_participant
 
@@ -995,8 +1013,11 @@ class TestCareTeamConverter:
         careteam = care_team_converter.convert(organizer)
 
         assert "managingOrganization" in careteam
+        assert isinstance(careteam["managingOrganization"], list)
         assert len(careteam["managingOrganization"]) == 1
+        assert isinstance(careteam["managingOrganization"][0], dict)
         assert "reference" in careteam["managingOrganization"][0]
+        assert isinstance(careteam["managingOrganization"][0]["reference"], str)
         assert careteam["managingOrganization"][0]["reference"].startswith("urn:uuid:")
 
     def test_generates_narrative_text(
@@ -1017,8 +1038,10 @@ class TestCareTeamConverter:
         careteam = care_team_converter.convert(organizer)
 
         assert "text" in careteam
+        assert isinstance(careteam["text"], dict)
         assert careteam["text"]["status"] == "generated"
         assert "div" in careteam["text"]
+        assert isinstance(careteam["text"]["div"], str)
         assert "xmlns" in careteam["text"]["div"]
         assert "Care Team" in careteam["text"]["div"]
 

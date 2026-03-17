@@ -114,7 +114,13 @@ class TestDiagnosticReportConversion:
         assert "status" in dr
         assert dr["status"] == "final"
         assert "code" in dr
-        assert "code" in dr["code"]["coding"][0]
+        dr_code = dr["code"]
+        assert isinstance(dr_code, dict)
+        dr_coding_list = dr_code["coding"]
+        assert isinstance(dr_coding_list, list)
+        dr_coding = dr_coding_list[0]
+        assert isinstance(dr_coding, dict)
+        assert "code" in dr_coding
 
     def test_diagnostic_report_status_mapping(self) -> None:
         """Test that C-CDA status codes map correctly to FHIR."""
@@ -217,9 +223,15 @@ class TestDiagnosticReportConversion:
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
         assert "code" in dr
-        coding = dr["code"]["coding"][0]
+        dr_code = dr["code"]
+        assert isinstance(dr_code, dict)
+        coding_list = dr_code["coding"]
+        assert isinstance(coding_list, list)
+        coding = coding_list[0]
+        assert isinstance(coding, dict)
         assert coding["system"] == "http://loinc.org"
         assert coding["code"] == "11502-2"
+        assert isinstance(coding["display"], str)
         assert "Laboratory report" in coding["display"]
 
     def test_diagnostic_report_effective_datetime(self) -> None:
@@ -245,6 +257,7 @@ class TestDiagnosticReportConversion:
         assert dr is not None
         assert "effectiveDateTime" in dr
         # Should preserve date precision from C-CDA
+        assert isinstance(dr["effectiveDateTime"], str)
         assert "2023-12-25" in dr["effectiveDateTime"]
 
     def test_diagnostic_report_contains_result_observations(self) -> None:
@@ -365,6 +378,7 @@ class TestDiagnosticReportConversion:
         assert "identifier" in dr
         assert len(dr["identifier"]) > 0
         identifier = dr["identifier"][0]
+        assert isinstance(identifier, dict)
         assert "value" in identifier
         assert identifier["value"] == "LAB-2023-12345"
 
@@ -389,6 +403,7 @@ class TestDiagnosticReportConversion:
         dr = _find_resource_in_bundle(bundle, "DiagnosticReport")
         assert dr is not None
         assert "subject" in dr
+        assert isinstance(dr["subject"], dict)
         assert "reference" in dr["subject"]
         assert dr["subject"]["reference"].startswith("urn:uuid:")
 

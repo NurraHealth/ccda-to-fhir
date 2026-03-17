@@ -113,6 +113,7 @@ class TestGracefulDegradation:
 
         composition = bundle["entry"][0]["resource"]
         assert composition["resourceType"] == "Composition"
+        assert isinstance(composition, dict)
         assert "custodian" in composition
         assert composition["custodian"]["display"] == "Test Organization"
 

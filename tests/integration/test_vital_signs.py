@@ -104,6 +104,7 @@ class TestVitalSignsConversion:
         panel = _find_vital_signs_panel(bundle)
         assert panel is not None
         assert "effectiveDateTime" in panel
+        assert isinstance(panel["effectiveDateTime"], str)
         assert "2014-05-20" in panel["effectiveDateTime"]
 
     def test_converts_status(self, ccda_vital_signs: str, fhir_vital_signs: JSONObject) -> None:
@@ -345,13 +346,16 @@ class TestVitalSignsConversion:
         # Verify method field exists
         assert "method" in temp_obs, "Observation should have method field"
         method = temp_obs["method"]
+        assert isinstance(method, dict)
 
         # Verify method is a CodeableConcept with coding
         assert "coding" in method, "Method should have coding array"
+        assert isinstance(method["coding"], list)
         assert len(method["coding"]) > 0, "Method should have at least one coding"
 
         # Verify SNOMED CT system and code
         coding = method["coding"][0]
+        assert isinstance(coding, dict)
         assert coding["system"] == "http://snomed.info/sct", "Method system should be SNOMED CT"
         assert coding["code"] == "89003005", (
             "Method code should be 89003005 (Oral temperature taking)"
@@ -376,13 +380,16 @@ class TestVitalSignsConversion:
         # Verify method field exists
         assert "method" in temp_obs, "Observation should have method field"
         method = temp_obs["method"]
+        assert isinstance(method, dict)
 
         # Verify method is a CodeableConcept with coding
         assert "coding" in method, "Method should have coding array"
+        assert isinstance(method["coding"], list)
         assert len(method["coding"]) > 0, "Method should have at least one coding"
 
         # Verify SNOMED CT system and code
         coding = method["coding"][0]
+        assert isinstance(coding, dict)
         assert coding["system"] == "http://snomed.info/sct", "Method system should be SNOMED CT"
         assert coding["code"] == "415945006", (
             "Method code should be 415945006 (Axillary temperature taking)"
@@ -429,11 +436,14 @@ class TestVitalSignsConversion:
         body_site = bp_obs["bodySite"]
 
         # Verify bodySite is a CodeableConcept with coding
+        assert isinstance(body_site, dict)
         assert "coding" in body_site, "bodySite should have coding array"
+        assert isinstance(body_site["coding"], list)
         assert len(body_site["coding"]) > 0, "bodySite should have at least one coding"
 
         # Verify SNOMED CT system and code
         coding = body_site["coding"][0]
+        assert isinstance(coding, dict)
         assert coding["system"] == "http://snomed.info/sct", "bodySite system should be SNOMED CT"
         assert coding["code"] == "368209003", "bodySite code should be 368209003 (Right arm)"
         assert coding["display"] == "Right arm", "bodySite display should be preserved"
@@ -458,11 +468,14 @@ class TestVitalSignsConversion:
         body_site = hr_obs["bodySite"]
 
         # Verify bodySite is a CodeableConcept with coding
+        assert isinstance(body_site, dict)
         assert "coding" in body_site, "bodySite should have coding array"
+        assert isinstance(body_site["coding"], list)
         assert len(body_site["coding"]) > 0, "bodySite should have at least one coding"
 
         # Verify SNOMED CT system and code
         coding = body_site["coding"][0]
+        assert isinstance(coding, dict)
         assert coding["system"] == "http://snomed.info/sct", "bodySite system should be SNOMED CT"
         assert coding["code"] == "368208008", "bodySite code should be 368208008 (Left arm)"
         assert coding["display"] == "Left arm", "bodySite display should be preserved"
@@ -505,13 +518,16 @@ class TestVitalSignsConversion:
         body_site = bp_obs["bodySite"]
 
         # Verify coding array exists with at least 2 codings (site + laterality)
+        assert isinstance(body_site, dict)
         assert "coding" in body_site, "bodySite should have coding array"
+        assert isinstance(body_site["coding"], list)
         assert len(body_site["coding"]) >= 2, (
             "bodySite should have at least 2 codings (site + laterality)"
         )
 
         # Verify main body site coding (Upper arm structure)
         site_coding = body_site["coding"][0]
+        assert isinstance(site_coding, dict)
         assert site_coding["system"] == "http://snomed.info/sct", (
             "Body site system should be SNOMED CT"
         )
@@ -524,6 +540,7 @@ class TestVitalSignsConversion:
 
         # Verify laterality coding (Left)
         laterality_coding = body_site["coding"][1]
+        assert isinstance(laterality_coding, dict)
         assert laterality_coding["system"] == "http://snomed.info/sct", (
             "Laterality system should be SNOMED CT"
         )
@@ -532,6 +549,7 @@ class TestVitalSignsConversion:
 
         # Verify text field includes both site and laterality
         assert "text" in body_site, "bodySite should have text field"
+        assert isinstance(body_site["text"], str)
         assert "Left" in body_site["text"], "bodySite text should include laterality"
         assert "Upper arm structure" in body_site["text"], "bodySite text should include site"
 
@@ -555,13 +573,16 @@ class TestVitalSignsConversion:
         body_site = hr_obs["bodySite"]
 
         # Verify coding array exists with at least 2 codings (site + laterality)
+        assert isinstance(body_site, dict)
         assert "coding" in body_site, "bodySite should have coding array"
+        assert isinstance(body_site["coding"], list)
         assert len(body_site["coding"]) >= 2, (
             "bodySite should have at least 2 codings (site + laterality)"
         )
 
         # Verify main body site coding (Structure of radial artery)
         site_coding = body_site["coding"][0]
+        assert isinstance(site_coding, dict)
         assert site_coding["system"] == "http://snomed.info/sct", (
             "Body site system should be SNOMED CT"
         )
@@ -574,6 +595,7 @@ class TestVitalSignsConversion:
 
         # Verify laterality coding (Right)
         laterality_coding = body_site["coding"][1]
+        assert isinstance(laterality_coding, dict)
         assert laterality_coding["system"] == "http://snomed.info/sct", (
             "Laterality system should be SNOMED CT"
         )
@@ -582,6 +604,7 @@ class TestVitalSignsConversion:
 
         # Verify text field includes both site and laterality
         assert "text" in body_site, "bodySite should have text field"
+        assert isinstance(body_site["text"], str)
         assert "Right" in body_site["text"], "bodySite text should include laterality"
         assert "Structure of radial artery" in body_site["text"], (
             "bodySite text should include site"
@@ -611,7 +634,9 @@ class TestVitalSignsConversion:
         assert len(interpretation) > 0, "interpretation should have at least one element"
 
         # Verify interpretation CodeableConcept has coding
+        assert isinstance(interpretation[0], dict)
         assert "coding" in interpretation[0], "interpretation should have coding array"
+        assert isinstance(interpretation[0]["coding"], list)
         assert len(interpretation[0]["coding"]) > 0, (
             "interpretation should have at least one coding"
         )
@@ -810,8 +835,11 @@ class TestVitalSignsConversion:
 
         # Verify first reference range has low and high values
         ref_range = ref_ranges[0]
+        assert isinstance(ref_range, dict)
         assert "low" in ref_range, "referenceRange should have low value"
+        assert isinstance(ref_range["low"], dict)
         assert "high" in ref_range, "referenceRange should have high value"
+        assert isinstance(ref_range["high"], dict)
 
         # Verify low value
         assert ref_range["low"]["value"] == 60, "Reference range low value should be 60"
@@ -826,6 +854,7 @@ class TestVitalSignsConversion:
 
         # Verify text if present
         assert "text" in ref_range, "referenceRange should have text field"
+        assert isinstance(ref_range["text"], str)
         assert "Normal heart rate range" in ref_range["text"], (
             "referenceRange text should be preserved"
         )
@@ -860,22 +889,30 @@ class TestVitalSignsConversion:
 
         # Verify systolic reference range (first element)
         systolic_ref = ref_ranges[0]
+        assert isinstance(systolic_ref, dict)
         assert "low" in systolic_ref, "Systolic referenceRange should have low value"
+        assert isinstance(systolic_ref["low"], dict)
         assert "high" in systolic_ref, "Systolic referenceRange should have high value"
+        assert isinstance(systolic_ref["high"], dict)
         assert systolic_ref["low"]["value"] == 90, "Systolic reference range low should be 90"
         assert systolic_ref["high"]["value"] == 120, "Systolic reference range high should be 120"
         assert "text" in systolic_ref, "Systolic referenceRange should have text field"
+        assert isinstance(systolic_ref["text"], str)
         assert "Systolic" in systolic_ref["text"], (
             "Systolic referenceRange text should indicate systolic"
         )
 
         # Verify diastolic reference range (second element)
         diastolic_ref = ref_ranges[1]
+        assert isinstance(diastolic_ref, dict)
         assert "low" in diastolic_ref, "Diastolic referenceRange should have low value"
+        assert isinstance(diastolic_ref["low"], dict)
         assert "high" in diastolic_ref, "Diastolic referenceRange should have high value"
+        assert isinstance(diastolic_ref["high"], dict)
         assert diastolic_ref["low"]["value"] == 60, "Diastolic reference range low should be 60"
         assert diastolic_ref["high"]["value"] == 80, "Diastolic reference range high should be 80"
         assert "text" in diastolic_ref, "Diastolic referenceRange should have text field"
+        assert isinstance(diastolic_ref["text"], str)
         assert "Diastolic" in diastolic_ref["text"], (
             "Diastolic referenceRange text should indicate diastolic"
         )
@@ -935,8 +972,12 @@ class TestVitalSignsConversion:
 
         # Verify it's the normal range (60-100)
         ref_range = ref_ranges[0]
+        assert isinstance(ref_range, dict)
+        assert isinstance(ref_range["low"], dict)
+        assert isinstance(ref_range["high"], dict)
         assert ref_range["low"]["value"] == 60, "Should be the normal range with low=60"
         assert ref_range["high"]["value"] == 100, "Should be the normal range with high=100"
+        assert isinstance(ref_range["text"], str)
         assert "Normal heart rate range" in ref_range["text"], "Should be the normal range text"
 
         # Verify the high and low ranges were excluded

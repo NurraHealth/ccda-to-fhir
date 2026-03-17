@@ -902,9 +902,14 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         # Apply the determined role to all diagnoses in this encounter
         for diagnosis in diagnoses:
-            if "use" in diagnosis and "coding" in diagnosis["use"]:
-                diagnosis["use"]["coding"][0]["code"] = diagnosis_role.code
-                diagnosis["use"]["coding"][0]["display"] = diagnosis_role.display
+            use = diagnosis.get("use")
+            if isinstance(use, dict) and "coding" in use:
+                coding_list = use["coding"]
+                if isinstance(coding_list, list) and len(coding_list) > 0:
+                    first_coding = coding_list[0]
+                    if isinstance(first_coding, dict):
+                        first_coding["code"] = diagnosis_role.code
+                        first_coding["display"] = diagnosis_role.display
 
     def _determine_diagnosis_role(self, encounter: CCDAEncounter) -> DiagnosisRole:
         """Determine the appropriate diagnosis role based on encounter context.

@@ -309,10 +309,12 @@ class TestImmunizationConversion:
 
         # FHIR R4 Immunization.reaction only has detail, date, and reported
         # Should NOT have manifestation (that's only for AllergyIntolerance)
+        assert isinstance(reaction, dict)
         assert "detail" in reaction
         assert "manifestation" not in reaction
 
         # Detail should be a reference
+        assert isinstance(reaction["detail"], dict)
         assert "reference" in reaction["detail"]
         assert reaction["detail"]["reference"].startswith("urn:uuid:")
 
@@ -411,6 +413,7 @@ class TestImmunizationConversion:
 
         # Reaction should have date
         reaction = immunization["reaction"][0]
+        assert isinstance(reaction, dict)
         assert "date" in reaction
         assert reaction["date"] == "2008-05-01"
 
@@ -453,6 +456,7 @@ class TestImmunizationConversion:
 
         # Check note content
         note = immunization["note"][0]
+        assert isinstance(note, dict)
         assert "text" in note
         assert (
             note["text"]
@@ -678,7 +682,9 @@ class TestImmunizationConversion:
         performer = immunization["performer"][0]
 
         # Verify actor is a proper Reference, not just display
+        assert isinstance(performer, dict)
         assert "actor" in performer
+        assert isinstance(performer["actor"], dict)
         assert "reference" in performer["actor"]
         assert performer["actor"]["reference"].startswith("urn:uuid:")
 

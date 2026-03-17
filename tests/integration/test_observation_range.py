@@ -164,6 +164,7 @@ class TestObservationRange:
         assert "code" in observation
         assert observation["code"]["coding"][0]["code"] == "2339-0"
         assert "effectiveDateTime" in observation
+        assert isinstance(observation["effectiveDateTime"], str)
         assert "2012-08-06" in observation["effectiveDateTime"]
 
     def test_converts_ivl_ts_to_effective_period(self) -> None:
@@ -189,6 +190,7 @@ class TestObservationRange:
         assert "effectiveDateTime" not in observation
 
         period = observation["effectivePeriod"]
+        assert isinstance(period, dict)
         assert "start" in period
         assert "end" in period
         # Timestamps without timezone are reduced to date-only per FHIR R4 requirement

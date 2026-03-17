@@ -391,8 +391,16 @@ class TestBasicDemographics:
         assert result["birthDate"] == "1985-02-23"
 
         # Marital status
-        assert result["maritalStatus"]["coding"][0]["code"] == "M"
-        assert "Married" in result["maritalStatus"]["coding"][0]["display"]
+        marital = result["maritalStatus"]
+        assert isinstance(marital, dict)
+        m_coding = marital["coding"]
+        assert isinstance(m_coding, list)
+        m_coding0 = m_coding[0]
+        assert isinstance(m_coding0, dict)
+        assert m_coding0["code"] == "M"
+        m_display = m_coding0["display"]
+        assert isinstance(m_display, str)
+        assert "Married" in m_display
 
     def test_converts_multiple_languages(self, complete_patient, mock_reference_registry):
         """Test language communication preferences.
@@ -459,9 +467,14 @@ class TestPatientIdentifiers:
         assert len(result["identifier"]) == 3
 
         # MRN identifier
-        mrn = result["identifier"][0]
+        identifiers = result["identifier"]
+        assert isinstance(identifiers, list)
+        mrn = identifiers[0]
+        assert isinstance(mrn, dict)
         assert mrn["value"] == "E12345"
-        assert "1.2.840.114350" in mrn["system"]  # Epic OID
+        mrn_system = mrn["system"]
+        assert isinstance(mrn_system, str)
+        assert "1.2.840.114350" in mrn_system  # Epic OID
 
     def test_converts_ssn_identifier(
         self, patient_role_with_identifiers, basic_patient, mock_reference_registry
@@ -590,9 +603,14 @@ class TestContactInformation:
         assert mobile["use"] == "mobile"
 
         # Email
-        email = result["telecom"][2]
+        telecom = result["telecom"]
+        assert isinstance(telecom, list)
+        email = telecom[2]
+        assert isinstance(email, dict)
         assert email["system"] == "email"
-        assert "patient@example.com" in email["value"]
+        email_value = email["value"]
+        assert isinstance(email_value, str)
+        assert "patient@example.com" in email_value
 
 
 # ============================================================================
@@ -724,9 +742,19 @@ class TestSpecialCases:
         contact = result["contact"][0]
 
         # Relationship
-        assert len(contact["relationship"]) >= 1
-        assert contact["relationship"][0]["coding"][0]["code"] == "MTH"
-        assert "Mother" in contact["relationship"][0]["coding"][0]["display"]
+        relationship = contact["relationship"]
+        assert isinstance(relationship, list)
+        assert len(relationship) >= 1
+        rel0 = relationship[0]
+        assert isinstance(rel0, dict)
+        rel_coding = rel0["coding"]
+        assert isinstance(rel_coding, list)
+        rel_coding0 = rel_coding[0]
+        assert isinstance(rel_coding0, dict)
+        assert rel_coding0["code"] == "MTH"
+        rel_display = rel_coding0["display"]
+        assert isinstance(rel_display, str)
+        assert "Mother" in rel_display
 
         # Guardian name
         assert contact["name"]["given"] == ["Sarah"]

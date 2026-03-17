@@ -53,6 +53,7 @@ class TestProcedureMissingCodeSystem:
         assert result["code"] is not None, "code should not be None"
 
         # Should have data-absent-reason extension
+        assert isinstance(result["code"], dict)
         assert "extension" in result["code"], "code should have extension"
         extensions = result["code"]["extension"]
         assert len(extensions) == 1
@@ -80,6 +81,7 @@ class TestProcedureMissingCodeSystem:
 
         # code should be a valid CodeableConcept
         assert result["code"] is not None
+        assert isinstance(result["code"], dict)
         assert "coding" in result["code"]
         assert len(result["code"]["coding"]) == 1
         assert result["code"]["coding"][0]["code"] == "80146002"
@@ -110,4 +112,5 @@ class TestProcedureMissingCodeSystem:
         # Should have the data-absent-reason since conversion failed,
         # but we fall back to the narrative text extraction path
         # Since there's no narrative, we get data-absent-reason
+        assert isinstance(result["code"], dict)
         assert "extension" in result["code"] or "text" in result["code"]
