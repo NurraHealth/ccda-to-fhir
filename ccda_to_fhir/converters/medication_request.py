@@ -419,7 +419,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
             if not codeable_concept or (not codeable_concept.coding and not codeable_concept.text):
                 return None
 
-            return {"medicationCodeableConcept": codeable_concept.to_dict()}
+            return {"medicationCodeableConcept": codeable_concept.model_dump(exclude_none=True)}
 
     def _has_complex_medication_info(
         self, substance_admin: SubstanceAdministration, manufactured_product
@@ -494,7 +494,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                         display_name=value.display_name,
                     )
                     if reason_code:
-                        reason_codes.append(reason_code.to_dict())
+                        reason_codes.append(reason_code.model_dump(exclude_none=True))
 
         return reason_codes
 
@@ -550,7 +550,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                 display_name=substance_admin.route_code.display_name,
             )
             if route:
-                dosage["route"] = route.to_dict()
+                dosage["route"] = route.model_dump(exclude_none=True)
 
         # 7. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)
@@ -601,7 +601,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                                     display_name=rel.act.code.display_name,
                                 )
                                 if instruction:
-                                    instructions.append(instruction.to_dict())
+                                    instructions.append(instruction.model_dump(exclude_none=True))
 
         return instructions
 
@@ -809,7 +809,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
                         display_name=criterion_value.display_name,
                     )
                     if concept:
-                        return concept.to_dict()
+                        return concept.model_dump(exclude_none=True)
                     return None
 
         return None

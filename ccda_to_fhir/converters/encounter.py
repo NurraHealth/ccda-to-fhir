@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 
+from fhir.resources.R4B.codeableconcept import CodeableConcept
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
 from ccda_to_fhir.ccda.models.observation import EntryRelationship
@@ -21,7 +23,6 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.types import (
     DiagnosisRole,
-    FHIRCodeableConcept,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -135,7 +136,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         # Type - Convert encounter code to type (if not used for class)
         encounter_type = self._extract_type(encounter)
         if encounter_type:
-            fhir_encounter["type"] = [encounter_type.to_dict()]
+            fhir_encounter["type"] = [encounter_type.model_dump(exclude_none=True)]
 
         # Participant - Extract performers and their roles
         participants = self._extract_participants(encounter)
@@ -151,7 +152,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         # Reason codes and references - Extract from indication entry relationships
         reasons = self._extract_reasons(encounter.entry_relationship)
         if reasons.codes:
-            fhir_encounter["reasonCode"] = [c.to_dict() for c in reasons.codes]
+            fhir_encounter["reasonCode"] = [c.model_dump(exclude_none=True) for c in reasons.codes]
         if reasons.references:
             fhir_encounter["reasonReference"] = [
                 r.model_dump(exclude_none=True) for r in reasons.references
@@ -303,7 +304,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             "code": FHIRCodes.EncounterClass.AMBULATORY,
         }
 
-    def _extract_type(self, encounter: CCDAEncounter) -> FHIRCodeableConcept | None:
+    def _extract_type(self, encounter: CCDAEncounter) -> CodeableConcept | None:
         """Extract FHIR type from C-CDA encounter code.
 
         If the encounter code is NOT from V3 ActCode (since that's used for class),
@@ -324,14 +325,14 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
 
         return self._convert_code(encounter.code)
 
-    def _convert_code(self, code: CD) -> FHIRCodeableConcept | None:
+    def _convert_code(self, code: CD) -> CodeableConcept | None:
         """Convert C-CDA encounter code to FHIR CodeableConcept model.
 
         Args:
             code: The C-CDA encounter code
 
         Returns:
-            FHIRCodeableConcept or None
+            CodeableConcept or None
         """
         return self.convert_code_to_codeable_concept(code)
 

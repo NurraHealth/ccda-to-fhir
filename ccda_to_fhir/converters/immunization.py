@@ -1118,7 +1118,7 @@ class ImmunizationConverter(BaseConverter[SubstanceAdministration]):
             original_text=original_text,
             translations=translations,
         )
-        return result.to_dict() if result else None
+        return result.model_dump(exclude_none=True) if result else None
 
 
 def convert_immunization_activity(

@@ -120,7 +120,7 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
         if encounter.code:
             service_type = self.convert_code_to_codeable_concept(encounter.code)
             if service_type:
-                fhir_appointment["serviceType"] = [service_type.to_dict()]
+                fhir_appointment["serviceType"] = [service_type.model_dump(exclude_none=True)]
 
         # Description (0..1) - from code displayName or originalText
         if encounter.code:
@@ -163,7 +163,7 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
         if encounter.entry_relationship:
             reasons = self._extract_reasons(encounter.entry_relationship)
             if reasons.codes:
-                fhir_appointment["reasonCode"] = [c.to_dict() for c in reasons.codes]
+                fhir_appointment["reasonCode"] = [c.model_dump(exclude_none=True) for c in reasons.codes]
             if reasons.references:
                 fhir_appointment["reasonReference"] = [
                     r.model_dump(exclude_none=True) for r in reasons.references
@@ -368,7 +368,7 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
                         if entity.code:
                             ptype = self.convert_code_to_codeable_concept(entity.code)
                             if ptype:
-                                participant_entry["type"] = [ptype.to_dict()]
+                                participant_entry["type"] = [ptype.model_dump(exclude_none=True)]
                         participants.append(participant_entry)
 
                 # Organization participant (from representedOrganization)

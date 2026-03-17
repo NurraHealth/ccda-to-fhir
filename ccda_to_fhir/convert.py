@@ -1640,7 +1640,7 @@ class DocumentConverter:
                                 if gender_identity_codeable:
                                     gender_identity_ext = {
                                         "url": FHIRSystems.US_CORE_GENDER_IDENTITY,
-                                        "valueCodeableConcept": gender_identity_codeable.to_dict(),
+                                        "valueCodeableConcept": gender_identity_codeable.model_dump(exclude_none=True),
                                     }
                                     extensions.append(gender_identity_ext)
                             processed = True
@@ -1681,7 +1681,7 @@ class DocumentConverter:
                                     spcu_ext["extension"].append(
                                         {
                                             "url": "value",
-                                            "valueCodeableConcept": value_concept.to_dict(),
+                                            "valueCodeableConcept": value_concept.model_dump(exclude_none=True),
                                         }
                                     )
 
@@ -1796,7 +1796,7 @@ class DocumentConverter:
                                         "extension": [
                                             {
                                                 "url": "tribalAffiliation",
-                                                "valueCodeableConcept": tribal_affiliation_codeable.to_dict(),
+                                                "valueCodeableConcept": tribal_affiliation_codeable.model_dump(exclude_none=True),
                                             }
                                         ],
                                     }
@@ -1823,7 +1823,7 @@ class DocumentConverter:
                                             "extension": [
                                                 {
                                                     "url": "tribalAffiliation",
-                                                    "valueCodeableConcept": tribal_affiliation_codeable.to_dict(),
+                                                    "valueCodeableConcept": tribal_affiliation_codeable.model_dump(exclude_none=True),
                                                 }
                                             ],
                                         }
@@ -1858,7 +1858,7 @@ class DocumentConverter:
                                         spcu_ext["extension"].append(
                                             {
                                                 "url": "value",
-                                                "valueCodeableConcept": value_concept.to_dict(),
+                                                "valueCodeableConcept": value_concept.model_dump(exclude_none=True),
                                             }
                                         )
 

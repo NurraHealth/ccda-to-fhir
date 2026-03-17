@@ -176,7 +176,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
 
         # REQUIRED field - use fallback if None
         if doc_type:
-            composition["type"] = doc_type.to_dict()
+            composition["type"] = doc_type.model_dump(exclude_none=True)
         else:
             # Provide a default if no code is present or create_codeable_concept returned None
             composition["type"] = {
@@ -993,7 +993,7 @@ class CompositionConverter(BaseConverter[ClinicalDocument]):
                 display_name=section.code.display_name,
             )
             if code:
-                section_dict["code"] = code.to_dict()
+                section_dict["code"] = code.model_dump(exclude_none=True)
 
         # Text (narrative content)
         # C-CDA sections have narrative in section.text (StrucDocText, ED type, or string)

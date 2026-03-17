@@ -6,6 +6,7 @@ import base64
 from collections.abc import Callable
 
 from fhir.resources.R4B.attachment import Attachment
+from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.documentreference import (
     DocumentReferenceContent,
@@ -29,7 +30,6 @@ from ccda_to_fhir.constants import (
 from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 from ccda_to_fhir.types import (
     EncounterContext,
-    FHIRCodeableConcept,
     FHIRResourceDict,
     JSONObject,
 )
@@ -46,7 +46,7 @@ _DOC_STATUS_MAP: dict[str, str] = {
 }
 
 # Fixed US Core clinical-note category
-_CLINICAL_NOTE_CATEGORY = FHIRCodeableConcept(
+_CLINICAL_NOTE_CATEGORY = CodeableConcept(
     coding=[
         Coding(
             system="http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category",
@@ -57,7 +57,7 @@ _CLINICAL_NOTE_CATEGORY = FHIRCodeableConcept(
 )
 
 # US Core fallback type when no code is available
-_FALLBACK_TYPE = FHIRCodeableConcept(
+_FALLBACK_TYPE = CodeableConcept(
     coding=[
         Coding(
             system="http://loinc.org",
@@ -129,10 +129,10 @@ class NoteActivityConverter(BaseConverter[Act]):
             doc_ref["docStatus"] = doc_status
 
         # Type (required by US Core)
-        doc_ref["type"] = _convert_type(note_act.code, self.code_system_mapper).to_dict()
+        doc_ref["type"] = _convert_type(note_act.code, self.code_system_mapper).model_dump(exclude_none=True)
 
         # Category - fixed to "clinical-note" for Note Activities
-        doc_ref["category"] = [_CLINICAL_NOTE_CATEGORY.to_dict()]
+        doc_ref["category"] = [_CLINICAL_NOTE_CATEGORY.model_dump(exclude_none=True)]
 
         # Subject
         doc_ref["subject"] = self.reference_registry.get_patient_reference().model_dump(
@@ -209,7 +209,7 @@ def _extract_doc_status(note_act: Act) -> str | None:
     return None
 
 
-def _convert_type(code: CD | None, mapper: CodeSystemMapper) -> FHIRCodeableConcept:
+def _convert_type(code: CD | None, mapper: CodeSystemMapper) -> CodeableConcept:
     """Convert note type code to FHIR CodeableConcept, with US Core fallback."""
     if code and code.code:
         codings: list[Coding] = []
@@ -225,8 +225,8 @@ def _convert_type(code: CD | None, mapper: CodeSystemMapper) -> FHIRCodeableConc
                     codings.append(coding)
 
         if codings:
-            return FHIRCodeableConcept(
-                coding=codings,
+            return CodeableConcept(
+                coding=codings or None,
                 text=code.display_name,
             )
 

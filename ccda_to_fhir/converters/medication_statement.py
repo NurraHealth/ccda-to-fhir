@@ -351,7 +351,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
             original_text=original_text,
             translations=translations,
         )
-        return concept.to_dict() if concept else None
+        return concept.model_dump(exclude_none=True) if concept else None
 
     def _extract_effective_time(
         self, substance_admin: SubstanceAdministration
@@ -430,7 +430,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                         display_name=value.display_name,
                     )
                     if reason_code:
-                        reason_codes.append(reason_code.to_dict())
+                        reason_codes.append(reason_code.model_dump(exclude_none=True))
 
         return reason_codes
 
@@ -466,7 +466,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                 display_name=substance_admin.route_code.display_name,
             )
             if route:
-                dosage["route"] = route.to_dict()
+                dosage["route"] = route.model_dump(exclude_none=True)
 
         # 5. DoseAndRate (from doseQuantity)
         dose_and_rate = self._extract_dose_and_rate(substance_admin)
@@ -650,7 +650,7 @@ class MedicationStatementConverter(BaseConverter[SubstanceAdministration]):
                         display_name=criterion_value.display_name,
                     )
                     if concept:
-                        return concept.to_dict()
+                        return concept.model_dump(exclude_none=True)
 
         return None
 

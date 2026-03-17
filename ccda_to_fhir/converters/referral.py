@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.reference import Reference
 
@@ -36,7 +37,6 @@ from ccda_to_fhir.constants import (
     TemplateIds,
 )
 from ccda_to_fhir.types import (
-    FHIRCodeableConcept,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -53,7 +53,7 @@ if TYPE_CHECKING:
 
 
 # Referral category coding per SNOMED CT, typed as a proper Pydantic model
-REFERRAL_CATEGORY = FHIRCodeableConcept(
+REFERRAL_CATEGORY = CodeableConcept(
     coding=[
         Coding(
             system="http://snomed.info/sct",
@@ -153,16 +153,16 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
         fhir_service_request["intent"] = intent
 
         # Category (MS) - always "Patient referral" for referral ServiceRequests
-        fhir_service_request["category"] = [REFERRAL_CATEGORY.to_dict()]
+        fhir_service_request["category"] = [REFERRAL_CATEGORY.model_dump(exclude_none=True)]
 
         # Code (required 1..1 per US Core)
         if entry.code:
             code = self.convert_code_to_codeable_concept(entry.code)
             if code:
-                fhir_service_request["code"] = code.to_dict()
+                fhir_service_request["code"] = code.model_dump(exclude_none=True)
         # US Core requires code — fall back to referral category code if entry has no code
         if "code" not in fhir_service_request:
-            fhir_service_request["code"] = REFERRAL_CATEGORY.to_dict()
+            fhir_service_request["code"] = REFERRAL_CATEGORY.model_dump(exclude_none=True)
 
         # Subject (required 1..1) - patient reference
         fhir_service_request["subject"] = (
@@ -207,7 +207,7 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
         if entry.performer:
             performer_type = self._extract_performer_type(entry.performer)
             if performer_type:
-                fhir_service_request["performerType"] = performer_type.to_dict()
+                fhir_service_request["performerType"] = performer_type.model_dump(exclude_none=True)
 
         # doNotPerform - from negationInd (only Acts have this)
         if isinstance(entry, CCDAAct) and entry.negation_ind:
@@ -223,7 +223,7 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
         if entry.entry_relationship:
             reasons = self._extract_reasons(entry.entry_relationship)
             if reasons.codes:
-                fhir_service_request["reasonCode"] = [c.to_dict() for c in reasons.codes]
+                fhir_service_request["reasonCode"] = [c.model_dump(exclude_none=True) for c in reasons.codes]
             if reasons.references:
                 fhir_service_request["reasonReference"] = [
                     r.model_dump(exclude_none=True) for r in reasons.references
@@ -424,14 +424,14 @@ class ReferralConverter(BaseConverter[CCDAAct | CCDAEncounter]):
 
         return references
 
-    def _extract_performer_type(self, performers: list[Performer]) -> FHIRCodeableConcept | None:
+    def _extract_performer_type(self, performers: list[Performer]) -> CodeableConcept | None:
         """Extract performerType from C-CDA performer assignedEntity code.
 
         Args:
             performers: List of C-CDA performer elements
 
         Returns:
-            FHIRCodeableConcept or None
+            CodeableConcept or None
         """
         for performer in performers:
             if performer.assigned_entity and performer.assigned_entity.code:

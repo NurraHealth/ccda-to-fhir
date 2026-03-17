@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
-from fhir.resources.R4B.coding import Coding
+from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.reference import Reference
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -36,29 +36,9 @@ JSONArray: TypeAlias = list[JSONValue]
 #
 # Pydantic representations of common FHIR R4 data types.  These are used
 # inside typed return values (e.g. ReasonResult) so the converters carry
-# structured data instead of raw dicts.  Call `.to_dict()` or
+# structured data instead of raw dicts.  Call
 # `.model_dump(exclude_none=True)` to embed in a FHIRResourceDict.
 # ============================================================================
-
-
-class FHIRCodeableConcept(BaseModel, frozen=True):
-    """FHIR CodeableConcept element (coding list + text)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    coding: list[Coding] = Field(default_factory=list)
-    text: str | None = None
-
-    def to_dict(self) -> JSONObject:
-        # Custom serialization: omit empty coding list (model_dump would
-        # include it as []), unlike Coding which uses
-        # model_dump(exclude_none=True) since they only need to drop None fields.
-        d: JSONObject = {}
-        if self.coding:
-            d["coding"] = [c.model_dump(exclude_none=True) for c in self.coding]
-        if self.text is not None:
-            d["text"] = self.text
-        return d
 
 
 class ReasonResult(BaseModel, frozen=True):
@@ -66,7 +46,7 @@ class ReasonResult(BaseModel, frozen=True):
 
     model_config = ConfigDict(extra="forbid")
 
-    codes: list[FHIRCodeableConcept] = Field(default_factory=list)
+    codes: list[CodeableConcept] = Field(default_factory=list)
     """FHIR CodeableConcept elements for reason codes."""
 
     references: list[Reference] = Field(default_factory=list)

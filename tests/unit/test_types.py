@@ -7,9 +7,10 @@ from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.reference import Reference
 from pydantic import ValidationError
 
+from fhir.resources.R4B.codeableconcept import CodeableConcept
+
 from ccda_to_fhir.types import (
     DiagnosisRole,
-    FHIRCodeableConcept,
     OperationStats,
     ReasonResult,
     RegistryStats,
@@ -51,45 +52,40 @@ class TestCoding:
 
 
 # ============================================================================
-# FHIRCodeableConcept
+# CodeableConcept (fhir.resources R4B)
 # ============================================================================
 
 
-class TestFHIRCodeableConcept:
+class TestCodeableConcept:
     def test_text_only(self):
-        cc = FHIRCodeableConcept(text="Free text")
+        cc = CodeableConcept(text="Free text")
         assert cc.text == "Free text"
-        assert cc.coding == []
+        assert cc.coding is None
 
-    def test_to_dict_omits_empty_coding(self):
-        cc = FHIRCodeableConcept(text="Free text")
-        d = cc.to_dict()
+    def test_model_dump_omits_none_coding(self):
+        cc = CodeableConcept(text="Free text")
+        d = cc.model_dump(exclude_none=True)
         assert d == {"text": "Free text"}
         assert "coding" not in d
 
-    def test_to_dict_with_codings(self):
-        cc = FHIRCodeableConcept(
+    def test_model_dump_with_codings(self):
+        cc = CodeableConcept(
             coding=[Coding(system="http://snomed.info/sct", code="1234", display="Test")],
             text="Test",
         )
-        d = cc.to_dict()
+        d = cc.model_dump(exclude_none=True)
         assert d == {
             "coding": [{"system": "http://snomed.info/sct", "code": "1234", "display": "Test"}],
             "text": "Test",
         }
 
-    def test_to_dict_no_text(self):
-        cc = FHIRCodeableConcept(
+    def test_model_dump_no_text(self):
+        cc = CodeableConcept(
             coding=[Coding(system="http://snomed.info/sct", code="1234")],
         )
-        d = cc.to_dict()
+        d = cc.model_dump(exclude_none=True)
         assert d == {"coding": [{"system": "http://snomed.info/sct", "code": "1234"}]}
         assert "text" not in d
-
-    def test_frozen(self):
-        cc = FHIRCodeableConcept(text="Test")
-        with pytest.raises(ValidationError):
-            cc.text = "Changed"
 
 
 # ============================================================================
@@ -133,7 +129,7 @@ class TestReasonResult:
         assert not r
 
     def test_with_codes_is_truthy(self):
-        r = ReasonResult(codes=[FHIRCodeableConcept(text="test")])
+        r = ReasonResult(codes=[CodeableConcept(text="test")])
         assert r
 
     def test_with_references_is_truthy(self):

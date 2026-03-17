@@ -349,7 +349,7 @@ class MedicationDispenseConverter(BaseConverter[Supply]):
             ),
             translations=translations,
         )
-        return concept.to_dict() if concept else None
+        return concept.model_dump(exclude_none=True) if concept else None
 
     def _extract_performers_and_location(
         self, supply: Supply

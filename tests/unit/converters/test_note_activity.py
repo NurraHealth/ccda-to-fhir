@@ -47,9 +47,10 @@ from ccda_to_fhir.converters.note_activity import (
 from ccda_to_fhir.converters.references import ReferenceRegistry
 from fhir.resources.R4B.coding import Coding
 
+from fhir.resources.R4B.codeableconcept import CodeableConcept
+
 from ccda_to_fhir.types import (
     EncounterContext,
-    FHIRCodeableConcept,
 )
 
 # ============================================================================
@@ -176,7 +177,7 @@ class TestExtractDocStatus:
 
 
 # ============================================================================
-# _convert_type — returns FHIRCodeableConcept
+# _convert_type — returns CodeableConcept
 # ============================================================================
 
 
@@ -184,7 +185,7 @@ class TestConvertType:
     def test_primary_code_mapped(self, mapper: CodeSystemMapper) -> None:
         code = CD(code="34109-9", code_system="2.16.840.1.113883.6.1", display_name="Note")
         result = _convert_type(code, mapper)
-        assert isinstance(result, FHIRCodeableConcept)
+        assert isinstance(result, CodeableConcept)
         assert result.coding[0].code == "34109-9"
         assert result.coding[0].system == "http://loinc.org"
         assert result.coding[0].display == "Note"
@@ -238,13 +239,13 @@ class TestConvertType:
     def test_type_to_dict_with_primary_code(self, mapper: CodeSystemMapper) -> None:
         code = CD(code="34109-9", code_system="2.16.840.1.113883.6.1", display_name="Note")
         result = _convert_type(code, mapper)
-        d = result.to_dict()
+        d = result.model_dump(exclude_none=True)
         assert d["coding"][0]["code"] == "34109-9"
         assert d["text"] == "Note"
 
     def test_type_to_dict_with_fallback(self, mapper: CodeSystemMapper) -> None:
         result = _convert_type(None, mapper)
-        d = result.to_dict()
+        d = result.model_dump(exclude_none=True)
         assert d["coding"][0]["system"] == "http://loinc.org"
         assert d["coding"][0]["code"] == "34133-9"
         assert d["text"] == "Clinical Note"

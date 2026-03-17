@@ -219,7 +219,7 @@ class ConditionConverter(BaseConverter[Observation]):
                     display_name="No current problems or disability",
                 )
                 if negated_concept:
-                    condition["code"] = negated_concept.to_dict()
+                    condition["code"] = negated_concept.model_dump(exclude_none=True)
             else:
                 # For specific conditions, set verification status to refuted
                 # ENHANCEMENT: Include display text from terminology map
@@ -274,7 +274,7 @@ class ConditionConverter(BaseConverter[Observation]):
                         display_name=site_code.display_name,
                     )
                     if body_site:
-                        body_sites.append(body_site.to_dict())
+                        body_sites.append(body_site.model_dump(exclude_none=True))
             if body_sites:
                 condition["bodySite"] = body_sites
 
@@ -607,7 +607,7 @@ class ConditionConverter(BaseConverter[Observation]):
             )
             # REQUIRED field - use fallback if None
             if diagnosis_code:
-                return diagnosis_code.to_dict()
+                return diagnosis_code.model_dump(exclude_none=True)
 
         # Fallback for unexpected types or when create_codeable_concept returns None
         return {"text": str(value) if value else "Unknown condition"}
@@ -744,7 +744,7 @@ class ConditionConverter(BaseConverter[Observation]):
                                 display_name=rel.observation.value.display_name,
                             )
                             if severity:
-                                return severity.to_dict()
+                                return severity.model_dump(exclude_none=True)
                             return None
         return None
 
