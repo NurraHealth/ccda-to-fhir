@@ -8,6 +8,7 @@ from collections.abc import Callable
 from fhir.resources.R4B.attachment import Attachment
 from fhir.resources.R4B.documentreference import (
     DocumentReferenceContent,
+    DocumentReferenceContext,
     DocumentReferenceRelatesTo,
 )
 from fhir.resources.R4B.extension import Extension
@@ -29,8 +30,6 @@ from ccda_to_fhir.types import (
     EncounterContext,
     FHIRCodeableConcept,
     FHIRCoding,
-    FHIRDocRefContext,
-    FHIRReference,
     FHIRResourceDict,
     JSONObject,
 )
@@ -167,7 +166,7 @@ class NoteActivityConverter(BaseConverter[Act]):
             fallback_encounter_context or EncounterContext(),
         )
         if context:
-            doc_ref["context"] = context.to_dict()
+            doc_ref["context"] = context.model_dump(exclude_none=True, mode="json")
 
         # RelatesTo - from reference to externalDocument
         if note_act.reference:
@@ -359,7 +358,7 @@ def _create_context(
     note_act: Act,
     convert_date_fn: Callable[[str], str | None],
     fallback_encounter_context: EncounterContext,
-) -> FHIRDocRefContext | None:
+) -> DocumentReferenceContext | None:
     """Create document context (period, encounter references) from note activity.
 
     Encounter references are extracted from entryRelationship/encounter elements.
@@ -367,7 +366,7 @@ def _create_context(
     derived from the document header's encompassingEncounter).
     """
     period: Period | None = None
-    encounter_refs: list[FHIRReference] = []
+    encounter_refs: list[FHIRLibReference] = []
 
     if note_act.effective_time:
         effective = note_act.effective_time
@@ -391,16 +390,19 @@ def _create_context(
                     first_id.root or None,
                     first_id.extension or None,
                 )
-                encounter_refs.append(FHIRReference(reference=f"urn:uuid:{enc_id}"))
+                encounter_refs.append(FHIRLibReference(reference=f"urn:uuid:{enc_id}"))
 
     # Fallback to encompassingEncounter when no explicit encounter refs
     if not encounter_refs:
-        fallback_ref = fallback_encounter_context.to_fhir_reference()
-        if fallback_ref:
-            encounter_refs.append(fallback_ref)
+        fallback = fallback_encounter_context.to_fhir_reference()
+        if fallback:
+            encounter_refs.append(
+                FHIRLibReference(reference=fallback.reference, display=fallback.display)
+            )
 
-    context = FHIRDocRefContext(period=period, encounter=encounter_refs)
-    return context if context else None
+    if not period and not encounter_refs:
+        return None
+    return DocumentReferenceContext(period=period, encounter=encounter_refs or None)
 
 
 def _convert_relates_to(references: list[Reference]) -> list[DocumentReferenceRelatesTo]:

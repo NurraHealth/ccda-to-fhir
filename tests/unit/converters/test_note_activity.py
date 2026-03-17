@@ -12,6 +12,7 @@ import pytest
 from fhir.resources.R4B.attachment import Attachment
 from fhir.resources.R4B.documentreference import (
     DocumentReferenceContent,
+    DocumentReferenceContext,
     DocumentReferenceRelatesTo,
 )
 from fhir.resources.R4B.period import Period
@@ -48,8 +49,6 @@ from ccda_to_fhir.types import (
     EncounterContext,
     FHIRCodeableConcept,
     FHIRCoding,
-    FHIRDocRefContext,
-    FHIRReference,
 )
 
 # ============================================================================
@@ -483,7 +482,7 @@ class TestCreateMissingContent:
 
 
 # ============================================================================
-# _create_context — returns FHIRDocRefContext | None
+# _create_context — returns DocumentReferenceContext | None
 # ============================================================================
 
 
@@ -494,7 +493,7 @@ class TestCreateContext:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
         result = _create_context(act, lambda v: "2026-01-15", self._NO_ENC)
         assert result is not None
-        assert isinstance(result, FHIRDocRefContext)
+        assert isinstance(result, DocumentReferenceContext)
         assert result.period is not None
         assert result.period.start == "2026-01-15"
 
@@ -579,7 +578,7 @@ class TestCreateContext:
         ]
         result = _create_context(act, lambda v: "2026-01-15", self._NO_ENC)
         assert result is not None
-        d = result.to_dict()
+        d = result.model_dump(exclude_none=True, mode="json")
         assert d["period"]["start"] == "2026-01-15"
         assert d["encounter"][0]["reference"].startswith("urn:uuid:")
 
@@ -1321,18 +1320,6 @@ class TestPydanticModelTypeSafety:
         att = Attachment(contentType="text/plain", data="aGVsbG8=")
         with pytest.raises(ValidationError):
             att.data = b"world"
-
-    def test_fhir_doc_ref_context_falsy_when_empty(self) -> None:
-        ctx = FHIRDocRefContext()
-        assert not ctx
-
-    def test_fhir_doc_ref_context_truthy_with_period(self) -> None:
-        ctx = FHIRDocRefContext(period=Period(start="2026-01-01"))
-        assert ctx
-
-    def test_fhir_doc_ref_context_truthy_with_encounter(self) -> None:
-        ctx = FHIRDocRefContext(encounter=[FHIRReference(reference="urn:uuid:enc-1")])
-        assert ctx
 
     def test_relates_to_construction(self) -> None:
         from fhir.resources.R4B.reference import Reference as LibRef

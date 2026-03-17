@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
-from fhir.resources.R4B.period import Period
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # JSON primitive types
@@ -98,30 +97,6 @@ class FHIRReference(BaseModel, frozen=True):
 
     def to_dict(self) -> JSONObject:
         return self.model_dump(exclude_none=True)
-
-
-class FHIRDocRefContext(BaseModel, frozen=True):
-    """FHIR DocumentReference.context element (period + encounter references).
-
-    No library equivalent — R4B removed the context backbone element.
-    This model is kept for converters that still emit the R4-style context.
-    """
-
-    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
-
-    period: Period | None = None
-    encounter: list[FHIRReference] = Field(default_factory=list)
-
-    def __bool__(self) -> bool:
-        return self.period is not None or bool(self.encounter)
-
-    def to_dict(self) -> JSONObject:
-        result: JSONObject = {}
-        if self.period is not None:
-            result["period"] = self.period.model_dump(exclude_none=True, mode="json")
-        if self.encounter:
-            result["encounter"] = [e.to_dict() for e in self.encounter]
-        return result
 
 
 class ReasonResult(BaseModel, frozen=True):
