@@ -260,7 +260,7 @@ class TestReferenceResolution:
 
         assert patient_ref is not None
         # Update the condition's subject with validated reference (serialized)
-        condition["subject"] = patient_ref.to_dict()
+        condition["subject"] = patient_ref.model_dump(exclude_none=True)
 
         # Verify the reference is correct
         assert condition["subject"]["reference"] == "urn:uuid:patient-newman"

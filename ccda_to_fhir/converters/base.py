@@ -8,6 +8,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
 from fhir.resources.narrative import Narrative
+from fhir.resources.R4B.reference import Reference
 
 from ccda_to_fhir.ccda.models.datatypes import CD, CE
 from ccda_to_fhir.constants import FHIRSystems
@@ -17,7 +18,6 @@ from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import (
     FHIRCodeableConcept,
     FHIRCoding,
-    FHIRReference,
     FHIRResourceDict,
     JSONObject,
     ReasonResult,
@@ -1193,7 +1193,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         from ccda_to_fhir.constants import FHIRCodes
 
         reason_codes: list[FHIRCodeableConcept] = []
-        reason_refs: list[FHIRReference] = []
+        reason_refs: list[Reference] = []
 
         if not entry_relationships:
             return ReasonResult(codes=reason_codes, references=reason_refs)
@@ -1242,7 +1242,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                             display = obs.value.display_name
 
                     reason_refs.append(
-                        FHIRReference(reference=f"urn:uuid:{condition_id}", display=display)
+                        Reference(reference=f"urn:uuid:{condition_id}", display=display)
                     )
                 else:
                     # Inline Problem Observation not converted - use reasonCode
@@ -1609,7 +1609,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         assigned_entity,
         create_resource: bool = False,
         pending_resources: list | None = None,
-    ) -> FHIRReference | None:
+    ) -> Reference | None:
         """Create a Practitioner reference from a C-CDA AssignedEntity.
 
         Optionally creates the Practitioner resource if it doesn't already exist
@@ -1621,7 +1621,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             pending_resources: List to append created Practitioner resources to
 
         Returns:
-            FHIRReference or None if no valid identifier found
+            Reference or None if no valid identifier found
         """
         if not assigned_entity:
             return None
@@ -1660,14 +1660,14 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             self.reference_registry.register_resource(practitioner)
 
         display = format_person_display(assigned_entity.assigned_person)
-        return FHIRReference(reference=f"urn:uuid:{pract_id}", display=display)
+        return Reference(reference=f"urn:uuid:{pract_id}", display=display)
 
     def create_organization_reference_from_entity(
         self,
         represented_organization,
         create_resource: bool = False,
         pending_resources: list | None = None,
-    ) -> FHIRReference | None:
+    ) -> Reference | None:
         """Create an Organization reference from a C-CDA RepresentedOrganization.
 
         Optionally creates the Organization resource if it doesn't already exist
@@ -1679,7 +1679,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             pending_resources: List to append created Organization resources to
 
         Returns:
-            FHIRReference or None if no valid identifier found
+            Reference or None if no valid identifier found
         """
         if not represented_organization:
             return None
@@ -1714,7 +1714,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             self.reference_registry.register_resource(organization)
 
         display = format_organization_display(represented_organization)
-        return FHIRReference(reference=f"urn:uuid:{org_id}", display=display)
+        return Reference(reference=f"urn:uuid:{org_id}", display=display)
 
     def extract_performer_function(
         self,
@@ -1800,7 +1800,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         self,
         performers: list[Performer],
         prefer_npi: bool = False,
-    ) -> list[FHIRReference]:
+    ) -> list[Reference]:
         """Extract FHIR performer references from C-CDA performer elements.
 
         This is a shared utility for extracting Practitioner references from C-CDA
@@ -1817,12 +1817,12 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             prefer_npi: If True, prefer NPI identifier over others (default False)
 
         Returns:
-            List of FHIRReference objects
+            List of Reference objects
         """
         if not performers:
             return []
 
-        references: list[FHIRReference] = []
+        references: list[Reference] = []
 
         for performer in performers:
             if not performer:
@@ -1842,7 +1842,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 practitioner_id = self._generate_practitioner_id(root, extension)
                 display = format_person_display(performer.assigned_entity.assigned_person)
                 references.append(
-                    FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
+                    Reference(reference=f"urn:uuid:{practitioner_id}", display=display)
                 )
 
         return references

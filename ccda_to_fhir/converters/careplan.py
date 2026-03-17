@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fhir.resources.narrative import Narrative
+from fhir.resources.R4B.reference import Reference
 
 from ccda_to_fhir.ccda.models.clinical_document import ClinicalDocument
 from ccda_to_fhir.constants import FHIRCodes, TemplateIds
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .base import BaseConverter
 
@@ -136,7 +137,9 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         # Subject (REQUIRED) - reference to patient
         if self.reference_registry:
-            careplan["subject"] = self.reference_registry.get_patient_reference().to_dict()
+            careplan["subject"] = self.reference_registry.get_patient_reference().model_dump(
+                exclude_none=True
+            )
         else:
             # Fallback for unit tests
             if clinical_document.record_target and len(clinical_document.record_target) > 0:
@@ -150,8 +153,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                         patient_id.root,
                         patient_id.extension,
                     )
-                    subject_ref = FHIRReference(reference=f"urn:uuid:{patient_ref_id}")
-                    careplan["subject"] = subject_ref.to_dict()
+                    subject_ref = Reference(reference=f"urn:uuid:{patient_ref_id}")
+                    careplan["subject"] = subject_ref.model_dump(exclude_none=True)
                 else:
                     raise ValueError("Cannot create CarePlan: patient identifier has no root")
             else:
@@ -173,7 +176,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             first_author = clinical_document.author[0]
             author_ref = self._convert_author_to_reference(first_author)
             if author_ref:
-                careplan["author"] = author_ref.to_dict()
+                careplan["author"] = author_ref.model_dump(exclude_none=True)
 
         # Contributors - all authors and serviceEvent performers
         contributors: list[JSONObject] = []
@@ -186,7 +189,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 if contributor_ref:
                     if contributor_ref.reference not in seen_contributor_refs:
                         seen_contributor_refs.add(contributor_ref.reference)
-                        contributors.append(contributor_ref.to_dict())
+                        contributors.append(contributor_ref.model_dump(exclude_none=True))
 
         # Add serviceEvent performers as contributors (US Core Must Support)
         if clinical_document.documentation_of:
@@ -211,8 +214,8 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                                 display = format_person_display(
                                     performer.assigned_entity.assigned_person
                                 )
-                                contributor_ref = FHIRReference(reference=ref_uri, display=display)
-                                contributors.append(contributor_ref.to_dict())
+                                contributor_ref = Reference(reference=ref_uri, display=display)
+                                contributors.append(contributor_ref.model_dump(exclude_none=True))
 
         if contributors:
             careplan["contributor"] = contributors
@@ -397,14 +400,14 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         return period if period else None
 
-    def _convert_author_to_reference(self, author) -> FHIRReference | None:
-        """Convert C-CDA author to FHIRReference.
+    def _convert_author_to_reference(self, author) -> Reference | None:
+        """Convert C-CDA author to Reference.
 
         Args:
             author: C-CDA Author element
 
         Returns:
-            FHIRReference or None
+            Reference or None
         """
         if not author or not author.assigned_author:
             return None
@@ -428,7 +431,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                     first_id.extension,
                 )
                 display = format_person_display(assigned_author.assigned_person)
-                return FHIRReference(reference=f"urn:uuid:{practitioner_id}", display=display)
+                return Reference(reference=f"urn:uuid:{practitioner_id}", display=display)
             else:
                 # Could be patient as author
                 if not self.reference_registry:
@@ -462,8 +465,10 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                 continue
 
             # CarePlan.activity.reference is a Reference type, not a string
-            intervention_ref = FHIRReference(reference=activity_ref)
-            activity_detail: JSONObject = {"reference": intervention_ref.to_dict()}
+            intervention_ref = Reference(reference=activity_ref)
+            activity_detail: JSONObject = {
+                "reference": intervention_ref.model_dump(exclude_none=True)
+            }
 
             # Find outcomes linked to this intervention via entryRelationship
             linked_outcomes = []
@@ -479,7 +484,9 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
                                 if self._get_entry_id(outcome_entry) == outcome_id:
                                     outcome_ref = self._create_outcome_reference(outcome_entry)
                                     if outcome_ref:
-                                        linked_outcomes.append(outcome_ref.to_dict())
+                                        linked_outcomes.append(
+                                            outcome_ref.model_dump(exclude_none=True)
+                                        )
 
             # Only add outcomeReference if there are linked outcomes
             if linked_outcomes:
@@ -600,14 +607,14 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
 
         return None
 
-    def _create_outcome_reference(self, outcome_entry) -> FHIRReference | None:
+    def _create_outcome_reference(self, outcome_entry) -> Reference | None:
         """Create reference to Observation outcome resource.
 
         Args:
             outcome_entry: C-CDA outcome observation entry element
 
         Returns:
-            FHIRReference or None
+            Reference or None
         """
         if not outcome_entry or not self.reference_registry:
             return None
@@ -623,7 +630,7 @@ class CarePlanConverter(BaseConverter[ClinicalDocument]):
             if outcome_entry.code and outcome_entry.code.display_name:
                 display = outcome_entry.code.display_name
 
-            return FHIRReference(reference=f"urn:uuid:{resource_id}", display=display)
+            return Reference(reference=f"urn:uuid:{resource_id}", display=display)
 
         return None
 

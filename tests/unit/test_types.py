@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import pytest
+from fhir.resources.R4B.reference import Reference
 from pydantic import ValidationError
 
 from ccda_to_fhir.types import (
     DiagnosisRole,
     FHIRCodeableConcept,
     FHIRCoding,
-    FHIRReference,
     OperationStats,
     ReasonResult,
     RegistryStats,
@@ -106,31 +106,33 @@ class TestFHIRCodeableConcept:
 
 
 # ============================================================================
-# FHIRReference
+# Reference
 # ============================================================================
 
 
-class TestFHIRReference:
+class TestReference:
+    """Tests for R4B Reference (replaces hand-rolled FHIRReference)."""
+
     def test_reference_only(self):
-        r = FHIRReference(reference="urn:uuid:abc-123")
+        r = Reference(reference="urn:uuid:abc-123")
         assert r.reference == "urn:uuid:abc-123"
         assert r.display is None
 
-    def test_to_dict_excludes_none_display(self):
-        r = FHIRReference(reference="urn:uuid:abc-123")
-        d = r.to_dict()
+    def test_model_dump_excludes_none_display(self):
+        r = Reference(reference="urn:uuid:abc-123")
+        d = r.model_dump(exclude_none=True)
         assert d == {"reference": "urn:uuid:abc-123"}
         assert "display" not in d
 
-    def test_to_dict_includes_display(self):
-        r = FHIRReference(reference="urn:uuid:abc-123", display="John Smith")
-        d = r.to_dict()
+    def test_model_dump_includes_display(self):
+        r = Reference(reference="urn:uuid:abc-123", display="John Smith")
+        d = r.model_dump(exclude_none=True)
         assert d == {"reference": "urn:uuid:abc-123", "display": "John Smith"}
 
-    def test_frozen(self):
-        r = FHIRReference(reference="urn:uuid:abc-123")
-        with pytest.raises(ValidationError):
-            r.reference = "changed"
+    def test_display_only(self):
+        r = Reference(display="John Smith")
+        d = r.model_dump(exclude_none=True)
+        assert d == {"display": "John Smith"}
 
 
 # ============================================================================
@@ -148,7 +150,7 @@ class TestReasonResult:
         assert r
 
     def test_with_references_is_truthy(self):
-        r = ReasonResult(references=[FHIRReference(reference="urn:uuid:123")])
+        r = ReasonResult(references=[Reference(reference="urn:uuid:123")])
         assert r
 
 

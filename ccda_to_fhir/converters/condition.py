@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.ccda.models.act import Act
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, PQ
 from ccda_to_fhir.ccda.models.observation import Observation
@@ -29,7 +31,7 @@ from ccda_to_fhir.constants import (
 )
 from ccda_to_fhir.exceptions import MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 from ccda_to_fhir.utils.terminology import (
     get_display_for_code,
     get_display_for_condition_clinical_status,
@@ -281,7 +283,9 @@ class ConditionConverter(BaseConverter[Observation]):
             raise ValueError(
                 "reference_registry is required. Cannot create Condition without patient reference."
             )
-        condition["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        condition["subject"] = self.reference_registry.get_patient_reference().model_dump(
+            exclude_none=True
+        )
 
         # Onset and abatement
         onset, abatement = self._convert_effective_time(observation)
@@ -321,16 +325,16 @@ class ConditionConverter(BaseConverter[Observation]):
             latest_author = max(authors_with_time, key=lambda a: a.time)
 
             if latest_author.practitioner_id:
-                recorder_ref = FHIRReference(
+                recorder_ref = Reference(
                     reference=f"urn:uuid:{latest_author.practitioner_id}",
                     display=latest_author.display,
                 )
-                condition["recorder"] = recorder_ref.to_dict()
+                condition["recorder"] = recorder_ref.model_dump(exclude_none=True)
             elif latest_author.device_id:
-                recorder_ref = FHIRReference(
+                recorder_ref = Reference(
                     reference=f"urn:uuid:{latest_author.device_id}", display=latest_author.display
                 )
-                condition["recorder"] = recorder_ref.to_dict()
+                condition["recorder"] = recorder_ref.model_dump(exclude_none=True)
 
         # Evidence (from related observations)
         if observation.entry_relationship:

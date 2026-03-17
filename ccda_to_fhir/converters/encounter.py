@@ -128,7 +128,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
             raise ValueError(
                 "reference_registry is required. Cannot create Encounter without patient reference."
             )
-        fhir_encounter["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        fhir_encounter["subject"] = self.reference_registry.get_patient_reference().model_dump(
+            exclude_none=True
+        )
 
         # Type - Convert encounter code to type (if not used for class)
         encounter_type = self._extract_type(encounter)
@@ -151,7 +153,9 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         if reasons.codes:
             fhir_encounter["reasonCode"] = [c.to_dict() for c in reasons.codes]
         if reasons.references:
-            fhir_encounter["reasonReference"] = [r.to_dict() for r in reasons.references]
+            fhir_encounter["reasonReference"] = [
+                r.model_dump(exclude_none=True) for r in reasons.references
+            ]
 
         # Diagnosis - Extract from encounter diagnosis entry relationships
         diagnoses = self._extract_diagnoses(encounter.entry_relationship)

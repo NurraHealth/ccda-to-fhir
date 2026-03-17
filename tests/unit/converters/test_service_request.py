@@ -13,6 +13,7 @@ from __future__ import annotations
 from unittest.mock import Mock
 
 import pytest
+from fhir.resources.R4B.reference import Reference
 
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, II, IVL_TS, TS
@@ -20,7 +21,6 @@ from ccda_to_fhir.ccda.models.procedure import Procedure as CCDAProcedure
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.converters.service_request import ServiceRequestConverter
-from ccda_to_fhir.types import FHIRReference
 
 # ============================================================================
 # Fixtures - Realistic C-CDA Planned Procedure/Act Data
@@ -89,7 +89,7 @@ def mock_reference_registry() -> ReferenceRegistry:
     """Create a mock reference registry."""
     registry = Mock(spec=ReferenceRegistry)
     registry.get_patient_reference = Mock(
-        return_value=FHIRReference(reference="urn:uuid:a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        return_value=Reference(reference="urn:uuid:a1b2c3d4-e5f6-7890-abcd-ef1234567890")
     )
     registry.has_resource = Mock(return_value=True)
     return registry

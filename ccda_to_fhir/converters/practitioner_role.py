@@ -21,8 +21,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fhir.resources.R4B.reference import Reference
+
 from ccda_to_fhir.constants import FHIRCodes
-from ccda_to_fhir.types import FHIRReference, FHIRResourceDict, JSONObject
+from ccda_to_fhir.types import FHIRResourceDict, JSONObject
 
 from .author_references import format_organization_display
 from .base import BaseConverter
@@ -78,14 +80,14 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
         # Create reference to Practitioner
         practitioner_role["practitioner"] = self._create_practitioner_reference(
             practitioner_id
-        ).to_dict()
+        ).model_dump(exclude_none=True)
 
         # Create reference to Organization (optional)
         if organization_id:
             display = format_organization_display(assigned.represented_organization)
             practitioner_role["organization"] = self._create_organization_reference(
                 organization_id, display
-            ).to_dict()
+            ).model_dump(exclude_none=True)
 
         # Map specialty (assignedAuthor/code)
         if assigned.code:
@@ -135,20 +137,20 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
         else:
             return f"role-{practitioner_id}"
 
-    def _create_practitioner_reference(self, practitioner_id: str) -> FHIRReference:
+    def _create_practitioner_reference(self, practitioner_id: str) -> Reference:
         """Create a reference to the Practitioner resource.
 
         Args:
             practitioner_id: ID of the Practitioner resource
 
         Returns:
-            FHIRReference pointing to the Practitioner
+            Reference pointing to the Practitioner
         """
-        return FHIRReference(reference=f"urn:uuid:{practitioner_id}")
+        return Reference(reference=f"urn:uuid:{practitioner_id}")
 
     def _create_organization_reference(
         self, organization_id: str, display: str | None = None
-    ) -> FHIRReference:
+    ) -> Reference:
         """Create a reference to the Organization resource.
 
         Args:
@@ -156,9 +158,9 @@ class PractitionerRoleConverter(BaseConverter["AssignedAuthor | AssignedEntity"]
             display: Organization display name
 
         Returns:
-            FHIRReference pointing to the Organization
+            Reference pointing to the Organization
         """
-        return FHIRReference(reference=f"urn:uuid:{organization_id}", display=display)
+        return Reference(reference=f"urn:uuid:{organization_id}", display=display)
 
     def _convert_specialty(self, code: CE) -> list[JSONObject]:
         """Convert specialty code to FHIR PractitionerRole.specialty.

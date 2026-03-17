@@ -135,7 +135,9 @@ class NoteActivityConverter(BaseConverter[Act]):
         doc_ref["category"] = [_CLINICAL_NOTE_CATEGORY.to_dict()]
 
         # Subject
-        doc_ref["subject"] = self.reference_registry.get_patient_reference().to_dict()
+        doc_ref["subject"] = self.reference_registry.get_patient_reference().model_dump(
+            exclude_none=True
+        )
 
         # Date and author references
         if note_act.author:
@@ -145,7 +147,7 @@ class NoteActivityConverter(BaseConverter[Act]):
 
             authors = build_author_references(note_act.author)
             if authors:
-                doc_ref["author"] = [a.to_dict() for a in authors]
+                doc_ref["author"] = [a.model_dump(exclude_none=True) for a in authors]
 
         # Content (required by US Core)
         if note_act.text:
