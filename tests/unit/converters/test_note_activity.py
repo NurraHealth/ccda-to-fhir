@@ -10,6 +10,8 @@ import base64
 
 import pytest
 from fhir.resources.R4B.attachment import Attachment
+from fhir.resources.R4B.codeableconcept import CodeableConcept
+from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.documentreference import (
     DocumentReferenceContent,
     DocumentReferenceContext,
@@ -45,10 +47,6 @@ from ccda_to_fhir.converters.note_activity import (
     convert_note_activity,
 )
 from ccda_to_fhir.converters.references import ReferenceRegistry
-from fhir.resources.R4B.coding import Coding
-
-from fhir.resources.R4B.codeableconcept import CodeableConcept
-
 from ccda_to_fhir.types import (
     EncounterContext,
 )

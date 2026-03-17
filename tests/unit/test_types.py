@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import pytest
+from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.reference import Reference
 from pydantic import ValidationError
-
-from fhir.resources.R4B.codeableconcept import CodeableConcept
 
 from ccda_to_fhir.types import (
     DiagnosisRole,
