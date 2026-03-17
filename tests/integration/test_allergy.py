@@ -760,7 +760,6 @@ class TestAllergyNarrativePropagation:
         assert allergy["text"]["status"] == "generated"
 
         # Verify div element
-        assert isinstance(allergy["text"], dict)
         assert "div" in allergy["text"]
         div_content = allergy["text"]["div"]
 
