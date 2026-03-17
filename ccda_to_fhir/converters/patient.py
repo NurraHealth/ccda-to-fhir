@@ -81,7 +81,9 @@ class PatientConverter(BaseConverter[RecordTarget]):
 
         # Names
         if patient_data.name:
-            patient["name"] = self.convert_human_names(patient_data.name)
+            names = self.convert_human_names(patient_data.name)
+            if names:
+                patient["name"] = [n.model_dump(exclude_none=True) for n in names]
 
         # Telecom
         if patient_role.telecom:
@@ -376,7 +378,7 @@ class PatientConverter(BaseConverter[RecordTarget]):
             if guardian.guardian_person and guardian.guardian_person.name:
                 names = self.convert_human_names(guardian.guardian_person.name)
                 if names:
-                    contact["name"] = names[0]
+                    contact["name"] = names[0].model_dump(exclude_none=True)
 
             # Telecom
             if guardian.telecom:

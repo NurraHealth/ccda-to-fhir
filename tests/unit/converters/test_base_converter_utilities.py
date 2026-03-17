@@ -38,8 +38,8 @@ class TestConvertHumanNames:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["given"] == ["John"]
-        assert result[0]["family"] == "Smith"
+        assert result[0].given == ["John"]
+        assert result[0].family == "Smith"
 
     def test_converts_multiple_given_names(self, converter):
         """Test name with multiple given names (first + middle)."""
@@ -53,8 +53,8 @@ class TestConvertHumanNames:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["given"] == ["John", "Jacob"]
-        assert result[0]["family"] == "Smith"
+        assert result[0].given == ["John", "Jacob"]
+        assert result[0].family == "Smith"
 
     def test_converts_name_with_prefix(self, converter):
         """Test name with prefix (Dr., Mr., etc.)."""
@@ -69,9 +69,9 @@ class TestConvertHumanNames:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["prefix"] == ["Dr."]
-        assert result[0]["given"] == ["Jane"]
-        assert result[0]["family"] == "Doe"
+        assert result[0].prefix == ["Dr."]
+        assert result[0].given == ["Jane"]
+        assert result[0].family == "Doe"
 
     def test_converts_name_with_suffix(self, converter):
         """Test name with suffix (MD, Jr., etc.)."""
@@ -86,9 +86,9 @@ class TestConvertHumanNames:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["given"] == ["John"]
-        assert result[0]["family"] == "Smith"
-        assert result[0]["suffix"] == ["MD", "PhD"]
+        assert result[0].given == ["John"]
+        assert result[0].family == "Smith"
+        assert result[0].suffix == ["MD", "PhD"]
 
     def test_converts_name_with_use_code(self, converter):
         """Test name with use code (L=Legal, P=Pseudonym)."""
@@ -103,9 +103,9 @@ class TestConvertHumanNames:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["use"] == "usual"  # L (Legal) -> usual per mapping
-        assert result[0]["given"] == ["Isabella"]
-        assert result[0]["family"] == "Garcia"
+        assert result[0].use == "usual"  # L (Legal) -> usual per mapping
+        assert result[0].given == ["Isabella"]
+        assert result[0].family == "Garcia"
 
     def test_converts_name_with_period(self, converter):
         """Test name with valid_time (period)."""
@@ -123,11 +123,11 @@ class TestConvertHumanNames:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["given"] == ["Mary"]
-        assert result[0]["family"] == "Johnson"
-        assert "period" in result[0]
-        assert result[0]["period"]["start"] == "2010-01-01"
-        assert result[0]["period"]["end"] == "2020-12-31"
+        assert result[0].given == ["Mary"]
+        assert result[0].family == "Johnson"
+        assert result[0].period is not None
+        assert result[0].period.start == "2010-01-01"
+        assert result[0].period.end == "2020-12-31"
 
     def test_converts_multiple_names(self, converter):
         """Test multiple names (legal + nickname)."""
@@ -146,11 +146,11 @@ class TestConvertHumanNames:
         result = converter.convert_human_names(names)
 
         assert len(result) == 2
-        assert result[0]["use"] == "usual"
-        assert result[0]["given"] == ["Isabella", "Maria"]
-        assert result[0]["family"] == "Garcia"
-        assert result[1]["use"] == "nickname"
-        assert result[1]["given"] == ["Bella"]
+        assert result[0].use == "usual"
+        assert result[0].given == ["Isabella", "Maria"]
+        assert result[0].family == "Garcia"
+        assert result[1].use == "nickname"
+        assert result[1].given == ["Bella"]
 
     def test_handles_none_input(self, converter):
         """Test handling of None input."""
@@ -174,8 +174,8 @@ class TestConvertHumanNames:
         result = converter.convert_human_names(name)
 
         assert len(result) == 1
-        assert result[0]["given"] == ["John"]
-        assert result[0]["family"] == "Doe"
+        assert result[0].given == ["John"]
+        assert result[0].family == "Doe"
 
     def test_skips_none_names_in_list(self, converter):
         """Test that None names in list are skipped."""
@@ -194,8 +194,8 @@ class TestConvertHumanNames:
         result = converter.convert_human_names(names)
 
         assert len(result) == 2
-        assert result[0]["family"] == "Smith"
-        assert result[1]["family"] == "Doe"
+        assert result[0].family == "Smith"
+        assert result[1].family == "Doe"
 
     def test_skips_empty_given_values(self, converter):
         """Test that empty given values are filtered out."""
@@ -210,7 +210,7 @@ class TestConvertHumanNames:
 
         assert len(result) == 1
         # Empty strings should be filtered out
-        assert result[0]["given"] == ["John", "Jacob"]
+        assert result[0].given == ["John", "Jacob"]
 
     def test_extract_enxp_handles_string_input(self, converter):
         """Test that _extract_enxp_value_and_qualifier handles string input.
@@ -244,13 +244,14 @@ class TestConvertHumanNames:
 
         assert len(result) == 1
         name = result[0]
-        assert name["use"] == "usual"
-        assert name["prefix"] == ["Dr.", "Professor"]
-        assert name["given"] == ["John", "Jacob"]
-        assert name["family"] == "Smith"
-        assert name["suffix"] == ["MD", "Jr."]
-        assert name["period"]["start"] == "2015-01-01"
-        assert name["period"]["end"] == "2025-12-31"
+        assert name.use == "usual"
+        assert name.prefix == ["Dr.", "Professor"]
+        assert name.given == ["John", "Jacob"]
+        assert name.family == "Smith"
+        assert name.suffix == ["MD", "Jr."]
+        assert name.period is not None
+        assert name.period.start == "2015-01-01"
+        assert name.period.end == "2025-12-31"
 
 
 class TestConvertHumanNamesENXPQualifier:
@@ -268,8 +269,8 @@ class TestConvertHumanNamesENXPQualifier:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["given"] == ["Bobby"]
-        assert result[0]["use"] == "nickname"
+        assert result[0].given == ["Bobby"]
+        assert result[0].use == "nickname"
 
     def test_qualifier_br_sets_maiden_use(self, converter):
         """Test that BR (birth) qualifier sets use to maiden."""
@@ -283,8 +284,8 @@ class TestConvertHumanNamesENXPQualifier:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["family"] == "Johnson"
-        assert result[0]["use"] == "maiden"
+        assert result[0].family == "Johnson"
+        assert result[0].use == "maiden"
 
     def test_qualifier_sp_sets_maiden_use(self, converter):
         """Test that SP (spouse) qualifier sets use to maiden (previous married name)."""
@@ -298,8 +299,8 @@ class TestConvertHumanNamesENXPQualifier:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["family"] == "Williams"
-        assert result[0]["use"] == "maiden"
+        assert result[0].family == "Williams"
+        assert result[0].use == "maiden"
 
     def test_explicit_use_overrides_qualifier(self, converter):
         """Test that explicit PN.use takes precedence over ENXP qualifier."""
@@ -315,7 +316,7 @@ class TestConvertHumanNamesENXPQualifier:
 
         assert len(result) == 1
         # Explicit use="L" should map to "usual", not "nickname"
-        assert result[0]["use"] == "usual"
+        assert result[0].use == "usual"
 
     def test_academic_qualifier_preserved_in_suffix(self, converter):
         """Test that academic suffix values are preserved."""
@@ -330,7 +331,7 @@ class TestConvertHumanNamesENXPQualifier:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["suffix"] == ["PhD"]
+        assert result[0].suffix == ["PhD"]
 
 
 class TestConvertHumanNamesDelimiter:
@@ -350,7 +351,7 @@ class TestConvertHumanNamesDelimiter:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["text"] == "Dr. John Jacob Smith MD"
+        assert result[0].text == "Dr. John Jacob Smith MD"
 
     def test_builds_text_with_custom_delimiter(self, converter):
         """Test that text respects custom delimiter."""
@@ -365,7 +366,7 @@ class TestConvertHumanNamesDelimiter:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["text"] == "John, Smith"
+        assert result[0].text == "John, Smith"
 
     def test_builds_text_with_string_delimiter(self, converter):
         """Test that text handles string delimiter (single element list)."""
@@ -380,7 +381,7 @@ class TestConvertHumanNamesDelimiter:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert result[0]["text"] == "John-Smith"
+        assert result[0].text == "John-Smith"
 
 
 class TestConvertHumanNamesNullFlavor:
@@ -393,11 +394,11 @@ class TestConvertHumanNamesNullFlavor:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        assert "extension" in result[0]
-        assert len(result[0]["extension"]) == 1
-        ext = result[0]["extension"][0]
-        assert ext["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
-        assert ext["valueCode"] == "unknown"
+        assert result[0].extension is not None
+        assert len(result[0].extension) == 1
+        ext = result[0].extension[0]
+        assert ext.url == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert ext.valueCode == "unknown"
 
     def test_null_flavor_msk_creates_masked_reason(self, converter):
         """Test that MSK null_flavor maps to masked."""
@@ -406,8 +407,8 @@ class TestConvertHumanNamesNullFlavor:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        ext = result[0]["extension"][0]
-        assert ext["valueCode"] == "masked"
+        ext = result[0].extension[0]
+        assert ext.valueCode == "masked"
 
     def test_null_flavor_asku_creates_asked_unknown_reason(self, converter):
         """Test that ASKU null_flavor maps to asked-unknown."""
@@ -416,8 +417,8 @@ class TestConvertHumanNamesNullFlavor:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        ext = result[0]["extension"][0]
-        assert ext["valueCode"] == "asked-unknown"
+        ext = result[0].extension[0]
+        assert ext.valueCode == "asked-unknown"
 
     def test_null_flavor_na_creates_not_applicable_reason(self, converter):
         """Test that NA null_flavor maps to not-applicable."""
@@ -426,8 +427,8 @@ class TestConvertHumanNamesNullFlavor:
         result = converter.convert_human_names(names)
 
         assert len(result) == 1
-        ext = result[0]["extension"][0]
-        assert ext["valueCode"] == "not-applicable"
+        ext = result[0].extension[0]
+        assert ext.valueCode == "not-applicable"
 
     def test_null_flavor_skips_name_content_extraction(self, converter):
         """Test that null_flavor names don't have given/family extracted."""
@@ -443,9 +444,9 @@ class TestConvertHumanNamesNullFlavor:
 
         assert len(result) == 1
         # Should only have extension, not given/family
-        assert "extension" in result[0]
-        assert "given" not in result[0]
-        assert "family" not in result[0]
+        assert result[0].extension is not None
+        assert result[0].given is None
+        assert result[0].family is None
 
 
 # =============================================================================

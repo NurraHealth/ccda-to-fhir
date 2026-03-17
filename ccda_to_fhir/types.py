@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from typing import TypeAlias, TypedDict
 
 from fhir.resources.R4B.codeableconcept import CodeableConcept
+from fhir.resources.R4B.humanname import HumanName
 from fhir.resources.R4B.reference import Reference
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -114,19 +115,37 @@ class RegistryStats(BaseModel):
     failed: int = 0
 
 
-def format_human_name_display(name: JSONObject) -> str | None:
-    """Build a display string from a FHIR HumanName dict.
+def format_human_name_display(name: HumanName | JSONObject) -> str | None:
+    """Build a display string from a FHIR HumanName.
+
+    Accepts both R4B HumanName model instances and plain dicts (for
+    working with serialized FHIR resources).
 
     Per FHIR R4, HumanName.text is "the entire name as it should be displayed"
     and is preferred when present. Falls back to "prefix given family suffix".
 
     Returns None if no meaningful parts are present.
     """
+    if isinstance(name, HumanName):
+        if name.text and name.text.strip():
+            return name.text.strip()
+
+        parts: list[str] = [
+            *(name.prefix or []),
+            *(name.given or []),
+        ]
+        if name.family:
+            parts.append(name.family)
+        parts.extend(name.suffix or [])
+
+        return " ".join(p for p in parts if p) or None
+
+    # Dict fallback (for serialized FHIR resources)
     text = name.get("text")
-    if text and text.strip():
+    if text and isinstance(text, str) and text.strip():
         return text.strip()
 
-    parts: list[str] = [
+    parts = [
         *name.get("prefix", []),
         *name.get("given", []),
     ]

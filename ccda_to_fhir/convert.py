@@ -560,7 +560,7 @@ class DocumentConverter:
                             if names and isinstance(names, list) and isinstance(names[0], dict):
                                 self.reference_registry.patient_display = format_human_name_display(
                                     names[0]
-                                )  # type: ignore[arg-type]
+                                )
 
                         # Convert providerOrganization to Organization resource
                         if (

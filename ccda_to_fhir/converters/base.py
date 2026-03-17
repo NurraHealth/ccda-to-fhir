@@ -10,6 +10,9 @@ from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 from fhir.resources.narrative import Narrative
 from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.coding import Coding
+from fhir.resources.R4B.extension import Extension
+from fhir.resources.R4B.humanname import HumanName
+from fhir.resources.R4B.period import Period
 from fhir.resources.R4B.reference import Reference
 
 from ccda_to_fhir.ccda.models.datatypes import CD, CE
@@ -1373,8 +1376,8 @@ class BaseConverter(ABC, Generic[CCDAModel]):
         "SP": "maiden",  # Spouse name (previous married name when remarried)
     }
 
-    def convert_human_names(self, names) -> list[JSONObject]:
-        """Convert C-CDA PN elements to FHIR HumanName objects.
+    def convert_human_names(self, names) -> list[HumanName]:
+        """Convert C-CDA PN elements to FHIR R4B HumanName objects.
 
         Handles person names from Patient, Practitioner, RelatedPerson contexts.
         Fully supports HL7 v3 name model including:
@@ -1389,14 +1392,14 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             names: C-CDA PN element(s) - single or list
 
         Returns:
-            List of FHIR HumanName objects
+            List of FHIR R4B HumanName objects
         """
         from ccda_to_fhir.constants import NAME_USE_MAP, FHIRCodes
 
         if names is None:
             return []
 
-        fhir_names: list[JSONObject] = []
+        fhir_names: list[HumanName] = []
 
         # Normalize to list
         name_list = names if isinstance(names, list) else [names]
@@ -1405,27 +1408,31 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             if name is None:
                 continue
 
-            fhir_name: JSONObject = {}
-
             # Handle null_flavor - name is explicitly unknown/masked
             if name.null_flavor:
-                fhir_name["extension"] = [
-                    {
-                        "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
-                        "valueCode": self._map_null_flavor_to_data_absent_reason(name.null_flavor),
-                    }
-                ]
-                fhir_names.append(fhir_name)
+                fhir_names.append(
+                    HumanName(
+                        extension=[
+                            Extension(
+                                url="http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+                                valueCode=self._map_null_flavor_to_data_absent_reason(
+                                    name.null_flavor
+                                ),
+                            )
+                        ]
+                    )
+                )
                 continue
 
             # Track if any ENXP qualifier should override the name use
             qualifier_use = None
+            use_value = None
 
             # Name use mapping from PN.use attribute
             if name.use:
-                fhir_name["use"] = NAME_USE_MAP.get(name.use, FHIRCodes.NameUse.USUAL)
+                use_value = NAME_USE_MAP.get(name.use, FHIRCodes.NameUse.USUAL)
 
-            # Collect name parts for both dict assignment and text building
+            # Collect name parts for both model construction and text building
             prefixes = []
             given_names = []
             family_value: str | None = None
@@ -1434,8 +1441,6 @@ class BaseConverter(ABC, Generic[CCDAModel]):
             # Family name - handle ENXP type with qualifier
             if name.family:
                 family_value, family_qualifier = self._extract_enxp_value_and_qualifier(name.family)
-                if family_value:
-                    fhir_name["family"] = family_value
                 if family_qualifier and family_qualifier in self._ENXP_QUALIFIER_TO_USE:
                     qualifier_use = self._ENXP_QUALIFIER_TO_USE[family_qualifier]
 
@@ -1448,8 +1453,6 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     # CL qualifier on given name indicates nickname
                     if qualifier and qualifier in self._ENXP_QUALIFIER_TO_USE:
                         qualifier_use = self._ENXP_QUALIFIER_TO_USE[qualifier]
-                if given_names:
-                    fhir_name["given"] = given_names
 
             # Prefix - handle list of ENXP
             if name.prefix:
@@ -1457,8 +1460,6 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     value, _ = self._extract_enxp_value_and_qualifier(prefix)
                     if value:
                         prefixes.append(value)
-                if prefixes:
-                    fhir_name["prefix"] = prefixes
 
             # Suffix - handle list of ENXP (including academic qualifiers)
             if name.suffix:
@@ -1466,14 +1467,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     value, _ = self._extract_enxp_value_and_qualifier(suffix)
                     if value:
                         suffixes.append(value)
-                if suffixes:
-                    fhir_name["suffix"] = suffixes
 
             # If ENXP qualifier indicates a specific use, and no explicit use was set, apply it
-            if qualifier_use and "use" not in fhir_name:
-                fhir_name["use"] = qualifier_use
+            if qualifier_use and not use_value:
+                use_value = qualifier_use
 
             # Build text representation from local variables (all str)
+            text_value = None
             text_parts: list[str] = []
             text_parts.extend(prefixes)
             text_parts.extend(given_names)
@@ -1490,25 +1490,33 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                         delimiter = name.delimiter[0]
                     elif isinstance(name.delimiter, str):
                         delimiter = name.delimiter
-                fhir_name["text"] = delimiter.join(text_parts)
+                text_value = delimiter.join(text_parts)
 
             # Period from valid_time
+            period_value = None
             if name.valid_time:
-                period: JSONObject = {}
+                start = None
+                end = None
                 if name.valid_time.low:
                     start = self.convert_date(name.valid_time.low.value)
-                    if start:
-                        period["start"] = start
                 if name.valid_time.high:
                     end = self.convert_date(name.valid_time.high.value)
-                    if end:
-                        period["end"] = end
-                if period:
-                    fhir_name["period"] = period
+                if start or end:
+                    period_value = Period(start=start, end=end)
 
             # Only add if we have meaningful content
-            if fhir_name:
-                fhir_names.append(fhir_name)
+            if use_value or family_value or given_names or prefixes or suffixes or text_value:
+                fhir_names.append(
+                    HumanName(
+                        use=use_value,
+                        text=text_value,
+                        family=family_value,
+                        given=given_names or None,
+                        prefix=prefixes or None,
+                        suffix=suffixes or None,
+                        period=period_value,
+                    )
+                )
 
         return fhir_names
 
