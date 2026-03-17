@@ -99,77 +99,18 @@ class FHIRReference(BaseModel, frozen=True):
         return self.model_dump(exclude_none=True)
 
 
-class FHIRPeriod(BaseModel, frozen=True):
-    """FHIR Period element (start and/or end datetime strings)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    start: str | None = None
-    end: str | None = None
-
-    def to_dict(self) -> JSONObject:
-        return self.model_dump(exclude_none=True)
-
-
-class FHIRExtension(BaseModel, frozen=True):
-    """FHIR Extension element (url + typed value).
-
-    Covers the common ``valueCode`` case used by data-absent-reason.
-    Add additional ``value_*`` fields as needed for other extension types.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    url: str
-    value_code: str | None = None
-
-    def to_dict(self) -> JSONObject:
-        result: JSONObject = {"url": self.url}
-        if self.value_code is not None:
-            result["valueCode"] = self.value_code
-        return result
-
-
-class FHIRAttachment(BaseModel, frozen=True):
-    """FHIR Attachment element (contentType + data or data-absent-reason extension).
-
-    When ``data`` is provided, the attachment carries inline content.
-    When ``data_extension`` is provided instead, it represents the FHIR
-    ``_data`` element with extension(s) on the data primitive.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    content_type: str
-    data: str | None = None
-    data_extension: list[FHIRExtension] | None = None
-
-    def to_dict(self) -> JSONObject:
-        result: JSONObject = {"contentType": self.content_type}
-        if self.data is not None:
-            result["data"] = self.data
-        if self.data_extension is not None:
-            result["_data"] = {"extension": [e.to_dict() for e in self.data_extension]}
-        return result
-
-
-class FHIRDocRefContent(BaseModel, frozen=True):
-    """FHIR DocumentReference.content element (wraps an attachment)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    attachment: FHIRAttachment
-
-    def to_dict(self) -> JSONObject:
-        return {"attachment": self.attachment.to_dict()}
-
-
 class FHIRDocRefContext(BaseModel, frozen=True):
-    """FHIR DocumentReference.context element (period + encounter references)."""
+    """FHIR DocumentReference.context element (period + encounter references).
+
+    No library equivalent — R4B removed the context backbone element.
+    This model is kept for converters that still emit the R4-style context.
+    ``period`` is a pre-serialized dict (from ``Period.model_dump()``)
+    to avoid Pydantic recursion issues with the ``JSONObject`` alias.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    period: FHIRPeriod | None = None
+    period: dict[str, str] | None = None
     encounter: list[FHIRReference] = Field(default_factory=list)
 
     def __bool__(self) -> bool:
@@ -178,22 +119,10 @@ class FHIRDocRefContext(BaseModel, frozen=True):
     def to_dict(self) -> JSONObject:
         result: JSONObject = {}
         if self.period is not None:
-            result["period"] = self.period.to_dict()
+            result["period"] = self.period
         if self.encounter:
             result["encounter"] = [e.to_dict() for e in self.encounter]
         return result
-
-
-class FHIRRelatesTo(BaseModel, frozen=True):
-    """FHIR DocumentReference.relatesTo element (code + target reference)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    code: str
-    target: FHIRReference
-
-    def to_dict(self) -> JSONObject:
-        return {"code": self.code, "target": self.target.to_dict()}
 
 
 class ReasonResult(BaseModel, frozen=True):

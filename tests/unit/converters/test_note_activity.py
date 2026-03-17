@@ -9,6 +9,12 @@ from __future__ import annotations
 import base64
 
 import pytest
+from fhir.resources.attachment import Attachment
+from fhir.resources.documentreference import (
+    DocumentReferenceContent,
+    DocumentReferenceRelatesTo,
+)
+from fhir.resources.period import Period
 from pydantic import ValidationError
 
 from ccda_to_fhir.ccda.models.act import Act, ExternalDocument, Reference
@@ -40,15 +46,10 @@ from ccda_to_fhir.converters.note_activity import (
 from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.types import (
     EncounterContext,
-    FHIRAttachment,
     FHIRCodeableConcept,
     FHIRCoding,
-    FHIRDocRefContent,
     FHIRDocRefContext,
-    FHIRExtension,
-    FHIRPeriod,
     FHIRReference,
-    FHIRRelatesTo,
 )
 
 # ============================================================================
@@ -373,7 +374,7 @@ class TestConvertAuthorReferences:
 
 
 # ============================================================================
-# _create_inline_content — returns FHIRDocRefContent | None
+# _create_inline_content — returns DocumentReferenceContent | None
 # ============================================================================
 
 
@@ -383,35 +384,35 @@ class TestCreateInlineContent:
         text = ED(media_type="text/rtf", representation="B64", value=b64_data)
         result = _create_inline_content(text)
         assert result is not None
-        assert isinstance(result, FHIRDocRefContent)
-        assert result.attachment.content_type == "text/rtf"
-        assert result.attachment.data == b64_data
+        assert isinstance(result, DocumentReferenceContent)
+        assert result.attachment.contentType == "text/rtf"
+        assert result.attachment.data == b"Hello RTF"
 
     def test_base64_whitespace_stripped(self) -> None:
         text = ED(representation="B64", value="AAAA\n BBBB\n CCCC")
         result = _create_inline_content(text)
         assert result is not None
-        assert result.attachment.data == "AAAABBBBCCCC"
+        d = result.model_dump(exclude_none=True, mode="json")
+        assert d["attachment"]["data"] == "AAAABBBBCCCC"
 
     def test_plain_text_encoded(self) -> None:
         text = ED(value="Some clinical note text")
         result = _create_inline_content(text)
         assert result is not None
-        assert result.attachment.content_type == "text/plain"
-        decoded = base64.b64decode(result.attachment.data).decode("utf-8")
-        assert decoded == "Some clinical note text"
+        assert result.attachment.contentType == "text/plain"
+        assert result.attachment.data == b"Some clinical note text"
 
     def test_default_content_type(self) -> None:
         text = ED(value="note")
         result = _create_inline_content(text)
         assert result is not None
-        assert result.attachment.content_type == "text/plain"
+        assert result.attachment.contentType == "text/plain"
 
     def test_custom_media_type(self) -> None:
-        text = ED(media_type="application/pdf", representation="B64", value="JVBER")
+        text = ED(media_type="application/pdf", representation="B64", value="JVBER0==")
         result = _create_inline_content(text)
         assert result is not None
-        assert result.attachment.content_type == "application/pdf"
+        assert result.attachment.contentType == "application/pdf"
 
     def test_empty_value_returns_none(self) -> None:
         assert _create_inline_content(ED()) is None
@@ -423,14 +424,14 @@ class TestCreateInlineContent:
         text = ED(value="note text", media_type="text/plain")
         result = _create_inline_content(text)
         assert result is not None
-        d = result.to_dict()
+        d = result.model_dump(exclude_none=True, mode="json")
         assert "attachment" in d
         assert d["attachment"]["contentType"] == "text/plain"
         assert isinstance(d["attachment"]["data"], str)
 
 
 # ============================================================================
-# _create_content_list — returns list[FHIRDocRefContent]
+# _create_content_list — returns list[DocumentReferenceContent]
 # ============================================================================
 
 
@@ -439,7 +440,7 @@ class TestCreateContentList:
         text = ED(value="Some text")
         result = _create_content_list(text, section=None)
         assert len(result) == 1
-        assert isinstance(result[0], FHIRDocRefContent)
+        assert isinstance(result[0], DocumentReferenceContent)
         assert result[0].attachment.data is not None
 
     def test_empty_text_returns_empty(self) -> None:
@@ -450,7 +451,7 @@ class TestCreateContentList:
         text = ED(representation="B64", value="AQID", media_type="application/pdf")
         result = _create_content_list(text, section=None)
         assert len(result) == 1
-        assert result[0].attachment.content_type == "application/pdf"
+        assert result[0].attachment.contentType == "application/pdf"
 
     def test_no_reference_content_without_section(self) -> None:
         from ccda_to_fhir.ccda.models.datatypes import TEL
@@ -462,7 +463,7 @@ class TestCreateContentList:
 
 
 # ============================================================================
-# _create_missing_content — returns list[FHIRDocRefContent]
+# _create_missing_content — returns list[DocumentReferenceContent]
 # ============================================================================
 
 
@@ -470,29 +471,27 @@ class TestCreateMissingContent:
     def test_structure(self) -> None:
         result = _create_missing_content("unknown")
         assert len(result) == 1
-        assert isinstance(result[0], FHIRDocRefContent)
-        assert result[0].attachment.content_type == "text/plain"
+        assert isinstance(result[0], DocumentReferenceContent)
+        assert result[0].attachment.contentType == "text/plain"
         assert result[0].attachment.data is None
-        assert result[0].attachment.data_extension is not None
 
     def test_extension_model(self) -> None:
         result = _create_missing_content("unknown")
-        ext = result[0].attachment.data_extension
-        assert ext is not None
-        assert len(ext) == 1
-        assert isinstance(ext[0], FHIRExtension)
-        assert ext[0].url == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
-        assert ext[0].value_code == "unknown"
+        d = result[0].model_dump(exclude_none=True, mode="json")
+        ext_list = d["attachment"]["_data"]["extension"]
+        assert len(ext_list) == 1
+        assert ext_list[0]["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert ext_list[0]["valueCode"] == "unknown"
 
     def test_custom_reason_code(self) -> None:
         result = _create_missing_content("asked-unknown")
-        ext = result[0].attachment.data_extension
-        assert ext is not None
-        assert ext[0].value_code == "asked-unknown"
+        d = result[0].model_dump(exclude_none=True, mode="json")
+        ext_list = d["attachment"]["_data"]["extension"]
+        assert ext_list[0]["valueCode"] == "asked-unknown"
 
     def test_to_dict_structure(self) -> None:
         result = _create_missing_content("unknown")
-        d = result[0].to_dict()
+        d = result[0].model_dump(exclude_none=True, mode="json")
         assert d["attachment"]["contentType"] == "text/plain"
         ext_list = d["attachment"]["_data"]["extension"]
         assert len(ext_list) == 1
@@ -510,25 +509,25 @@ class TestCreateContext:
 
     def test_period_from_ivl_ts_value(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
-        result = _create_context(act, lambda v: f"converted-{v}", self._NO_ENC)
+        result = _create_context(act, lambda v: "2026-01-15", self._NO_ENC)
         assert result is not None
         assert isinstance(result, FHIRDocRefContext)
         assert result.period is not None
-        assert result.period.start == "converted-20260115"
+        assert result.period["start"] == "2026-01-15"
 
     def test_period_from_ivl_ts_low(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(low=TS(value="20260110")))
-        result = _create_context(act, lambda v: f"converted-{v}", self._NO_ENC)
+        result = _create_context(act, lambda v: "2026-01-10", self._NO_ENC)
         assert result is not None
         assert result.period is not None
-        assert result.period.start == "converted-20260110"
+        assert result.period["start"] == "2026-01-10"
 
     def test_ivl_ts_value_preferred_over_low(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260101", low=TS(value="20260110")))
-        result = _create_context(act, lambda v: f"converted-{v}", self._NO_ENC)
+        result = _create_context(act, lambda v: "2026-01-01", self._NO_ENC)
         assert result is not None
         assert result.period is not None
-        assert result.period.start == "converted-20260101"
+        assert result.period["start"] == "2026-01-01"
 
     def test_no_effective_time_returns_none(self) -> None:
         act = _make_note_act()
@@ -582,7 +581,7 @@ class TestCreateContext:
                 encounter=CDAEncounter(id=[II(root="enc-1")]),
             ),
         ]
-        result = _create_context(act, lambda v: v, self._NO_ENC)
+        result = _create_context(act, lambda v: "2026-01-15", self._NO_ENC)
         assert result is not None
         assert result.period is not None
         assert len(result.encounter) == 1
@@ -595,15 +594,15 @@ class TestCreateContext:
                 encounter=CDAEncounter(id=[II(root="enc-1")]),
             ),
         ]
-        result = _create_context(act, lambda v: f"converted-{v}", self._NO_ENC)
+        result = _create_context(act, lambda v: "2026-01-15", self._NO_ENC)
         assert result is not None
         d = result.to_dict()
-        assert d["period"]["start"] == "converted-20260115"
+        assert d["period"]["start"] == "2026-01-15"
         assert d["encounter"][0]["reference"].startswith("urn:uuid:")
 
 
 # ============================================================================
-# _convert_relates_to — returns list[FHIRRelatesTo]
+# _convert_relates_to — returns list[DocumentReferenceRelatesTo]
 # ============================================================================
 
 
@@ -617,8 +616,8 @@ class TestConvertRelatesTo:
         ]
         result = _convert_relates_to(refs)
         assert len(result) == 1
-        assert isinstance(result[0], FHIRRelatesTo)
-        assert result[0].code == "replaces"
+        assert isinstance(result[0], DocumentReferenceRelatesTo)
+        assert result[0].code.coding[0].code == "replaces"
 
     def test_apnd_maps_to_appends(self) -> None:
         refs = [
@@ -628,7 +627,7 @@ class TestConvertRelatesTo:
             )
         ]
         result = _convert_relates_to(refs)
-        assert result[0].code == "appends"
+        assert result[0].code.coding[0].code == "appends"
 
     def test_xfrm_maps_to_transforms(self) -> None:
         refs = [
@@ -638,7 +637,7 @@ class TestConvertRelatesTo:
             )
         ]
         result = _convert_relates_to(refs)
-        assert result[0].code == "transforms"
+        assert result[0].code.coding[0].code == "transforms"
 
     def test_refr_skipped(self) -> None:
         refs = [
@@ -716,8 +715,8 @@ class TestConvertRelatesTo:
         ]
         result = _convert_relates_to(refs)
         assert len(result) == 2
-        assert result[0].code == "replaces"
-        assert result[1].code == "appends"
+        assert result[0].code.coding[0].code == "replaces"
+        assert result[1].code.coding[0].code == "appends"
 
     def test_mixed_valid_and_invalid(self) -> None:
         refs = [
@@ -730,7 +729,7 @@ class TestConvertRelatesTo:
         ]
         result = _convert_relates_to(refs)
         assert len(result) == 1
-        assert result[0].code == "replaces"
+        assert result[0].code.coding[0].code == "replaces"
 
     def test_empty_list(self) -> None:
         assert _convert_relates_to([]) == []
@@ -743,8 +742,8 @@ class TestConvertRelatesTo:
             )
         ]
         result = _convert_relates_to(refs)
-        d = result[0].to_dict()
-        assert d["code"] == "replaces"
+        d = result[0].model_dump(exclude_none=True, mode="json")
+        assert d["code"]["coding"][0]["code"] == "replaces"
         assert d["target"]["reference"].startswith("urn:uuid:")
 
 
@@ -1062,7 +1061,7 @@ class TestContent:
             text=ED(
                 media_type="application/pdf",
                 representation="B64",
-                value="JVBER",
+                value="JVBER0==",
             )
         )
         result = converter.convert(act)
@@ -1125,7 +1124,7 @@ class TestRelatesToIntegration:
         result = converter.convert(act)
         relates = result["relatesTo"]
         assert len(relates) == 1
-        assert relates[0]["code"] == "replaces"
+        assert relates[0]["code"]["coding"][0]["code"] == "replaces"
         assert relates[0]["target"]["reference"].startswith("urn:uuid:")
 
     def test_refr_not_in_relates_to(self, converter: NoteActivityConverter) -> None:
@@ -1185,10 +1184,10 @@ class TestFallbackEncounterReference:
     def test_fallback_combined_with_period(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
         ctx = EncounterContext(reference="urn:uuid:enc-fb")
-        result = _create_context(act, lambda v: f"converted-{v}", ctx)
+        result = _create_context(act, lambda v: "2026-01-15", ctx)
         assert result is not None
         assert result.period is not None
-        assert result.period.start == "converted-20260115"
+        assert result.period["start"] == "2026-01-15"
         assert result.encounter[0].reference == "urn:uuid:enc-fb"
 
     def test_empty_context_no_encounter(self) -> None:
@@ -1235,10 +1234,10 @@ class TestFallbackEncounterDisplay:
     def test_display_combined_with_period(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
         ctx = EncounterContext(reference="urn:uuid:enc-fb", display="Checkup")
-        result = _create_context(act, lambda v: f"converted-{v}", ctx)
+        result = _create_context(act, lambda v: "2026-01-15", ctx)
         assert result is not None
         assert result.period is not None
-        assert result.period.start == "converted-20260115"
+        assert result.period["start"] == "2026-01-15"
         assert result.encounter[0].display == "Checkup"
 
 
@@ -1335,44 +1334,56 @@ class TestPydanticModelTypeSafety:
         assert coding.system is None
         assert coding.code is None
 
-    def test_fhir_attachment_frozen(self) -> None:
-        att = FHIRAttachment(content_type="text/plain", data="abc")
+    def test_attachment_frozen(self) -> None:
+        att = Attachment(contentType="text/plain", data="aGVsbG8=")
         with pytest.raises(ValidationError):
-            att.data = "xyz"
+            att.data = b"world"
 
     def test_fhir_doc_ref_context_falsy_when_empty(self) -> None:
         ctx = FHIRDocRefContext()
         assert not ctx
 
     def test_fhir_doc_ref_context_truthy_with_period(self) -> None:
-        ctx = FHIRDocRefContext(period=FHIRPeriod(start="2026-01-01"))
+        ctx = FHIRDocRefContext(period={"start": "2026-01-01"})
         assert ctx
 
     def test_fhir_doc_ref_context_truthy_with_encounter(self) -> None:
         ctx = FHIRDocRefContext(encounter=[FHIRReference(reference="urn:uuid:enc-1")])
         assert ctx
 
-    def test_fhir_relates_to_frozen(self) -> None:
-        rt = FHIRRelatesTo(code="replaces", target=FHIRReference(reference="urn:uuid:doc-1"))
+    def test_relates_to_construction(self) -> None:
+        from fhir.resources.codeableconcept import CodeableConcept
+        from fhir.resources.reference import Reference as LibRef
+
+        rt = DocumentReferenceRelatesTo(
+            code=CodeableConcept(
+                coding=[
+                    {"system": "http://hl7.org/fhir/document-relationship-type", "code": "replaces"}
+                ]
+            ),
+            target=LibRef(reference="urn:uuid:doc-1"),
+        )
+        assert rt.code.coding[0].code == "replaces"
+        assert rt.target.reference == "urn:uuid:doc-1"
+
+    def test_period_model_dump_omits_none(self) -> None:
+        p = Period(start="2026-01-01")
+        d = p.model_dump(exclude_none=True, mode="json")
+        assert d == {"start": "2026-01-01"}
+
+    def test_period_model_dump_both(self) -> None:
+        p = Period(start="2026-01-01", end="2026-02-01")
+        d = p.model_dump(exclude_none=True, mode="json")
+        assert d == {"start": "2026-01-01", "end": "2026-02-01"}
+
+    def test_attachment_extra_fields_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            rt.code = "appends"
+            Attachment(contentType="text/plain", bogus="field")
 
-    def test_fhir_period_to_dict_omits_none(self) -> None:
-        p = FHIRPeriod(start="2026-01-01")
-        assert p.to_dict() == {"start": "2026-01-01"}
-
-    def test_fhir_period_to_dict_both(self) -> None:
-        p = FHIRPeriod(start="2026-01-01", end="2026-02-01")
-        assert p.to_dict() == {"start": "2026-01-01", "end": "2026-02-01"}
-
-    def test_fhir_attachment_extra_fields_rejected(self) -> None:
+    def test_doc_ref_content_extra_fields_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            FHIRAttachment(content_type="text/plain", bogus="field")
-
-    def test_fhir_doc_ref_content_extra_fields_rejected(self) -> None:
-        with pytest.raises(ValidationError):
-            FHIRDocRefContent(
-                attachment=FHIRAttachment(content_type="text/plain"),
+            DocumentReferenceContent(
+                attachment=Attachment(contentType="text/plain"),
                 bogus="field",
             )
 
@@ -1424,7 +1435,7 @@ class TestEdgeCases:
         text = ED(value="Diagnose: Diabetes mellitus Typ 2 (E11.9)")
         result = _create_inline_content(text)
         assert result is not None
-        decoded = base64.b64decode(result.attachment.data).decode("utf-8")
+        decoded = result.attachment.data.decode("utf-8")
         assert "Diagnose" in decoded
         assert "Typ 2" in decoded
 
@@ -1453,7 +1464,7 @@ class TestEdgeCases:
         ]
         result = _convert_relates_to(refs)
         assert len(result) == 3
-        codes = {r.code for r in result}
+        codes = {r.code.coding[0].code for r in result}
         assert codes == {"replaces", "appends", "transforms"}
 
     def test_full_document_reference_structure(self, converter: NoteActivityConverter) -> None:
@@ -1495,4 +1506,4 @@ class TestEdgeCases:
         assert result["context"]["period"]["start"] == "2026-01-15"
         assert len(result["context"]["encounter"]) == 1
         assert len(result["relatesTo"]) == 1
-        assert result["relatesTo"][0]["code"] == "replaces"
+        assert result["relatesTo"][0]["code"]["coding"][0]["code"] == "replaces"

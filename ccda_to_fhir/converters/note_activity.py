@@ -5,6 +5,14 @@ from __future__ import annotations
 import base64
 from collections.abc import Callable
 
+from fhir.resources.attachment import Attachment
+from fhir.resources.documentreference import (
+    DocumentReferenceContent,
+    DocumentReferenceRelatesTo,
+)
+from fhir.resources.extension import Extension
+from fhir.resources.period import Period
+
 from ccda_to_fhir.ccda.models.act import Act, Reference
 from ccda_to_fhir.ccda.models.author import Author
 from ccda_to_fhir.ccda.models.datatypes import CD, ED, II, TEL
@@ -17,16 +25,12 @@ from ccda_to_fhir.constants import (
 from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
 from ccda_to_fhir.types import (
     EncounterContext,
-    FHIRAttachment,
     FHIRCodeableConcept,
     FHIRCoding,
-    FHIRDocRefContent,
     FHIRDocRefContext,
-    FHIRExtension,
-    FHIRPeriod,
     FHIRReference,
-    FHIRRelatesTo,
     FHIRResourceDict,
+    JSONObject,
 )
 
 from .author_references import build_author_references
@@ -62,6 +66,9 @@ _FALLBACK_TYPE = FHIRCodeableConcept(
     ],
     text="Clinical Note",
 )
+
+# FHIR R4B document-relationship-type system
+_RELATES_TO_SYSTEM = "http://hl7.org/fhir/document-relationship-type"
 
 
 class NoteActivityConverter(BaseConverter[Act]):
@@ -146,11 +153,19 @@ class NoteActivityConverter(BaseConverter[Act]):
         if note_act.text:
             content_list = _create_content_list(note_act.text, section)
             if content_list:
-                doc_ref["content"] = [c.to_dict() for c in content_list]
+                doc_ref["content"] = [
+                    c.model_dump(exclude_none=True, mode="json") for c in content_list
+                ]
             else:
-                doc_ref["content"] = [c.to_dict() for c in _create_missing_content("unknown")]
+                doc_ref["content"] = [
+                    c.model_dump(exclude_none=True, mode="json")
+                    for c in _create_missing_content("unknown")
+                ]
         else:
-            doc_ref["content"] = [c.to_dict() for c in _create_missing_content("unknown")]
+            doc_ref["content"] = [
+                c.model_dump(exclude_none=True, mode="json")
+                for c in _create_missing_content("unknown")
+            ]
 
         # Context - encounter and period
         context = _create_context(
@@ -165,7 +180,9 @@ class NoteActivityConverter(BaseConverter[Act]):
         if note_act.reference:
             relates_to = _convert_relates_to(note_act.reference)
             if relates_to:
-                doc_ref["relatesTo"] = [r.to_dict() for r in relates_to]
+                doc_ref["relatesTo"] = [
+                    r.model_dump(exclude_none=True, mode="json") for r in relates_to
+                ]
 
         # Narrative
         narrative = self._generate_narrative(entry=note_act, section=section)
@@ -262,9 +279,9 @@ def _extract_author_date(
 def _create_content_list(
     text: ED,
     section: Section | None,
-) -> list[FHIRDocRefContent]:
+) -> list[DocumentReferenceContent]:
     """Create content elements from note text (inline and/or reference)."""
-    content_list: list[FHIRDocRefContent] = []
+    content_list: list[DocumentReferenceContent] = []
 
     inline = _create_inline_content(text)
     if inline:
@@ -278,22 +295,22 @@ def _create_content_list(
     return content_list
 
 
-def _create_inline_content(text: ED) -> FHIRDocRefContent | None:
+def _create_inline_content(text: ED) -> DocumentReferenceContent | None:
     """Create content element from inline text (base64 or plain)."""
     if text.representation == "B64" and text.value:
         data = text.value.replace("\n", "").replace(" ", "").strip()
-        return FHIRDocRefContent(
-            attachment=FHIRAttachment(
-                content_type=text.media_type or "text/plain",
+        return DocumentReferenceContent(
+            attachment=Attachment(
+                contentType=text.media_type or "text/plain",
                 data=data,
             )
         )
 
     if text.value:
         encoded = base64.b64encode(text.value.encode("utf-8")).decode("ascii")
-        return FHIRDocRefContent(
-            attachment=FHIRAttachment(
-                content_type=text.media_type or "text/plain",
+        return DocumentReferenceContent(
+            attachment=Attachment(
+                contentType=text.media_type or "text/plain",
                 data=encoded,
             )
         )
@@ -301,7 +318,7 @@ def _create_inline_content(text: ED) -> FHIRDocRefContent | None:
     return None
 
 
-def _create_reference_content(reference: TEL, section: Section) -> FHIRDocRefContent | None:
+def _create_reference_content(reference: TEL, section: Section) -> DocumentReferenceContent | None:
     """Create content element from reference to section narrative."""
     ref_value = reference.value
     if not ref_value or not section.text:
@@ -318,15 +335,15 @@ def _create_reference_content(reference: TEL, section: Section) -> FHIRDocRefCon
     content_type = "text/html" if is_html else "text/plain"
     encoded = base64.b64encode(resolved_text.encode("utf-8")).decode("ascii")
 
-    return FHIRDocRefContent(
-        attachment=FHIRAttachment(
-            content_type=content_type,
+    return DocumentReferenceContent(
+        attachment=Attachment(
+            contentType=content_type,
             data=encoded,
         )
     )
 
 
-def _create_missing_content(reason_code: str) -> list[FHIRDocRefContent]:
+def _create_missing_content(reason_code: str) -> list[DocumentReferenceContent]:
     """Create content with data-absent-reason extension when text is missing.
 
     Args:
@@ -335,15 +352,17 @@ def _create_missing_content(reason_code: str) -> list[FHIRDocRefContent]:
     from ccda_to_fhir.constants import FHIRSystems
 
     return [
-        FHIRDocRefContent(
-            attachment=FHIRAttachment(
-                content_type="text/plain",
-                data_extension=[
-                    FHIRExtension(
-                        url=FHIRSystems.DATA_ABSENT_REASON,
-                        value_code=reason_code,
-                    )
-                ],
+        DocumentReferenceContent(
+            attachment=Attachment(
+                contentType="text/plain",
+                _data={
+                    "extension": [
+                        Extension(
+                            url=FHIRSystems.DATA_ABSENT_REASON,
+                            valueCode=reason_code,
+                        ).model_dump(exclude_none=True, mode="json")
+                    ]
+                },
             )
         )
     ]
@@ -360,7 +379,7 @@ def _create_context(
     When none are found, falls back to ``fallback_encounter_context`` (typically
     derived from the document header's encompassingEncounter).
     """
-    period: FHIRPeriod | None = None
+    period: JSONObject | None = None
     encounter_refs: list[FHIRReference] = []
 
     if note_act.effective_time:
@@ -374,7 +393,7 @@ def _create_context(
         if ts_value:
             start = convert_date_fn(ts_value)
             if start:
-                period = FHIRPeriod(start=start)
+                period = Period(start=start).model_dump(exclude_none=True, mode="json")
 
     if note_act.entry_relationship:
         for entry_rel in note_act.entry_relationship:
@@ -397,14 +416,14 @@ def _create_context(
     return context if context else None
 
 
-def _convert_relates_to(references: list[Reference]) -> list[FHIRRelatesTo]:
+def _convert_relates_to(references: list[Reference]) -> list[DocumentReferenceRelatesTo]:
     """Convert reference to externalDocument to FHIR relatesTo.
 
-    Maps C-CDA typeCode to FHIR relatesTo.code:
+    Maps C-CDA typeCode to FHIR relatesTo.code (R4B CodeableConcept):
       RPLC -> replaces, APND -> appends, XFRM -> transforms.
     REFR and unmapped typeCodes are skipped (no FHIR relatesTo equivalent).
     """
-    relates_to: list[FHIRRelatesTo] = []
+    relates_to: list[DocumentReferenceRelatesTo] = []
     for ref in references:
         if not ref.external_document or not ref.external_document.id:
             continue
@@ -417,8 +436,12 @@ def _convert_relates_to(references: list[Reference]) -> list[FHIRRelatesTo]:
             first_id.root or None,
             first_id.extension or None,
         )
-        target_ref = FHIRReference(reference=f"urn:uuid:{doc_id}")
-        relates_to.append(FHIRRelatesTo(code=fhir_code, target=target_ref))
+        relates_to.append(
+            DocumentReferenceRelatesTo(
+                code={"coding": [{"system": _RELATES_TO_SYSTEM, "code": fhir_code}]},
+                target={"reference": f"urn:uuid:{doc_id}"},
+            )
+        )
     return relates_to
 
 
