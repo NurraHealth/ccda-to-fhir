@@ -35,8 +35,8 @@ JSONArray: TypeAlias = list[JSONValue]
 #
 # Pydantic representations of common FHIR R4 data types.  These are used
 # inside typed return values (e.g. ReasonResult) so the converters carry
-# structured data instead of raw dicts.  Call `.to_dict()` when you need
-# to embed the value in a FHIRResourceDict.
+# structured data instead of raw dicts.  Call `.to_dict()` or
+# `.model_dump(exclude_none=True)` to embed in a FHIRResourceDict.
 # ============================================================================
 
 

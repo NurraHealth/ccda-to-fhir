@@ -13,6 +13,7 @@ from fhir.resources.R4B.documentreference import (
 )
 from fhir.resources.R4B.extension import Extension
 from fhir.resources.R4B.period import Period
+from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.reference import Reference as FHIRLibReference
 
 from ccda_to_fhir.ccda.models.act import Act, Reference
@@ -26,8 +27,6 @@ from ccda_to_fhir.constants import (
     FHIRSystems,
 )
 from ccda_to_fhir.id_generator import generate_id, generate_id_from_identifiers
-from fhir.resources.R4B.coding import Coding
-
 from ccda_to_fhir.types import (
     EncounterContext,
     FHIRCodeableConcept,

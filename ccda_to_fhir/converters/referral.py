@@ -24,6 +24,8 @@ from typing import TYPE_CHECKING
 from ccda_to_fhir.ccda.models.act import Act as CCDAAct
 from ccda_to_fhir.ccda.models.datatypes import CD, CE, CS, IVL_TS, TS
 from ccda_to_fhir.ccda.models.encounter import Encounter as CCDAEncounter
+from fhir.resources.R4B.coding import Coding
+
 from ccda_to_fhir.constants import (
     REFERRAL_SNOMED_CODES,
     SERVICE_REQUEST_MOOD_TO_INTENT,
@@ -32,8 +34,6 @@ from ccda_to_fhir.constants import (
     FHIRCodes,
     TemplateIds,
 )
-from fhir.resources.R4B.coding import Coding
-
 from ccda_to_fhir.types import (
     FHIRCodeableConcept,
     FHIRReference,

@@ -8,14 +8,13 @@ from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
 from fhir.resources.narrative import Narrative
+from fhir.resources.R4B.coding import Coding
 
 from ccda_to_fhir.ccda.models.datatypes import CD, CE
 from ccda_to_fhir.constants import FHIRSystems
 from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
 from ccda_to_fhir.id_generator import generate_id
 from ccda_to_fhir.logging_config import get_logger
-from fhir.resources.R4B.coding import Coding
-
 from ccda_to_fhir.types import (
     FHIRCodeableConcept,
     FHIRReference,
