@@ -9,6 +9,14 @@ from __future__ import annotations
 import base64
 
 import pytest
+from fhir.resources.R4B.attachment import Attachment
+from fhir.resources.R4B.documentreference import (
+    DocumentReferenceContent,
+    DocumentReferenceContext,
+    DocumentReferenceRelatesTo,
+)
+from fhir.resources.R4B.period import Period
+from pydantic import ValidationError
 
 from ccda_to_fhir.ccda.models.act import Act, ExternalDocument, Reference
 from ccda_to_fhir.ccda.models.author import (
@@ -37,7 +45,11 @@ from ccda_to_fhir.converters.note_activity import (
     convert_note_activity,
 )
 from ccda_to_fhir.converters.references import ReferenceRegistry
-from ccda_to_fhir.types import EncounterContext
+from ccda_to_fhir.types import (
+    EncounterContext,
+    FHIRCodeableConcept,
+    FHIRCoding,
+)
 
 # ============================================================================
 # Fixtures
@@ -163,7 +175,7 @@ class TestExtractDocStatus:
 
 
 # ============================================================================
-# _convert_type
+# _convert_type — returns FHIRCodeableConcept
 # ============================================================================
 
 
@@ -171,9 +183,10 @@ class TestConvertType:
     def test_primary_code_mapped(self, mapper: CodeSystemMapper) -> None:
         code = CD(code="34109-9", code_system="2.16.840.1.113883.6.1", display_name="Note")
         result = _convert_type(code, mapper)
-        assert result["coding"][0]["code"] == "34109-9"
-        assert result["coding"][0]["system"] == "http://loinc.org"
-        assert result["coding"][0]["display"] == "Note"
+        assert isinstance(result, FHIRCodeableConcept)
+        assert result.coding[0].code == "34109-9"
+        assert result.coding[0].system == "http://loinc.org"
+        assert result.coding[0].display == "Note"
 
     def test_translation_codes_included(self, mapper: CodeSystemMapper) -> None:
         code = CD(
@@ -189,62 +202,99 @@ class TestConvertType:
             ],
         )
         result = _convert_type(code, mapper)
-        assert len(result["coding"]) == 2
-        assert result["coding"][1]["code"] == "34117-2"
+        assert len(result.coding) == 2
+        assert result.coding[1].code == "34117-2"
 
     def test_display_text_set(self, mapper: CodeSystemMapper) -> None:
         code = CD(code="34109-9", code_system="2.16.840.1.113883.6.1", display_name="Note")
         result = _convert_type(code, mapper)
-        assert result["text"] == "Note"
+        assert result.text == "Note"
 
     def test_no_display_omits_text(self, mapper: CodeSystemMapper) -> None:
         code = CD(code="34109-9", code_system="2.16.840.1.113883.6.1")
         result = _convert_type(code, mapper)
-        assert "text" not in result
+        assert result.text is None
 
     def test_fallback_when_no_code(self, mapper: CodeSystemMapper) -> None:
         result = _convert_type(None, mapper)
-        assert result["coding"][0]["code"] == "34133-9"
-        assert result["text"] == "Clinical Note"
+        assert result.coding[0].code == "34133-9"
+        assert result.text == "Clinical Note"
 
     def test_fallback_when_code_has_no_value(self, mapper: CodeSystemMapper) -> None:
         code = CD(display_name="Note")
         result = _convert_type(code, mapper)
-        assert result["coding"][0]["code"] == "34133-9"
+        assert result.coding[0].code == "34133-9"
 
-    def test_code_without_code_system(self, mapper: CodeSystemMapper) -> None:
+    def test_code_without_code_system_preserves_display(self, mapper: CodeSystemMapper) -> None:
+        """Per FHIR R4: system SHALL be present when code is present.
+        When code_system is missing, code is dropped but display is preserved."""
         code = CD(code="34109-9", display_name="Note")
         result = _convert_type(code, mapper)
-        coding = result["coding"][0]
-        assert coding["code"] == "34109-9"
-        assert "system" not in coding
+        assert result.coding[0].display == "Note"
+        assert result.coding[0].system is None
+        assert result.coding[0].code is None
+
+    def test_type_to_dict_with_primary_code(self, mapper: CodeSystemMapper) -> None:
+        code = CD(code="34109-9", code_system="2.16.840.1.113883.6.1", display_name="Note")
+        result = _convert_type(code, mapper)
+        d = result.to_dict()
+        assert d["coding"][0]["code"] == "34109-9"
+        assert d["text"] == "Note"
+
+    def test_type_to_dict_with_fallback(self, mapper: CodeSystemMapper) -> None:
+        result = _convert_type(None, mapper)
+        d = result.to_dict()
+        assert d["coding"][0]["system"] == "http://loinc.org"
+        assert d["coding"][0]["code"] == "34133-9"
+        assert d["text"] == "Clinical Note"
 
 
 # ============================================================================
-# _make_coding
+# _make_coding — returns FHIRCoding | None
 # ============================================================================
 
 
 class TestMakeCoding:
     def test_full_coding(self, mapper: CodeSystemMapper) -> None:
         result = _make_coding("12345", "2.16.840.1.113883.6.1", "Test", mapper)
-        assert result == {"code": "12345", "system": "http://loinc.org", "display": "Test"}
+        assert result is not None
+        assert isinstance(result, FHIRCoding)
+        assert result.code == "12345"
+        assert result.system == "http://loinc.org"
+        assert result.display == "Test"
 
     def test_no_code_returns_none(self, mapper: CodeSystemMapper) -> None:
         assert _make_coding(None, "2.16.840.1.113883.6.1", "Test", mapper) is None
 
-    def test_no_system(self, mapper: CodeSystemMapper) -> None:
+    def test_no_system_preserves_display(self, mapper: CodeSystemMapper) -> None:
+        """Per FHIR R4: system SHALL co-occur with code. Falls back to display-only."""
         result = _make_coding("12345", None, "Test", mapper)
-        assert result == {"code": "12345", "display": "Test"}
+        assert result is not None
+        assert result.code is None
+        assert result.system is None
+        assert result.display == "Test"
 
-    def test_no_display(self, mapper: CodeSystemMapper) -> None:
+    def test_no_system_no_display_returns_none(self, mapper: CodeSystemMapper) -> None:
+        """Code without system or display cannot produce a valid coding."""
         result = _make_coding("12345", None, None, mapper)
-        assert result == {"code": "12345"}
+        assert result is None
 
     def test_unknown_system_uses_oid_urn(self, mapper: CodeSystemMapper) -> None:
         result = _make_coding("12345", "9.9.9.9.9", None, mapper)
         assert result is not None
-        assert result["system"] == "urn:oid:9.9.9.9.9"
+        assert result.system == "urn:oid:9.9.9.9.9"
+
+    def test_coding_to_dict_with_system(self, mapper: CodeSystemMapper) -> None:
+        result = _make_coding("12345", "2.16.840.1.113883.6.1", "Test", mapper)
+        assert result is not None
+        d = result.to_dict()
+        assert d == {"code": "12345", "system": "http://loinc.org", "display": "Test"}
+
+    def test_coding_to_dict_display_only(self, mapper: CodeSystemMapper) -> None:
+        result = _make_coding("12345", None, "Test", mapper)
+        assert result is not None
+        d = result.to_dict()
+        assert d == {"display": "Test"}
 
 
 # ============================================================================
@@ -323,7 +373,7 @@ class TestConvertAuthorReferences:
 
 
 # ============================================================================
-# _create_inline_content
+# _create_inline_content — returns DocumentReferenceContent | None
 # ============================================================================
 
 
@@ -333,34 +383,35 @@ class TestCreateInlineContent:
         text = ED(media_type="text/rtf", representation="B64", value=b64_data)
         result = _create_inline_content(text)
         assert result is not None
-        assert result["attachment"]["contentType"] == "text/rtf"
-        assert result["attachment"]["data"] == b64_data
+        assert isinstance(result, DocumentReferenceContent)
+        assert result.attachment.contentType == "text/rtf"
+        assert result.attachment.data == b"Hello RTF"
 
     def test_base64_whitespace_stripped(self) -> None:
         text = ED(representation="B64", value="AAAA\n BBBB\n CCCC")
         result = _create_inline_content(text)
         assert result is not None
-        assert result["attachment"]["data"] == "AAAABBBBCCCC"
+        d = result.model_dump(exclude_none=True, mode="json")
+        assert d["attachment"]["data"] == "AAAABBBBCCCC"
 
     def test_plain_text_encoded(self) -> None:
         text = ED(value="Some clinical note text")
         result = _create_inline_content(text)
         assert result is not None
-        assert result["attachment"]["contentType"] == "text/plain"
-        decoded = base64.b64decode(result["attachment"]["data"]).decode("utf-8")
-        assert decoded == "Some clinical note text"
+        assert result.attachment.contentType == "text/plain"
+        assert result.attachment.data == b"Some clinical note text"
 
     def test_default_content_type(self) -> None:
         text = ED(value="note")
         result = _create_inline_content(text)
         assert result is not None
-        assert result["attachment"]["contentType"] == "text/plain"
+        assert result.attachment.contentType == "text/plain"
 
     def test_custom_media_type(self) -> None:
-        text = ED(media_type="application/pdf", representation="B64", value="JVBER")
+        text = ED(media_type="application/pdf", representation="B64", value="JVBER0==")
         result = _create_inline_content(text)
         assert result is not None
-        assert result["attachment"]["contentType"] == "application/pdf"
+        assert result.attachment.contentType == "application/pdf"
 
     def test_empty_value_returns_none(self) -> None:
         assert _create_inline_content(ED()) is None
@@ -368,9 +419,18 @@ class TestCreateInlineContent:
     def test_b64_no_value_returns_none(self) -> None:
         assert _create_inline_content(ED(representation="B64")) is None
 
+    def test_inline_content_to_dict(self) -> None:
+        text = ED(value="note text", media_type="text/plain")
+        result = _create_inline_content(text)
+        assert result is not None
+        d = result.model_dump(exclude_none=True, mode="json")
+        assert "attachment" in d
+        assert d["attachment"]["contentType"] == "text/plain"
+        assert isinstance(d["attachment"]["data"], str)
+
 
 # ============================================================================
-# _create_content_list
+# _create_content_list — returns list[DocumentReferenceContent]
 # ============================================================================
 
 
@@ -379,7 +439,8 @@ class TestCreateContentList:
         text = ED(value="Some text")
         result = _create_content_list(text, section=None)
         assert len(result) == 1
-        assert "data" in result[0]["attachment"]
+        assert isinstance(result[0], DocumentReferenceContent)
+        assert result[0].attachment.data is not None
 
     def test_empty_text_returns_empty(self) -> None:
         text = ED()
@@ -389,7 +450,7 @@ class TestCreateContentList:
         text = ED(representation="B64", value="AQID", media_type="application/pdf")
         result = _create_content_list(text, section=None)
         assert len(result) == 1
-        assert result[0]["attachment"]["contentType"] == "application/pdf"
+        assert result[0].attachment.contentType == "application/pdf"
 
     def test_no_reference_content_without_section(self) -> None:
         from ccda_to_fhir.ccda.models.datatypes import TEL
@@ -401,40 +462,27 @@ class TestCreateContentList:
 
 
 # ============================================================================
-# _create_missing_content
+# _create_missing_content — returns list[JSONObject] (pre-serialized)
 # ============================================================================
 
 
 class TestCreateMissingContent:
-    def test_structure(self) -> None:
-        def fn(nf):
-            return {"url": "http://test", "valueCode": "unknown"}
-
-        result = _create_missing_content(fn)
+    def test_returns_single_element(self) -> None:
+        result = _create_missing_content()
         assert len(result) == 1
+        assert isinstance(result[0], dict)
         assert result[0]["attachment"]["contentType"] == "text/plain"
 
-    def test_calls_absent_reason_fn(self) -> None:
-        calls: list[str | None] = []
-
-        def fake_fn(nf: str | None) -> dict[str, str]:
-            calls.append(nf)
-            return {"url": "http://test", "valueCode": "unknown"}
-
-        _create_missing_content(fake_fn)
-        assert calls == [None]
-
-    def test_extension_in_data(self) -> None:
-        ext = {
-            "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
-            "valueCode": "unknown",
-        }
-        result = _create_missing_content(lambda nf: ext)
-        assert result[0]["attachment"]["_data"]["extension"] == [ext]
+    def test_data_absent_reason_extension(self) -> None:
+        result = _create_missing_content()
+        ext_list = result[0]["attachment"]["_data"]["extension"]
+        assert len(ext_list) == 1
+        assert ext_list[0]["url"] == "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+        assert ext_list[0]["valueCode"] == "unknown"
 
 
 # ============================================================================
-# _create_context
+# _create_context — returns DocumentReferenceContext | None
 # ============================================================================
 
 
@@ -443,21 +491,25 @@ class TestCreateContext:
 
     def test_period_from_ivl_ts_value(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
-        result = _create_context(act, lambda v: f"converted-{v}", self._NO_ENC)
+        result = _create_context(act, lambda v: "2026-01-15", self._NO_ENC)
         assert result is not None
-        assert result["period"]["start"] == "converted-20260115"
+        assert isinstance(result, DocumentReferenceContext)
+        assert result.period is not None
+        assert result.period.start == "2026-01-15"
 
     def test_period_from_ivl_ts_low(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(low=TS(value="20260110")))
-        result = _create_context(act, lambda v: f"converted-{v}", self._NO_ENC)
+        result = _create_context(act, lambda v: "2026-01-10", self._NO_ENC)
         assert result is not None
-        assert result["period"]["start"] == "converted-20260110"
+        assert result.period is not None
+        assert result.period.start == "2026-01-10"
 
     def test_ivl_ts_value_preferred_over_low(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260101", low=TS(value="20260110")))
-        result = _create_context(act, lambda v: f"converted-{v}", self._NO_ENC)
+        result = _create_context(act, lambda v: "2026-01-01", self._NO_ENC)
         assert result is not None
-        assert result["period"]["start"] == "converted-20260101"
+        assert result.period is not None
+        assert result.period.start == "2026-01-01"
 
     def test_no_effective_time_returns_none(self) -> None:
         act = _make_note_act()
@@ -477,8 +529,8 @@ class TestCreateContext:
         ]
         result = _create_context(act, lambda v: v, self._NO_ENC)
         assert result is not None
-        assert len(result["encounter"]) == 1
-        assert result["encounter"][0]["reference"].startswith("urn:uuid:")
+        assert len(result.encounter) == 1
+        assert result.encounter[0].reference.startswith("urn:uuid:")
 
     def test_multiple_encounters(self) -> None:
         act = _make_note_act()
@@ -494,7 +546,7 @@ class TestCreateContext:
         ]
         result = _create_context(act, lambda v: v, self._NO_ENC)
         assert result is not None
-        assert len(result["encounter"]) == 2
+        assert len(result.encounter) == 2
 
     def test_encounter_without_id_skipped(self) -> None:
         act = _make_note_act()
@@ -511,14 +563,28 @@ class TestCreateContext:
                 encounter=CDAEncounter(id=[II(root="enc-1")]),
             ),
         ]
-        result = _create_context(act, lambda v: v, self._NO_ENC)
+        result = _create_context(act, lambda v: "2026-01-15", self._NO_ENC)
         assert result is not None
-        assert "period" in result
-        assert "encounter" in result
+        assert result.period is not None
+        assert len(result.encounter) == 1
+
+    def test_context_to_dict_with_period_and_encounter(self) -> None:
+        act = _make_note_act(effective_time=IVL_TS(value="20260115"))
+        act.entry_relationship = [
+            EntryRelationship(
+                type_code="COMP",
+                encounter=CDAEncounter(id=[II(root="enc-1")]),
+            ),
+        ]
+        result = _create_context(act, lambda v: "2026-01-15", self._NO_ENC)
+        assert result is not None
+        d = result.model_dump(exclude_none=True, mode="json")
+        assert d["period"]["start"] == "2026-01-15"
+        assert d["encounter"][0]["reference"].startswith("urn:uuid:")
 
 
 # ============================================================================
-# _convert_relates_to
+# _convert_relates_to — returns list[DocumentReferenceRelatesTo]
 # ============================================================================
 
 
@@ -532,7 +598,8 @@ class TestConvertRelatesTo:
         ]
         result = _convert_relates_to(refs)
         assert len(result) == 1
-        assert result[0]["code"] == "replaces"
+        assert isinstance(result[0], DocumentReferenceRelatesTo)
+        assert result[0].code == "replaces"
 
     def test_apnd_maps_to_appends(self) -> None:
         refs = [
@@ -542,7 +609,7 @@ class TestConvertRelatesTo:
             )
         ]
         result = _convert_relates_to(refs)
-        assert result[0]["code"] == "appends"
+        assert result[0].code == "appends"
 
     def test_xfrm_maps_to_transforms(self) -> None:
         refs = [
@@ -552,7 +619,7 @@ class TestConvertRelatesTo:
             )
         ]
         result = _convert_relates_to(refs)
-        assert result[0]["code"] == "transforms"
+        assert result[0].code == "transforms"
 
     def test_refr_skipped(self) -> None:
         refs = [
@@ -601,7 +668,7 @@ class TestConvertRelatesTo:
             )
         ]
         result = _convert_relates_to(refs)
-        target_ref = result[0]["target"]["reference"]
+        target_ref = result[0].target.reference
         assert target_ref.startswith("urn:uuid:")
         # raw OID should NOT appear directly
         assert target_ref != "urn:uuid:doc-root"
@@ -615,7 +682,7 @@ class TestConvertRelatesTo:
         ]
         r1 = _convert_relates_to(refs)
         r2 = _convert_relates_to(refs)
-        assert r1[0]["target"]["reference"] == r2[0]["target"]["reference"]
+        assert r1[0].target.reference == r2[0].target.reference
 
     def test_multiple_references(self) -> None:
         refs = [
@@ -630,8 +697,8 @@ class TestConvertRelatesTo:
         ]
         result = _convert_relates_to(refs)
         assert len(result) == 2
-        assert result[0]["code"] == "replaces"
-        assert result[1]["code"] == "appends"
+        assert result[0].code == "replaces"
+        assert result[1].code == "appends"
 
     def test_mixed_valid_and_invalid(self) -> None:
         refs = [
@@ -644,10 +711,22 @@ class TestConvertRelatesTo:
         ]
         result = _convert_relates_to(refs)
         assert len(result) == 1
-        assert result[0]["code"] == "replaces"
+        assert result[0].code == "replaces"
 
     def test_empty_list(self) -> None:
         assert _convert_relates_to([]) == []
+
+    def test_relates_to_serializes_to_fhir_dict(self) -> None:
+        refs = [
+            Reference(
+                type_code="RPLC",
+                external_document=ExternalDocument(id=[II(root="doc-1", extension="v1")]),
+            )
+        ]
+        result = _convert_relates_to(refs)
+        d = result[0].model_dump(exclude_none=True, mode="json")
+        assert d["code"] == "replaces"
+        assert d["target"]["reference"].startswith("urn:uuid:")
 
 
 # ============================================================================
@@ -816,11 +895,15 @@ class TestType:
         assert doc_type["coding"][0]["code"] == "34133-9"
         assert doc_type["text"] == "Clinical Note"
 
-    def test_code_without_code_system(self, converter: NoteActivityConverter) -> None:
+    def test_code_without_code_system_preserves_display(
+        self, converter: NoteActivityConverter
+    ) -> None:
+        """Per FHIR R4: system SHALL co-occur with code. Display preserved."""
         act = _make_note_act(code=CD(code="34109-9", display_name="Note"))
         result = converter.convert(act)
         coding = result["type"]["coding"][0]
-        assert coding["code"] == "34109-9"
+        assert coding["display"] == "Note"
+        assert "code" not in coding
         assert "system" not in coding
 
 
@@ -960,7 +1043,7 @@ class TestContent:
             text=ED(
                 media_type="application/pdf",
                 representation="B64",
-                value="JVBER",
+                value="JVBER0==",
             )
         )
         result = converter.convert(act)
@@ -1056,7 +1139,7 @@ class TestFallbackEncounterReference:
         ctx = EncounterContext(reference="urn:uuid:enc-fallback")
         result = _create_context(act, lambda v: v, ctx)
         assert result is not None
-        assert result["encounter"][0]["reference"] == "urn:uuid:enc-fallback"
+        assert result.encounter[0].reference == "urn:uuid:enc-fallback"
 
     def test_explicit_encounter_takes_precedence(self) -> None:
         act = _make_note_act()
@@ -1070,8 +1153,8 @@ class TestFallbackEncounterReference:
         result = _create_context(act, lambda v: v, ctx)
         assert result is not None
         # Should use explicit encounter, not fallback
-        assert len(result["encounter"]) == 1
-        ref = result["encounter"][0]["reference"]
+        assert len(result.encounter) == 1
+        ref = result.encounter[0].reference
         assert ref != "urn:uuid:enc-fallback"
         assert ref.startswith("urn:uuid:")
 
@@ -1083,10 +1166,11 @@ class TestFallbackEncounterReference:
     def test_fallback_combined_with_period(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
         ctx = EncounterContext(reference="urn:uuid:enc-fb")
-        result = _create_context(act, lambda v: f"converted-{v}", ctx)
+        result = _create_context(act, lambda v: "2026-01-15", ctx)
         assert result is not None
-        assert result["period"]["start"] == "converted-20260115"
-        assert result["encounter"][0]["reference"] == "urn:uuid:enc-fb"
+        assert result.period is not None
+        assert result.period.start == "2026-01-15"
+        assert result.encounter[0].reference == "urn:uuid:enc-fb"
 
     def test_empty_context_no_encounter(self) -> None:
         act = _make_note_act()
@@ -1102,18 +1186,18 @@ class TestFallbackEncounterDisplay:
         ctx = EncounterContext(reference="urn:uuid:enc-fb", display="Pneumonia")
         result = _create_context(act, lambda v: v, ctx)
         assert result is not None
-        enc_ref = result["encounter"][0]
-        assert enc_ref["reference"] == "urn:uuid:enc-fb"
-        assert enc_ref["display"] == "Pneumonia"
+        enc_ref = result.encounter[0]
+        assert enc_ref.reference == "urn:uuid:enc-fb"
+        assert enc_ref.display == "Pneumonia"
 
     def test_no_display_when_none(self) -> None:
         act = _make_note_act()
         ctx = EncounterContext(reference="urn:uuid:enc-fb")
         result = _create_context(act, lambda v: v, ctx)
         assert result is not None
-        enc_ref = result["encounter"][0]
-        assert enc_ref == {"reference": "urn:uuid:enc-fb"}
-        assert "display" not in enc_ref
+        enc_ref = result.encounter[0]
+        assert enc_ref.reference == "urn:uuid:enc-fb"
+        assert enc_ref.display is None
 
     def test_display_not_applied_to_explicit_encounter(self) -> None:
         act = _make_note_act()
@@ -1126,16 +1210,17 @@ class TestFallbackEncounterDisplay:
         ctx = EncounterContext(reference="urn:uuid:enc-fb", display="Office visit")
         result = _create_context(act, lambda v: v, ctx)
         assert result is not None
-        enc_ref = result["encounter"][0]
-        assert "display" not in enc_ref
+        enc_ref = result.encounter[0]
+        assert enc_ref.display is None
 
     def test_display_combined_with_period(self) -> None:
         act = _make_note_act(effective_time=IVL_TS(value="20260115"))
         ctx = EncounterContext(reference="urn:uuid:enc-fb", display="Checkup")
-        result = _create_context(act, lambda v: f"converted-{v}", ctx)
+        result = _create_context(act, lambda v: "2026-01-15", ctx)
         assert result is not None
-        assert result["period"]["start"] == "converted-20260115"
-        assert result["encounter"][0]["display"] == "Checkup"
+        assert result.period is not None
+        assert result.period.start == "2026-01-15"
+        assert result.encounter[0].display == "Checkup"
 
 
 class TestFallbackEncounterIntegration:
@@ -1207,3 +1292,183 @@ class TestConvertNoteActivity:
         result = convert_note_activity(act, reference_registry=registry)
         assert result["resourceType"] == "DocumentReference"
         assert result["status"] == FHIRCodes.DocumentReferenceStatus.CURRENT
+
+
+# ============================================================================
+# Pydantic model type safety
+# ============================================================================
+
+
+class TestPydanticModelTypeSafety:
+    """Tests verifying that Pydantic models enforce type constraints."""
+
+    def test_fhir_coding_system_code_co_occurrence(self) -> None:
+        with pytest.raises(ValueError, match="system and code must both be provided"):
+            FHIRCoding(system="http://loinc.org")
+
+    def test_fhir_coding_code_without_system_rejected(self) -> None:
+        with pytest.raises(ValueError, match="system and code must both be provided"):
+            FHIRCoding(code="12345")
+
+    def test_fhir_coding_display_only_allowed(self) -> None:
+        coding = FHIRCoding(display="Some display")
+        assert coding.display == "Some display"
+        assert coding.system is None
+        assert coding.code is None
+
+    def test_attachment_frozen(self) -> None:
+        att = Attachment(contentType="text/plain", data="aGVsbG8=")
+        with pytest.raises(ValidationError):
+            att.data = b"world"
+
+    def test_relates_to_construction(self) -> None:
+        from fhir.resources.R4B.reference import Reference as LibRef
+
+        rt = DocumentReferenceRelatesTo(
+            code="replaces",
+            target=LibRef(reference="urn:uuid:doc-1"),
+        )
+        assert rt.code == "replaces"
+        assert rt.target.reference == "urn:uuid:doc-1"
+
+    def test_period_model_dump_omits_none(self) -> None:
+        p = Period(start="2026-01-01")
+        d = p.model_dump(exclude_none=True, mode="json")
+        assert d == {"start": "2026-01-01"}
+
+    def test_period_model_dump_both(self) -> None:
+        p = Period(start="2026-01-01", end="2026-02-01")
+        d = p.model_dump(exclude_none=True, mode="json")
+        assert d == {"start": "2026-01-01", "end": "2026-02-01"}
+
+    def test_attachment_extra_fields_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            Attachment(contentType="text/plain", bogus="field")
+
+    def test_doc_ref_content_extra_fields_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            DocumentReferenceContent(
+                attachment=Attachment(contentType="text/plain"),
+                bogus="field",
+            )
+
+
+# ============================================================================
+# Edge cases
+# ============================================================================
+
+
+class TestEdgeCases:
+    """Edge case tests for robustness and spec compliance."""
+
+    def test_ivl_ts_without_value_or_low(self) -> None:
+        """IVL_TS with only high and no value/low should not produce a period."""
+        act = _make_note_act(effective_time=IVL_TS(high=TS(value="20260201")))
+        result = _create_context(act, lambda v: v, EncounterContext())
+        assert result is None
+
+    def test_entry_relationship_without_encounter(self) -> None:
+        """EntryRelationship with no encounter should be skipped."""
+        act = _make_note_act()
+        act.entry_relationship = [EntryRelationship(type_code="COMP")]
+        result = _create_context(act, lambda v: v, EncounterContext())
+        assert result is None
+
+    def test_convert_type_with_translation_but_no_primary(self, mapper: CodeSystemMapper) -> None:
+        """Translation codes present but primary code is None."""
+        code = CD(
+            display_name="Note",
+            translation=[
+                CD(
+                    code="34117-2",
+                    code_system="2.16.840.1.113883.6.1",
+                    display_name="H&P",
+                )
+            ],
+        )
+        # No primary code → falls back
+        result = _convert_type(code, mapper)
+        assert result.coding[0].code == "34133-9"
+
+    def test_make_coding_empty_string_code(self, mapper: CodeSystemMapper) -> None:
+        """Empty string code is falsy, so _make_coding returns None."""
+        result = _make_coding("", None, None, mapper)
+        assert result is None
+
+    def test_inline_content_unicode(self) -> None:
+        """Unicode text should be properly base64 encoded."""
+        text = ED(value="Diagnose: Diabetes mellitus Typ 2 (E11.9)")
+        result = _create_inline_content(text)
+        assert result is not None
+        decoded = result.attachment.data.decode("utf-8")
+        assert "Diagnose" in decoded
+        assert "Typ 2" in decoded
+
+    def test_multiple_encounters_all_included(self) -> None:
+        """All valid encounters should be included in context."""
+        act = _make_note_act()
+        act.entry_relationship = [
+            EntryRelationship(
+                type_code="COMP",
+                encounter=CDAEncounter(id=[II(root=f"enc-{i}")]),
+            )
+            for i in range(5)
+        ]
+        result = _create_context(act, lambda v: v, EncounterContext())
+        assert result is not None
+        assert len(result.encounter) == 5
+
+    def test_relates_to_all_valid_type_codes(self) -> None:
+        """All three valid type codes should be mapped."""
+        refs = [
+            Reference(
+                type_code=tc,
+                external_document=ExternalDocument(id=[II(root=f"doc-{tc}")]),
+            )
+            for tc in ("RPLC", "APND", "XFRM")
+        ]
+        result = _convert_relates_to(refs)
+        assert len(result) == 3
+        codes = {r.code for r in result}
+        assert codes == {"replaces", "appends", "transforms"}
+
+    def test_full_document_reference_structure(self, converter: NoteActivityConverter) -> None:
+        """Full integration: all fields populated produce a valid structure."""
+        act = _make_note_act(
+            code=CD(
+                code="34109-9",
+                code_system="2.16.840.1.113883.6.1",
+                display_name="Note",
+            ),
+            text=ED(value="Clinical findings..."),
+            effective_time=IVL_TS(value="20260115"),
+            authors=[_make_author()],
+        )
+        act.reference = [
+            Reference(
+                type_code="RPLC",
+                external_document=ExternalDocument(id=[II(root="prev-doc")]),
+            )
+        ]
+        act.entry_relationship = [
+            EntryRelationship(
+                type_code="COMP",
+                encounter=CDAEncounter(id=[II(root="enc-1")]),
+            )
+        ]
+        result = converter.convert(act)
+
+        assert result["resourceType"] == "DocumentReference"
+        assert isinstance(result["id"], str)
+        assert result["status"] == FHIRCodes.DocumentReferenceStatus.CURRENT
+        assert result["docStatus"] == "final"
+        assert result["type"]["coding"][0]["code"] == "34109-9"
+        assert len(result["category"]) == 1
+        assert result["subject"]["reference"] == "urn:uuid:test-patient"
+        assert result["date"] == "2026-01-20T16:00:00-05:00"
+        assert len(result["author"]) == 1
+        assert len(result["content"]) == 1
+        assert result["context"]["period"]["start"] == "2026-01-15"
+        assert len(result["context"]["encounter"]) == 1
+        assert len(result["relatesTo"]) == 1
+        assert result["relatesTo"][0]["code"] == "replaces"
