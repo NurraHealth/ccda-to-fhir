@@ -298,7 +298,7 @@ class ObservationConverter(BaseConverter[Observation]):
         # 15. Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=observation, section=section)
         if narrative:
-            fhir_obs["text"] = narrative
+            fhir_obs["text"] = narrative.model_dump(exclude_none=True)
 
         # US Core STU6.1 Constraint us-core-2:
         # "If there is no component or hasMember element then either a value[x] or
@@ -558,7 +558,7 @@ class ObservationConverter(BaseConverter[Observation]):
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=organizer, section=section)
         if narrative:
-            panel["text"] = narrative
+            panel["text"] = narrative.model_dump(exclude_none=True)
 
         # US Core STU6.1 Constraint us-core-2:
         # "If there is no component or hasMember element then either a value[x] or

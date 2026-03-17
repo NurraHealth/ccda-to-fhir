@@ -174,7 +174,7 @@ class AppointmentConverter(BaseConverter[CCDAEncounter]):
         # Narrative
         narrative = self._generate_narrative(entry=encounter, section=section)
         if narrative:
-            fhir_appointment["text"] = narrative
+            fhir_appointment["text"] = narrative.model_dump(exclude_none=True)
 
         return fhir_appointment
 

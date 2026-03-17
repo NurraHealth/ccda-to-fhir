@@ -231,7 +231,7 @@ class MedicationRequestConverter(BaseConverter[SubstanceAdministration]):
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=substance_admin, section=section)
         if narrative:
-            med_request["text"] = narrative
+            med_request["text"] = narrative.model_dump(exclude_none=True)
 
         return med_request
 

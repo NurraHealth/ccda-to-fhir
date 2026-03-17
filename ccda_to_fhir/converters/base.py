@@ -7,6 +7,8 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
+from fhir.resources.narrative import Narrative
+
 from ccda_to_fhir.ccda.models.datatypes import CD, CE
 from ccda_to_fhir.constants import FHIRSystems
 from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
@@ -685,7 +687,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
 
         return None
 
-    def _generate_narrative(self, entry=None, section=None) -> JSONObject | None:
+    def _generate_narrative(self, entry=None, section=None) -> Narrative | None:
         """Generate FHIR Narrative from C-CDA entry text element.
 
         Per C-CDA on FHIR IG, supports three scenarios:
@@ -746,7 +748,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     xhtml_div = (
                         f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
                     )
-                    return {"status": "generated", "div": xhtml_div}
+                    return Narrative(status="generated", div=xhtml_div)
                 return None
 
             from ccda_to_fhir.utils.struc_doc_utils import element_to_html, find_element_by_id
@@ -760,7 +762,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     xhtml_div = (
                         f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
                     )
-                    return {"status": "generated", "div": xhtml_div}
+                    return Narrative(status="generated", div=xhtml_div)
                 return None
 
             # Convert referenced element to HTML
@@ -772,7 +774,7 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                     xhtml_div = (
                         f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
                     )
-                    return {"status": "generated", "div": xhtml_div}
+                    return Narrative(status="generated", div=xhtml_div)
                 return None
 
             # Check if there's also mixed content (Scenario 2)
@@ -790,13 +792,13 @@ class BaseConverter(ABC, Generic[CCDAModel]):
                 # Scenario 1: Reference only
                 xhtml_div = f'<div xmlns="http://www.w3.org/1999/xhtml">{referenced_html}</div>'
 
-            return {"status": "generated", "div": xhtml_div}
+            return Narrative(status="generated", div=xhtml_div)
 
         # Scenario 3: Entry has text value only (no reference)
         elif direct_text:
             escaped_text = html.escape(direct_text)
             xhtml_div = f'<div xmlns="http://www.w3.org/1999/xhtml"><p>{escaped_text}</p></div>'
-            return {"status": "generated", "div": xhtml_div}
+            return Narrative(status="generated", div=xhtml_div)
 
         # No text content at all
         return None

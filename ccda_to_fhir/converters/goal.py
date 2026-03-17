@@ -232,7 +232,7 @@ class GoalConverter(BaseConverter[Observation]):
         # 12. Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=observation, section=section)
         if narrative:
-            fhir_goal["text"] = narrative
+            fhir_goal["text"] = narrative.model_dump(exclude_none=True)
 
         return fhir_goal
 

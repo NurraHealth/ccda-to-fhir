@@ -321,7 +321,7 @@ class AllergyIntoleranceConverter(BaseConverter[Observation]):
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=observation, section=self.section)
         if narrative:
-            allergy["text"] = narrative
+            allergy["text"] = narrative.model_dump(exclude_none=True)
 
         return allergy
 

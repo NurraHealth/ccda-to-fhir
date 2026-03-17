@@ -173,7 +173,7 @@ class EncounterConverter(BaseConverter[CCDAEncounter]):
         # Narrative (from entry text reference, per C-CDA on FHIR IG)
         narrative = self._generate_narrative(entry=encounter, section=section)
         if narrative:
-            fhir_encounter["text"] = narrative
+            fhir_encounter["text"] = narrative.model_dump(exclude_none=True)
 
         return fhir_encounter
 
