@@ -72,7 +72,7 @@ class PractitionerConverter(BaseConverter["AssignedAuthor | AssignedEntity"]):
         if assigned.assigned_person and assigned.assigned_person.name:
             names = self.convert_human_names(assigned.assigned_person.name)
             if names:
-                practitioner["name"] = names
+                practitioner["name"] = [n.model_dump(exclude_none=True) for n in names]
 
         # Map telecom (phone, email)
         if assigned.telecom:

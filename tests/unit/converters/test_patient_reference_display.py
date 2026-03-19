@@ -4,6 +4,8 @@ Tests that get_patient_reference() includes display text extracted from the
 registered Patient resource name, per FHIR R4 Reference.display (0..1).
 """
 
+from fhir.resources.R4B.humanname import HumanName
+
 from ccda_to_fhir.converters.references import ReferenceRegistry
 from ccda_to_fhir.types import format_human_name_display
 
@@ -43,6 +45,26 @@ class TestFormatHumanNameDisplay:
             format_human_name_display({"text": "  ", "family": "Doe", "given": ["Jane"]})
             == "Jane Doe"
         )
+
+
+class TestFormatHumanNameDisplayR4BModel:
+    """Test format_human_name_display with R4B HumanName model instances."""
+
+    def test_given_and_family(self):
+        name = HumanName(family="Smith", given=["John"])
+        assert format_human_name_display(name) == "John Smith"
+
+    def test_prefers_text_over_parts(self):
+        name = HumanName(text="Dr. John H. Smith III", family="Smith", given=["John"])
+        assert format_human_name_display(name) == "Dr. John H. Smith III"
+
+    def test_prefix_given_family_suffix(self):
+        name = HumanName(prefix=["Dr."], given=["Robert"], family="Jones", suffix=["III"])
+        assert format_human_name_display(name) == "Dr. Robert Jones III"
+
+    def test_returns_none_when_empty(self):
+        name = HumanName()
+        assert format_human_name_display(name) is None
 
 
 class TestGetPatientReferenceDisplay:

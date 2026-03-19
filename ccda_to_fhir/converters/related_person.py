@@ -85,7 +85,7 @@ class RelatedPersonConverter(BaseConverter["RelatedEntity"]):
         if related_entity.related_person and related_entity.related_person.name:
             names = self.convert_human_names(related_entity.related_person.name)
             if names:
-                related_person["name"] = names
+                related_person["name"] = [n.model_dump(exclude_none=True) for n in names]
 
         # Map telecom (phone, email)
         if related_entity.telecom:
