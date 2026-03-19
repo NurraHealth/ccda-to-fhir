@@ -129,6 +129,26 @@ class TestConvertHumanNames:
         assert result[0].period.start == "2010-01-01"
         assert result[0].period.end == "2020-12-31"
 
+    def test_converts_period_only_name(self, converter):
+        """Test name with only valid_time (no given/family/prefix/suffix)."""
+        names = [
+            PN(
+                valid_time=IVL_TS(
+                    low=TS(value="20100101"),
+                    high=TS(value="20201231"),
+                ),
+            )
+        ]
+
+        result = converter.convert_human_names(names)
+
+        assert len(result) == 1
+        assert result[0].period is not None
+        assert result[0].period.start == "2010-01-01"
+        assert result[0].period.end == "2020-12-31"
+        assert result[0].given is None
+        assert result[0].family is None
+
     def test_converts_multiple_names(self, converter):
         """Test multiple names (legal + nickname)."""
         names = [
