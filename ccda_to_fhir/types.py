@@ -126,33 +126,21 @@ def format_human_name_display(name: HumanName | JSONObject) -> str | None:
 
     Returns None if no meaningful parts are present.
     """
-    if isinstance(name, HumanName):
-        if name.text and name.text.strip():
-            return name.text.strip()
+    # Normalize to dict so we have a single code path
+    d: JSONObject = name.model_dump(exclude_none=True) if isinstance(name, HumanName) else name
 
-        parts: list[str] = [
-            *(name.prefix or []),
-            *(name.given or []),
-        ]
-        if name.family:
-            parts.append(name.family)
-        parts.extend(name.suffix or [])
-
-        return " ".join(p for p in parts if p) or None
-
-    # Dict fallback (for serialized FHIR resources)
-    text = name.get("text")
+    text = d.get("text")
     if text and isinstance(text, str) and text.strip():
         return text.strip()
 
-    parts = [
-        *name.get("prefix", []),
-        *name.get("given", []),
+    parts: list[str] = [
+        *d.get("prefix", []),
+        *d.get("given", []),
     ]
-    family = name.get("family")
+    family = d.get("family")
     if family:
         parts.append(family)
-    parts.extend(name.get("suffix", []))
+    parts.extend(d.get("suffix", []))
 
     return " ".join(p for p in parts if p) or None
 

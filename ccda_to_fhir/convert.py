@@ -554,7 +554,8 @@ class DocumentConverter:
                         # Store patient ID for RelatedPerson references
                         if "id" in patient:
                             self._patient_id = patient["id"]
-                        # Extract display from converted name (first patient only)
+                        # Extract display from converted name (first patient only).
+                        # names[0] is already a dict here (serialized via model_dump above).
                         if self.reference_registry.patient_display is None:
                             names = patient.get("name")
                             if names and isinstance(names, list) and isinstance(names[0], dict):
