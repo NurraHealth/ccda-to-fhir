@@ -189,7 +189,7 @@ def convert_careteam_organizer(
         return resources
     except ValueError as e:
         if "CareTeam requires at least one participant" in str(e):
-            logger.info("Skipping CareTeam with no participants: %s", e)
+            logger.info(f"Skipping CareTeam with no participants: {e}")
             return []
         logger.error("Error converting care team organizer", exc_info=True)
         raise
