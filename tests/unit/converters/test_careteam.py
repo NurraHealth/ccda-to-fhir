@@ -1532,3 +1532,55 @@ class TestCareTeamTypeSafety:
         )
         assert converter.code_system_mapper is mapper
         assert converter.reference_registry is registry
+
+
+# ============================================================================
+# convert_careteam_organizer — top-level function tests
+# ============================================================================
+
+
+class TestConvertCareTeamOrganizer:
+    """Tests for the convert_careteam_organizer top-level function."""
+
+    @pytest.fixture
+    def registry(self) -> "ReferenceRegistry":
+        from ccda_to_fhir.converters.references import ReferenceRegistry
+
+        reg = ReferenceRegistry()
+        reg.register_resource({"resourceType": "Patient", "id": "patient-123"})
+        return reg
+
+    @pytest.fixture
+    def organizer_no_participants(self) -> Organizer:
+        return Organizer(
+            class_code="CLUSTER",
+            mood_code="EVN",
+            template_id=[II(root="2.16.840.1.113883.10.20.22.4.500", extension="2022-06-01")],
+            id=[II(root="2.16.840.1.113883.19.5", extension="team-no-members")],
+            code=CE(code="86744-0", code_system="2.16.840.1.113883.6.1"),
+            status_code=CS(code="active"),
+            effective_time=IVL_TS(low=TS(value="20230115")),
+            component=[],
+        )
+
+    def test_no_participants_returns_empty_list(self, registry, organizer_no_participants) -> None:
+        """When the organizer has no participants, return [] instead of raising."""
+        from ccda_to_fhir.convert import convert_careteam_organizer
+
+        result = convert_careteam_organizer(
+            organizer_no_participants,
+            reference_registry=registry,
+        )
+        assert result == []
+
+    def test_no_participants_does_not_raise(self, registry, organizer_no_participants) -> None:
+        """The no-participant ValueError must be swallowed, not propagated."""
+        from ccda_to_fhir.convert import convert_careteam_organizer
+
+        try:
+            convert_careteam_organizer(
+                organizer_no_participants,
+                reference_registry=registry,
+            )
+        except ValueError:
+            pytest.fail("convert_careteam_organizer raised ValueError for missing participants")
