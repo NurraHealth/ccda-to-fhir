@@ -4,7 +4,7 @@ from ccda_to_fhir.convert import DocumentConverter
 from ccda_to_fhir.types import FHIRResourceDict
 
 
-def test_propagates_document_encounter_to_supported_clinical_resources() -> None:
+def test_propagates_document_encounter_only_to_document_references() -> None:
     converter = DocumentConverter()
     resources: list[FHIRResourceDict] = [
         {"resourceType": "Encounter", "id": "encounter-1"},
@@ -35,7 +35,7 @@ def test_propagates_document_encounter_to_supported_clinical_resources() -> None
 
     converter._propagate_document_encounter_context(resources, "urn:uuid:encounter-1")
 
-    direct_encounter_types = {
+    clinical_resource_types = {
         "AllergyIntolerance",
         "Condition",
         "DiagnosticReport",
@@ -46,14 +46,13 @@ def test_propagates_document_encounter_to_supported_clinical_resources() -> None
         "ServiceRequest",
     }
     for resource in resources:
-        resource_type = resource["resourceType"]
-        if resource_type in direct_encounter_types:
-            assert resource["encounter"] == {"reference": "urn:uuid:encounter-1"}
+        if resource["resourceType"] in clinical_resource_types:
+            assert "encounter" not in resource
 
     context_types = {"MedicationDispense", "MedicationStatement"}
     for resource in resources:
         if resource["resourceType"] in context_types:
-            assert resource["context"] == {"reference": "urn:uuid:encounter-1"}
+            assert "context" not in resource
 
     doc_ref = next(r for r in resources if r["resourceType"] == "DocumentReference")
     assert doc_ref["context"] == {
@@ -97,3 +96,44 @@ def test_preserves_existing_explicit_encounter_context() -> None:
 
     doc_ref = next(r for r in resources if r["resourceType"] == "DocumentReference")
     assert doc_ref["context"] == {"encounter": [{"reference": "urn:uuid:explicit-encounter"}]}
+
+
+def test_document_encounter_does_not_override_or_create_clinical_context() -> None:
+    converter = DocumentConverter()
+    resources: list[FHIRResourceDict] = [
+        {"resourceType": "Encounter", "id": "document-encounter"},
+        {
+            "resourceType": "Procedure",
+            "id": "historical-procedure",
+            "performedDateTime": "1977-08-26",
+        },
+        {
+            "resourceType": "Observation",
+            "id": "future-result",
+            "effectiveDateTime": "2026-08-15",
+        },
+        {
+            "resourceType": "Condition",
+            "id": "explicit-condition",
+            "encounter": {"reference": "urn:uuid:explicit-encounter"},
+        },
+        {
+            "resourceType": "MedicationStatement",
+            "id": "explicit-medication",
+            "context": {"reference": "urn:uuid:explicit-encounter"},
+        },
+    ]
+
+    converter._propagate_document_encounter_context(resources, "urn:uuid:document-encounter")
+
+    historical_procedure = next(r for r in resources if r["id"] == "historical-procedure")
+    assert "encounter" not in historical_procedure
+
+    future_result = next(r for r in resources if r["id"] == "future-result")
+    assert "encounter" not in future_result
+
+    explicit_condition = next(r for r in resources if r["id"] == "explicit-condition")
+    assert explicit_condition["encounter"] == {"reference": "urn:uuid:explicit-encounter"}
+
+    explicit_medication = next(r for r in resources if r["id"] == "explicit-medication")
+    assert explicit_medication["context"] == {"reference": "urn:uuid:explicit-encounter"}

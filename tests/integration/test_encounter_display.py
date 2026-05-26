@@ -96,9 +96,9 @@ class TestEncounterDisplayFallback:
 
 
 class TestDocumentEncounterContext:
-    """Regression tests for propagating componentOf/encompassingEncounter context."""
+    """Regression tests for componentOf/encompassingEncounter document context."""
 
-    def test_athena_ccd_clinical_resources_share_resolved_document_encounter(self) -> None:
+    def test_athena_ccd_does_not_assign_document_encounter_to_clinical_resources(self) -> None:
         xml = (DOCUMENTS_DIR / "athena_ccd.xml").read_text()
         result = convert_document(xml)
         bundle = result["bundle"]
@@ -115,9 +115,9 @@ class TestDocumentEncounterContext:
         ):
             matching_resources = [r for r in resources if r["resourceType"] == resource_type]
             assert matching_resources, f"Expected {resource_type} resources in fixture"
-            assert {_resource_encounter_reference(resource) for resource in matching_resources} == {
-                encounter_reference
-            }
+            assert encounter_reference not in {
+                _resource_encounter_reference(resource) for resource in matching_resources
+            }, f"{resource_type} should not inherit the document-level encounter"
 
         doc_refs = _get_doc_refs(bundle)
         assert doc_refs, "Expected DocumentReference resources in fixture"

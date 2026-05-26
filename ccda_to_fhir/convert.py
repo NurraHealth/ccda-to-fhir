@@ -139,25 +139,6 @@ RESOURCE_TYPE_MAPPING: dict[str, type[FHIRAbstractModel]] = {
     "Appointment": Appointment,
 }
 
-DOCUMENT_ENCOUNTER_FIELD_RESOURCE_TYPES = frozenset(
-    {
-        "AllergyIntolerance",
-        "Condition",
-        "DiagnosticReport",
-        "Immunization",
-        "MedicationRequest",
-        "Observation",
-        "Procedure",
-        "ServiceRequest",
-    }
-)
-DOCUMENT_CONTEXT_FIELD_RESOURCE_TYPES = frozenset(
-    {
-        "MedicationDispense",
-        "MedicationStatement",
-    }
-)
-
 
 def convert_careteam_organizer(
     organizer: Organizer,
@@ -589,13 +570,17 @@ class DocumentConverter:
         resources: list[FHIRResourceDict],
         encounter_reference: str | None,
     ) -> None:
-        """Attach document-level encounter context to clinical resources that lack it.
+        """Attach document-level encounter context to document metadata.
 
         C-CDA ``componentOf/encompassingEncounter`` supplies the clinical encounter
-        context for the document. Entry resources often do not repeat that pointer,
-        so propagate the resolved document Encounter only where FHIR R4B has a
-        resource-specific encounter/context field and the resource has no explicit
-        encounter already.
+        context for the document. It is not a safe blanket encounter for every
+        entry in a longitudinal CCD: problem list items, historical procedures,
+        medication history, and old results can be documented in the encounter
+        note without having occurred during that encounter.
+
+        Keep this propagation scoped to DocumentReference metadata. Resource-level
+        FHIR encounter/context fields are populated only by explicit entry-level
+        relationships in the resource converters.
         """
         if not encounter_reference:
             return
@@ -608,16 +593,6 @@ class DocumentConverter:
         for resource in resources:
             resource_type = resource.get("resourceType")
             if not isinstance(resource_type, str):
-                continue
-
-            if resource_type in DOCUMENT_ENCOUNTER_FIELD_RESOURCE_TYPES:
-                if not self._reference_string(resource.get("encounter")):
-                    resource["encounter"] = encounter_ref.copy()
-                continue
-
-            if resource_type in DOCUMENT_CONTEXT_FIELD_RESOURCE_TYPES:
-                if not self._reference_string(resource.get("context")):
-                    resource["context"] = encounter_ref.copy()
                 continue
 
             if resource_type == "DocumentReference":
