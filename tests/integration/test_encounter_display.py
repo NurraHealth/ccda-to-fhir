@@ -13,6 +13,11 @@ from ccda_to_fhir.convert import convert_document
 DOCUMENTS_DIR = Path(__file__).parent / "fixtures" / "documents"
 
 
+def _get_resources(bundle: dict) -> list[dict]:
+    """Extract Bundle resources."""
+    return [entry["resource"] for entry in bundle["entry"]]
+
+
 def _get_doc_refs(bundle: dict) -> list[dict]:
     """Extract all DocumentReference resources from a bundle."""
     return [
@@ -20,6 +25,26 @@ def _get_doc_refs(bundle: dict) -> list[dict]:
         for entry in bundle["entry"]
         if entry["resource"]["resourceType"] == "DocumentReference"
     ]
+
+
+def _first_encounter_reference(resources: list[dict]) -> str:
+    encounter = next(r for r in resources if r["resourceType"] == "Encounter")
+    return f"urn:uuid:{encounter['id']}"
+
+
+def _resource_encounter_reference(resource: dict) -> str | None:
+    encounter = resource.get("encounter")
+    if isinstance(encounter, dict):
+        reference = encounter.get("reference")
+        if isinstance(reference, str):
+            return reference
+
+    context = resource.get("context")
+    if isinstance(context, dict):
+        reference = context.get("reference")
+        if isinstance(reference, str):
+            return reference
+    return None
 
 
 class TestEncounterDisplayFromCode:
@@ -68,6 +93,41 @@ class TestEncounterDisplayFallback:
                     )
                     refs_with_display += 1
         assert refs_with_display >= 1, "Expected at least one encounter ref with fallback display"
+
+
+class TestDocumentEncounterContext:
+    """Regression tests for propagating componentOf/encompassingEncounter context."""
+
+    def test_athena_ccd_clinical_resources_share_resolved_document_encounter(self) -> None:
+        xml = (DOCUMENTS_DIR / "athena_ccd.xml").read_text()
+        result = convert_document(xml)
+        bundle = result["bundle"]
+        resources = _get_resources(bundle)
+        encounter_reference = _first_encounter_reference(resources)
+
+        for resource_type in (
+            "AllergyIntolerance",
+            "Condition",
+            "MedicationStatement",
+            "Observation",
+            "Procedure",
+            "ServiceRequest",
+        ):
+            matching_resources = [r for r in resources if r["resourceType"] == resource_type]
+            assert matching_resources, f"Expected {resource_type} resources in fixture"
+            assert {_resource_encounter_reference(resource) for resource in matching_resources} == {
+                encounter_reference
+            }
+
+        doc_refs = _get_doc_refs(bundle)
+        assert doc_refs, "Expected DocumentReference resources in fixture"
+        for doc_ref in doc_refs:
+            encounter_values = doc_ref["context"]["encounter"]
+            assert len(encounter_values) == 1
+            assert encounter_values[0]["reference"] == encounter_reference
+
+        composition = next(r for r in resources if r["resourceType"] == "Composition")
+        assert composition["encounter"] == {"reference": encounter_reference}
 
 
 class TestEncounterDisplayEndToEnd:
