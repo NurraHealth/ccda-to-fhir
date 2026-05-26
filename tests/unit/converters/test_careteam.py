@@ -22,6 +22,7 @@ from ccda_to_fhir.ccda.models.performer import (
 )
 from ccda_to_fhir.constants import FHIRCodes
 from ccda_to_fhir.converters.careteam import CareTeamConverter
+from ccda_to_fhir.converters.references import ReferenceRegistry
 
 
 @pytest.fixture
@@ -1543,9 +1544,7 @@ class TestConvertCareTeamOrganizer:
     """Tests for the convert_careteam_organizer top-level function."""
 
     @pytest.fixture
-    def registry(self) -> "ReferenceRegistry":
-        from ccda_to_fhir.converters.references import ReferenceRegistry
-
+    def registry(self) -> ReferenceRegistry:
         reg = ReferenceRegistry()
         reg.register_resource({"resourceType": "Patient", "id": "patient-123"})
         return reg

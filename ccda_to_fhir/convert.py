@@ -49,6 +49,7 @@ from ccda_to_fhir.types import (
     EncounterContext,
     FHIRResourceDict,
     JSONObject,
+    JSONValue,
     ValidationStats,
     format_human_name_display,
 )
@@ -137,6 +138,25 @@ RESOURCE_TYPE_MAPPING: dict[str, type[FHIRAbstractModel]] = {
     "Coverage": Coverage,
     "Appointment": Appointment,
 }
+
+DOCUMENT_ENCOUNTER_FIELD_RESOURCE_TYPES = frozenset(
+    {
+        "AllergyIntolerance",
+        "Condition",
+        "DiagnosticReport",
+        "Immunization",
+        "MedicationRequest",
+        "Observation",
+        "Procedure",
+        "ServiceRequest",
+    }
+)
+DOCUMENT_CONTEXT_FIELD_RESOURCE_TYPES = frozenset(
+    {
+        "MedicationDispense",
+        "MedicationStatement",
+    }
+)
 
 
 def convert_careteam_organizer(
@@ -503,6 +523,121 @@ class DocumentConverter:
             return self.validator.get_stats()
         return ValidationStats()
 
+    @staticmethod
+    def _reference_string(value: JSONValue | None) -> str | None:
+        """Extract a FHIR Reference.reference string from a serialized reference."""
+        if not isinstance(value, dict):
+            return None
+
+        reference = value.get("reference")
+        if isinstance(reference, str) and reference:
+            return reference
+        return None
+
+    @staticmethod
+    def _encounter_reference_candidates(resource: FHIRResourceDict) -> set[str]:
+        """Return reference strings that can address an Encounter resource in this bundle."""
+        if resource.get("resourceType") != "Encounter":
+            return set()
+
+        resource_id = resource.get("id")
+        if not isinstance(resource_id, str) or not resource_id:
+            return set()
+
+        return {f"urn:uuid:{resource_id}", f"Encounter/{resource_id}"}
+
+    def _valid_encounter_references(self, resources: list[FHIRResourceDict]) -> set[str]:
+        """Build the set of Encounter references backed by bundle resources."""
+        references: set[str] = set()
+        for resource in resources:
+            references.update(self._encounter_reference_candidates(resource))
+        return references
+
+    def _document_reference_has_valid_encounter(
+        self,
+        context: JSONObject,
+        valid_encounter_references: set[str],
+    ) -> bool:
+        """Check whether a DocumentReference context has a resolvable Encounter reference."""
+        encounter_values = context.get("encounter")
+        if not isinstance(encounter_values, list):
+            return False
+
+        for encounter_value in encounter_values:
+            reference = self._reference_string(encounter_value)
+            if reference and reference in valid_encounter_references:
+                return True
+        return False
+
+    @staticmethod
+    def _document_reference_encounter_display(context: JSONObject) -> str | None:
+        """Return the first existing DocumentReference encounter display, if present."""
+        encounter_values = context.get("encounter")
+        if not isinstance(encounter_values, list):
+            return None
+
+        for encounter_value in encounter_values:
+            if not isinstance(encounter_value, dict):
+                continue
+            display = encounter_value.get("display")
+            if isinstance(display, str) and display:
+                return display
+        return None
+
+    def _propagate_document_encounter_context(
+        self,
+        resources: list[FHIRResourceDict],
+        encounter_reference: str | None,
+    ) -> None:
+        """Attach document-level encounter context to clinical resources that lack it.
+
+        C-CDA ``componentOf/encompassingEncounter`` supplies the clinical encounter
+        context for the document. Entry resources often do not repeat that pointer,
+        so propagate the resolved document Encounter only where FHIR R4B has a
+        resource-specific encounter/context field and the resource has no explicit
+        encounter already.
+        """
+        if not encounter_reference:
+            return
+
+        valid_encounter_references = self._valid_encounter_references(resources)
+        valid_encounter_references.add(encounter_reference)
+
+        encounter_ref: JSONObject = {"reference": encounter_reference}
+
+        for resource in resources:
+            resource_type = resource.get("resourceType")
+            if not isinstance(resource_type, str):
+                continue
+
+            if resource_type in DOCUMENT_ENCOUNTER_FIELD_RESOURCE_TYPES:
+                if not self._reference_string(resource.get("encounter")):
+                    resource["encounter"] = encounter_ref.copy()
+                continue
+
+            if resource_type in DOCUMENT_CONTEXT_FIELD_RESOURCE_TYPES:
+                if not self._reference_string(resource.get("context")):
+                    resource["context"] = encounter_ref.copy()
+                continue
+
+            if resource_type == "DocumentReference":
+                context_value = resource.get("context")
+                context: JSONObject
+                if isinstance(context_value, dict):
+                    context = context_value
+                else:
+                    context = {}
+                    resource["context"] = context
+
+                if not self._document_reference_has_valid_encounter(
+                    context, valid_encounter_references
+                ):
+                    doc_ref_encounter = encounter_ref.copy()
+                    display = self._document_reference_encounter_display(context)
+                    if display:
+                        doc_ref_encounter["display"] = display
+                    context["encounter"] = [doc_ref_encounter]
+
     def convert(self, ccda_doc: ClinicalDocument) -> ConversionResult:
         """Convert a C-CDA document to a FHIR Bundle with metadata.
 
@@ -528,7 +663,8 @@ class DocumentConverter:
             "errors": [],
         }
 
-        resources = []
+        resources: list[FHIRResourceDict] = []
+        document_encounter_reference: str | None = None
         # Section→resource mapping for Composition.section[].entry references
         section_resource_map: dict[str, list[FHIRResourceDict]] = {}
 
@@ -926,6 +1062,9 @@ class DocumentConverter:
                     if self._encounters_are_duplicates(header_encounter, body_enc):
                         # Merge unique header data into body encounter
                         self._merge_header_into_body_encounter(header_encounter, body_enc)
+                        body_id = body_enc.get("id")
+                        if isinstance(body_id, str) and body_id:
+                            document_encounter_reference = f"urn:uuid:{body_id}"
                         duplicate_found = True
                         logger.debug(
                             f"Header encounter {header_id} merged into body encounter {body_enc.get('id')}"
@@ -935,6 +1074,8 @@ class DocumentConverter:
                 # Only add header encounter if it's not a duplicate
                 if not duplicate_found:
                     encounters.append(header_encounter)
+                    if isinstance(header_id, str) and header_id:
+                        document_encounter_reference = f"urn:uuid:{header_id}"
                     logger.debug(
                         f"Added header encounter {header_id} to bundle (no body duplicate)"
                     )
@@ -1102,6 +1243,8 @@ class DocumentConverter:
         resources.extend(related_persons)
         for related_person in related_persons:
             self.reference_registry.register_resource(related_person)
+
+        self._propagate_document_encounter_context(resources, document_encounter_reference)
 
         # Create Composition resource (required first entry in document bundle)
         composition_converter = CompositionConverter(
@@ -1647,7 +1790,9 @@ class DocumentConverter:
                                 if gender_identity_codeable:
                                     gender_identity_ext = {
                                         "url": FHIRSystems.US_CORE_GENDER_IDENTITY,
-                                        "valueCodeableConcept": gender_identity_codeable.model_dump(exclude_none=True),
+                                        "valueCodeableConcept": gender_identity_codeable.model_dump(
+                                            exclude_none=True
+                                        ),
                                     }
                                     extensions.append(gender_identity_ext)
                             processed = True
@@ -1688,7 +1833,9 @@ class DocumentConverter:
                                     spcu_ext["extension"].append(
                                         {
                                             "url": "value",
-                                            "valueCodeableConcept": value_concept.model_dump(exclude_none=True),
+                                            "valueCodeableConcept": value_concept.model_dump(
+                                                exclude_none=True
+                                            ),
                                         }
                                     )
 
@@ -1803,7 +1950,9 @@ class DocumentConverter:
                                         "extension": [
                                             {
                                                 "url": "tribalAffiliation",
-                                                "valueCodeableConcept": tribal_affiliation_codeable.model_dump(exclude_none=True),
+                                                "valueCodeableConcept": tribal_affiliation_codeable.model_dump(
+                                                    exclude_none=True
+                                                ),
                                             }
                                         ],
                                     }
@@ -1830,7 +1979,9 @@ class DocumentConverter:
                                             "extension": [
                                                 {
                                                     "url": "tribalAffiliation",
-                                                    "valueCodeableConcept": tribal_affiliation_codeable.model_dump(exclude_none=True),
+                                                    "valueCodeableConcept": tribal_affiliation_codeable.model_dump(
+                                                        exclude_none=True
+                                                    ),
                                                 }
                                             ],
                                         }
@@ -1865,7 +2016,9 @@ class DocumentConverter:
                                         spcu_ext["extension"].append(
                                             {
                                                 "url": "value",
-                                                "valueCodeableConcept": value_concept.model_dump(exclude_none=True),
+                                                "valueCodeableConcept": value_concept.model_dump(
+                                                    exclude_none=True
+                                                ),
                                             }
                                         )
 
