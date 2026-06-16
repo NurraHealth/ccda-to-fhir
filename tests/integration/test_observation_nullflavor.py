@@ -10,6 +10,7 @@ from ccda_to_fhir.types import JSONObject
 from .conftest import wrap_in_ccda_document
 
 RESULTS_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.2.3.1"
+RESULTS_ORGANIZER_TEMPLATE_ID = "2.16.840.1.113883.10.20.22.4.1"
 
 
 def _find_all_resources_in_bundle(bundle: JSONObject, resource_type: str) -> list[JSONObject]:
@@ -184,8 +185,9 @@ class TestObservationNullFlavor:
         expected bad-input handling, not a conversion failure.
 
         It must be logged at info level (not error) so it does not surface as a
-        production error in Sentry. Mirrors the CareTeam no-participant handling.
-        The whole panel is still skipped (behavior unchanged).
+        production error in Sentry, and tracked as *skipped* (not processed or
+        errored) in conversion metadata. Mirrors the CareTeam no-participant
+        handling. The whole panel is still skipped (behavior unchanged).
         """
         ccda = """
 <organizer classCode="BATTERY" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -209,7 +211,9 @@ class TestObservationNullFlavor:
         ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
 
         with caplog.at_level(logging.INFO):
-            bundle = convert_document(ccda_doc)["bundle"]
+            result = convert_document(ccda_doc)
+        bundle = result["bundle"]
+        metadata = result["metadata"]
 
         # Behavior unchanged: the whole panel is still skipped.
         assert _find_all_resources_in_bundle(bundle, "Observation") == []
@@ -232,3 +236,10 @@ class TestObservationNullFlavor:
             if r.levelno == logging.INFO and "skipping result organizer" in r.getMessage().lower()
         ]
         assert info_skips, "Expected an info-level skip log for the result organizer"
+
+        # The organizer must be tracked as skipped, not processed or errored.
+        assert RESULTS_ORGANIZER_TEMPLATE_ID in metadata["skipped_templates"]
+        assert RESULTS_ORGANIZER_TEMPLATE_ID not in metadata["processed_templates"]
+        assert not [
+            e for e in metadata["errors"] if e["template_id"] == RESULTS_ORGANIZER_TEMPLATE_ID
+        ]

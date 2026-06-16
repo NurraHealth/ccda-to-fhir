@@ -1645,24 +1645,22 @@ class DocumentConverter:
         for organizer, section, _section_code in iter_matching_organizers(
             structured_body, TemplateIds.RESULT_ORGANIZER
         ):
+            # A component observation may have a nullFlavor code with no extractable
+            # text, so the organizer cannot form a valid panel. That is expected
+            # bad-input handling, not a conversion failure: treat it as an expected
+            # skip (logged at info, tracked as skipped) so it doesn't surface as a
+            # production error. The whole organizer is skipped (behavior unchanged).
+            # Mirrors CareTeam no-participant handling (#116).
             with converting(
-                metadata, TemplateIds.RESULT_ORGANIZER, organizer.id, "result organizer"
+                metadata,
+                TemplateIds.RESULT_ORGANIZER,
+                organizer.id,
+                "result organizer",
+                expected_skips=(MissingRequiredFieldError,),
             ):
-                try:
-                    report, observations = self.diagnostic_report_converter.convert(
-                        organizer, section=section
-                    )
-                except MissingRequiredFieldError as e:
-                    # A component observation has a nullFlavor code with no extractable
-                    # text, so the organizer cannot form a valid panel. This is expected
-                    # bad-input handling, not a conversion failure: log at info (not error)
-                    # so it doesn't surface as a production error, and skip the whole
-                    # organizer (behavior unchanged). Mirrors CareTeam no-participant
-                    # handling (#116).
-                    logger.info(
-                        f"Skipping result organizer with uncodeable component observation: {e}"
-                    )
-                    continue
+                report, observations = self.diagnostic_report_converter.convert(
+                    organizer, section=section
+                )
                 resources.append(report)
                 resources.extend(observations)
 

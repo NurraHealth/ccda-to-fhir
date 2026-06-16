@@ -179,11 +179,19 @@ def converting(
     template_id: str,
     element_ids: list[II] | None,
     error_message: str,
+    expected_skips: tuple[type[Exception], ...] = (),
 ) -> Iterator[None]:
     """Context manager for converter error handling and metadata tracking.
 
     Wraps a converter call to handle exceptions and track processed/errored
     templates in conversion metadata.
+
+    Args:
+        expected_skips: Exception types that represent expected bad-input handling
+            rather than conversion failures. When one is raised, it is logged at
+            info level and tracked as *skipped* (not processed or errored), so it
+            does not surface as a production error. All other exceptions are still
+            logged at error level and tracked as errors.
 
     Usage:
         with converting(metadata, TemplateIds.XXX, element.id, "xxx"):
@@ -194,6 +202,10 @@ def converting(
         yield
         if metadata is not None:
             track_processed(metadata, template_id)
+    except expected_skips as e:
+        if metadata is not None:
+            track_skipped(metadata, template_id)
+        logger.info(f"Skipping {error_message}: {e}")
     except Exception as e:
         if metadata is not None:
             track_error(metadata, template_id, element_ids, e)
