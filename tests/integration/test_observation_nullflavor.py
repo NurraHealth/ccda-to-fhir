@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from ccda_to_fhir.convert import convert_document
 from ccda_to_fhir.types import JSONObject
 
@@ -176,3 +178,57 @@ class TestObservationNullFlavor:
             "Organizer with any nullFlavor component should be skipped entirely "
             "(current behavior - entire panel skipped if any component invalid)"
         )
+
+    def test_nullflavor_organizer_skip_is_logged_as_info_not_error(self, caplog) -> None:
+        """A result organizer skipped because a component code is uncodeable is
+        expected bad-input handling, not a conversion failure.
+
+        It must be logged at info level (not error) so it does not surface as a
+        production error in Sentry. Mirrors the CareTeam no-participant handling.
+        The whole panel is still skipped (behavior unchanged).
+        """
+        ccda = """
+<organizer classCode="BATTERY" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+    <id root="result-org-skip"/>
+    <code code="24357-6" codeSystem="2.16.840.1.113883.6.1" displayName="Test Panel"/>
+    <statusCode code="completed"/>
+    <effectiveTime value="20240121"/>
+    <component>
+        <observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+            <id root="obs-nullflavor-skip"/>
+            <code nullFlavor="NI" xsi:type="CE"/>
+            <statusCode code="completed"/>
+            <effectiveTime value="20240121"/>
+            <value nullFlavor="NI" xsi:type="CD"/>
+        </observation>
+    </component>
+</organizer>
+"""
+        ccda_doc = wrap_in_ccda_document(ccda, RESULTS_TEMPLATE_ID)
+
+        with caplog.at_level(logging.INFO):
+            bundle = convert_document(ccda_doc)["bundle"]
+
+        # Behavior unchanged: the whole panel is still skipped.
+        assert _find_all_resources_in_bundle(bundle, "Observation") == []
+
+        # The skip must NOT surface as an error.
+        organizer_errors = [
+            r
+            for r in caplog.records
+            if r.levelno >= logging.ERROR and "organizer" in r.getMessage().lower()
+        ]
+        assert not organizer_errors, (
+            "Skipping an uncodeable result organizer should not be logged as an error: "
+            f"{[r.getMessage() for r in organizer_errors]}"
+        )
+
+        # And it should be logged at info as an explicit, intentional skip.
+        info_skips = [
+            r
+            for r in caplog.records
+            if r.levelno == logging.INFO and "skipping result organizer" in r.getMessage().lower()
+        ]
+        assert info_skips, "Expected an info-level skip log for the result organizer"

@@ -41,7 +41,7 @@ from ccda_to_fhir.ccda.models.section import Section, StructuredBody
 from ccda_to_fhir.ccda.models.substance_administration import SubstanceAdministration
 from ccda_to_fhir.ccda.parser import parse_ccda
 from ccda_to_fhir.constants import PARTICIPATION_FUNCTION_CODE_MAP, TemplateIds
-from ccda_to_fhir.exceptions import CCDAConversionError
+from ccda_to_fhir.exceptions import CCDAConversionError, MissingRequiredFieldError
 from ccda_to_fhir.logging_config import get_logger
 from ccda_to_fhir.types import (
     ConversionMetadata,
@@ -1648,9 +1648,21 @@ class DocumentConverter:
             with converting(
                 metadata, TemplateIds.RESULT_ORGANIZER, organizer.id, "result organizer"
             ):
-                report, observations = self.diagnostic_report_converter.convert(
-                    organizer, section=section
-                )
+                try:
+                    report, observations = self.diagnostic_report_converter.convert(
+                        organizer, section=section
+                    )
+                except MissingRequiredFieldError as e:
+                    # A component observation has a nullFlavor code with no extractable
+                    # text, so the organizer cannot form a valid panel. This is expected
+                    # bad-input handling, not a conversion failure: log at info (not error)
+                    # so it doesn't surface as a production error, and skip the whole
+                    # organizer (behavior unchanged). Mirrors CareTeam no-participant
+                    # handling (#116).
+                    logger.info(
+                        f"Skipping result organizer with uncodeable component observation: {e}"
+                    )
+                    continue
                 resources.append(report)
                 resources.extend(observations)
 
