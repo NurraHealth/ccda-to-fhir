@@ -6,7 +6,9 @@ resources with referral category.
 
 from __future__ import annotations
 
-from ccda_to_fhir.convert import convert_document
+import pytest
+
+from ccda_to_fhir.convert import DuplicateBundleEntryError, convert_document
 
 # ============================================================================
 # Test C-CDA Documents
@@ -256,6 +258,49 @@ def _find_resources(bundle: dict, resource_type: str) -> list[dict]:
     ]
 
 
+def _with_duplicate_patient_referral_act(ccda_xml: str) -> str:
+    duplicate_section = """
+            <component>
+                <section>
+                    <templateId root="1.3.6.1.4.1.19376.1.5.3.1.3.1" extension="2014-06-09"/>
+                    <code code="42349-1" codeSystem="2.16.840.1.113883.6.1" displayName="Reason for Referral"/>
+                    <title>Reason for Referral</title>
+                    <text>Referral to cardiology.</text>
+                    <entry>
+                        <act classCode="PCPR" moodCode="RQO">
+                            <templateId root="2.16.840.1.113883.10.20.22.4.140"/>
+                            <id root="referral-id-001"/>
+                            <code code="3457005" codeSystem="2.16.840.1.113883.6.96"
+                                  displayName="Patient referral"/>
+                            <statusCode code="active"/>
+                            <effectiveTime>
+                                <low value="20240701"/>
+                            </effectiveTime>
+                        </act>
+                    </entry>
+                </section>
+            </component>
+"""
+    return ccda_xml.replace("</structuredBody>", f"{duplicate_section}</structuredBody>")
+
+
+def _bundle_duplicate_keys(bundle: dict) -> list[tuple[str, str | None]]:
+    seen: set[tuple[str, str | None]] = set()
+    duplicates: list[tuple[str, str | None]] = []
+    for entry in bundle.get("entry", []):
+        full_url = entry.get("fullUrl")
+        resource = entry.get("resource", {})
+        meta = resource.get("meta", {})
+        version_id = meta.get("versionId") if isinstance(meta, dict) else None
+        if not full_url:
+            continue
+        key = (full_url, version_id)
+        if key in seen:
+            duplicates.append(key)
+        seen.add(key)
+    return duplicates
+
+
 class TestBasicReferral:
     """Test basic referral conversion end-to-end."""
 
@@ -308,6 +353,24 @@ class TestBasicReferral:
         assert len(referral_srs) >= 1
         sr = referral_srs[0]
         assert "us-core-servicerequest" in sr["meta"]["profile"][0]
+
+    def test_duplicate_bundle_entry_policy_skip_keeps_first_service_request(self, caplog):
+        """Default duplicate policy skips repeated Bundle keys and returns a valid Bundle."""
+        result = convert_document(_with_duplicate_patient_referral_act(CCDA_BASIC_REFERRAL))
+        bundle = result["bundle"]
+        service_requests = _find_resources(bundle, "ServiceRequest")
+
+        assert len(service_requests) == 1
+        assert _bundle_duplicate_keys(bundle) == []
+        assert any("Skipping duplicate Bundle entry" in record.message for record in caplog.records)
+
+    def test_duplicate_bundle_entry_policy_fail_raises(self):
+        """Strict duplicate policy raises when repeated Bundle keys are encountered."""
+        with pytest.raises(DuplicateBundleEntryError, match="Duplicate Bundle entry encountered"):
+            convert_document(
+                _with_duplicate_patient_referral_act(CCDA_BASIC_REFERRAL),
+                duplicate_bundle_entry_policy="fail",
+            )
 
     def test_referral_status_active(self):
         """active → active."""

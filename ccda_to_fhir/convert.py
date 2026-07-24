@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Literal
 
 from fhir.resources.R4B.allergyintolerance import AllergyIntolerance
 from fhir.resources.R4B.appointment import Appointment
@@ -107,6 +108,13 @@ from .converters.section_traversal import (
 from .converters.service_request import ServiceRequestConverter
 
 logger = get_logger(__name__)
+
+DuplicateBundleEntryPolicy = Literal["skip", "fail"]
+
+
+class DuplicateBundleEntryError(CCDAConversionError):
+    """Raised when duplicate Bundle entries are encountered in strict mode."""
+
 
 # Mapping of FHIR resource types to their fhir.resources classes for validation
 RESOURCE_TYPE_MAPPING: dict[str, type[FHIRAbstractModel]] = {
@@ -271,6 +279,7 @@ class DocumentConverter:
         code_system_mapper: CodeSystemMapper | None = None,
         enable_validation: bool = False,
         strict_validation: bool = False,
+        duplicate_bundle_entry_policy: DuplicateBundleEntryPolicy = "skip",
     ):
         """Initialize the document converter.
 
@@ -278,8 +287,14 @@ class DocumentConverter:
             code_system_mapper: Optional code system mapper
             enable_validation: If True, validate FHIR resources during conversion
             strict_validation: If True, raise exceptions on validation failures
+            duplicate_bundle_entry_policy: How to handle duplicate Bundle fullUrl/versionId keys.
+                "skip" keeps the first entry and logs a warning; "fail" raises an error.
         """
+        if duplicate_bundle_entry_policy not in ("skip", "fail"):
+            raise ValueError("duplicate_bundle_entry_policy must be 'skip' or 'fail'")
+
         self.code_system_mapper = code_system_mapper or CodeSystemMapper()
+        self.duplicate_bundle_entry_policy = duplicate_bundle_entry_policy
 
         # Reference registry for tracking and validating resource references
         self.reference_registry = ReferenceRegistry()
@@ -1358,8 +1373,12 @@ class DocumentConverter:
             if timestamp:
                 bundle["timestamp"] = timestamp
 
-        # Add resources as bundle entries (Composition first, then all others)
-        for resource in resources:
+        # Add resources as bundle entries (Composition first, then all others).
+        # C-CDA documents can repeat the same source act in multiple sections. Stable
+        # ID generation correctly maps those repeats to the same FHIR id; enforce
+        # the Bundle fullUrl/versionId uniqueness invariant here before returning.
+        seen_bundle_keys: dict[tuple[str, str | None], tuple[int, str | None]] = {}
+        for resource_index, resource in enumerate(resources):
             entry: JSONObject = {
                 "resource": resource,
             }
@@ -1367,6 +1386,34 @@ class DocumentConverter:
                 resource["resourceType"]
                 resource_id = resource["id"]
                 entry["fullUrl"] = f"urn:uuid:{resource_id}"
+
+                meta = resource.get("meta", {})
+                version_id = meta.get("versionId") if isinstance(meta, dict) else None
+                bundle_key = (entry["fullUrl"], version_id)
+                if bundle_key in seen_bundle_keys:
+                    kept_index, kept_resource_type = seen_bundle_keys[bundle_key]
+                    message = (
+                        "Duplicate Bundle entry encountered: "
+                        f"resourceType={resource.get('resourceType')}, "
+                        f"fullUrl={entry['fullUrl']}, "
+                        f"versionId={version_id}, "
+                        f"kept_index={kept_index}, "
+                        f"duplicate_index={resource_index}"
+                    )
+                    if self.duplicate_bundle_entry_policy == "fail":
+                        raise DuplicateBundleEntryError(message)
+                    logger.warning(
+                        "Skipping duplicate Bundle entry",
+                        resource_type=resource.get("resourceType"),
+                        full_url=entry["fullUrl"],
+                        version_id=version_id,
+                        kept_index=kept_index,
+                        kept_resource_type=kept_resource_type,
+                        duplicate_index=resource_index,
+                    )
+                    continue
+
+                seen_bundle_keys[bundle_key] = (resource_index, resource.get("resourceType"))
             bundle["entry"].append(entry)
 
         # Log validation statistics
@@ -4099,7 +4146,11 @@ class DocumentConverter:
         return (practitioners, related_persons)
 
 
-def convert_document(ccda_input: str | ClinicalDocument) -> ConversionResult:
+def convert_document(
+    ccda_input: str | ClinicalDocument,
+    *,
+    duplicate_bundle_entry_policy: DuplicateBundleEntryPolicy = "skip",
+) -> ConversionResult:
     """Main conversion entry point.
 
     This is a convenience function that handles both XML strings and
@@ -4107,6 +4158,8 @@ def convert_document(ccda_input: str | ClinicalDocument) -> ConversionResult:
 
     Args:
         ccda_input: Either an XML string or a parsed ClinicalDocument
+        duplicate_bundle_entry_policy: How to handle duplicate Bundle fullUrl/versionId keys.
+            "skip" keeps the first entry and logs a warning; "fail" raises an error.
 
     Returns:
         ConversionResult with bundle and metadata about processing
@@ -4118,5 +4171,5 @@ def convert_document(ccda_input: str | ClinicalDocument) -> ConversionResult:
     ccda_doc = parse_ccda(ccda_input) if isinstance(ccda_input, str) else ccda_input
 
     # Convert using DocumentConverter
-    converter = DocumentConverter()
+    converter = DocumentConverter(duplicate_bundle_entry_policy=duplicate_bundle_entry_policy)
     return converter.convert(ccda_doc)
